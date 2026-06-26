@@ -47,6 +47,3 @@ rules <- load_rules(tier = "experimental")
 }
 
 }
-\seealso{
-\code{\link[=verify_db]{verify_db()}}, \code{\link[=rules_version]{rules_version()}}, \code{\link[=audit_package]{audit_package()}}
-}

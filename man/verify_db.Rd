@@ -23,17 +23,15 @@ verification fails.
 \description{
 Verifies the cryptographic signature of the rules database against the
 bundled public key. Called automatically by \code{\link[=load_rules]{load_rules()}} before any
-rules are returned. Exported so users can verify the database independently.
+rules are returned.
 }
 \details{
 The rules database is the primary attack surface of pkgaudit: an adversary
 who can modify the database can silently remove detection for specific
 patterns. Signature verification using a public key bundled at package
 installation time ensures that a modified database is detected before any
-analysis runs.
-
-The private key never leaves the maintainer's control. The public key is
-a static file in \verb{inst/db/} that is itself part of the signed CRAN package.
+analysis runs. The public key is a static file in \verb{inst/db/} that is itself
+part of the signed CRAN package.
 }
 \examples{
 \dontrun{
