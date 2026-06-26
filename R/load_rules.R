@@ -6,7 +6,7 @@
 #' @param tier Which rules to load. One of `"stable"` (default) or
 #'   `"experimental"`. Experimental rules have higher false positive rates
 #'   and are subject to change without notice.
-#' @param db_path  Path to the SQLite rules database.
+#' @param db_path Path to the SQLite rules database.
 #' @param sig_path Path to the signature file.
 #' @param pub_path Path to the public key.
 #'
@@ -29,7 +29,6 @@
 #' rules <- load_rules(tier = "experimental")
 #' }
 #'
-#' @seealso [verify_db()], [rules_version()], [audit_package()]
 #' @export
 load_rules <- function(
   tier     = c("stable", "experimental"),
@@ -74,7 +73,7 @@ load_rules <- function(
 #'
 #' Verifies the cryptographic signature of the rules database against the
 #' bundled public key. Called automatically by [load_rules()] before any
-#' rules are returned. Exported so users can verify the database independently.
+#' rules are returned.
 #'
 #' @param db_path  Path to the SQLite rules database. Defaults to the bundled
 #'   database shipped with the package.
@@ -91,10 +90,8 @@ load_rules <- function(
 #' who can modify the database can silently remove detection for specific
 #' patterns. Signature verification using a public key bundled at package
 #' installation time ensures that a modified database is detected before any
-#' analysis runs.
-#'
-#' The private key never leaves the maintainer's control. The public key is
-#' a static file in `inst/db/` that is itself part of the signed CRAN package.
+#' analysis runs. The public key is a static file in `inst/db/` that is itself
+#' part of the signed CRAN package.
 #'
 #' @examples
 #' \dontrun{

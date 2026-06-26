@@ -20,7 +20,7 @@ test_that("lint_file() returns NULL for a file with no findings", {
   tmp <- tempfile(fileext = ".R")
   on.exit(unlink(tmp), add = TRUE)
   writeLines(
-    '.onLoad <- function(libname, pkgname) { packageStartupMessage() }',
+    ".onLoad <- function(libname, pkgname) { packageStartupMessage() }",
     tmp
   )
   result <- lint_file(tmp, rules = test_rules)
@@ -49,7 +49,8 @@ test_that("lint_file() returns expected columns", {
     tmp
   )
   result <- lint_file(tmp, rules = test_rules)
-  expect_named(result, c("file", "line", "column", "linter", "message", "type", "attck"))
+  expect_named(result, c("file", "line", "column", "linter", "message", "type",
+                         "attck"))
 })
 
 

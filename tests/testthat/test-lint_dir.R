@@ -58,7 +58,7 @@ test_that("lint_dir() returns empty data frame when no findings", {
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
   writeLines(
-    '.onLoad <- function(l, p) { packageStartupMessage() }',
+    ".onLoad <- function(l, p) { packageStartupMessage() }",
     file.path(tmp_dir, "zzz.R")
   )
 
@@ -66,4 +66,3 @@ test_that("lint_dir() returns empty data frame when no findings", {
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 0L)
 })
-

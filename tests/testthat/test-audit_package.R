@@ -27,7 +27,7 @@ make_test_pkg <- function(r_content, dir_name = "testpkg") {
 # audit_package() --------------------------------------------------------------
 test_that("audit_package() returns empty data frame when no findings", {
   pkg_dir <- make_test_pkg(
-    '.onLoad <- function(l, p) { packageStartupMessage() }',
+    ".onLoad <- function(l, p) { packageStartupMessage() }",
     "pkg_clean"
   )
   on.exit(unlink(pkg_dir, recursive = TRUE), add = TRUE)
