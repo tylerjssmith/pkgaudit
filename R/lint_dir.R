@@ -24,7 +24,7 @@
 lint_dir <- function(
   path,
   rules,
-  pattern = "(?i)\\.r$",
+  pattern = "\\.[Rr]$",
   recurse = TRUE
 ) {
   stopifnot(is.character(path), length(path) == 1L)
