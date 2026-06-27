@@ -4,7 +4,7 @@
 \alias{lint_dir}
 \title{Lint all R source files in a directory for security issues}
 \usage{
-lint_dir(path, rules, pattern = "(?i)\\\\.r$", recurse = TRUE)
+lint_dir(path, rules, pattern = "\\\\.[Rr]$", recurse = TRUE)
 }
 \arguments{
 \item{path}{Path to a directory containing R source files.}

@@ -4,16 +4,16 @@
 \name{pkgaudit-package}
 \alias{pkgaudit}
 \alias{pkgaudit-package}
-\title{pkgaudit: What the Package Does (One Line, Title Case)}
+\title{pkgaudit: Security Auditing of R Packages}
 \description{
-What the package does (one paragraph).
+Provides tools for security auditing of R packages. Detects dangerous patterns in R source code using XPath-based rules stored in a versioned, signed SQLite database. Intended for auditing third-party packages in sensitive environments. See the 'lintrsecurity' package for developer-facing linting in standard 'lintr' workflows.
 }
 \author{
-\strong{Maintainer}: First Last \email{first.last@example.com}
+\strong{Maintainer}: Tyler Smith \email{tylerjssmith@gmail.com}
 
 Authors:
 \itemize{
-  \item First Last \email{first.last@example.com}
+  \item Tyler Smith \email{tylerjssmith@gmail.com}
 }
 
 }

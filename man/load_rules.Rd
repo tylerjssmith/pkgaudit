@@ -4,12 +4,7 @@
 \alias{load_rules}
 \title{Load security rules from the pkgaudit rules database}
 \usage{
-load_rules(
-  tier = c("stable", "experimental"),
-  db_path = .db_path(),
-  sig_path = .sig_path(),
-  pub_path = .pub_path()
-)
+load_rules(tier = c("stable", "experimental"), db_path = .db_path())
 }
 \arguments{
 \item{tier}{Which rules to load. One of \code{"stable"} (default) or
@@ -17,10 +12,6 @@ load_rules(
 and are subject to change without notice.}
 
 \item{db_path}{Path to the SQLite rules database.}
-
-\item{sig_path}{Path to the signature file.}
-
-\item{pub_path}{Path to the public key.}
 }
 \value{
 A named list of rule objects. Each element is a list with fields:
@@ -32,13 +23,8 @@ A named list of rule objects. Each element is a list with fields:
 }
 }
 \description{
-Verifies the database signature then loads rules as a named list suitable
-for passing to \code{\link[=lint_file]{lint_file()}}, \code{\link[=lint_dir]{lint_dir()}}, and \code{\link[=audit_package]{audit_package()}}.
-}
-\details{
-The database signature is verified before any rules are returned. If
-verification fails the function stops with an informative error. See
-\code{\link[=verify_db]{verify_db()}} for details on the signature scheme.
+Loads rules from database as a named list suitable for passing to
+\code{\link[=lint_file]{lint_file()}}, \code{\link[=lint_dir]{lint_dir()}}, and \code{\link[=audit_package]{audit_package()}}.
 }
 \examples{
 \dontrun{
