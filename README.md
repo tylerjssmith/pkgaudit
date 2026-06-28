@@ -54,6 +54,21 @@ You can install pkgaudit as follows:
 remotes::install_github("tylerjssmith/pkgaudit")
 ```
 
+## Database Integrity
+
+pkgaudit detects patterns using a SQLite database of rules shipped with the package at `inst/db/rules.db`. To verify that your installed copy of the database has not been tampered with or corrupted, check its SHA-256 hash against the value published here:
+
+``` r
+digest::digest(
+  system.file("db", "rules.db", package = "pkgaudit"),
+  algo = "sha256",
+  file = TRUE
+)
+```
+Expected SHA-256: `149421266a8a66426b4cf961650e89e49bb6b6cb847344b9ffa8e11342617e49`
+
+The hash is regenerated automatically by `inst/scripts/build_rules.R` whenever the database is rebuilt and should match the value above exactly.
+
 ## Usage
 
 A file may be scanned as follows:
