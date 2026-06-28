@@ -15,15 +15,15 @@ test_rules <- list(
 )
 
 
-# lint_dir() -------------------------------------------------------------------
-test_that("lint_dir() returns empty data frame when no R files found", {
+# audit_dir() -------------------------------------------------------------------
+test_that("audit_dir() returns empty data frame when no R files found", {
   tmp_dir <- tempdir()
   empty   <- file.path(tmp_dir, "empty_test_dir")
   dir.create(empty, showWarnings = FALSE)
   on.exit(unlink(empty, recursive = TRUE), add = TRUE)
 
   expect_message(
-    result <- lint_dir(empty, rules = test_rules),
+    result <- audit_dir(empty, rules = test_rules),
     "No R source files found"
   )
   expect_s3_class(result, "data.frame")
@@ -31,8 +31,8 @@ test_that("lint_dir() returns empty data frame when no R files found", {
 })
 
 
-test_that("lint_dir() returns findings across multiple files", {
-  tmp_dir <- file.path(tempdir(), "lint_dir_test")
+test_that("audit_dir() returns findings across multiple files", {
+  tmp_dir <- file.path(tempdir(), "audit_dir_test")
   dir.create(tmp_dir, showWarnings = FALSE)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
@@ -45,15 +45,15 @@ test_that("lint_dir() returns findings across multiple files", {
     file.path(tmp_dir, "attach.R")
   )
 
-  result <- lint_dir(tmp_dir, rules = test_rules)
+  result <- audit_dir(tmp_dir, rules = test_rules)
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 2L)
   expect_equal(length(unique(result$file)), 2L)
 })
 
 
-test_that("lint_dir() returns empty data frame when no findings", {
-  tmp_dir <- file.path(tempdir(), "lint_dir_clean_test")
+test_that("audit_dir() returns empty data frame when no findings", {
+  tmp_dir <- file.path(tempdir(), "audit_dir_clean_test")
   dir.create(tmp_dir, showWarnings = FALSE)
   on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
 
@@ -62,7 +62,7 @@ test_that("lint_dir() returns empty data frame when no findings", {
     file.path(tmp_dir, "zzz.R")
   )
 
-  result <- lint_dir(tmp_dir, rules = test_rules)
+  result <- audit_dir(tmp_dir, rules = test_rules)
   expect_s3_class(result, "data.frame")
   expect_equal(nrow(result), 0L)
 })

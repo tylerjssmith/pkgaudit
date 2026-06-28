@@ -7,7 +7,7 @@
 rules_version(db_path = .db_path())
 }
 \arguments{
-\item{db_path}{Path to the SQLite rules database.}
+\item{db_path}{Path to SQLite rules database.}
 }
 \value{
 A character string giving the rules database version (e.g.,

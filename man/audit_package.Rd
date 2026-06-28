@@ -2,7 +2,7 @@
 % Please edit documentation in R/audit_package.R
 \name{audit_package}
 \alias{audit_package}
-\title{Audit an R package for security issues}
+\title{Audit an R package for security-relevant patterns}
 \usage{
 audit_package(path = ".", rules = load_rules())
 }
@@ -15,13 +15,12 @@ Defaults to loading stable rules from the bundled database.}
 }
 \value{
 A data frame of findings across all files in the directory, with
-the same columns as \code{\link[=lint_file]{lint_file()}}. Returns an empty data frame with the
+the same columns as \code{\link[=audit_file]{audit_file()}}. Returns an empty data frame with the
 correct columns if no findings are produced.
 }
 \description{
 Scans the \verb{R/} subdirectory of a package for dangerous patterns using the
-provided rules. Unlike standard \code{lintr} workflows, \verb{# nolint} comments in the
-audited package are unconditionally ignored.
+provided rules.
 }
 \examples{
 \dontrun{

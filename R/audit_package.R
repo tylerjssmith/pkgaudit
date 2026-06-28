@@ -1,8 +1,7 @@
-#' Audit an R package for security issues
+#' Audit an R package for security-relevant patterns
 #'
 #' Scans the `R/` subdirectory of a package for dangerous patterns using the
-#' provided rules. Unlike standard `lintr` workflows, `# nolint` comments in the
-#' audited package are unconditionally ignored.
+#' provided rules.
 #'
 #' @param path Path to the root directory of the R package to audit.
 #'   Defaults to the current directory.
@@ -10,7 +9,7 @@
 #'   Defaults to loading stable rules from the bundled database.
 #'
 #' @return A data frame of findings across all files in the directory, with
-#'   the same columns as [lint_file()]. Returns an empty data frame with the
+#'   the same columns as [audit_file()]. Returns an empty data frame with the
 #'   correct columns if no findings are produced.
 #'
 #' @examples
@@ -40,7 +39,7 @@ audit_package <- function(
     )
   }
 
-  findings <- lint_dir(r_dir, rules = rules)
+  findings <- audit_dir(r_dir, rules = rules)
   if (nrow(findings) == 0L) {
     message("No security findings in: ", path)
   }

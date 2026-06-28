@@ -4,14 +4,10 @@
 \alias{load_rules}
 \title{Load security rules from the pkgaudit rules database}
 \usage{
-load_rules(tier = c("stable", "experimental"), db_path = .db_path())
+load_rules(db_path = .db_path())
 }
 \arguments{
-\item{tier}{Which rules to load. One of \code{"stable"} (default) or
-\code{"experimental"}. Experimental rules have higher false positive rates
-and are subject to change without notice.}
-
-\item{db_path}{Path to the SQLite rules database.}
+\item{db_path}{Path to SQLite rules database.}
 }
 \value{
 A named list of rule objects. Each element is a list with fields:
@@ -24,12 +20,11 @@ A named list of rule objects. Each element is a list with fields:
 }
 \description{
 Loads rules from database as a named list suitable for passing to
-\code{\link[=lint_file]{lint_file()}}, \code{\link[=lint_dir]{lint_dir()}}, and \code{\link[=audit_package]{audit_package()}}.
+\code{\link[=audit_file]{audit_file()}}, \code{\link[=audit_dir]{audit_dir()}}, and \code{\link[=audit_package]{audit_package()}}.
 }
 \examples{
 \dontrun{
 rules <- load_rules()
-rules <- load_rules(tier = "experimental")
 }
 
 }

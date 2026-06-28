@@ -5,16 +5,13 @@ Authors@R:
     person("Tyler", "Smith", , "tylerjssmith@gmail.com", role = c("aut", "cre"))
 Description: Provides tools for security auditing of R packages. Detects 
     dangerous patterns in R source code using XPath-based rules stored in a
-    versioned, signed SQLite database. Intended for auditing third-party
-    packages in sensitive environments. See the 'lintrsecurity' package for
-    developer-facing linting in standard 'lintr' workflows.
+    versioned SQLite database.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 8.0.0
 Imports: 
     DBI,
-    openssl,
     RSQLite,
     stats,
     xml2,
