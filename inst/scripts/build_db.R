@@ -1,4 +1,3 @@
-# inst/scripts/build_db.R
 # ------------------------------------------------------------------------------
 # WARNING: RUNNING THIS SCRIPT WILL INVALIDATE THE RULES DATABASE.
 # This script is provided for transparency so that users can see how the rules
@@ -10,12 +9,7 @@
 # Dependencies:
 # This script requires the DBI, RSQLite, and yaml packages. yaml is not declared
 # in DESCRIPTION because it is unnecessary for using the package. If necessary,
-# you can install it by running:
-#   install.packages("yaml")
-#
-# Usage:
-#   source("build_rules.R")
-#   build_rules_db()
+# you can install it by running install.packages("yaml").
 #
 # Required YAML fields and their expected types. Used for validation in
 # load_rule_yaml() before any database writes are attempted.

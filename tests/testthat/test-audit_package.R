@@ -25,8 +25,7 @@ test_that("audit_package() stops if no R/ directory found", {
 # audit_package(): happy path --------------------------------------------------
 # For each rule in the database, verify that the positive fixture produces a
 # finding and the negative fixture does not. Fixture files are generated from
-# the example_positive and example_negative fields in each YAML rule file by
-# inst/scripts/build_rules.R.
+# the YAML rule files by inst/scripts/build_rules.R.
 test_that("each rule detects positive cases and ignores negative cases", {
   rules    <- load_rules()
   fix_root <- testthat::test_path("fixtures", "rules")
