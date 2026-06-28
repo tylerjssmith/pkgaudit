@@ -40,6 +40,8 @@ Findings are mapped to the [MITRE ATT&CK](https://attack.mitre.org/) framework, 
 
 ### What pkgaudit does not do
 
+`pkgaudit::audit_package()` currently scans the `R/` subdirectory only. Future versions will expand coverage to additional subdirectories, including `vignettes/` and `tests/`. `audit_dir()` and `audit_file()` can be used to scan other directories and files directly.
+
 A pkgaudit finding does not necessarily mean that a package contains a malicious code. Rather, it indicates a security-relevant pattern that should be reviewed before running the code.
 
 Static analysis also cannot detect all malicious code -- a determined attacker can obfuscate dangerous patterns beyond what any source-level tool can reliably identify. pkgaudit is just one layer of defense, not a complete solution.
@@ -49,7 +51,7 @@ Static analysis also cannot detect all malicious code -- a determined attacker c
 You can install pkgaudit as follows:
 
 ``` r
-pak::pak('tylerjssmith/pkgaudit')
+remotes::install_github("tylerjssmith/pkgaudit")
 ```
 
 ## Usage
@@ -58,7 +60,11 @@ A file may be scanned as follows:
 
 ``` r
 library(pkgaudit)
-findings = audit_package('path/to/package')
+rules    <- load_rules()
+findings <- audit_package("path/to/package", rules = rules)
+
+# Record the rules version for reproducibility
+attr(findings, "rules_version") <- rules_version()
 ```
 
 

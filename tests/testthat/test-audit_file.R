@@ -1,6 +1,6 @@
 # Inline Rules for Testing -----------------------------------------------------
 test_rules <- list(
-  onload_calls_system_linter = list(
+  onload_calls_system_rule = list(
     xpath = '//expr[
       LEFT_ASSIGN
       and expr[1]/SYMBOL[text() = ".onLoad" or text() = ".onAttach"]

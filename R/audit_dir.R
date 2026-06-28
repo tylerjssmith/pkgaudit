@@ -59,7 +59,7 @@ audit_dir <- function(
     file    = character(0L),
     line    = integer(0L),
     column  = integer(0L),
-    linter  = character(0L),
+    rule    = character(0L),
     message = character(0L),
     type    = character(0L),
     attck   = character(0L),

@@ -26,7 +26,7 @@ load_rules <- function(db_path  = .db_path()) {
   rows <- DBI::dbGetQuery(
     con,
     "SELECT name, xpath, message, type, attck
-     FROM linters
+     FROM rules
      WHERE deprecated_in IS NULL
      ORDER BY name"
   )
