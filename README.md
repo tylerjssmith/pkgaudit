@@ -1,5 +1,7 @@
 # pkgaudit
 
+[![R-CMD-check](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml)
+
 pkgaudit provides security-focused static code analysis for R. It searches R source code for possibly malicious patterns and, if found, returns the results with a clear explanation of the pattern and its relationship to the [MITRE ATT&CK](https://attack.mitre.org/) framework of adversary tactics and techniques.
 
 ## Background
