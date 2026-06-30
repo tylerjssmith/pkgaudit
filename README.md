@@ -6,17 +6,11 @@ pkgaudit provides security-focused static code analysis for R. It searches R sou
 
 ## Background
 
-### R is an attack surface
+R is a statistical programming language widely used in environments processing sensitive data: clinical trial analyses, government statistics, financial risk modeling, academic research, and more. 
 
-R packages are the primary mechanism for sharing R code. When you run `install.packages()` or `library()`, R executes code from the package automatically -- code you may never have read. A malicious or compromised package can run arbitrary code on your system the moment you install or load it, without any action beyond your normal R workflow.
+R packages are the primary mechanism for sharing R code. They are also potential attack vectors. When a user calls `install.packages()` or `library()`, for example, R automatically executes any code in hooks like `.onLoad()` and `.onAttach()`. A malicious or compromised package can run arbitrary code on the user's system without any action beyond the normal R workflow.
 
-This is not a theoretical risk. The same attack pattern has been documented repeatedly in other package ecosystems. In 2018, a malicious contributor to the JavaScript package `event-stream` on npm introduced code that stole cryptocurrency wallets. In 2024, the Python package `ultralytics` on PyPI was compromised to distribute a cryptominer to its users. 
-
-R is an attack surface, but CRAN has received little systematic security scrutiny compared to other ecosystems, despite R's deep penetration in environments processing sensitive data: clinical trial analysis, government statistics, financial risk modeling, and academic research.
-
-The initial release of pkgaudit focuses on **lifecycle hooks**, which are functions that R calls automatically during package loading. `.onLoad()` runs when a package's namespace is loaded, and `.onAttach()` runs when the package is attached to the search path -- both triggered by a call to `library()`. Any code inside these functions runs with the privileges of the user running R, before the user has any opportunity to review it.
-
-A minimal example of what a malicious `.onLoad` hook might look like is:
+A minimal example of what a malicious `.onLoad()` hook might look like is:
 
 ``` r
 .onLoad <- function(libname, pkgname) {
@@ -30,23 +24,13 @@ A minimal example of what a malicious `.onLoad` hook might look like is:
 
 This code reads the user's SSH private key and sends it to an external server whenever the package is loaded. The `tryCatch()` wrapper suppresses any errors, so the package loads normally and the user sees nothing unusual.
 
-### What pkgaudit does
+This is not a theoretical risk. The same attack pattern has been documented repeatedly in ecosystems adjacent to R. In 2022, the Python package ctx on PyPI was compromised to exfiltrate environment variables — including cloud credentials — from data scientists' systems. In 2024, the Python package ultralytics, a widely used computer vision library, was compromised to distribute a cryptominer to its users.
 
-pkgaudit scans R packages, directories, or files against a SQLite database of possibly malicious code patterns. 
+pkgaudit aims to provide one layer of defense against an underappreciated risk. A pkgaudit finding does not necessarily indicate malicious code, but prospective users should review the code prior to running it.
 
-The patterns are defined using [XPath](https://en.wikipedia.org/wiki/XPath). R code is parsed by R's native `parse()`, then represented as XML by `xmlparsedata::xml_parse_data()` and `xml2::read_xml()`. The XPath patterns are found using `xml2::xml_find_all()`. 
+## Threat Model
 
-This approach was inspired by the [lintr](https://lintr.r-lib.org/) package, which is widely used to enforce code style. pkgaudit imports a more limited set of dependencies and does not support `# nolint`, which would be an obvious evasion technique in adversarial contexts. 
-
-Findings are mapped to the [MITRE ATT&CK](https://attack.mitre.org/) framework, the standard vocabulary for describing adversarial behavior, to help security teams integrate pkgaudit findings into their existing workflows.
-
-### What pkgaudit does not do
-
-`pkgaudit::audit_package()` currently scans the `R/` subdirectory only. Future versions will expand coverage to additional subdirectories, including `vignettes/` and `tests/`. `audit_dir()` and `audit_file()` can be used to scan other directories and files directly.
-
-A pkgaudit finding does not necessarily mean that a package contains a malicious code. Rather, it indicates a security-relevant pattern that should be reviewed before running the code.
-
-Static analysis also cannot detect all malicious code -- a determined attacker can obfuscate dangerous patterns beyond what any source-level tool can reliably identify. pkgaudit is just one layer of defense, not a complete solution.
+R's use in environments handling sensitive data makes it an attractive target for a broad range of threat actors. The assets at risk include both the data processed in R sessions and the underlying systems on which R runs, which provide compute resources and credentials for lateral movement. pkgaudit v0.1.0 focuses on lifecycle hooks (`.onLoad()`, `.onAttach()`) as the primary attack surface.
 
 ## Installation
 
@@ -58,7 +42,7 @@ remotes::install_github("tylerjssmith/pkgaudit")
 
 ## Database Integrity
 
-pkgaudit detects patterns using a SQLite database of rules shipped with the package at `inst/db/rules.db`. To verify that your installed copy of the database has not been tampered with or corrupted, check its SHA-256 hash against the value published here:
+pkgaudit detects patterns using a SQLite database of rules shipped with the package at `inst/db/rules.db`. To verify that your installed copy of the database has not been modified since publication, check its SHA-256 hash against the value published here:
 
 ``` r
 digest::digest(
