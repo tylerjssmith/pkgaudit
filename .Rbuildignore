@@ -3,3 +3,5 @@
 ^LICENSE\.md$
 \.DS_Store$
 ^\.github$
+CONTRIBUTING.md
+THREATMODEL.md
