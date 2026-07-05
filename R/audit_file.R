@@ -6,22 +6,21 @@
 #' @param path Path to an R source file (`.R`, `.r`).
 #' @param rules Named list of rule objects as returned by [load_rules()].
 #'
-#' @return A data frame with columns:
+#' @return A `pkgaudit_result` with two fields:
 #'   \describe{
-#'     \item{file}{Path to the source file.}
-#'     \item{line}{Line number of the finding.}
-#'     \item{column}{Column number of the finding.}
-#'     \item{rule}{Name of the rule that matched.}
-#'     \item{message}{Human-readable description of the dangerous pattern.}
-#'     \item{type}{Severity: `"warning"` or `"message"`.}
-#'     \item{attck}{MITRE ATT&CK technique identifier(s).}
+#'     \item{findings}{Data frame with columns `file`, `line`, `column`,
+#'       `rule`, `message`, `type`, and `attck`. Zero rows when no patterns
+#'       match.}
+#'     \item{errors}{Named character vector of parse or XML errors, where
+#'       names are file paths and values are error messages. Zero-length when
+#'       the file was successfully inspected.}
 #'   }
-#'   Returns `NULL` if the file cannot be parsed or produces no findings.
 #'
 #' @details
-#' Parse errors are caught and reported as messages rather than stopping
-#' execution. This allows [audit_dir()] and [audit_package()] to continue
-#' processing remaining files when one file is malformed.
+#' Parse and XML errors are caught and reported as messages rather than
+#' stopping execution, so [audit_dir()] and [audit_package()] can continue
+#' processing remaining files. The error is also recorded in `$errors` so
+#' callers can distinguish a failed inspection from a clean one.
 #'
 #' The XPath is evaluated against the full document produced by
 #' [xmlparsedata::xml_parse_data()], with `keep.source = TRUE` to preserve
@@ -29,8 +28,10 @@
 #'
 #' @examples
 #' \dontrun{
-#' rules    <- load_rules()
-#' findings <- audit_file("R/zzz.R", rules = rules)
+#' rules  <- load_rules()
+#' result <- audit_file("R/zzz.R", rules = rules)
+#' result$findings
+#' result$errors
 #' }
 #'
 #' @export
@@ -38,25 +39,25 @@ audit_file <- function(path, rules) {
   stopifnot(is.character(path), length(path) == 1L)
   stopifnot(is.list(rules), length(rules) > 0L)
 
-  parsed <- tryCatch(
-    parse(file = path, keep.source = TRUE),
-    error = function(e) {
-      message("Parse error in: ", path, "\n  ", conditionMessage(e))
-      NULL
-    }
+  res <- tryCatch(
+    list(val = parse(file = path, keep.source = TRUE), err = NULL),
+    error = function(e) list(val = NULL, err = conditionMessage(e))
   )
-  if (is.null(parsed)) return(NULL)
+  if (!is.null(res$err)) {
+    message("Parse error in: ", path, "\n  ", res$err)
+    return(.pkgaudit_result(.empty_findings(), setNames(res$err, path)))
+  }
+  parsed <- res$val
 
-  xml <- tryCatch(
-    xml2::read_xml(
-      xmlparsedata::xml_parse_data(parsed, pretty = TRUE)
-    ),
-    error = function(e) {
-      message("XML error in: ", path, "\n  ", conditionMessage(e))
-      NULL
-    }
+  res <- tryCatch(
+    list(val = xml2::read_xml(xmlparsedata::xml_parse_data(parsed, pretty = TRUE)), err = NULL),
+    error = function(e) list(val = NULL, err = conditionMessage(e))
   )
-  if (is.null(xml)) return(NULL)
+  if (!is.null(res$err)) {
+    message("XML error in: ", path, "\n  ", res$err)
+    return(.pkgaudit_result(.empty_findings(), setNames(res$err, path)))
+  }
+  xml <- res$val
 
   results <- lapply(names(rules), function(rule_name) {
     rule  <- rules[[rule_name]]
@@ -73,16 +74,14 @@ audit_file <- function(path, rules) {
       file    = path,
       line    = as.integer(xml2::xml_attr(nodes, "line1")),
       column  = as.integer(xml2::xml_attr(nodes, "col1")),
-      rule  = rule_name,
+      rule    = rule_name,
       message = rule$message,
       type    = rule$type,
-      attck   = rule$attck,
-      stringsAsFactors = FALSE
+      attck   = rule$attck
     )
   })
 
-  # Compact and combine
-  results <- Filter(Negate(is.null), results)
-  if (length(results) == 0L) return(NULL)
-  do.call(rbind, results)
+  results  <- Filter(Negate(is.null), results)
+  findings <- if (length(results) == 0L) .empty_findings() else do.call(rbind, results)
+  .pkgaudit_result(findings)
 }

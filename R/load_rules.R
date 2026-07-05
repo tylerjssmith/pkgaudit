@@ -19,32 +19,30 @@
 #' }
 #'
 #' @export
-load_rules <- function(db_path  = .db_path()) {
-  con <- DBI::dbConnect(RSQLite::SQLite(), db_path)
-  on.exit(DBI::dbDisconnect(con), add = TRUE)
-
-  rows <- DBI::dbGetQuery(
-    con,
-    "SELECT name, xpath, message, type, attck
-     FROM rules
-     WHERE deprecated_in IS NULL
-     ORDER BY name"
-  )
-
-  if (nrow(rows) == 0L) {
-    warning("No rules found in rules database.")
-    return(list())
-  }
-
-  rules <- lapply(seq_len(nrow(rows)), function(i) {
-    list(
-      xpath   = rows$xpath[[i]],
-      message = rows$message[[i]],
-      type    = rows$type[[i]],
-      attck   = rows$attck[[i]]
+load_rules <- function(db_path = .db_path()) {
+  .with_db(db_path, function(con) {
+    rows <- DBI::dbGetQuery(
+      con,
+      "SELECT name, xpath, message, type, attck
+       FROM rules
+       WHERE deprecated_in IS NULL
+       ORDER BY name"
     )
+
+    if (nrow(rows) == 0L) {
+      stop("No rules found in rules database: ", db_path)
+    }
+
+    rules <- lapply(seq_len(nrow(rows)), function(i) {
+      list(
+        xpath   = rows$xpath[[i]],
+        message = rows$message[[i]],
+        type    = rows$type[[i]],
+        attck   = rows$attck[[i]]
+      )
+    })
+    setNames(rules, rows$name)
   })
-  setNames(rules, rows$name)
 }
 
 
@@ -66,25 +64,35 @@ load_rules <- function(db_path  = .db_path()) {
 #'
 #' @export
 rules_version <- function(db_path = .db_path()) {
-  con <- DBI::dbConnect(RSQLite::SQLite(), db_path)
-  on.exit(DBI::dbDisconnect(con), add = TRUE)
+  .with_db(db_path, function(con) {
+    version <- DBI::dbGetQuery(
+      con,
+      "SELECT version
+       FROM rule_versions
+       ORDER BY released_at
+       DESC LIMIT 1"
+    )
 
-  version <- DBI::dbGetQuery(
-    con,
-    "SELECT version
-     FROM rule_versions
-     ORDER BY released_at
-     DESC LIMIT 1"
-  )
+    if (nrow(version) == 0L) {
+      stop("No version found in rules database: ", db_path)
+    }
 
-  if (nrow(version) == 0L) {
-    stop("No version found in rules database.")
-  }
-
-  version$version[[1L]]
+    version$version[[1L]]
+  })
 }
 
 
 # --- Helpers ------------------------------------------------------------------
-# Default path to bundled database
 .db_path <- function() system.file("db", "rules.db", package = "pkgaudit")
+
+.with_db <- function(db_path, fn) {
+  if (!nzchar(db_path) || !file.exists(db_path)) {
+    stop(
+      "Rules database not found: ",
+      if (nzchar(db_path)) db_path else "(empty path -- is pkgaudit installed?)"
+    )
+  }
+  con <- DBI::dbConnect(RSQLite::SQLite(), db_path)
+  on.exit(DBI::dbDisconnect(con), add = TRUE)
+  fn(con)
+}

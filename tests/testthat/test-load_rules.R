@@ -1,4 +1,10 @@
 # load_rules() -----------------------------------------------------------------
+test_that("load_rules() stops with an informative message for a missing database", {
+  expect_error(load_rules("nonexistent.db"), "Rules database not found")
+  expect_error(load_rules(""),               "Rules database not found")
+})
+
+
 test_that("load_rules() returns a named list with well-formed rule objects", {
   rules <- load_rules()
 

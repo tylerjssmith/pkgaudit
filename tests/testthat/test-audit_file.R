@@ -1,7 +1,5 @@
 # audit_file(): error paths ----------------------------------------------------
-test_that("audit_file() returns NULL for a parse error", {
-  # A minimal rule is needed to call audit_file(); the rule content is
-  # irrelevant since a parse error is caught before XPath evaluation.
+test_that("audit_file() returns a pkgaudit_result with errors for a parse error", {
   stub_rule <- list(
     stub = list(
       xpath   = "//expr",
@@ -19,5 +17,8 @@ test_that("audit_file() returns NULL for a parse error", {
     result <- audit_file(tmp, rules = stub_rule),
     "Parse error"
   )
-  expect_null(result)
+  expect_s3_class(result, "pkgaudit_result")
+  expect_equal(nrow(result$findings), 0L)
+  expect_length(result$errors, 1L)
+  expect_named(result$errors, tmp)
 })

@@ -4,7 +4,7 @@
 \alias{audit_package}
 \title{Audit an R package for security-relevant patterns}
 \usage{
-audit_package(path = ".", rules = load_rules())
+audit_package(path = ".", rules = pkgaudit::load_rules())
 }
 \arguments{
 \item{path}{Path to the root directory of the R package to audit.
@@ -14,22 +14,29 @@ Defaults to the current directory.}
 Defaults to loading stable rules from the bundled database.}
 }
 \value{
-A data frame of findings across all files in the directory, with
-the same columns as \code{\link[=audit_file]{audit_file()}}. Returns an empty data frame with the
-correct columns if no findings are produced.
+A \code{pkgaudit_result} with two fields:
+\describe{
+\item{findings}{Data frame of findings across all files, with the same
+columns as \code{\link[=audit_file]{audit_file()}}. Zero rows when no patterns match.}
+\item{errors}{Named character vector of files that could not be parsed,
+where names are file paths and values are error messages. Zero-length
+when all files were successfully inspected.}
+}
 }
 \description{
-Scans the \verb{R/} subdirectory of a package for dangerous patterns using the
-provided rules.
+Scans all R source files in a package for dangerous patterns using the
+provided rules. Searches recursively from the package root, including
+hidden files, so code in \verb{inst/}, \verb{exec/}, \verb{tests/}, \verb{vignettes/}, and
+any other subdirectory is inspected alongside \verb{R/}.
 }
 \examples{
 \dontrun{
-# Audit a package with default stable rules
-rules    <- load_rules()
-findings <- audit_package("/path/to/somepackage", rules = rules)
+result <- audit_package("/path/to/somepackage")
+result$findings
+result$errors
 
 # Record rules version alongside findings
-attr(findings, "rules_version") <- rules_version()
+attr(result, "rules_version") <- rules_version()
 }
 
 }

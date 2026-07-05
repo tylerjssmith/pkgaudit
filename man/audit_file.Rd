@@ -12,26 +12,25 @@ audit_file(path, rules)
 \item{rules}{Named list of rule objects as returned by \code{\link[=load_rules]{load_rules()}}.}
 }
 \value{
-A data frame with columns:
+A \code{pkgaudit_result} with two fields:
 \describe{
-\item{file}{Path to the source file.}
-\item{line}{Line number of the finding.}
-\item{column}{Column number of the finding.}
-\item{rule}{Name of the rule that matched.}
-\item{message}{Human-readable description of the dangerous pattern.}
-\item{type}{Severity: \code{"warning"} or \code{"message"}.}
-\item{attck}{MITRE ATT&CK technique identifier(s).}
+\item{findings}{Data frame with columns \code{file}, \code{line}, \code{column},
+\code{rule}, \code{message}, \code{type}, and \code{attck}. Zero rows when no patterns
+match.}
+\item{errors}{Named character vector of parse or XML errors, where
+names are file paths and values are error messages. Zero-length when
+the file was successfully inspected.}
 }
-Returns \code{NULL} if the file cannot be parsed or produces no findings.
 }
 \description{
 Parses an R source file, converts the parse tree to XML, and applies each
 rule's XPath expression to find matching patterns.
 }
 \details{
-Parse errors are caught and reported as messages rather than stopping
-execution. This allows \code{\link[=audit_dir]{audit_dir()}} and \code{\link[=audit_package]{audit_package()}} to continue
-processing remaining files when one file is malformed.
+Parse and XML errors are caught and reported as messages rather than
+stopping execution, so \code{\link[=audit_dir]{audit_dir()}} and \code{\link[=audit_package]{audit_package()}} can continue
+processing remaining files. The error is also recorded in \verb{$errors} so
+callers can distinguish a failed inspection from a clean one.
 
 The XPath is evaluated against the full document produced by
 \code{\link[xmlparsedata:xml_parse_data]{xmlparsedata::xml_parse_data()}}, with \code{keep.source = TRUE} to preserve
@@ -39,8 +38,10 @@ line and column number attributes.
 }
 \examples{
 \dontrun{
-rules    <- load_rules()
-findings <- audit_file("R/zzz.R", rules = rules)
+rules  <- load_rules()
+result <- audit_file("R/zzz.R", rules = rules)
+result$findings
+result$errors
 }
 
 }

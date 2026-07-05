@@ -1,7 +1,5 @@
 # audit_dir(): error paths -----------------------------------------------------
-test_that("audit_dir() returns empty data frame when no R files found", {
-  # A minimal rule is needed to call audit_dir(); the rule content is
-  # irrelevant since the no-files path returns before any XPath evaluation.
+test_that("audit_dir() returns a pkgaudit_result with no findings when no R files found", {
   stub_rule <- list(
     stub = list(
       xpath   = "//expr",
@@ -19,6 +17,7 @@ test_that("audit_dir() returns empty data frame when no R files found", {
     result <- audit_dir(empty, rules = stub_rule),
     "No R source files found"
   )
-  expect_s3_class(result, "data.frame")
-  expect_equal(nrow(result), 0L)
+  expect_s3_class(result, "pkgaudit_result")
+  expect_equal(nrow(result$findings), 0L)
+  expect_length(result$errors, 0L)
 })

@@ -51,7 +51,7 @@ digest::digest(
   file = TRUE
 )
 ```
-Expected SHA-256: `149421266a8a66426b4cf961650e89e49bb6b6cb847344b9ffa8e11342617e49`
+Expected SHA-256: `b162b0876e35126b8fd2934c75327fe8e281b3c17e883a2ec4ab5e7eb67874cf`
 
 The hash is regenerated automatically by `inst/scripts/build_rules.R` whenever the database is rebuilt and should match the value above exactly.
 

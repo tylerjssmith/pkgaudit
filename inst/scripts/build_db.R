@@ -12,7 +12,7 @@
 # you can install it by running install.packages("yaml").
 #
 # Required YAML fields and their expected types. Used for validation in
-# load_rule_yaml() before any database writes are attempted.
+# read_rule_yaml() before any database writes or fixture writes are attempted.
 .required_fields <- list(
   name             = "character",
   version          = "character",
@@ -26,6 +26,109 @@
 )
 
 .valid_types <- c("warning", "message")
+
+
+# read_rule_yaml() -------------------------------------------------------------
+# Reads a single YAML rule file, validates its structure and field types, and
+# returns the rule as a list. Shared by load_rule_yaml() and build_fixtures()
+# so that both functions reject the same invalid inputs.
+#
+# Arguments:
+#   path    Path to a single .yaml rule file.
+#
+# Returns the validated rule list on success. Stops on any validation error.
+read_rule_yaml <- function(path) {
+  stopifnot(is.character(path), length(path) == 1L)
+  stopifnot(file.exists(path))
+
+  rule <- yaml::read_yaml(path)
+
+  # --- Structural validation --------------------------------------------------
+  missing_fields <- setdiff(names(.required_fields), names(rule))
+  if (length(missing_fields) > 0L) {
+    stop(
+      "Missing required fields in: ", path, "\n  ",
+      paste(missing_fields, collapse = ", ")
+    )
+  }
+
+  extra_fields <- setdiff(names(rule), names(.required_fields))
+  if (length(extra_fields) > 0L) {
+    warning(
+      "Unexpected fields in: ", path, "\n  ",
+      paste(extra_fields, collapse = ", ")
+    )
+  }
+
+  # --- Normalize sequence fields ----------------------------------------------
+  # yaml::read_yaml returns a list for YAML sequences; unlist() normalises both
+  # scalar strings and sequences to a plain character vector. attck is collapsed
+  # immediately to a single space-separated string for DB storage.
+  rule$attck            <- paste(trimws(unlist(rule$attck)), collapse = " ")
+  rule$example_positive <- unlist(rule$example_positive)
+  rule$example_negative <- unlist(rule$example_negative)
+
+  # --- Type validation --------------------------------------------------------
+  .example_fields <- c("example_positive", "example_negative")
+  scalar_fields   <- setdiff(names(.required_fields), .example_fields)
+
+  for (field in scalar_fields) {
+    if (!is.character(rule[[field]]) || length(rule[[field]]) != 1L) {
+      stop("Field '", field, "' must be a single string in: ", path)
+    }
+    if (nchar(trimws(rule[[field]])) == 0L) {
+      stop("Field '", field, "' must not be empty or whitespace-only in: ", path)
+    }
+  }
+
+  # name is used as a filesystem directory component, so restrict it to
+  # characters that are safe on all platforms and cannot traverse paths.
+  if (!grepl("^[a-zA-Z][a-zA-Z0-9_]{0,63}$", rule$name)) {
+    stop(
+      "Field 'name' must start with a letter, contain only letters, digits, ",
+      "and underscores, and be at most 64 characters in: ", path
+    )
+  }
+
+  .max_examples <- 20L
+
+  for (field in .example_fields) {
+    if (!is.character(rule[[field]]) || length(rule[[field]]) == 0L) {
+      stop("Field '", field, "' must be a non-empty character vector in: ", path)
+    }
+    if (length(rule[[field]]) > .max_examples) {
+      stop(
+        "Field '", field, "' must not exceed ", .max_examples,
+        " entries in: ", path
+      )
+    }
+    if (any(nchar(trimws(rule[[field]])) == 0L)) {
+      stop(
+        "Field '", field, "' must not contain empty or whitespace-only entries in: ", path
+      )
+    }
+  }
+
+  if (!rule$type %in% .valid_types) {
+    stop(
+      "Field 'type' must be one of: ",
+      paste(.valid_types, collapse = ", "),
+      " in: ", path
+    )
+  }
+
+  # Validate XPath syntax by evaluating against an empty document. An invalid
+  # XPath would otherwise be stored silently and fail with no findings at
+  # audit time. libxml2 signals invalid XPath as a warning, not an error,
+  # so both conditions must be caught.
+  tryCatch(
+    xml2::xml_find_all(xml2::read_xml("<exprlist/>"), trimws(rule$xpath)),
+    warning = function(w) stop("Invalid XPath in: ", path, "\n  ", conditionMessage(w)),
+    error   = function(e) stop("Invalid XPath in: ", path, "\n  ", conditionMessage(e))
+  )
+
+  rule
+}
 
 
 # init_db() -------------------------------------------------------------------
@@ -102,9 +205,9 @@ init_db <- function(
 
 
 # load_rule_yaml() -------------------------------------------------------------
-# Reads a single YAML rule file, validates its structure and field types, and
-# writes the rule to the database. Stops on any validation or write error so
-# that build_rules_db() can catch and report the offending file.
+# Validates a YAML rule file via read_rule_yaml(), then writes it to the
+# database. Stops on any validation or write error so that build_rules_db()
+# can catch and report the offending file.
 #
 # Arguments:
 #   path    Path to a single .yaml rule file.
@@ -112,54 +215,7 @@ init_db <- function(
 #
 # Returns the rule name invisibly on success.
 load_rule_yaml <- function(path, con) {
-  stopifnot(is.character(path), length(path) == 1L)
-  stopifnot(file.exists(path))
-
-  rule <- yaml::read_yaml(path)
-
-  # --- Structural validation --------------------------------------------------
-  missing_fields <- setdiff(names(.required_fields), names(rule))
-  if (length(missing_fields) > 0L) {
-    stop(
-      "Missing required fields in: ", path, "\n  ",
-      paste(missing_fields, collapse = ", ")
-    )
-  }
-
-  extra_fields <- setdiff(names(rule), names(.required_fields))
-  if (length(extra_fields) > 0L) {
-    warning(
-      "Unexpected fields in: ", path, "\n  ",
-      paste(extra_fields, collapse = ", ")
-    )
-  }
-
-  # --- Type validation --------------------------------------------------------
-  for (field in names(.required_fields)) {
-    if (!is.character(rule[[field]])) {
-      stop(
-        "Field '", field, "' must be character in: ", path
-      )
-    }
-    if (any(nchar(trimws(rule[[field]])) == 0L)) {
-      stop(
-        "Field '", field, "' must not be empty or whitespace-only in: ", path
-      )
-    }
-  }
-
-  # attck may be a scalar or a sequence; normalize to a single space-separated
-  # string consistent with the existing database convention (e.g. "T1041
-  # T1195.002")
-  rule$attck <- paste(trimws(rule$attck), collapse = " ")
-
-  if (!rule$type %in% .valid_types) {
-    stop(
-      "Field 'type' must be one of: ",
-      paste(.valid_types, collapse = ", "),
-      " in: ", path
-    )
-  }
+  rule <- read_rule_yaml(path)
 
   # --- Verify version exists in rule_versions ---------------------------------
   version_exists <- DBI::dbGetQuery(
@@ -175,14 +231,23 @@ load_rule_yaml <- function(path, con) {
   }
 
   # --- Upsert -----------------------------------------------------------------
-  # INSERT OR REPLACE preserves idempotency: re-running the build script after
-  # editing a YAML file updates the existing row rather than erroring.
+  # ON CONFLICT ... DO UPDATE preserves added_in on updates so the original
+  # introduction version is never overwritten when a rule is revised.
   DBI::dbExecute(
     con,
-    "INSERT OR REPLACE INTO rules
+    "INSERT INTO rules
        (name, rule_version, xpath, message, type, attck, description,
         added_in, example_positive, example_negative)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(name) DO UPDATE SET
+       rule_version     = excluded.rule_version,
+       xpath            = excluded.xpath,
+       message          = excluded.message,
+       type             = excluded.type,
+       attck            = excluded.attck,
+       description      = excluded.description,
+       example_positive = excluded.example_positive,
+       example_negative = excluded.example_negative",
     params = list(
       rule$name,
       rule$version,
@@ -192,8 +257,8 @@ load_rule_yaml <- function(path, con) {
       rule$attck,
       trimws(rule$description),
       rule$version,
-      trimws(rule$example_positive),
-      trimws(rule$example_negative)
+      paste(trimws(rule$example_positive), collapse = "\n\n"),
+      paste(trimws(rule$example_negative), collapse = "\n\n")
     )
   )
 
@@ -236,6 +301,7 @@ build_rules_db <- function(
 
   con <- DBI::dbConnect(RSQLite::SQLite(), db_path)
   on.exit(DBI::dbDisconnect(con), add = TRUE)
+  DBI::dbExecute(con, "PRAGMA foreign_keys = ON")
 
   # Wrap all writes in a single transaction so that a validation failure in any
   # file leaves the database unchanged rather than partially updated.
@@ -313,23 +379,31 @@ build_fixtures <- function(
 
   for (i in seq_along(yaml_files)) {
     path <- yaml_files[[i]]
-    rule <- yaml::read_yaml(path)
-
-    for (field in c("name", "example_positive", "example_negative")) {
-      if (is.null(rule[[field]]) || nchar(trimws(rule[[field]])) == 0L) {
-        stop(
-          "Field '", field, "' is missing or empty in: ", path
-        )
-      }
-    }
+    rule <- read_rule_yaml(path)
 
     rule_dir <- file.path(fixtures_dir, rule$name)
     if (!dir.exists(rule_dir)) {
       dir.create(rule_dir, recursive = TRUE)
     }
 
-    writeLines(trimws(rule$example_positive), file.path(rule_dir, "positive.R"))
-    writeLines(trimws(rule$example_negative), file.path(rule_dir, "negative.R"))
+    # Remove all existing fixture files to stay in sync with current YAML
+    old_files <- list.files(
+      rule_dir, pattern = "^(positive|negative)(_[0-9]+)?\\.R$", full.names = TRUE
+    )
+    if (length(old_files) > 0L) file.remove(old_files)
+
+    for (j in seq_along(rule$example_positive)) {
+      writeLines(
+        trimws(rule$example_positive[[j]]),
+        file.path(rule_dir, sprintf("positive_%d.R", j))
+      )
+    }
+    for (j in seq_along(rule$example_negative)) {
+      writeLines(
+        trimws(rule$example_negative[[j]]),
+        file.path(rule_dir, sprintf("negative_%d.R", j))
+      )
+    }
 
     message("  Fixtures written: ", rule$name)
     rule_names[[i]] <- rule$name
