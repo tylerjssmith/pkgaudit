@@ -43,10 +43,13 @@ print.pkgaudit_result <- function(x, ...) {
 
 
 .strip_path_prefix <- function(result, path) {
-  root <- file.path(path, "")  # trailing separator: "pkg/" not "pkg"
+  # Normalize to forward slashes so startsWith() works on Windows, where
+  # list.files() and file.path() can return inconsistent separators.
+  norm  <- function(p) gsub("\\\\", "/", p)
+  root  <- norm(file.path(path, ""))
 
   if (nrow(result$findings) > 0L) {
-    f <- result$findings$file
+    f <- norm(result$findings$file)
     result$findings$file <- ifelse(
       startsWith(f, root),
       substring(f, nchar(root) + 1L),
@@ -55,7 +58,7 @@ print.pkgaudit_result <- function(x, ...) {
   }
 
   if (length(result$errors) > 0L) {
-    nms <- names(result$errors)
+    nms <- norm(names(result$errors))
     names(result$errors) <- ifelse(
       startsWith(nms, root),
       substring(nms, nchar(root) + 1L),
