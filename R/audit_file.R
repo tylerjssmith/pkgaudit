@@ -65,7 +65,10 @@ audit_file <- function(path, rules = load_rules()) {
   results <- lapply(names(rules), function(rule_name) {
     rule  <- rules[[rule_name]]
     nodes <- tryCatch(
-      xml2::xml_find_all(xml, rule$xpath),
+      withCallingHandlers(
+        xml2::xml_find_all(xml, rule$xpath),
+        warning = function(w) stop(conditionMessage(w))
+      ),
       error = function(e) {
         msg <- conditionMessage(e)
         message("XPath error for rule '", rule_name, "': ", msg)
