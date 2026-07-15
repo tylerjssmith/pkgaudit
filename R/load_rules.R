@@ -69,8 +69,8 @@ rules_version <- function(db_path = .db_path()) {
       con,
       "SELECT version
        FROM rule_versions
-       ORDER BY released_at
-       DESC LIMIT 1"
+       ORDER BY released_at DESC, rowid DESC
+       LIMIT 1"
     )
 
     if (nrow(version) == 0L) {
