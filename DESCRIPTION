@@ -5,7 +5,7 @@ Authors@R:
     person("Tyler", "Smith", , "tylerjssmith@gmail.com", role = c("aut", "cre"))
 Description: Provides tools for security auditing of R packages. Detects 
     dangerous patterns in R source code using XPath-based rules stored in a
-    versioned SQLite database.
+    versioned and hash-verified SQLite database.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
