@@ -5,3 +5,5 @@
 ^\.github$
 CONTRIBUTING.md
 THREATMODEL.md
+THREATMODEL.Rmd
+references.bib

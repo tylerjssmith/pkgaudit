@@ -6,7 +6,7 @@
 \alias{pkgaudit-package}
 \title{pkgaudit: Security Auditing of R Packages}
 \description{
-Provides tools for security auditing of R packages. Detects dangerous patterns in R source code using XPath-based rules stored in a versioned SQLite database.
+Provides tools for security auditing of R packages. Detects dangerous patterns in R source code using XPath-based rules stored in a versioned and hash-verified SQLite database.
 }
 \author{
 \strong{Maintainer}: Tyler Smith \email{tylerjssmith@gmail.com}
