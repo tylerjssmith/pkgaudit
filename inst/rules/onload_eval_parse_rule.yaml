@@ -1,5 +1,5 @@
 name: onload_eval_parse_rule
-version: "0.1.0"
+version: "0.2.0"
 type: warning
 attck:
   - T1059

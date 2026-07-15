@@ -5,6 +5,7 @@
 #'
 #' @param path Path to an R source file (`.R`, `.r`).
 #' @param rules Named list of rule objects as returned by [load_rules()].
+#'   Defaults to loading stable rules from the bundled database.
 #'
 #' @return A `pkgaudit_result` with two fields:
 #'   \describe{
@@ -35,7 +36,7 @@
 #' }
 #'
 #' @export
-audit_file <- function(path, rules) {
+audit_file <- function(path, rules = load_rules()) {
   stopifnot(is.character(path), length(path) == 1L)
   stopifnot(is.list(rules), length(rules) > 0L)
 
@@ -50,7 +51,7 @@ audit_file <- function(path, rules) {
   parsed <- res$val
 
   res <- tryCatch(
-    list(val = xml2::read_xml(xmlparsedata::xml_parse_data(parsed, pretty = TRUE)), err = NULL),
+    list(val = xml2::read_xml(xmlparsedata::xml_parse_data(parsed, pretty = TRUE), options = "HUGE"), err = NULL),
     error = function(e) list(val = NULL, err = conditionMessage(e))
   )
   if (!is.null(res$err)) {

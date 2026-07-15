@@ -5,10 +5,14 @@
 #'
 #' @param path Path to a directory containing R source files.
 #' @param rules Named list of rule objects as returned by [load_rules()].
+#'   Defaults to loading stable rules from the bundled database.
 #' @param pattern Regular expression matching R source file names. Defaults to
-#'   files with `.R` or `.r` extension.
+#'   files with `.R`, `.r`, `.S`, `.s`, or `.q` extension.
 #' @param recurse Logical indicating whether to search subdirectories
 #'   recursively. Defaults to `TRUE`. Hidden files are always included.
+#' @param exclude_dirs Character vector of subdirectory names to skip. Any
+#'   file whose path contains one of these names as a directory component is
+#'   excluded. Defaults to `character()` (no exclusions).
 #'
 #' @return A `pkgaudit_result` with two fields:
 #'   \describe{
@@ -31,13 +35,15 @@
 #' @export
 audit_dir <- function(
   path,
-  rules,
-  pattern = "\\.[Rr]$",
-  recurse = TRUE
+  rules        = load_rules(),
+  pattern      = "\\.[qRrSs]$",
+  recurse      = TRUE,
+  exclude_dirs = character()
 ) {
   stopifnot(is.character(path), length(path) == 1L)
   stopifnot(dir.exists(path))
   stopifnot(is.list(rules), length(rules) > 0L)
+  stopifnot(is.character(exclude_dirs))
 
   files <- list.files(
     path,
@@ -46,6 +52,15 @@ audit_dir <- function(
     full.names = TRUE,
     all.files  = TRUE
   )
+
+  if (length(exclude_dirs) > 0L) {
+    sep   <- .Platform$file.sep
+    keep  <- !Reduce(`|`, lapply(
+      paste0(sep, exclude_dirs, sep),
+      grepl, x = files, fixed = TRUE
+    ))
+    files <- files[keep]
+  }
 
   if (length(files) == 0L) {
     message("No R source files found in: ", path)

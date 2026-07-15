@@ -4,18 +4,29 @@
 \alias{audit_dir}
 \title{Audit all R source files in a directory for security-relevant patterns}
 \usage{
-audit_dir(path, rules, pattern = "\\\\.[Rr]$", recurse = TRUE)
+audit_dir(
+  path,
+  rules = load_rules(),
+  pattern = "\\\\.[qRrSs]$",
+  recurse = TRUE,
+  exclude_dirs = character()
+)
 }
 \arguments{
 \item{path}{Path to a directory containing R source files.}
 
-\item{rules}{Named list of rule objects as returned by \code{\link[=load_rules]{load_rules()}}.}
+\item{rules}{Named list of rule objects as returned by \code{\link[=load_rules]{load_rules()}}.
+Defaults to loading stable rules from the bundled database.}
 
 \item{pattern}{Regular expression matching R source file names. Defaults to
-files with \code{.R} or \code{.r} extension.}
+files with \code{.R}, \code{.r}, \code{.S}, \code{.s}, or \code{.q} extension.}
 
 \item{recurse}{Logical indicating whether to search subdirectories
 recursively. Defaults to \code{TRUE}. Hidden files are always included.}
+
+\item{exclude_dirs}{Character vector of subdirectory names to skip. Any
+file whose path contains one of these names as a directory component is
+excluded. Defaults to \code{character()} (no exclusions).}
 }
 \value{
 A \code{pkgaudit_result} with two fields:

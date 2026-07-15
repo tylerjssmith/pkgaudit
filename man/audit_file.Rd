@@ -4,12 +4,13 @@
 \alias{audit_file}
 \title{Audit a single R source file for security-relevant patterns}
 \usage{
-audit_file(path, rules)
+audit_file(path, rules = load_rules())
 }
 \arguments{
 \item{path}{Path to an R source file (\code{.R}, \code{.r}).}
 
-\item{rules}{Named list of rule objects as returned by \code{\link[=load_rules]{load_rules()}}.}
+\item{rules}{Named list of rule objects as returned by \code{\link[=load_rules]{load_rules()}}.
+Defaults to loading stable rules from the bundled database.}
 }
 \value{
 A \code{pkgaudit_result} with two fields:

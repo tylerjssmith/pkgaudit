@@ -1,6 +1,6 @@
 Package: pkgaudit
 Title: Security Auditing of R Packages
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: 
     person("Tyler", "Smith", , "tylerjssmith@gmail.com", role = c("aut", "cre"))
 Description: Provides tools for security auditing of R packages. Detects 

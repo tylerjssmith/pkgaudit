@@ -1,0 +1,51 @@
+name: hook_defined_rule
+version: "0.2.0"
+type: message
+attck:
+  - T1195.002
+message: >-
+  A .onLoad or .onAttach hook is defined in this file. Code in these hooks
+  executes automatically when the package is loaded.
+description: >-
+  Detect any definition of .onLoad or .onAttach as a function. Used to
+  identify which packages define lifecycle hooks, providing a denominator for
+  interpreting findings from other rules. Matches all three R assignment forms
+  (<-, =, ->).
+xpath: >-
+  (//expr | //expr_or_assign_or_help)[
+    (
+      (LEFT_ASSIGN or EQ_ASSIGN)
+      and expr[1]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[FUNCTION]
+    )
+    or
+    (
+      RIGHT_ASSIGN
+      and expr[2]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
+      and expr[1]//FUNCTION
+    )
+  ]
+example_positive:
+  - |
+    .onLoad <- function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    .onAttach <- function(libname, pkgname) {
+      packageStartupMessage("Welcome!")
+    }
+  - |
+    .onLoad = function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    (function(libname, pkgname) {
+      invisible(NULL)
+    }) -> .onLoad
+example_negative:
+  - |
+    myFunction <- function(x) x + 1
+  - |
+    .onUnload <- function(libpath) {
+      invisible(NULL)
+    }

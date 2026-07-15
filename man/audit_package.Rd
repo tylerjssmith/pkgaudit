@@ -4,7 +4,11 @@
 \alias{audit_package}
 \title{Audit an R package for security-relevant patterns}
 \usage{
-audit_package(path = ".", rules = pkgaudit::load_rules())
+audit_package(
+  path = ".",
+  rules = pkgaudit::load_rules(),
+  label = basename(path)
+)
 }
 \arguments{
 \item{path}{Path to the root directory of the R package to audit.
@@ -12,6 +16,10 @@ Defaults to the current directory.}
 
 \item{rules}{Named list of rule objects as returned by \code{\link[=load_rules]{load_rules()}}.
 Defaults to loading stable rules from the bundled database.}
+
+\item{label}{Display name used in diagnostic messages. Defaults to
+\code{basename(path)}. \code{\link[=audit_tarball]{audit_tarball()}} sets this to the tarball filename so
+messages refer to the original file rather than a temporary directory.}
 }
 \value{
 A \code{pkgaudit_result} with two fields:
@@ -24,10 +32,10 @@ when all files were successfully inspected.}
 }
 }
 \description{
-Scans all R source files in a package for dangerous patterns using the
-provided rules. Searches recursively from the package root, including
-hidden files, so code in \verb{inst/}, \verb{exec/}, \verb{tests/}, \verb{vignettes/}, and
-any other subdirectory is inspected alongside \verb{R/}.
+Scans R source files in the locations processed at (source) package install
+time: the top level of \verb{R/}, \verb{R/unix/}, \verb{R/windows/}, and \code{src/install.libs.R}.
+Subdirectories of \verb{R/} other than \verb{unix/} and \verb{windows/} are not processed by
+R at install time and are excluded.
 }
 \examples{
 \dontrun{
