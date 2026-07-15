@@ -19,15 +19,31 @@ xpath: >-
     (
       (LEFT_ASSIGN or EQ_ASSIGN)
       and expr[1]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
-      and expr[FUNCTION]/descendant::SYMBOL_FUNCTION_CALL[text() = 'eval']
-      and expr[FUNCTION]/descendant::SYMBOL_FUNCTION_CALL[text() = 'parse']
+      and expr[FUNCTION]/descendant::SYMBOL_FUNCTION_CALL[
+        text() = 'eval'
+        and not(preceding-sibling::OP-DOLLAR)
+        and not(preceding-sibling::OP-AT)
+      ]
+      and expr[FUNCTION]/descendant::SYMBOL_FUNCTION_CALL[
+        text() = 'parse'
+        and not(preceding-sibling::OP-DOLLAR)
+        and not(preceding-sibling::OP-AT)
+      ]
     )
     or
     (
       RIGHT_ASSIGN
       and expr[2]/SYMBOL[text() = '.onLoad' or text() = '.onAttach']
-      and expr[1]//SYMBOL_FUNCTION_CALL[text() = 'eval']
-      and expr[1]//SYMBOL_FUNCTION_CALL[text() = 'parse']
+      and expr[1]//SYMBOL_FUNCTION_CALL[
+        text() = 'eval'
+        and not(preceding-sibling::OP-DOLLAR)
+        and not(preceding-sibling::OP-AT)
+      ]
+      and expr[1]//SYMBOL_FUNCTION_CALL[
+        text() = 'parse'
+        and not(preceding-sibling::OP-DOLLAR)
+        and not(preceding-sibling::OP-AT)
+      ]
     )
   ]
 example_positive:
@@ -60,4 +76,13 @@ example_negative:
   - |
     .onUnload <- function(libpath) {
       eval(parse(text = "message('unloaded')"))
+    }
+  - |
+    .onLoad <- function(libname, pkgname) {
+      ct <- V8::v8()
+      ct$eval(ct$parse("1 + 1"))
+    }
+  - |
+    .onLoad <- function(libname, pkgname) {
+      engine@eval(engine@parse(text = "x <- 1"))
     }

@@ -54,10 +54,11 @@ audit_dir <- function(
   )
 
   if (length(exclude_dirs) > 0L) {
-    sep   <- .Platform$file.sep
-    keep  <- !Reduce(`|`, lapply(
-      paste0(sep, exclude_dirs, sep),
-      grepl, x = files, fixed = TRUE
+    root <- file.path(path, "")
+    rel  <- substring(files, nchar(root) + 1L)
+    keep <- !Reduce(`|`, lapply(
+      exclude_dirs,
+      function(d) startsWith(rel, paste0(d, "/")) | grepl(paste0("/", d, "/"), rel, fixed = TRUE)
     ))
     files <- files[keep]
   }

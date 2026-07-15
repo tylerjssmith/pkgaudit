@@ -46,7 +46,9 @@ audit_tarball <- function(
     if (dir.exists(extract_dir)) unlink(extract_dir, recursive = TRUE),
     add = TRUE
   )
-  dir.create(extract_dir, recursive = TRUE, showWarnings = FALSE)
+  if (!dir.create(extract_dir, recursive = TRUE, showWarnings = FALSE)) {
+    stop("Failed to create temporary extraction directory: ", extract_dir)
+  }
 
   rc <- utils::untar(path, exdir = extract_dir)
   if (!identical(rc, 0L)) {

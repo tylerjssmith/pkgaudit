@@ -10,10 +10,11 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 8.0.0
-Imports: 
+Imports:
     DBI,
     RSQLite,
     stats,
+    utils,
     xml2,
     xmlparsedata
 Suggests: 

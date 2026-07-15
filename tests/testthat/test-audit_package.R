@@ -88,3 +88,56 @@ test_that("each rule detects positive cases and ignores negative cases", {
     }
   }
 })
+
+
+# audit_package(): scan scope --------------------------------------------------
+
+test_that("audit_package() detects findings in R/unix/", {
+  pkg_dir <- file.path(tempdir(), "testpkg_unix")
+  on.exit(unlink(pkg_dir, recursive = TRUE), add = TRUE)
+  dir.create(file.path(pkg_dir, "R", "unix"), recursive = TRUE, showWarnings = FALSE)
+  writeLines("Package: testpkg\nVersion: 0.1.0", file.path(pkg_dir, "DESCRIPTION"))
+  writeLines(".onLoad <- function(l, p) system('id')", file.path(pkg_dir, "R", "unix", "zzz.R"))
+
+  result <- audit_package(pkg_dir, rules = load_rules())
+  expect_gt(nrow(result$findings), 0L)
+  expect_true(all(startsWith(result$findings$file, "R/unix/")))
+})
+
+test_that("audit_package() detects findings in R/windows/", {
+  pkg_dir <- file.path(tempdir(), "testpkg_windows")
+  on.exit(unlink(pkg_dir, recursive = TRUE), add = TRUE)
+  dir.create(file.path(pkg_dir, "R", "windows"), recursive = TRUE, showWarnings = FALSE)
+  writeLines("Package: testpkg\nVersion: 0.1.0", file.path(pkg_dir, "DESCRIPTION"))
+  writeLines(".onLoad <- function(l, p) system('id')", file.path(pkg_dir, "R", "windows", "zzz.R"))
+
+  result <- audit_package(pkg_dir, rules = load_rules())
+  expect_gt(nrow(result$findings), 0L)
+  expect_true(all(startsWith(result$findings$file, "R/windows/")))
+})
+
+test_that("audit_package() detects findings in src/install.libs.R", {
+  pkg_dir <- file.path(tempdir(), "testpkg_src")
+  on.exit(unlink(pkg_dir, recursive = TRUE), add = TRUE)
+  dir.create(file.path(pkg_dir, "R"),   recursive = TRUE, showWarnings = FALSE)
+  dir.create(file.path(pkg_dir, "src"), recursive = TRUE, showWarnings = FALSE)
+  writeLines("Package: testpkg\nVersion: 0.1.0", file.path(pkg_dir, "DESCRIPTION"))
+  writeLines(".onLoad <- function(l, p) system('id')", file.path(pkg_dir, "src", "install.libs.R"))
+
+  result <- audit_package(pkg_dir, rules = load_rules())
+  expect_gt(nrow(result$findings), 0L)
+  expect_true(any(result$findings$file == "src/install.libs.R"))
+})
+
+test_that("audit_package() returns relative paths in $errors", {
+  pkg_dir <- file.path(tempdir(), "testpkg_errs")
+  on.exit(unlink(pkg_dir, recursive = TRUE), add = TRUE)
+  dir.create(file.path(pkg_dir, "R"), recursive = TRUE, showWarnings = FALSE)
+  writeLines("Package: testpkg\nVersion: 0.1.0", file.path(pkg_dir, "DESCRIPTION"))
+  writeLines(")invalid R syntax", file.path(pkg_dir, "R", "bad.R"))
+
+  result <- audit_package(pkg_dir, rules = load_rules())
+  expect_gt(length(result$errors), 0L)
+  expect_false(any(startsWith(names(result$errors), tempdir())))
+  expect_true(all(startsWith(names(result$errors), "R/")))
+})
