@@ -43,26 +43,25 @@ print.pkgaudit_result <- function(x, ...) {
 
 
 .strip_path_prefix <- function(result, path) {
-  # Normalize to forward slashes so startsWith() works on Windows, where
-  # list.files() and file.path() can return inconsistent separators.
-  norm  <- function(p) gsub("\\\\", "/", p)
-  root  <- norm(file.path(path, ""))
+  # normalizePath() expands Windows short-form names (RUNNER~1 -> runneradmin)
+  # and normalizes separators, ensuring startsWith() works when tempdir() and
+  # list.files() return different representations of the same path on Windows.
+  norm <- function(p) suppressWarnings(
+    normalizePath(p, winslash = "/", mustWork = FALSE)
+  )
+  root <- paste0(norm(path), "/")
 
   if (nrow(result$findings) > 0L) {
     f <- norm(result$findings$file)
     result$findings$file <- ifelse(
-      startsWith(f, root),
-      substring(f, nchar(root) + 1L),
-      f
+      startsWith(f, root), substring(f, nchar(root) + 1L), f
     )
   }
 
   if (length(result$errors) > 0L) {
     nms <- norm(names(result$errors))
     names(result$errors) <- ifelse(
-      startsWith(nms, root),
-      substring(nms, nchar(root) + 1L),
-      nms
+      startsWith(nms, root), substring(nms, nchar(root) + 1L), nms
     )
   }
 
