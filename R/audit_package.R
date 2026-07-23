@@ -1,89 +1,123 @@
-#' Audit an R package for security-relevant patterns
+#' Audit an R source package for security-relevant files and code
 #'
-#' Scans R source files in the locations processed at (source) package install
-#' time: the top level of `R/`, `R/unix/`, `R/windows/`, and `src/install.libs.R`.
-#' Subdirectories of `R/` other than `unix/` and `windows/` are not processed by
-#' R at install time and are excluded.
+#' Finds security-relevant file and code contexts and code patterns for review
+#' before a package is trusted.
 #'
-#' @param path Path to the root directory of the R package to audit.
+#' The scan proceeds in four passes:
+#' \enumerate{
+#'   \item [find_file_contexts()] -- security-relevant files (e.g. `configure`,
+#'     `src/Makevars`, `src/install.libs.R`);
+#'   \item [find_scripts()] -- R scripts R evaluates at install/load time;
+#'   \item for each script, [parse_script()] then [find_code_contexts()] and
+#'     [find_patterns()];
+#'   \item [determine_code_contexts()] -- attribute each pattern to the code
+#'     context it executes in.
+#' }
+#'
+#' Recoverable failures in the orchestrated finders are collected in the
+#' `errors` data frame rather than aborting the audit. File paths in every
+#' returned data frame are relative to the package root.
+#'
+#' @param pkg Path to the root directory of the R source package to audit.
 #'   Defaults to the current directory.
-#' @param rules Named list of rule objects as returned by [load_rules()].
-#'   Defaults to loading stable rules from the bundled database.
-#' @param label Display name used in diagnostic messages. Defaults to
-#'   `basename(path)`. [audit_tarball()] sets this to the tarball filename so
-#'   messages refer to the original file rather than a temporary directory.
+#' @param rules Named list of rules as returned by [load_rules()]. Defaults to
+#'   the rules bundled with the package.
+#' @param .origin Internal. Used by [audit_tarball()] to record tarball
+#'   provenance: a list with `path`, `sha256`, and `is_tarball`. Leave `NULL`
+#'   for a directory scan, in which case the directory is hashed with
+#'   [hash_manifest()].
 #'
-#' @return A `pkgaudit_result` with two fields:
+#' @return A [new_pkgaudit()] object: a named list with class `pkgaudit`
+#'   containing four data frames and a `metadata` list.
 #'   \describe{
-#'     \item{findings}{Data frame of findings across all files, with the same
-#'       columns as [audit_file()]. Zero rows when no patterns match.}
-#'     \item{errors}{Named character vector of files that could not be parsed,
-#'       where names are file paths and values are error messages. Zero-length
-#'       when all files were successfully inspected.}
+#'     \item{file_contexts}{`file_context`, `file_path`, `message`.}
+#'     \item{code_contexts}{`code_context`, `file_context`, `line_number`,
+#'       `column_number`, `message`. Join to `file_contexts` on `file_context`.}
+#'     \item{patterns}{`pattern`, `file_context`, `line_number`,
+#'       `column_number`, `message`, `attck`, `code_context`. Join to the other
+#'       tables on `file_context` and `code_context`.}
+#'     \item{errors}{`stage`, `file_context`, `rule`, `message`.}
+#'     \item{metadata}{List of `pkg_name`, `pkg_version`, `pkg_path`,
+#'       `pkg_is_tarball`, `pkg_sha256`, `pkgaudit_version`,
+#'       `pkgaudit_rules_version`, `pkgaudit_rules_sha256`, and `scanned`.}
 #'   }
 #'
 #' @examples
 #' \dontrun{
-#' result <- audit_package("/path/to/somepackage")
-#' result$findings
-#' result$errors
-#'
-#' # Record rules version alongside findings
-#' attr(result, "rules_version") <- rules_version()
+#' rules  <- load_rules()
+#' result <- audit_package("/path/to/somepackage", rules = rules)
+#' result$file_contexts
+#' result$patterns
+#' print(result)
 #' }
 #'
 #' @export
-audit_package <- function(
-  path  = ".",
-  rules = pkgaudit::load_rules(),
-  label = basename(path)
-) {
-  stopifnot(is.character(path), length(path) == 1L)
-  stopifnot(dir.exists(path))
-  stopifnot(is.list(rules), length(rules) > 0L)
-  stopifnot(is.character(label), length(label) == 1L)
+audit_package <- function(pkg = ".", rules = load_rules(), .origin = NULL) {
+  stopifnot(is.character(pkg), length(pkg) == 1L, dir.exists(pkg))
+  stopifnot(is.list(rules), length(names(rules)) == 3L)
 
-  if (!file.exists(file.path(path, "DESCRIPTION"))) {
-    stop(
-      "No DESCRIPTION file found at: ", path, "\n",
-      "Ensure 'path' points to the root of an R package."
-    )
-  }
+  errors        <- .empty_errors()
+  code_contexts <- .empty_code_contexts()
+  patterns      <- .empty_patterns()
 
-  results <- list()
+  fc            <- find_file_contexts(pkg, rules$file_contexts)
+  file_contexts <- fc$file_contexts
+  errors        <- rbind(errors, fc$errors)
 
-  # R/
-  r_dir <- file.path(path, "R")
-  if (dir.exists(r_dir)) {
-    results <- c(results, list(audit_dir(r_dir, rules = rules,
-      recurse = FALSE)))
-    for (sub in c("unix", "windows")) {
-      sub_dir <- file.path(r_dir, sub)
-      if (dir.exists(sub_dir)) {
-        results <- c(results, list(audit_dir(sub_dir, rules = rules,
-          recurse = FALSE)))
-      }
+  scripts <- find_scripts(pkg)
+
+  for (script in scripts) {
+    file_context <- .relativize(script, pkg)
+
+    parsed <- parse_script(script)
+    if (!is.null(parsed$error)) {
+      errors <- rbind(errors, .error_row(
+        stage        = "parse_script",
+        file_context = file_context,
+        message      = parsed$error
+      ))
+      next
     }
+    tree <- parsed$tree
+
+    cc            <- find_code_contexts(tree, rules$code_contexts, file_context)
+    code_contexts <- rbind(code_contexts, cc$code_contexts)
+    errors        <- rbind(errors, cc$errors)
+
+    fp     <- find_patterns(tree, rules$patterns, file_context)
+    errors <- rbind(errors, fp$errors)
+
+    pat <- fp$patterns
+    if (nrow(pat) > 0L) {
+      pat <- determine_code_contexts(tree, pat, rules)
+    } else {
+      pat$code_context <- character(0L)
+    }
+    # Drop the node handle before accumulating; rbind() ignores attributes.
+    attr(pat, "nodes") <- NULL
+    patterns <- rbind(patterns, pat[, names(.empty_patterns()), drop = FALSE])
   }
 
-  # src/install.libs.R
-  install_libs <- file.path(path, "src", "install.libs.R")
-  if (file.exists(install_libs)) {
-    results <- c(results, list(audit_file(install_libs, rules = rules)))
+  # Provenance: hash the tarball as received when scanning one (via
+  # audit_tarball), otherwise hash a manifest of the directory.
+  if (is.null(.origin)) {
+    pkg_is_tarball <- FALSE
+    pkg_path       <- pkg
+    pkg_sha256     <- tryCatch(hash_manifest(pkg)$hash,
+                               error = function(e) NA_character_)
+  } else {
+    pkg_is_tarball <- isTRUE(.origin$is_tarball)
+    pkg_path       <- .origin$path
+    pkg_sha256     <- .origin$sha256
   }
 
-  if (length(results) == 0L) {
-    message("No scannable files found in: ", label)
-    return(.pkgaudit_result(.empty_findings()))
-  }
+  metadata <- .build_metadata(pkg, pkg_path, pkg_is_tarball, pkg_sha256)
 
-  findings <- do.call(rbind, lapply(results, `[[`, "findings"))
-  errors   <- unlist(lapply(results, `[[`, "errors"), use.names = TRUE)
-  result   <- .pkgaudit_result(findings, if (length(errors) == 0L) character() else errors)
-  result   <- .strip_path_prefix(result, path)
-
-  if (nrow(result$findings) == 0L && length(result$errors) == 0L) {
-    message("No security findings in: ", label)
-  }
-  result
+  new_pkgaudit(
+    file_contexts = file_contexts,
+    code_contexts = code_contexts,
+    patterns      = patterns,
+    errors        = errors,
+    metadata      = metadata
+  )
 }

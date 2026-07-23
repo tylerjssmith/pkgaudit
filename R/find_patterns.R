@@ -1,0 +1,82 @@
+#' Find security-relevant patterns in a parsed script
+#'
+#' A *pattern* is a syntactic construct of interest (e.g. `system()`,
+#' `eval(parse())`, an outbound HTTP call). For each pattern rule this function
+#' evaluates the rule's XPath against the parse tree; every matching node is a
+#' finding.
+#'
+#' Each `xml_find_all()` call is wrapped in `tryCatch()`; a failure is recorded
+#' in the errors data frame and the loop moves on to the next rule.
+#'
+#' The returned data frame carries the matched XML nodes as a `"nodes"`
+#' attribute, aligned row-for-row, so [determine_code_contexts()] can test
+#' containment by node identity without re-running the pattern XPaths.
+#'
+#' @param tree The `xml_document` parse tree for one script (from
+#'   [parse_script()]).
+#' @param pattern_rules Data frame of pattern rules (`rules$patterns` from
+#'   [load_rules()]), with columns `name`, `xpath`, `message`, and `attck`.
+#' @param file_context Package-root-relative path of the script, carried through
+#'   for joining to the file-contexts table.
+#'
+#' @return A list with two elements:
+#'   \describe{
+#'     \item{patterns}{Data frame with columns `pattern`, `file_context`,
+#'       `line_number`, `column_number`, `message`, `attck`. Carries a `"nodes"`
+#'       attribute holding the matched nodes aligned to the rows.}
+#'     \item{errors}{Columns `stage`, `file_context`, `rule`, `message`.}
+#'   }
+#'
+#' @keywords internal
+find_patterns <- function(tree, pattern_rules, file_context) {
+  rows      <- list()
+  node_bag  <- list()
+  errors    <- .empty_errors()
+
+  if (is.null(pattern_rules) || nrow(pattern_rules) == 0L) {
+    out <- .empty_patterns()
+    out$code_context <- NULL
+    attr(out, "nodes") <- list()
+    return(list(patterns = out, errors = errors))
+  }
+
+  for (i in seq_len(nrow(pattern_rules))) {
+    rule  <- pattern_rules[i, , drop = FALSE]
+    nodes <- .xml_find_all_safe(tree, rule$xpath)
+
+    if (inherits(nodes, "condition")) {
+      errors <- rbind(errors, .error_row(
+        stage        = "find_patterns",
+        file_context = file_context,
+        rule         = rule$name,
+        message      = conditionMessage(nodes)
+      ))
+      next
+    }
+    if (length(nodes) == 0L) next
+
+    rows[[length(rows) + 1L]] <- data.frame(
+      pattern       = rule$name,
+      file_context  = file_context,
+      line_number   = as.integer(xml2::xml_attr(nodes, "line1")),
+      column_number = as.integer(xml2::xml_attr(nodes, "col1")),
+      message       = rule$message,
+      attck         = rule$attck,
+      stringsAsFactors = FALSE
+    )
+    for (n in seq_along(nodes)) {
+      node_bag[[length(node_bag) + 1L]] <- nodes[[n]]
+    }
+  }
+
+  patterns <- if (length(rows) == 0L) {
+    out <- .empty_patterns()
+    out$code_context <- NULL
+    out
+  } else {
+    do.call(rbind, rows)
+  }
+
+  attr(patterns, "nodes") <- node_bag
+  list(patterns = patterns, errors = errors)
+}
