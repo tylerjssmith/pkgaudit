@@ -2,49 +2,65 @@
 % Please edit documentation in R/audit_package.R
 \name{audit_package}
 \alias{audit_package}
-\title{Audit an R package for security-relevant patterns}
+\title{Audit an R source package for security-relevant files and code}
 \usage{
-audit_package(
-  path = ".",
-  rules = pkgaudit::load_rules(),
-  label = basename(path)
-)
+audit_package(pkg = ".", rules = load_rules(), .origin = NULL)
 }
 \arguments{
-\item{path}{Path to the root directory of the R package to audit.
+\item{pkg}{Path to the root directory of the R source package to audit.
 Defaults to the current directory.}
 
-\item{rules}{Named list of rule objects as returned by \code{\link[=load_rules]{load_rules()}}.
-Defaults to loading stable rules from the bundled database.}
+\item{rules}{Named list of rules as returned by \code{\link[=load_rules]{load_rules()}}. Defaults to
+the rules bundled with the package.}
 
-\item{label}{Display name used in diagnostic messages. Defaults to
-\code{basename(path)}. \code{\link[=audit_tarball]{audit_tarball()}} sets this to the tarball filename so
-messages refer to the original file rather than a temporary directory.}
+\item{.origin}{Internal. Used by \code{\link[=audit_tarball]{audit_tarball()}} to record tarball
+provenance: a list with \code{path}, \code{sha256}, and \code{is_tarball}. Leave \code{NULL}
+for a directory scan, in which case the directory is hashed with
+\code{\link[=hash_manifest]{hash_manifest()}}.}
 }
 \value{
-A \code{pkgaudit_result} with two fields:
+A \code{\link[=new_pkgaudit]{new_pkgaudit()}} object: a named list with class \code{pkgaudit}
+containing four data frames and a \code{metadata} list.
 \describe{
-\item{findings}{Data frame of findings across all files, with the same
-columns as \code{\link[=audit_file]{audit_file()}}. Zero rows when no patterns match.}
-\item{errors}{Named character vector of files that could not be parsed,
-where names are file paths and values are error messages. Zero-length
-when all files were successfully inspected.}
+\item{file_contexts}{\code{file_context}, \code{file_path}, \code{message}.}
+\item{code_contexts}{\code{code_context}, \code{file_context}, \code{line_number},
+\code{column_number}, \code{message}. Join to \code{file_contexts} on \code{file_context}.}
+\item{patterns}{\code{pattern}, \code{file_context}, \code{line_number},
+\code{column_number}, \code{message}, \code{attck}, \code{code_context}. Join to the other
+tables on \code{file_context} and \code{code_context}.}
+\item{errors}{\code{stage}, \code{file_context}, \code{rule}, \code{message}.}
+\item{metadata}{List of \code{pkg_name}, \code{pkg_version}, \code{pkg_path},
+\code{pkg_is_tarball}, \code{pkg_sha256}, \code{pkgaudit_version},
+\code{pkgaudit_rules_version}, \code{pkgaudit_rules_sha256}, and \code{scanned}.}
 }
 }
 \description{
-Scans R source files in the locations processed at (source) package install
-time: the top level of \verb{R/}, \verb{R/unix/}, \verb{R/windows/}, and \code{src/install.libs.R}.
-Subdirectories of \verb{R/} other than \verb{unix/} and \verb{windows/} are not processed by
-R at install time and are excluded.
+Finds security-relevant file and code contexts and code patterns for review
+before a package is trusted.
+}
+\details{
+The scan proceeds in four passes:
+\enumerate{
+\item \code{\link[=find_file_contexts]{find_file_contexts()}} -- security-relevant files (e.g. \code{configure},
+\code{src/Makevars}, \code{src/install.libs.R});
+\item \code{\link[=find_scripts]{find_scripts()}} -- R scripts R evaluates at install/load time;
+\item for each script, \code{\link[=parse_script]{parse_script()}} then \code{\link[=find_code_contexts]{find_code_contexts()}} and
+\code{\link[=find_patterns]{find_patterns()}};
+\item \code{\link[=determine_code_contexts]{determine_code_contexts()}} -- attribute each pattern to the code
+context it executes in.
+}
+
+Recoverable failures in the orchestrated finders are collected in the
+\code{errors} data frame rather than aborting the audit. File paths in every
+returned data frame are relative to the package root.
 }
 \examples{
 \dontrun{
-result <- audit_package("/path/to/somepackage")
-result$findings
-result$errors
-
-# Record rules version alongside findings
-attr(result, "rules_version") <- rules_version()
+rules  <- load_rules()
+result <- audit_package("/path/to/somepackage", rules = rules)
+result$file_contexts
+result$patterns
+print(result)
 }
 
 }

@@ -2,43 +2,42 @@
 % Please edit documentation in R/audit_tarball.R
 \name{audit_tarball}
 \alias{audit_tarball}
-\title{Audit an R source package tarball for security-relevant patterns}
+\title{Audit an R source package tarball for security-relevant files and code}
 \usage{
-audit_tarball(path, rules = pkgaudit::load_rules(), temp_dir = tempdir())
+audit_tarball(path, rules = load_rules(), temp_dir = tempdir())
 }
 \arguments{
 \item{path}{Path to a \code{.tar.gz} source package tarball.}
 
-\item{rules}{Named list of rule objects as returned by \code{\link[=load_rules]{load_rules()}}.
-Defaults to loading stable rules from the bundled database.}
+\item{rules}{Named list of rules as returned by \code{\link[=load_rules]{load_rules()}}. Defaults to
+the rules bundled with the package.}
 
 \item{temp_dir}{Directory used for extraction. A unique subdirectory is
 created here and removed after auditing regardless of success or failure.
 Defaults to \code{\link[base:tempdir]{base::tempdir()}}.}
 }
 \value{
-A \code{pkgaudit_result} with the same fields as \code{\link[=audit_package]{audit_package()}}:
-\describe{
-\item{findings}{Data frame of findings with the same columns as
-\code{\link[=audit_file]{audit_file()}}. File paths are relative to the package root
-(e.g., \code{R/zzz.R}). Zero rows when no patterns match.}
-\item{errors}{Named character vector of files that could not be parsed,
-where names are relative file paths and values are error messages.
-Zero-length when all files were successfully inspected.}
-}
+The same \code{pkgaudit} object as \code{\link[=audit_package]{audit_package()}}. File paths in the
+data frames are relative to the package root (e.g. \code{R/zzz.R}); the
+\code{metadata} records \code{pkg_is_tarball = TRUE}, \code{pkg_path} as the tarball path,
+and \code{pkg_sha256} as the SHA-256 of the tarball as received.
 }
 \description{
 Extracts a source package tarball to a temporary directory, applies
 \code{\link[=audit_package]{audit_package()}}, removes the temporary directory, and returns the result.
-This is the primary entry point for auditing packages before installation:
-the typical workflow is to call \code{audit_tarball()} on a downloaded tarball
-and review findings before calling \code{\link[utils:install.packages]{utils::install.packages()}}.
+This is the typical pre-install workflow: audit a downloaded tarball and
+review the findings before calling \code{\link[utils:install.packages]{utils::install.packages()}}.
+}
+\details{
+The package directory audited is the one named after the package, derived
+from the tarball filename (\verb{<package>_<version>.tar.gz} extracts to
+\verb{<package>/}). If no directory of that name is present, the tarball is
+rejected rather than guessing which directory to audit.
 }
 \examples{
 \dontrun{
 result <- audit_tarball("path/to/package_1.0.0.tar.gz")
-result$findings
-result$errors
+result$patterns
 }
 
 }

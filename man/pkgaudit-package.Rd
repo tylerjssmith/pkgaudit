@@ -4,9 +4,9 @@
 \name{pkgaudit-package}
 \alias{pkgaudit}
 \alias{pkgaudit-package}
-\title{pkgaudit: Security Auditing of R Packages}
+\title{pkgaudit: Static Analysis Security Testing for R Packages}
 \description{
-Provides tools for security auditing of R packages. Detects dangerous patterns in R source code using XPath-based rules stored in a versioned and hash-verified SQLite database.
+A static analysis security testing (SAST) tool for R packages. Flags security-relevant files and code in R source packages for manual review. Organizes results by R package lifecycle (build, check, install, load, attach, unload, detach), using file-context, code-context, and pattern rules stored in a versioned and hash-verified SQLite database.
 }
 \author{
 \strong{Maintainer}: Tyler Smith \email{tylerjssmith@gmail.com}

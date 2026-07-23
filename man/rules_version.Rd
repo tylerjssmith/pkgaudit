@@ -7,16 +7,16 @@
 rules_version(db_path = .db_path())
 }
 \arguments{
-\item{db_path}{Path to SQLite rules database.}
+\item{db_path}{Path to the SQLite rules database.}
 }
 \value{
 A character string giving the rules database version (e.g.,
 \code{"0.1.0"}).
 }
 \description{
-Returns the version string of the rules database currently shipped with
-the package. Findings reports should always record the rules version to
-ensure reproducibility across audit cycles.
+Returns the version string of the rules database currently shipped with the
+package. Findings reports should always record the rules version to ensure
+reproducibility across audit cycles.
 }
 \examples{
 \dontrun{

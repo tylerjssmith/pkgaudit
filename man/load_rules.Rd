@@ -7,20 +7,25 @@
 load_rules(db_path = .db_path())
 }
 \arguments{
-\item{db_path}{Path to SQLite rules database.}
+\item{db_path}{Path to the SQLite rules database. Defaults to the database
+bundled with the installed package.}
 }
 \value{
-A named list of rule objects. Each element is a list with fields:
+A named list with three data frames:
 \describe{
-\item{xpath}{XPath expression to match against the R parse tree XML.}
-\item{message}{Human-readable description of the dangerous pattern.}
-\item{type}{Severity: \code{"warning"} or \code{"message"}.}
-\item{attck}{MITRE ATT&CK technique identifier(s).}
+\item{file_contexts}{Columns \code{name}, \code{version}, \code{type}, \code{message},
+\code{path}, \code{recursive}, \code{pattern}.}
+\item{code_contexts}{Columns \code{name}, \code{version}, \code{type}, \code{message},
+\code{xpath}.}
+\item{patterns}{Columns \code{name}, \code{version}, \code{type}, \code{message}, \code{attck},
+\code{xpath}.}
 }
 }
 \description{
-Loads rules from database as a named list suitable for passing to
-\code{\link[=audit_file]{audit_file()}}, \code{\link[=audit_dir]{audit_dir()}}, and \code{\link[=audit_package]{audit_package()}}.
+Loads the file-context, code-context, and pattern rules from the bundled
+SQLite database as a named list suitable for passing to \code{\link[=audit_package]{audit_package()}}.
+Before reading, the database is verified against its SHA-256 sidecar so a
+tampered or corrupted rules file is rejected rather than silently trusted.
 }
 \examples{
 \dontrun{
