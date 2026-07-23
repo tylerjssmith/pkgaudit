@@ -37,21 +37,19 @@ pkgaudit aims to provide one layer of defense against an underappreciated risk. 
 
 ## Rule Coverage
 
-All rules in v0.2.0 target calls inside `.onLoad()` or `.onAttach()` hooks because code in these hooks executes automatically when a user calls `library()`. Calls to the same functions outside these hooks are not flagged.
+v0.3.0 separates *where* code can run from *what* it does, using three rule classes:
 
-| Category | Rule | Pattern |
-|---|---|---|
-| Command Execution | [onload_calls_system_rule](inst/rules/onload_calls_system_rule.yaml) | `system()`, `system2()` |
-| Dropper | [onload_download_file_rule](inst/rules/onload_download_file_rule.yaml) | `download.file()` |
-| | [onload_calls_source_rule](inst/rules/onload_calls_source_rule.yaml) | `source()` |
-| Exfiltration | [onload_calls_curl_rule](inst/rules/onload_calls_curl_rule.yaml) | `curl::curl_fetch_memory()`, `curl::curl_fetch_disk()`, `curl::curl_fetch_stream()`, `curl::curl_download()`, `curl::multi_run()` |
-| | [onload_calls_httr_rule](inst/rules/onload_calls_httr_rule.yaml) | `httr::GET()`, `httr::POST()`, `httr::PUT()`, `httr::PATCH()`, `httr::DELETE()`, `httr::HEAD()`, `httr::VERB()` |
-| | [onload_calls_httr2_rule](inst/rules/onload_calls_httr2_rule.yaml) | `httr2::req_perform()`, `httr2::req_perform_parallel()`, `httr2::req_perform_sequential()`, `httr2::req_stream()` |
-| | [onload_calls_rcurl_rule](inst/rules/onload_calls_rcurl_rule.yaml) | `RCurl::getURL()`, `RCurl::getURI()`, `RCurl::getForm()`, `RCurl::postForm()`, `RCurl::curlPerform()` |
-| Obfuscation | [onload_eval_parse_rule](inst/rules/onload_eval_parse_rule.yaml) | `eval()` + `parse()` |
-| Supply Chain | [onload_options_repos_rule](inst/rules/onload_options_repos_rule.yaml) | `options(repos = ...)` |
+- **File contexts** — files that R itself executes during build, check, or install (e.g. `configure`, `src/Makevars`, `src/install.libs.R`). Any occurrence is flagged for review.
+- **Code contexts** — top-level code and lifecycle hooks (`.onLoad`, `.onAttach`, `.onUnload`, `.onDetach`, `.Last.lib`, `rlang::on_load`) whose bodies run automatically when a namespace is loaded, attached, unloaded, or detached.
+- **Patterns** — security-relevant calls. Each pattern finding is attributed to the code context it executes in, so a `system()` call inside `.onLoad` (runs on `library()`) is distinguished from one inside an ordinary function (`Other`) or at top level (`Top-level`).
 
-Qualified (`pkg::fn()`) and unqualified (`fn()`) call forms are both detected.
+| Class | Rules |
+|---|---|
+| File contexts | `configure`, `configure.win`, `configure.ucrt`, `configure.ac`, `configure.in`, `cleanup`, `cleanup.win`, `src/Makefile[.win/.ucrt]`, `src/GNUmakefile`, `src/Makevars[.in/.win/.ucrt]`, `src/install.libs.R` |
+| Code contexts | `.onLoad`, `.onAttach`, `.onUnload`, `.onDetach`, `.Last.lib`, `rlang::on_load` |
+| Patterns | `system()`/`system2()`/`shell()`, `eval(parse())`, `source()`, `download.file()`, `options(repos=)`, and outbound HTTP via `curl`, `httr`, `httr2`, `RCurl` |
+
+Pattern rules carry [MITRE ATT&CK](https://attack.mitre.org/) technique labels. Qualified (`pkg::fn()`) and unqualified (`fn()`) call forms are both detected; assignments and `$`/`@` accessors are excluded. The rule definitions live under [inst/rules/](inst/rules/).
 
 ## Installation
 
@@ -72,21 +70,32 @@ digest::digest(
   file = TRUE
 )
 ```
-Expected SHA-256: `44df250b564673cf88c91e97b50842977df7da96e47dbd2ed0d69dd9ca82cefd`
+Expected SHA-256: `c5bbc586c99d9845cc141b8b773238f95014700b68a5202c9cbcce813f79adbe`
 
-The hash is regenerated automatically by `inst/scripts/build_rules.R` whenever the database is rebuilt and should match the value above exactly.
+The hash is regenerated automatically by `inst/scripts/build_db.R` whenever the database is rebuilt and should match the value above exactly. `load_rules()` verifies the database against its bundled `.sha256` sidecar on every call and refuses to load a modified database.
 
 ## Usage
 
-A file may be scanned as follows:
+A source package directory is scanned as follows:
 
 ``` r
 library(pkgaudit)
-rules    <- load_rules()
-findings <- audit_package("path/to/package", rules = rules)
+rules  <- load_rules()
+result <- audit_package("path/to/package", rules = rules)
+
+result$file_contexts  # security-relevant files
+result$code_contexts  # hooks / top-level code
+result$patterns       # flagged calls, each with its code_context
+result$errors         # any files or rules that could not be processed
 
 # Record the rules version for reproducibility
-attr(findings, "rules_version") <- rules_version()
+rules_version()
+```
+
+To audit a downloaded source tarball before installing it:
+
+``` r
+result <- audit_tarball("path/to/package_1.0.0.tar.gz")
 ```
 
 
