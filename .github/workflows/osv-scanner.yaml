@@ -1,0 +1,20 @@
+# .github/workflows/osv-scanner.yaml
+name: osv-scanner
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  schedule:
+    - cron: "30 12 * * 1"   # weekly, Mondays 12:30 UTC
+
+# Deny all permissions by default; grant only what the scan needs, per job.
+permissions: {}
+
+jobs:
+  osv-scan:
+    permissions:
+      actions: read           # read workflow run data for the SARIF upload
+      security-events: write  # upload SARIF results to the Security tab
+      contents: read          # check out and read the repository
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.3.8

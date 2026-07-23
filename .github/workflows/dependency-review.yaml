@@ -1,4 +1,6 @@
 # .github/workflows/dependency-review.yaml
+# This workflow only covers GitHub Actions vulnerabilities.
+# See osv-scanner.yaml for workflow targeting R vulnerabilities.
 on:
   pull_request:
 
