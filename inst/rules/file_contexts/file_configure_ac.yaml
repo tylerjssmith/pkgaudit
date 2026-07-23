@@ -1,0 +1,16 @@
+name: configure_ac_file
+version: "0.1.0"
+type: shell
+message: >-
+  configure.ac is an Autoconf input file that does not itself execute; it is
+  processed by Autoconf to generate the configure script, which executes shell
+  commands when a package is installed from source.
+path: "."
+recursive: FALSE
+pattern: '^configure\.ac$'
+positive_examples:
+  - configure.ac
+negative_examples:
+  - configure
+  - tools/configure.ac
+  - configure.acx

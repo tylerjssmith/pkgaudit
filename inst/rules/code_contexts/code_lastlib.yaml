@@ -1,0 +1,54 @@
+name: lastlib_code
+version: "0.1.0"
+type: hook
+message: >-
+  .Last.lib() executes arbitrary code when a package namespace is detached from
+  the R search path, e.g., by calling detach(). In modern R, this has been
+  superseded by .onDetach().
+xpath: >-
+  (//expr | //expr_or_assign_or_help)[
+    (
+      (LEFT_ASSIGN or EQ_ASSIGN)
+      and expr[1]/SYMBOL[text() = '.Last.lib']
+      and expr[FUNCTION]
+    )
+    or
+    (
+      RIGHT_ASSIGN
+      and expr[2]/SYMBOL[text() = '.Last.lib']
+      and expr[1]//FUNCTION
+    )
+  ]
+positive_examples:
+  - |
+    .Last.lib <- function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    .Last.lib = function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    (function(libname, pkgname) {
+      invisible(NULL)
+    }) -> .Last.lib
+negative_examples:
+  - |
+    invisible(NULL)
+  - |
+    foo <- function() {
+      invisible(NULL)
+    }
+  - |
+    .onDetach <- function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    .onDetach = function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    (function(libname, pkgname) {
+      invisible(NULL)
+    }) -> .onDetach
+

@@ -1,0 +1,15 @@
+name: configure_win_file
+version: "0.1.0"
+type: shell
+message: >-
+  configure.win is a shell script for system-dependent configuration on Windows,
+  executed when a package is installed from source.
+path: "."
+recursive: FALSE
+pattern: '^configure\.win$'
+positive_examples:
+  - configure.win
+negative_examples:
+  - configure
+  - tools/configure.win
+  - reconfigure.win

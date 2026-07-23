@@ -1,0 +1,31 @@
+name: onload_rlang_code
+version: "0.1.0"
+type: hook
+message: >-
+  rlang::on_load() registers arbitrary code to execute when a package namespace
+  is loaded, e.g., by calling library(), require(), or loadNamespace().
+  on_load() requires .onLoad() to contain rlang::run_on_load().
+xpath: >-
+  //expr[
+    expr/SYMBOL_FUNCTION_CALL[
+      text() = 'on_load'
+      and not(preceding-sibling::OP-DOLLAR)
+      and not(preceding-sibling::OP-AT)
+    ]
+  ]
+positive_examples:
+  - |
+    on_load(invisible(NULL))
+  - |
+    rlang::on_load(invisible(NULL))
+  - |
+    on_load({
+      invisible(NULL)
+    })
+negative_examples:
+  - |
+    invisible(NULL)
+  - |
+    foo$on_load(invisible(NULL))
+  - |
+    foo@on_load(invisible(NULL))

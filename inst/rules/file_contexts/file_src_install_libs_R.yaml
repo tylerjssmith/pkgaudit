@@ -1,0 +1,15 @@
+name: src_install_libs_R_file
+version: "0.1.0"
+type: R
+message: >-
+  src/install.libs.R is an R script used in some packages to install executable
+  programs and other binaries during installation from source. It can run
+  arbitrary R code.
+path: "src"
+recursive: FALSE
+pattern: '^install\.libs\.R$'
+positive_examples:
+  - src/install.libs.R
+negative_examples:
+  - install.libs.txt
+  - tools/install.libs.R

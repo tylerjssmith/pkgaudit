@@ -1,0 +1,16 @@
+name: configure_ucrt_file
+version: "0.1.0"
+type: shell
+message: >-
+  configure.ucrt is a shell script for system-dependent configuration on the
+  Windows UCRT toolchain, executed when a package is installed from source; it
+  takes precedence over configure.win when present.
+path: "."
+recursive: FALSE
+pattern: '^configure\.ucrt$'
+positive_examples:
+  - configure.ucrt
+negative_examples:
+  - configure.win
+  - tools/configure.ucrt
+  - reconfigure.ucrt

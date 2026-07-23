@@ -1,0 +1,15 @@
+name: cleanup_file
+version: "0.1.0"
+type: shell
+message: >-
+  cleanup is a shell script executed after a package is installed from source on
+  Unix-like systems. It can execute arbitrary shell commands.
+path: "."
+recursive: FALSE
+pattern: '^cleanup$'
+positive_examples:
+  - cleanup
+negative_examples:
+  - configure
+  - tools/cleanup
+  - cleanup.sh

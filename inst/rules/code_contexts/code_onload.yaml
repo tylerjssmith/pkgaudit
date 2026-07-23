@@ -1,0 +1,53 @@
+name: onload_code
+version: "0.1.0"
+type: hook
+message: >-
+  .onLoad() executes arbitrary code when a package namespace is loaded, e.g.,
+  by calling library(), require(), or loadNamespace().
+xpath: >-
+  (//expr | //expr_or_assign_or_help)[
+    (
+      (LEFT_ASSIGN or EQ_ASSIGN)
+      and expr[1]/SYMBOL[text() = '.onLoad']
+      and expr[FUNCTION]
+    )
+    or
+    (
+      RIGHT_ASSIGN
+      and expr[2]/SYMBOL[text() = '.onLoad']
+      and expr[1]//FUNCTION
+    )
+  ]
+positive_examples:
+  - |
+    .onLoad <- function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    .onLoad = function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    (function(libname, pkgname) {
+      invisible(NULL)
+    }) -> .onLoad
+negative_examples:
+  - |
+    invisible(NULL)
+  - |
+    foo <- function() {
+      invisible(NULL)
+    }
+  - |
+    .onAttach <- function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    .onAttach = function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    (function(libname, pkgname) {
+      invisible(NULL)
+    }) -> .onAttach
+

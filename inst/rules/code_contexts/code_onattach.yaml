@@ -1,0 +1,53 @@
+name: onattach_code
+version: "0.1.0"
+type: hook
+message: >-
+  .onAttach() executes arbitrary code when a package namespace is attached to
+  the R search path, e.g., by calling library(), require(), or attach().
+xpath: >-
+  (//expr | //expr_or_assign_or_help)[
+    (
+      (LEFT_ASSIGN or EQ_ASSIGN)
+      and expr[1]/SYMBOL[text() = '.onAttach']
+      and expr[FUNCTION]
+    )
+    or
+    (
+      RIGHT_ASSIGN
+      and expr[2]/SYMBOL[text() = '.onAttach']
+      and expr[1]//FUNCTION
+    )
+  ]
+positive_examples:
+  - |
+    .onAttach <- function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    .onAttach = function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    (function(libname, pkgname) {
+      invisible(NULL)
+    }) -> .onAttach
+negative_examples:
+  - |
+    invisible(NULL)
+  - |
+    foo <- function() {
+      invisible(NULL)
+    }
+  - |
+    .onLoad <- function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    .onLoad = function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    (function(libname, pkgname) {
+      invisible(NULL)
+    }) -> .onLoad
+

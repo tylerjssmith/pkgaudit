@@ -1,0 +1,33 @@
+name: eval_parse_pattern
+version: "0.1.0"
+type: warning
+message: >-
+  eval(parse()) may be used to dynamically construct code. While there are
+  many legitimate uses, this is a classic technique for executing obfuscated
+  payloads, e.g., when the string to be parsed is base64-encoded.
+attck:
+  - T1059
+  - T1195.002
+xpath: >-
+  //expr[
+    expr/SYMBOL_FUNCTION_CALL[text()='eval'
+      and not(preceding-sibling::OP-DOLLAR)
+      and not(preceding-sibling::OP-AT)]
+    and .//SYMBOL_FUNCTION_CALL[text()='parse'
+      and not(preceding-sibling::OP-DOLLAR)
+      and not(preceding-sibling::OP-AT)]
+  ]
+positive_examples:
+  - |
+    eval(parse("evil"))
+  - |
+    eval(parse(base64_dec("ZXZpbA==")))
+negative_examples:
+  - |
+    eval()
+  - |
+    parse()
+  - |
+    foo$eval()
+  - |
+    bar@parse()

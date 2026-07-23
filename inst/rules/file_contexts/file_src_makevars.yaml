@@ -1,0 +1,16 @@
+name: src_makevars_file
+version: "0.1.0"
+type: make
+message: >-
+  src/Makevars sets make variables used to compile code in src/ when a package
+  is installed from source. It is read by make and can execute shell via make
+  constructs such as $(shell ...).
+path: "src"
+recursive: FALSE
+pattern: '^Makevars$'
+positive_examples:
+  - src/Makevars
+negative_examples:
+  - src/Makefile
+  - Makevars
+  - src/Makevars.txt

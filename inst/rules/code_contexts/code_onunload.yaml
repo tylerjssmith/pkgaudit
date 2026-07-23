@@ -1,0 +1,53 @@
+name: onunload_code
+version: "0.1.0"
+type: hook
+message: >-
+  .onUnload() executes arbitrary code when a package namespace is unloaded,
+  e.g., by calling unloadNamespace() or detach(unload=TRUE).
+xpath: >-
+  (//expr | //expr_or_assign_or_help)[
+    (
+      (LEFT_ASSIGN or EQ_ASSIGN)
+      and expr[1]/SYMBOL[text() = '.onUnload']
+      and expr[FUNCTION]
+    )
+    or
+    (
+      RIGHT_ASSIGN
+      and expr[2]/SYMBOL[text() = '.onUnload']
+      and expr[1]//FUNCTION
+    )
+  ]
+positive_examples:
+  - |
+    .onUnload <- function(libpath) {
+      invisible(NULL)
+    }
+  - |
+    .onUnload = function(libpath) {
+      invisible(NULL)
+    }
+  - |
+    (function(libpath) {
+      invisible(NULL)
+    }) -> .onUnload
+negative_examples:
+  - |
+    invisible(NULL)
+  - |
+    foo <- function() {
+      invisible(NULL)
+    }
+  - |
+    .onDetach <- function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    .onDetach = function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    (function(libname, pkgname) {
+      invisible(NULL)
+    }) -> .onDetach
+

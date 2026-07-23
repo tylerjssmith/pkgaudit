@@ -1,0 +1,16 @@
+name: src_makevars_win_file
+version: "0.1.0"
+type: make
+message: >-
+  src/Makevars.win sets make variables used to compile code in src/ on Windows
+  when a package is installed from source. It is read by make and can execute
+  shell via make constructs such as $(shell ...).
+path: "src"
+recursive: FALSE
+pattern: '^Makevars\.win$'
+positive_examples:
+  - src/Makevars.win
+negative_examples:
+  - src/Makevars
+  - Makevars.win
+  - src/Makevars.winx

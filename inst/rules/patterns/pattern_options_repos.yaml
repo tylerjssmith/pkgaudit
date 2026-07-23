@@ -1,0 +1,32 @@
+name: options_repos_pattern
+version: "0.1.0"
+type: warning
+attck:
+  - T1195.002
+message: >-
+  options(repos = ...) replaces the CRAN mirror for the R session. Subsequent
+  install.packages() calls will fetch packages from the configured repository.
+  If set to an attacker-controlled server, this poisons the installation source.
+xpath: >-
+  //expr[
+    expr/SYMBOL_FUNCTION_CALL[text() = 'options']
+    and SYMBOL_SUB[text() = 'repos']
+    and not(expr/SYMBOL_FUNCTION_CALL/preceding-sibling::OP-DOLLAR)
+    and not(expr/SYMBOL_FUNCTION_CALL/preceding-sibling::OP-AT)
+  ]
+positive_examples:
+  - |
+    options(repos = c(CRAN = "https://evil.com/cran"))
+  - |
+    base::options(repos = c(CRAN = "https://evil.com/cran"))
+  - |
+    options(repos = "https://evil.com/cran", scipen = 999)
+negative_examples:
+  - |
+    options(scipen = 999, warn = 2)
+  - |
+    foo$options(repos = c(CRAN = "https://example.com"))
+  - |
+    foo@options(repos = c(CRAN = "https://example.com"))
+  - |
+    getOption("repos")

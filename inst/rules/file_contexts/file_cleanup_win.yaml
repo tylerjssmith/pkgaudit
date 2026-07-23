@@ -1,0 +1,15 @@
+name: cleanup_win_file
+version: "0.1.0"
+type: shell
+message: >-
+  cleanup.win is a shell script executed after a package is installed from
+  source on Windows. It can execute arbitrary shell commands.
+path: "."
+recursive: FALSE
+pattern: '^cleanup\.win$'
+positive_examples:
+  - cleanup.win
+negative_examples:
+  - cleanup
+  - tools/cleanup.win
+  - cleanup.winx

@@ -1,0 +1,16 @@
+name: src_makefile_ucrt_file
+version: "0.1.0"
+type: make
+message: >-
+  src/Makefile.ucrt is a makefile used to compile code in src/ on the Windows
+  UCRT toolchain when a package is installed from source, replacing R's default
+  make rules. It is read by make and its recipes execute arbitrary shell commands.
+path: "src"
+recursive: FALSE
+pattern: '^Makefile\.ucrt$'
+positive_examples:
+  - src/Makefile.ucrt
+negative_examples:
+  - src/Makefile.win
+  - Makefile.ucrt
+  - src/Makefile.ucrtx

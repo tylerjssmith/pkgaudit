@@ -1,0 +1,17 @@
+name: src_makevars_ucrt_file
+version: "0.1.0"
+type: make
+message: >-
+  src/Makevars.ucrt sets make variables used to compile code in src/ on the
+  Windows UCRT toolchain when a package is installed from source; it takes
+  precedence over Makevars.win. It is read by make and can execute shell via
+  make constructs such as $(shell ...).
+path: "src"
+recursive: FALSE
+pattern: '^Makevars\.ucrt$'
+positive_examples:
+  - src/Makevars.ucrt
+negative_examples:
+  - src/Makevars.win
+  - Makevars.ucrt
+  - src/Makevars.ucrtx

@@ -1,0 +1,53 @@
+name: ondetach_code
+version: "0.1.0"
+type: hook
+message: >-
+  .onDetach() executes arbitrary code when a package namespace is detached from
+  the R search path, e.g., by calling detach().
+xpath: >-
+  (//expr | //expr_or_assign_or_help)[
+    (
+      (LEFT_ASSIGN or EQ_ASSIGN)
+      and expr[1]/SYMBOL[text() = '.onDetach']
+      and expr[FUNCTION]
+    )
+    or
+    (
+      RIGHT_ASSIGN
+      and expr[2]/SYMBOL[text() = '.onDetach']
+      and expr[1]//FUNCTION
+    )
+  ]
+positive_examples:
+  - |
+    .onDetach <- function(libpath) {
+      invisible(NULL)
+    }
+  - |
+    .onDetach = function(libpath) {
+      invisible(NULL)
+    }
+  - |
+    (function(libpath) {
+      invisible(NULL)
+    }) -> .onDetach
+negative_examples:
+  - |
+    invisible(NULL)
+  - |
+    foo <- function() {
+      invisible(NULL)
+    }
+  - |
+    .onAttach <- function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    .onAttach = function(libname, pkgname) {
+      invisible(NULL)
+    }
+  - |
+    (function(libname, pkgname) {
+      invisible(NULL)
+    }) -> .onAttach
+

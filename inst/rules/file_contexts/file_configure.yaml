@@ -1,0 +1,15 @@
+name: configure_file
+version: "0.1.0"
+type: shell
+message: >-
+  configure is a shell script used for system-dependent configuration when
+  packages are installed from source. It can execute arbitrary shell commands.
+path: "."
+recursive: FALSE
+pattern: '^configure$'
+positive_examples:
+  - configure
+negative_examples:
+  - configure.win
+  - tools/configure
+  - reconfigure

