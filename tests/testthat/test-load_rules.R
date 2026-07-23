@@ -1,45 +1,53 @@
 # load_rules() -----------------------------------------------------------------
-test_that("load_rules() stops with an informative message for a missing database", {
-  expect_error(load_rules("nonexistent.db"), "Rules database not found")
-  expect_error(load_rules(""),               "Rules database not found")
-})
-
-
-test_that("load_rules() returns a named list with well-formed rule objects", {
+test_that("load_rules() returns three rule data frames with expected columns", {
   rules <- load_rules()
+  expect_named(rules, c("file_contexts", "code_contexts", "patterns"))
 
-  expect_type(rules, "list")
-  expect_true(length(rules) > 0L)
+  expect_named(rules$file_contexts,
+               c("name", "version", "type", "message", "path", "recursive", "pattern"))
+  expect_named(rules$code_contexts,
+               c("name", "version", "type", "message", "xpath"))
+  expect_named(rules$patterns,
+               c("name", "version", "type", "message", "attck", "xpath"))
 
-  # All top-level elements must be named
-  expect_true(!is.null(names(rules)))
-  expect_true(all(nchar(names(rules)) > 0L))
-
-  # Each top-level element must be a list with the required named fields
-  required_fields <- c("xpath", "message", "type", "attck")
-  for (rule_name in names(rules)) {
-    rule <- rules[[rule_name]]
-    expect_type(rule, "list")
-    expect_true(
-      all(required_fields %in% names(rule)),
-      label = paste0("rule '", rule_name, "' has all required fields")
-    )
-  }
+  expect_type(rules$file_contexts$recursive, "logical")
+  expect_gt(nrow(rules$file_contexts), 0L)
+  expect_gt(nrow(rules$code_contexts), 0L)
+  expect_gt(nrow(rules$patterns), 0L)
 })
 
-
-# hook_defined_rule ------------------------------------------------------------
-test_that("hook_defined_rule has type 'message', not 'warning'", {
-  rules <- load_rules()
-  expect_true("hook_defined_rule" %in% names(rules))
-  expect_equal(rules[["hook_defined_rule"]]$type, "message")
+test_that("load_rules() errors when the database is missing", {
+  expect_error(load_rules(tempfile()), "Rules database not found")
+  expect_error(load_rules(""),         "Rules database not found")
 })
-
 
 # rules_version() --------------------------------------------------------------
-test_that("rules_version() returns a version string", {
+test_that("rules_version() returns the seeded version string", {
   v <- rules_version()
   expect_type(v, "character")
   expect_length(v, 1L)
-  expect_match(v, "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+  expect_equal(v, "0.1.0")
+})
+
+# .verify_db() -----------------------------------------------------------------
+test_that("load_rules() refuses a database with a missing hash sidecar", {
+  db <- tempfile(fileext = ".db")
+  file.copy(.db_path(), db)
+  on.exit(unlink(db), add = TRUE)
+  # No sidecar written next to the copy.
+  expect_error(load_rules(db), "hash sidecar not found")
+})
+
+test_that("load_rules() refuses a tampered database (hash mismatch)", {
+  db <- tempfile(fileext = ".db")
+  file.copy(.db_path(), db)
+  file.copy(paste0(.db_path(), ".sha256"), paste0(db, ".sha256"))
+  on.exit(unlink(c(db, paste0(db, ".sha256"))), add = TRUE)
+
+  # Mutate the copied database so its content no longer matches the sidecar.
+  con <- DBI::dbConnect(RSQLite::SQLite(), db)
+  DBI::dbExecute(con, "UPDATE patterns SET message = 'tampered'")
+  DBI::dbDisconnect(con)
+
+  expect_error(load_rules(db), "failed SHA-256 verification")
 })

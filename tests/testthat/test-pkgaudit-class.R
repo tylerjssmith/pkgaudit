@@ -1,0 +1,122 @@
+# A complete, well-formed metadata list for constructor tests.
+good_metadata <- function(...) {
+  utils::modifyList(list(
+    pkg_name               = "foo",
+    pkg_version            = "0.1.0",
+    pkg_path               = "/tmp/foo",
+    pkg_is_tarball         = FALSE,
+    pkg_sha256             = strrep("a", 64L),
+    pkgaudit_version       = "0.3.0",
+    pkgaudit_rules_version = "0.1.0",
+    pkgaudit_rules_sha256  = strrep("b", 64L),
+    scanned                = "2026-07-23T14:02:00Z"
+  ), list(...))
+}
+
+# A well-formed pkgaudit object with the given per-frame row counts.
+make_obj <- function(n_file = 0L, n_code = 0L, n_pat = 0L, n_err = 0L,
+                     metadata = good_metadata()) {
+  fc <- .empty_file_contexts()
+  cc <- .empty_code_contexts()
+  pt <- .empty_patterns()
+  er <- .empty_errors()
+  for (i in seq_len(n_file)) fc[i, ] <- list("configure_file", "configure", "m")
+  for (i in seq_len(n_code)) cc[i, ] <- list("onload_code", "R/zzz.R", 1L, 1L, "m")
+  for (i in seq_len(n_pat))  pt[i, ] <- list("system_pattern", "R/zzz.R", 1L, 1L, "m", "T1059", "Top-level")
+  for (i in seq_len(n_err))  er[i, ] <- list("parse_script", "R/bad.R", NA_character_, "boom")
+  new_pkgaudit(fc, cc, pt, er, metadata)
+}
+
+# new_pkgaudit() ---------------------------------------------------------------
+test_that("new_pkgaudit() accepts a well-formed object", {
+  obj <- make_obj()
+  expect_s3_class(obj, "pkgaudit")
+  expect_named(obj, c("file_contexts", "code_contexts", "patterns", "errors",
+                      "metadata"))
+})
+
+test_that("new_pkgaudit() errors when a data frame is not a data frame", {
+  expect_error(
+    new_pkgaudit("nope", .empty_code_contexts(), .empty_patterns(),
+                 .empty_errors(), good_metadata()),
+    "file_contexts.*must be a data frame"
+  )
+})
+
+test_that("new_pkgaudit() errors on wrong data-frame columns", {
+  bad <- .empty_file_contexts()
+  bad$message <- NULL
+  expect_error(new_pkgaudit(bad, .empty_code_contexts(), .empty_patterns(),
+                            .empty_errors(), good_metadata()),
+               "file_contexts.*missing: message")
+})
+
+test_that("new_pkgaudit() errors on a missing metadata field", {
+  md <- good_metadata()
+  md$scanned <- NULL
+  expect_error(make_obj(metadata = md), "missing field.*scanned")
+})
+
+test_that("new_pkgaudit() errors on a wrong-typed metadata field", {
+  expect_error(make_obj(metadata = good_metadata(pkg_is_tarball = "yes")),
+               "pkg_is_tarball.*must be a length-one logical")
+  expect_error(make_obj(metadata = good_metadata(pkg_name = 1L)),
+               "pkg_name.*must be a length-one character")
+  expect_error(make_obj(metadata = good_metadata(pkg_version = c("a", "b"))),
+               "pkg_version.*must be a length-one character")
+})
+
+# format.pkgaudit() ------------------------------------------------------------
+test_that("format.pkgaudit() returns a character vector with the expected lines", {
+  obj   <- make_obj(n_file = 4L, n_code = 6L, n_pat = 17L, n_err = 0L)
+  lines <- format(obj)
+  expect_type(lines, "character")
+  expect_match(lines[[1L]], "^--- pkgaudit -+$")
+  expect_true(any(grepl("^Package:\\s+foo v0.1.0 \\(source directory\\)$", lines)))
+  expect_true(any(grepl("^File contexts:\\s+4$", lines)))
+  expect_true(any(grepl("^Code contexts:\\s+6$", lines)))
+  expect_true(any(grepl("^Patterns:\\s+17$", lines)))
+  # Scanned line renders the ISO value as YYYY-MM-DD HH:MM UTC.
+  expect_true(any(grepl("^Scanned:\\s+2026-07-23 14:02 UTC with pkgaudit 0.3.0, rules v0.1.0$", lines)))
+})
+
+test_that("format.pkgaudit() counts match the data-frame row counts", {
+  obj   <- make_obj(n_file = 2L, n_code = 3L, n_pat = 5L, n_err = 1L)
+  lines <- format(obj)
+  val <- function(label) sub(paste0("^", label, "\\s+"), "",
+                             grep(paste0("^", label), lines, value = TRUE))
+  expect_equal(val("File contexts:"), as.character(nrow(obj$file_contexts)))
+  expect_equal(val("Code contexts:"), as.character(nrow(obj$code_contexts)))
+  expect_equal(val("Patterns:"),      as.character(nrow(obj$patterns)))
+})
+
+test_that("format.pkgaudit() includes Path only when path = TRUE", {
+  obj <- make_obj()
+  expect_true(any(grepl("^Path:", format(obj, path = TRUE))))
+  expect_false(any(grepl("^Path:", format(obj, path = FALSE))))
+})
+
+test_that("format.pkgaudit() marks incomplete coverage only when errors > 0", {
+  with_err <- format(make_obj(n_err = 2L))
+  no_err   <- format(make_obj(n_err = 0L))
+  expect_true(any(grepl("^Errors:\\s+2   \\(coverage incomplete\\)$", with_err)))
+  expect_true(any(grepl("^Errors:\\s+0$", no_err)))
+  expect_false(any(grepl("coverage incomplete", no_err)))
+})
+
+test_that("format.pkgaudit() shows the tarball/directory kind", {
+  expect_true(any(grepl("\\(source tarball\\)",
+                        format(make_obj(metadata = good_metadata(pkg_is_tarball = TRUE))))))
+  expect_true(any(grepl("\\(source directory\\)",
+                        format(make_obj(metadata = good_metadata(pkg_is_tarball = FALSE))))))
+})
+
+# print.pkgaudit() -------------------------------------------------------------
+test_that("print.pkgaudit() writes the formatted lines and returns input invisibly", {
+  obj <- make_obj()
+  # expect_output captures stdout (keeping the test run quiet) and confirms the
+  # formatted output is written; withVisible confirms the return is invisible.
+  expect_output(res <- withVisible(print(obj)), "^--- pkgaudit")
+  expect_false(res$visible)
+  expect_identical(res$value, obj)
+})
