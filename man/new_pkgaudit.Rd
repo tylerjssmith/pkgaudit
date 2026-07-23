@@ -25,3 +25,15 @@ Assembles the four result data frames and a metadata list into a validated
 \code{pkgaudit} S3 object. \code{\link[=audit_package]{audit_package()}} calls this at the end of a scan; it is
 exposed for constructing objects directly (e.g. in tests or downstream tools).
 }
+\examples{
+\dontrun{
+# Most callers get a pkgaudit object from audit_package(); new_pkgaudit()
+# is for constructing one directly, e.g. from stored results.
+result <- audit_package("/path/to/package")
+obj <- new_pkgaudit(
+  result$file_contexts, result$code_contexts,
+  result$patterns, result$errors, result$metadata
+)
+}
+
+}

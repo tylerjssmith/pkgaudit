@@ -11,9 +11,9 @@
 #' hash identically. The exclusion patterns are returned so the caller can record
 #' them. For vetting untrusted code, prefer hashing the tarball.
 #'
-#' @param dir Path to the directory to hash.
+#' @param path Path to the directory to hash.
 #' @param exclude Character vector of regular expressions matched against paths
-#'   relative to `dir`. Defaults exclude version-control and IDE scratch state,
+#'   relative to `path`. Defaults exclude version-control and IDE scratch state,
 #'   which are not part of the package and (for `.git/`) are large and volatile.
 #'   Pass `character(0)` to hash everything present.
 #'
@@ -34,10 +34,10 @@
 #' }
 #'
 #' @export
-hash_manifest <- function(dir, exclude = c("^\\.git/", "^\\.Rproj\\.user/")) {
-  stopifnot(is.character(dir), length(dir) == 1L)
-  if (!dir.exists(dir)) {
-    stop("hash_manifest(): not an existing directory: ", dir)
+hash_manifest <- function(path, exclude = c("^\\.git/", "^\\.Rproj\\.user/")) {
+  stopifnot(is.character(path), length(path) == 1L)
+  if (!dir.exists(path)) {
+    stop("hash_manifest(): not an existing directory: ", path)
   }
   stopifnot(is.character(exclude))
 
@@ -45,7 +45,7 @@ hash_manifest <- function(dir, exclude = c("^\\.git/", "^\\.Rproj\\.user/")) {
   # Relative paths, so the hash does not depend on where the directory sits on
   # disk. all.files = TRUE to include dotfiles: a hidden file is still part of
   # what was scanned, and hiding is itself a technique worth capturing.
-  files <- list.files(dir, recursive = TRUE, all.files = TRUE, no.. = TRUE)
+  files <- list.files(path, recursive = TRUE, all.files = TRUE, no.. = TRUE)
 
   # ---- 2. Apply exclusions ---------------------------------------------------
   if (length(exclude) > 0L && length(files) > 0L) {
@@ -55,11 +55,11 @@ hash_manifest <- function(dir, exclude = c("^\\.git/", "^\\.Rproj\\.user/")) {
 
   # ---- 3. Exclude symlinks ---------------------------------------------------
   # list.files() follows into linked directories, and digest() reads through a
-  # symlink to its target, which may lie outside `dir`. Drop symlinks from the
+  # symlink to its target, which may lie outside `path`. Drop symlinks from the
   # manifest and report them rather than hashing content from outside scope.
   symlinks <- character(0L)
   if (length(files) > 0L) {
-    targets <- Sys.readlink(file.path(dir, files))
+    targets <- Sys.readlink(file.path(path, files))
     is_link <- !is.na(targets) & nzchar(targets)
     symlinks <- files[is_link]
     files    <- files[!is_link]
@@ -77,7 +77,7 @@ hash_manifest <- function(dir, exclude = c("^\\.git/", "^\\.Rproj\\.user/")) {
   hashes     <- character(length(files))
   unreadable <- character(0L)
   for (i in seq_along(files)) {
-    p <- file.path(dir, files[[i]])
+    p <- file.path(path, files[[i]])
     h <- tryCatch(
       digest::digest(p, algo = "sha256", file = TRUE),
       error = function(e) NA_character_

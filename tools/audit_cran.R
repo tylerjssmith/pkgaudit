@@ -27,7 +27,7 @@
 #'   result is written there as `chunk_NNNNN.rds` as it completes, so a long run
 #'   can be resumed or recovered after a crash. Created if it does not exist.
 #'
-#' @return A named list of four data frames, with `package` and `version`
+#' @return A named list of five data frames, with `package` and `version`
 #'   prepended to the columns from [pkgaudit::audit_package()]. Novice-facing
 #'   reference columns are dropped from the finding frames -- `message` from all
 #'   three, and `attck` from patterns; the error frame keeps its `message`,
@@ -41,7 +41,11 @@
 #'     \item{errors}{`package`, `version`, `stage`, `file_context`, `rule`,
 #'       `message`. Captures per-file audit errors as well as tarball-level
 #'       failures (`stage` `"parse_filename"` or `"audit_tarball"`) and any
-#'       warnings (`stage` `"warning"`).}
+#'       generic warnings (`stage` `"warning"`).}
+#'     \item{provenance}{`package`, `version`, `filename_name`,
+#'       `filename_version`, `desc_name`, `desc_version`, `message`. One row per
+#'       tarball whose filename disagrees with its DESCRIPTION `Package`/`Version`
+#'       (a mislabeled or repackaged tarball).}
 #'   }
 #'   Packages that produce no rows for a given frame are simply absent from it.
 #'
@@ -158,9 +162,9 @@ audit_cran <- function(
   out <- .combine_results(per_chunk)
 
   message(sprintf(
-    "Done. Across %d package(s): %d file context(s), %d code context(s), %d pattern(s), %d error(s).",
+    "Done. Across %d package(s): %d file context(s), %d code context(s), %d pattern(s), %d error(s), %d provenance mismatch(es).",
     total, nrow(out$file_contexts), nrow(out$code_contexts),
-    nrow(out$patterns), nrow(out$errors)
+    nrow(out$patterns), nrow(out$errors), nrow(out$provenance)
   ))
 
   out
@@ -189,12 +193,20 @@ audit_cran <- function(
   fb_name    <- meta$name       # filename-derived fallback
   fb_version <- meta$version
 
+  # Provenance mismatches are captured separately (as findings) from generic
+  # warnings (which become errors rows). A single class-aware handler routes
+  # each and muffles both so nothing is double-recorded.
   warns <- character(0L)
+  mism  <- list()
   audit <- tryCatch(
     withCallingHandlers(
       pkgaudit::audit_tarball(tarball, rules = rules, temp_dir = temp_dir),
       warning = function(w) {
-        warns[[length(warns) + 1L]] <<- conditionMessage(w)
+        if (inherits(w, "pkgaudit_provenance_mismatch")) {
+          mism[[length(mism) + 1L]] <<- w
+        } else {
+          warns[[length(warns) + 1L]] <<- conditionMessage(w)
+        }
         invokeRestart("muffleWarning")
       }
     ),
@@ -225,6 +237,11 @@ audit_cran <- function(
       warns, function(m) .cran_error_row(pkg_name, pkg_version, "warning", m)
     )))
   }
+  if (length(mism) > 0L) {
+    res$provenance <- rbind(res$provenance, do.call(rbind, lapply(
+      mism, function(w) .cran_provenance_row(pkg_name, pkg_version, w)
+    )))
+  }
   res
 }
 
@@ -241,7 +258,10 @@ audit_cran <- function(
     patterns      = .prefix_pkg(.drop_col(audit$patterns, c("message", "attck")),
                                 pkg_name, pkg_version, .empty_cran_patterns),
     errors        = .prefix_pkg(audit$errors, pkg_name, pkg_version,
-                                .empty_cran_errors)
+                                .empty_cran_errors),
+    # Provenance rows are attached by .audit_worker() from captured mismatch
+    # conditions; start empty here.
+    provenance    = .empty_cran_provenance()
   )
 }
 
@@ -261,7 +281,8 @@ audit_cran <- function(
     file_contexts = key("file_contexts", .empty_cran_file_contexts),
     code_contexts = key("code_contexts", .empty_cran_code_contexts),
     patterns      = key("patterns",      .empty_cran_patterns),
-    errors        = key("errors",        .empty_cran_errors)
+    errors        = key("errors",        .empty_cran_errors),
+    provenance    = key("provenance",    .empty_cran_provenance)
   )
 }
 
@@ -317,6 +338,23 @@ audit_cran <- function(
   )
 }
 
+# One provenance-mismatch finding row, built from a pkgaudit_provenance_mismatch
+# condition. package/version are the resolved (DESCRIPTION) identity; the row
+# also records both the filename-derived and DESCRIPTION name/version.
+.cran_provenance_row <- function(pkg, version, w) {
+  na_if_null <- function(x) if (is.null(x)) NA_character_ else x
+  data.frame(
+    package          = pkg,
+    version          = version,
+    filename_name    = na_if_null(w$filename_name),
+    filename_version = na_if_null(w$filename_version),
+    desc_name        = na_if_null(w$desc_name),
+    desc_version     = na_if_null(w$desc_version),
+    message          = conditionMessage(w),
+    stringsAsFactors = FALSE
+  )
+}
+
 
 # --- Empty-frame templates (mirror pkgaudit::audit_package() v0.3.0 columns) --
 .empty_cran_file_contexts <- function() {
@@ -366,11 +404,25 @@ audit_cran <- function(
   )
 }
 
+.empty_cran_provenance <- function() {
+  data.frame(
+    package          = character(0L),
+    version          = character(0L),
+    filename_name    = character(0L),
+    filename_version = character(0L),
+    desc_name        = character(0L),
+    desc_version     = character(0L),
+    message          = character(0L),
+    stringsAsFactors = FALSE
+  )
+}
+
 .empty_cran_result <- function() {
   list(
     file_contexts = .empty_cran_file_contexts(),
     code_contexts = .empty_cran_code_contexts(),
     patterns      = .empty_cran_patterns(),
-    errors        = .empty_cran_errors()
+    errors        = .empty_cran_errors(),
+    provenance    = .empty_cran_provenance()
   )
 }

@@ -29,3 +29,12 @@ the object invisibly. The output reports what was observed -- counts of file
 contexts, code contexts, patterns, and errors -- without any verdict. The
 rules-database SHA-256 is held in metadata but not shown.
 }
+\examples{
+\dontrun{
+result <- audit_package("/path/to/package")
+print(result)                 # metadata + finding counts
+print(result, path = FALSE)   # omit the local Path: line for sharing
+writeLines(format(result))    # the same lines as a character vector
+}
+
+}

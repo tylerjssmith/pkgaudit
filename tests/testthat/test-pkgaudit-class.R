@@ -104,6 +104,22 @@ test_that("format.pkgaudit() marks incomplete coverage only when errors > 0", {
   expect_false(any(grepl("coverage incomplete", no_err)))
 })
 
+test_that("format.pkgaudit() renders NA metadata values uniformly as <unknown>", {
+  obj <- make_obj(metadata = good_metadata(
+    pkg_name               = NA_character_,
+    pkg_version            = NA_character_,
+    pkg_path               = NA_character_,
+    pkg_sha256             = NA_character_,
+    pkgaudit_version       = NA_character_,
+    pkgaudit_rules_version = NA_character_
+  ))
+  lines <- format(obj)
+  expect_true(any(grepl("^Path:\\s+<unknown>$", lines)))
+  expect_true(any(grepl("^SHA-256:\\s+<unknown>$", lines)))
+  expect_true(any(grepl("^Package:\\s+<unknown> \\(source directory\\)$", lines)))
+  expect_true(any(grepl("with pkgaudit <unknown>, rules v<unknown>$", lines)))
+})
+
 test_that("format.pkgaudit() shows the tarball/directory kind", {
   expect_true(any(grepl("\\(source tarball\\)",
                         format(make_obj(metadata = good_metadata(pkg_is_tarball = TRUE))))))

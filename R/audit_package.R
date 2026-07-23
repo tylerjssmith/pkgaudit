@@ -1,27 +1,16 @@
-#' Audit an R source package for security-relevant files and code
+#' Audit an R source package
 #'
 #' Finds security-relevant file and code contexts and code patterns for review
 #' before a package is trusted.
-#'
-#' The scan proceeds in four passes:
-#' \enumerate{
-#'   \item [find_file_contexts()] -- security-relevant files (e.g. `configure`,
-#'     `src/Makevars`, `src/install.libs.R`);
-#'   \item [find_scripts()] -- R scripts R evaluates at install/load time;
-#'   \item for each script, [parse_script()] then [find_code_contexts()] and
-#'     [find_patterns()];
-#'   \item [determine_code_contexts()] -- attribute each pattern to the code
-#'     context it executes in.
-#' }
 #'
 #' Recoverable failures in the orchestrated finders are collected in the
 #' `errors` data frame rather than aborting the audit. File paths in every
 #' returned data frame are relative to the package root.
 #'
-#' @param pkg Path to the root directory of the R source package to audit.
-#'   Defaults to the current directory.
-#' @param rules Named list of rules as returned by [load_rules()]. Defaults to
-#'   the rules bundled with the package.
+#' @param path Path to an R source package root directory. Defaults to the
+#'   current directory.
+#' @param rules Named list of rules. Defaults to the rules bundled with the
+#'   package as returned by [load_rules()].
 #' @param .origin Internal. Used by [audit_tarball()] to record tarball
 #'   provenance: a list with `path`, `sha256`, and `is_tarball`. Leave `NULL`
 #'   for a directory scan, in which case the directory is hashed with
@@ -52,22 +41,22 @@
 #' }
 #'
 #' @export
-audit_package <- function(pkg = ".", rules = load_rules(), .origin = NULL) {
-  stopifnot(is.character(pkg), length(pkg) == 1L, dir.exists(pkg))
+audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
+  stopifnot(is.character(path), length(path) == 1L, dir.exists(path))
   stopifnot(is.list(rules), length(names(rules)) == 3L)
 
   errors        <- .empty_errors()
   code_contexts <- .empty_code_contexts()
   patterns      <- .empty_patterns()
 
-  fc            <- find_file_contexts(pkg, rules$file_contexts)
+  fc            <- find_file_contexts(path, rules$file_contexts)
   file_contexts <- fc$file_contexts
   errors        <- rbind(errors, fc$errors)
 
-  scripts <- find_scripts(pkg)
+  scripts <- find_scripts(path)
 
   for (script in scripts) {
-    file_context <- .relativize(script, pkg)
+    file_context <- .relativize(script, path)
 
     parsed <- parse_script(script)
     if (!is.null(parsed$error)) {
@@ -102,8 +91,8 @@ audit_package <- function(pkg = ".", rules = load_rules(), .origin = NULL) {
   # audit_tarball), otherwise hash a manifest of the directory.
   if (is.null(.origin)) {
     pkg_is_tarball <- FALSE
-    pkg_path       <- pkg
-    pkg_sha256     <- tryCatch(hash_manifest(pkg)$hash,
+    pkg_path       <- path
+    pkg_sha256     <- tryCatch(hash_manifest(path)$hash,
                                error = function(e) NA_character_)
   } else {
     pkg_is_tarball <- isTRUE(.origin$is_tarball)
@@ -111,7 +100,7 @@ audit_package <- function(pkg = ".", rules = load_rules(), .origin = NULL) {
     pkg_sha256     <- .origin$sha256
   }
 
-  metadata <- .build_metadata(pkg, pkg_path, pkg_is_tarball, pkg_sha256)
+  metadata <- .build_metadata(path, pkg_path, pkg_is_tarball, pkg_sha256)
 
   new_pkgaudit(
     file_contexts = file_contexts,

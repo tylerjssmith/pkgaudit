@@ -1,6 +1,7 @@
 # pkgaudit
 
 [![R-CMD-check](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml)
+[![osv-scanner](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml)
 
 pkgaudit provides static analysis security testing (SAST) for R packages. It searches R source code for security-relevant patterns warranting manual review and, if found, returns the results with a clear explanation of the pattern and its relationship to the [MITRE ATT&CK](https://attack.mitre.org/) framework of adversary tactics and techniques.
 
@@ -87,9 +88,12 @@ result$file_contexts  # security-relevant files
 result$code_contexts  # hooks / top-level code
 result$patterns       # flagged calls, each with its code_context
 result$errors         # any files or rules that could not be processed
+result$metadata       # package name/version, SHA-256, rules version, scan time
 
-# Record the rules version for reproducibility
-rules_version()
+# audit_package() returns a `pkgaudit` object with a print method that
+# summarizes the scan metadata and finding counts:
+print(result)
+print(result, path = FALSE)   # omit the local Path: line from shared output
 ```
 
 To audit a downloaded source tarball before installing it:

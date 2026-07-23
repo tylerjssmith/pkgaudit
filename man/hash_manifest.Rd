@@ -4,13 +4,13 @@
 \alias{hash_manifest}
 \title{Compute a manifest hash for a directory}
 \usage{
-hash_manifest(dir, exclude = c("^\\\\.git/", "^\\\\.Rproj\\\\.user/"))
+hash_manifest(path, exclude = c("^\\\\.git/", "^\\\\.Rproj\\\\.user/"))
 }
 \arguments{
-\item{dir}{Path to the directory to hash.}
+\item{path}{Path to the directory to hash.}
 
 \item{exclude}{Character vector of regular expressions matched against paths
-relative to \code{dir}. Defaults exclude version-control and IDE scratch state,
+relative to \code{path}. Defaults exclude version-control and IDE scratch state,
 which are not part of the package and (for \verb{.git/}) are large and volatile.
 Pass \code{character(0)} to hash everything present.}
 }

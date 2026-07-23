@@ -7,6 +7,6 @@
 ^LICENSE\.md$
 \.DS_Store$
 ^\.github$
-docs/*
-references.bib
+^docs$
+^references\.bib$
 ^\.claude$

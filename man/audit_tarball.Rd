@@ -2,15 +2,15 @@
 % Please edit documentation in R/audit_tarball.R
 \name{audit_tarball}
 \alias{audit_tarball}
-\title{Audit an R source package tarball for security-relevant files and code}
+\title{Audit an R source package tarball}
 \usage{
 audit_tarball(path, rules = load_rules(), temp_dir = tempdir())
 }
 \arguments{
-\item{path}{Path to a \code{.tar.gz} source package tarball.}
+\item{path}{Path to a \code{.tar.gz} R source package tarball.}
 
-\item{rules}{Named list of rules as returned by \code{\link[=load_rules]{load_rules()}}. Defaults to
-the rules bundled with the package.}
+\item{rules}{Named list of rules. Defaults to the rules bundled with the
+package as returned by \code{\link[=load_rules]{load_rules()}}.}
 
 \item{temp_dir}{Directory used for extraction. A unique subdirectory is
 created here and removed after auditing regardless of success or failure.
@@ -33,6 +33,14 @@ The package directory audited is the one named after the package, derived
 from the tarball filename (\verb{<package>_<version>.tar.gz} extracts to
 \verb{<package>/}). If no directory of that name is present, the tarball is
 rejected rather than guessing which directory to audit.
+
+The reported package name and version always come from the extracted
+DESCRIPTION. If the DESCRIPTION \code{Package} or \code{Version} disagrees with the
+corresponding part of the filename (\verb{<package>_<version>.tar.gz}), a warning
+is issued to flag a possible provenance mismatch (a mislabeled or repackaged
+tarball); the DESCRIPTION values still win. The warning is a catchable
+\code{pkgaudit_provenance_mismatch} condition carrying the filename and DESCRIPTION
+name/version as fields, so callers can capture it programmatically.
 }
 \examples{
 \dontrun{

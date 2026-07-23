@@ -1,13 +1,13 @@
-#' Audit an R source package tarball for security-relevant files and code
+#' Audit an R source package tarball
 #'
 #' Extracts a source package tarball to a temporary directory, applies
 #' [audit_package()], removes the temporary directory, and returns the result.
 #' This is the typical pre-install workflow: audit a downloaded tarball and
 #' review the findings before calling [utils::install.packages()].
 #'
-#' @param path Path to a `.tar.gz` source package tarball.
-#' @param rules Named list of rules as returned by [load_rules()]. Defaults to
-#'   the rules bundled with the package.
+#' @param path Path to a `.tar.gz` R source package tarball.
+#' @param rules Named list of rules. Defaults to the rules bundled with the
+#'   package as returned by [load_rules()].
 #' @param temp_dir Directory used for extraction. A unique subdirectory is
 #'   created here and removed after auditing regardless of success or failure.
 #'   Defaults to [base::tempdir()].
@@ -22,6 +22,14 @@
 #' from the tarball filename (`<package>_<version>.tar.gz` extracts to
 #' `<package>/`). If no directory of that name is present, the tarball is
 #' rejected rather than guessing which directory to audit.
+#'
+#' The reported package name and version always come from the extracted
+#' DESCRIPTION. If the DESCRIPTION `Package` or `Version` disagrees with the
+#' corresponding part of the filename (`<package>_<version>.tar.gz`), a warning
+#' is issued to flag a possible provenance mismatch (a mislabeled or repackaged
+#' tarball); the DESCRIPTION values still win. The warning is a catchable
+#' `pkgaudit_provenance_mismatch` condition carrying the filename and DESCRIPTION
+#' name/version as fields, so callers can capture it programmatically.
 #'
 #' @examples
 #' \dontrun{
@@ -69,9 +77,46 @@ audit_tarball <- function(
     )
   }
 
-  audit_package(
+  result <- audit_package(
     pkg_dir,
     rules   = rules,
     .origin = list(path = path, sha256 = tarball_sha256, is_tarball = TRUE)
   )
+
+  fname_version <- if (grepl("_", tar_name)) sub("^[^_]*_", "", tar_name) else NA_character_
+  desc_name     <- result$metadata$pkg_name
+  desc_version  <- result$metadata$pkg_version
+
+  mismatches <- character(0L)
+  if (!is.na(desc_name) && !identical(desc_name, pkg_name)) {
+    mismatches <- c(mismatches,
+      paste0("package name '", pkg_name, "' vs DESCRIPTION Package '", desc_name, "'"))
+  }
+  if (!is.na(desc_version) && !is.na(fname_version) &&
+      !identical(desc_version, fname_version)) {
+    mismatches <- c(mismatches,
+      paste0("version '", fname_version, "' vs DESCRIPTION Version '", desc_version, "'"))
+  }
+  if (length(mismatches) > 0L) {
+    # Signal a classed condition (subclass of `warning`) so interactive callers
+    # see a normal warning while programmatic callers (e.g. audit_cran()) can
+    # catch it by class and read the structured fields, not the message string.
+    warning(structure(
+      class = c("pkgaudit_provenance_mismatch", "warning", "condition"),
+      list(
+        message = paste0(
+          "Tarball '", basename(path),
+          "' filename does not match its DESCRIPTION: ",
+          paste(mismatches, collapse = "; "), "."
+        ),
+        call             = NULL,
+        filename_name    = pkg_name,
+        filename_version = fname_version,
+        desc_name        = desc_name,
+        desc_version     = desc_version
+      )
+    ))
+  }
+
+  result
 }

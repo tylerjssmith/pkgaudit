@@ -2,16 +2,16 @@
 % Please edit documentation in R/audit_package.R
 \name{audit_package}
 \alias{audit_package}
-\title{Audit an R source package for security-relevant files and code}
+\title{Audit an R source package}
 \usage{
-audit_package(pkg = ".", rules = load_rules(), .origin = NULL)
+audit_package(path = ".", rules = load_rules(), .origin = NULL)
 }
 \arguments{
-\item{pkg}{Path to the root directory of the R source package to audit.
-Defaults to the current directory.}
+\item{path}{Path to an R source package root directory. Defaults to the
+current directory.}
 
-\item{rules}{Named list of rules as returned by \code{\link[=load_rules]{load_rules()}}. Defaults to
-the rules bundled with the package.}
+\item{rules}{Named list of rules. Defaults to the rules bundled with the
+package as returned by \code{\link[=load_rules]{load_rules()}}.}
 
 \item{.origin}{Internal. Used by \code{\link[=audit_tarball]{audit_tarball()}} to record tarball
 provenance: a list with \code{path}, \code{sha256}, and \code{is_tarball}. Leave \code{NULL}
@@ -39,17 +39,6 @@ Finds security-relevant file and code contexts and code patterns for review
 before a package is trusted.
 }
 \details{
-The scan proceeds in four passes:
-\enumerate{
-\item \code{\link[=find_file_contexts]{find_file_contexts()}} -- security-relevant files (e.g. \code{configure},
-\code{src/Makevars}, \code{src/install.libs.R});
-\item \code{\link[=find_scripts]{find_scripts()}} -- R scripts R evaluates at install/load time;
-\item for each script, \code{\link[=parse_script]{parse_script()}} then \code{\link[=find_code_contexts]{find_code_contexts()}} and
-\code{\link[=find_patterns]{find_patterns()}};
-\item \code{\link[=determine_code_contexts]{determine_code_contexts()}} -- attribute each pattern to the code
-context it executes in.
-}
-
 Recoverable failures in the orchestrated finders are collected in the
 \code{errors} data frame rather than aborting the audit. File paths in every
 returned data frame are relative to the package root.

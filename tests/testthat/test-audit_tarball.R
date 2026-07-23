@@ -100,3 +100,69 @@ test_that("audit_tarball() returns no patterns for a clean package", {
   expect_equal(nrow(res$patterns), 0L)
   expect_equal(nrow(res$errors), 0L)
 })
+
+# provenance -------------------------------------------------------------------
+test_that("audit_tarball() warns when the filename name disagrees with DESCRIPTION", {
+  # Tarball named foo_1.0.tar.gz (extracts to foo/) but DESCRIPTION says realname.
+  base <- tempfile()
+  dir.create(file.path(base, "foo", "R"), recursive = TRUE)
+  writeLines(c("Package: realname", "Version: 1.0"),
+             file.path(base, "foo", "DESCRIPTION"))
+  writeLines("invisible(NULL)", file.path(base, "foo", "R", "zzz.R"))
+  out <- tempfile("tb"); dir.create(out)
+  tb  <- file.path(out, "foo_1.0.tar.gz")
+  owd <- setwd(base)
+  utils::tar(tb, files = "foo", compression = "gzip", tar = "internal")
+  setwd(owd)
+  on.exit(unlink(c(base, out), recursive = TRUE), add = TRUE)
+
+  expect_warning(res <- audit_tarball(tb), "package name 'foo' vs DESCRIPTION Package 'realname'")
+  expect_equal(res$metadata$pkg_name, "realname")  # DESCRIPTION still wins
+})
+
+test_that("audit_tarball() warns when the filename version disagrees with DESCRIPTION", {
+  # Tarball named foo_1.0.tar.gz but DESCRIPTION Version is 9.9.
+  base <- tempfile()
+  dir.create(file.path(base, "foo", "R"), recursive = TRUE)
+  writeLines(c("Package: foo", "Version: 9.9"),
+             file.path(base, "foo", "DESCRIPTION"))
+  writeLines("invisible(NULL)", file.path(base, "foo", "R", "zzz.R"))
+  out <- tempfile("tb"); dir.create(out)
+  tb  <- file.path(out, "foo_1.0.tar.gz")
+  owd <- setwd(base)
+  utils::tar(tb, files = "foo", compression = "gzip", tar = "internal")
+  setwd(owd)
+  on.exit(unlink(c(base, out), recursive = TRUE), add = TRUE)
+
+  expect_warning(res <- audit_tarball(tb), "version '1.0' vs DESCRIPTION Version '9.9'")
+  expect_equal(res$metadata$pkg_version, "9.9")  # DESCRIPTION still wins
+})
+
+test_that("audit_tarball() mismatch is a classed condition carrying structured fields", {
+  base <- tempfile()
+  dir.create(file.path(base, "foo", "R"), recursive = TRUE)
+  writeLines(c("Package: realname", "Version: 9.9"),
+             file.path(base, "foo", "DESCRIPTION"))
+  writeLines("invisible(NULL)", file.path(base, "foo", "R", "zzz.R"))
+  out <- tempfile("tb"); dir.create(out)
+  tb  <- file.path(out, "foo_1.0.tar.gz")
+  owd <- setwd(base)
+  utils::tar(tb, files = "foo", compression = "gzip", tar = "internal")
+  setwd(owd)
+  on.exit(unlink(c(base, out), recursive = TRUE), add = TRUE)
+
+  cond <- tryCatch(audit_tarball(tb),
+                   pkgaudit_provenance_mismatch = function(w) w)
+  expect_s3_class(cond, "pkgaudit_provenance_mismatch")
+  expect_s3_class(cond, "warning")
+  expect_equal(cond$filename_name, "foo")
+  expect_equal(cond$filename_version, "1.0")
+  expect_equal(cond$desc_name, "realname")
+  expect_equal(cond$desc_version, "9.9")
+})
+
+test_that("audit_tarball() does not warn when filename and DESCRIPTION agree", {
+  tb <- make_test_tarball("invisible(NULL)", pkg_name = "testpkg", version = "0.1.0")
+  on.exit(unlink(tb), add = TRUE)
+  expect_no_warning(audit_tarball(tb))
+})

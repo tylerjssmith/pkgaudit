@@ -42,6 +42,17 @@
 #' @return A `pkgaudit` object: a list of `file_contexts`, `code_contexts`,
 #'   `patterns`, `errors`, and `metadata`.
 #'
+#' @examples
+#' \dontrun{
+#' # Most callers get a pkgaudit object from audit_package(); new_pkgaudit()
+#' # is for constructing one directly, e.g. from stored results.
+#' result <- audit_package("/path/to/package")
+#' obj <- new_pkgaudit(
+#'   result$file_contexts, result$code_contexts,
+#'   result$patterns, result$errors, result$metadata
+#' )
+#' }
+#'
 #' @export
 new_pkgaudit <- function(file_contexts, code_contexts, patterns, errors,
                          metadata) {
@@ -134,6 +145,14 @@ new_pkgaudit <- function(file_contexts, code_contexts, patterns, errors,
 #' @return `format.pkgaudit()` returns a character vector of lines.
 #'   `print.pkgaudit()` returns `x` invisibly.
 #'
+#' @examples
+#' \dontrun{
+#' result <- audit_package("/path/to/package")
+#' print(result)                 # metadata + finding counts
+#' print(result, path = FALSE)   # omit the local Path: line for sharing
+#' writeLines(format(result))    # the same lines as a character vector
+#' }
+#'
 #' @export
 format.pkgaudit <- function(x, path = TRUE, ...) {
   m <- x$metadata
@@ -142,15 +161,16 @@ format.pkgaudit <- function(x, path = TRUE, ...) {
   header <- paste0("--- pkgaudit ",
                    strrep("-", max(0L, 80L - nchar("--- pkgaudit "))))
 
-  name_part <- if (is.na(m$pkg_name)) "<unknown>" else m$pkg_name
+  name_part <- .or_unknown(m$pkg_name)
   ver_part  <- if (is.na(m$pkg_version)) "" else paste0(" v", m$pkg_version)
   kind      <- if (isTRUE(m$pkg_is_tarball)) "source tarball" else "source directory"
   pkg_value <- paste0(name_part, ver_part, " (", kind, ")")
 
-  pav <- if (is.na(m$pkgaudit_version)) "<unknown>" else m$pkgaudit_version
-  rv  <- if (is.na(m$pkgaudit_rules_version)) "<unknown>" else m$pkgaudit_rules_version
-  scanned_value <- paste0(.format_scanned(m$scanned),
-                          " with pkgaudit ", pav, ", rules v", rv)
+  scanned_value <- paste0(
+    .format_scanned(m$scanned),
+    " with pkgaudit ", .or_unknown(m$pkgaudit_version),
+    ", rules v", .or_unknown(m$pkgaudit_rules_version)
+  )
 
   n_errors  <- nrow(x$errors)
   err_value <- if (n_errors > 0L) {
@@ -161,11 +181,11 @@ format.pkgaudit <- function(x, path = TRUE, ...) {
 
   lines <- c(header, field("Package:", pkg_value))
   if (isTRUE(path)) {
-    lines <- c(lines, field("Path:", m$pkg_path))
+    lines <- c(lines, field("Path:", .or_unknown(m$pkg_path)))
   }
   c(
     lines,
-    field("SHA-256:",       m$pkg_sha256),
+    field("SHA-256:",       .or_unknown(m$pkg_sha256)),
     field("Scanned:",       scanned_value),
     field("File contexts:", nrow(x$file_contexts)),
     field("Code contexts:", nrow(x$code_contexts)),
@@ -181,6 +201,13 @@ print.pkgaudit <- function(x, path = TRUE, ...) {
   invisible(x)
 }
 
+
+# Render a length-one metadata value, or "<unknown>" when it is absent or NA.
+# new_pkgaudit() validates field types but not knownness, so any metadata field
+# may be NA in a hand-constructed object; the display renders those uniformly.
+.or_unknown <- function(x) {
+  if (length(x) != 1L || is.na(x)) "<unknown>" else x
+}
 
 # Render the stored ISO 8601 UTC timestamp as "YYYY-MM-DD HH:MM UTC". Falls back
 # to the raw stored value if it cannot be parsed, and to "<unknown>" if absent.
