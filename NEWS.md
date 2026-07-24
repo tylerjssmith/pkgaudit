@@ -2,22 +2,13 @@
 
 This is a major redesign of pkgaudit. The previous model matched specific
 function calls inside lifecycle hooks (e.g. `system()` in `.onLoad()`); 0.3.0
-replaces it with three independent rule classes and organizes findings by where
-in the package lifecycle code can run.
+replaces it with three independent rule classes.
 
 ## Rule model
 
-* **File contexts** — files R itself executes at build, check, or install
-  (e.g. `configure`, `src/Makevars`, `src/install.libs.R`).
-* **Code contexts** — top-level code and lifecycle hooks (`.onLoad`,
-  `.onAttach`, `.onUnload`, `.onDetach`, `.Last.lib`, `rlang::on_load`) whose
-  bodies run on install from source or namespace load/attach/unload/detach.
-* **Patterns** — security-relevant calls (`system()`/`system2()`/`shell()`,
-  `eval(parse())`, `source()`, `download.file()`, `options(repos=)`, and
-  outbound HTTP via `curl`, `httr`, `httr2`, `RCurl`), each attributed to the
-  code context it executes in (a named hook, `Top-level`, or `Other`). This
-  means, for example, that all `system()` calls can be seen but stratified by
-  those in specific hooks, in top-level code, or in ordinary functions.
+* **File contexts** are files that R executes during build, check, or install.
+* **Code contexts** are top-level code and lifecycle hooks whose bodies run automatically when a namespace is loaded, attached, unloaded, or detached.
+* **Patterns** are security-relevant function calls. Each pattern finding is attributed to the code context it executes in, so a `system()` call inside `.onLoad` is distinguished from one inside an ordinary function (`Other`) or at top level (`Top-level`).
 
 ## Results and metadata
 
@@ -37,6 +28,14 @@ in the package lifecycle code can run.
   when the tarball filename disagrees with the `DESCRIPTION` `Package`/`Version`
   (a mislabeled or repackaged tarball). The warning is a catchable
   `pkgaudit_provenance_mismatch` condition carrying structured fields.
+* `audit_tarball()` now validates a tarball before extracting it, failing closed
+  on link entries (symlink/hard link), non-standard typeflags (GNU long-name,
+  PAX), path traversal, absolute/drive-qualified paths, decompression bombs, and
+  archives without exactly one top-level directory. A refusal is a
+  `pkgaudit_invalid_tarball` condition, so it stops for a single-package caller
+  but can be caught and recorded by batch callers. Validation caps
+  (`max_entries`, `max_bytes`, `max_ratio`) are exposed and default to values
+  calibrated against all of CRAN.
 * Rules are stored in a versioned, hash-verified SQLite database. `load_rules()`
   verifies the database against its bundled SHA-256 sidecar on every call and
   refuses to load a modified database.
@@ -45,6 +44,8 @@ in the package lifecycle code can run.
 
 * `hash_manifest()` — reproducible SHA-256 manifest hash of a directory.
 * `new_pkgaudit()` — constructor and validator for `pkgaudit` objects.
+* `validate_tar()` — fail-closed structural validation of a source tarball
+  before extraction.
 
 ## Removed
 
