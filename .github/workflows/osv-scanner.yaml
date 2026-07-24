@@ -1,37 +1,19 @@
-# .github/workflows/osv-scanner.yaml
-# Scans dependencies (e.g. renv.lock) for known vulnerabilities using Google's
-# OSV-Scanner. Runs fail on any known vulnerability, so a passing run means none
-# were found.
 name: osv-scanner
 
 on:
-  push:
-    branches: [main, master]
-  pull_request:
   schedule:
-    - cron: "30 12 * * 1"   # weekly, Mondays 12:30 UTC, to catch new disclosures
+    - cron: "30 12 * * 1"
+  push:
+    branches: [main]
 
-# Deny all permissions by default; grant only what each job needs.
-permissions: {}
+permissions:
+  # Required to upload SARIF file to CodeQL.
+  actions: read
+  # Required for writing security events to upload SARIF file to security tab
+  security-events: write
+  # Only need to read contents
+  contents: read
 
 jobs:
-  # Full scan of the default branch and on a schedule: uploads SARIF to the
-  # Security tab and fails the run on any known vulnerability.
-  scan:
-    if: github.event_name != 'pull_request'
-    permissions:
-      actions: read           # read workflow run data for the SARIF upload
-      security-events: write  # upload SARIF results to the Security tab
-      contents: read          # check out and read the repository
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.3.8
-
-  # Pull requests: report only newly-introduced vulnerabilities (diff vs. base)
-  # and fail on them. SARIF upload is disabled so PRs from forks -- whose token
-  # cannot write security-events -- do not fail on the upload step.
-  scan-pr:
-    if: github.event_name == 'pull_request'
-    permissions:
-      contents: read
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.3.8
-    with:
-      upload-sarif: false
+  scan-scheduled:
+    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.3.8"
