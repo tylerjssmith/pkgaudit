@@ -26,6 +26,9 @@
 #' @param checkpoint_dir Optional directory. When set, each chunk's aggregated
 #'   result is written there as `chunk_NNNNN.rds` as it completes, so a long run
 #'   can be resumed or recovered after a crash. Created if it does not exist.
+#' @param max_entries,max_bytes,max_ratio Pre-extraction validation caps passed
+#'   through to [pkgaudit::audit_tarball()] / [pkgaudit::validate_tar()]. The
+#'   defaults are calibrated to CRAN; raise them for larger ecosystems.
 #'
 #' @return A named list of five data frames, with `package` and `version`
 #'   prepended to the columns from [pkgaudit::audit_package()]. Novice-facing
@@ -40,8 +43,9 @@
 #'       `line_number`, `column_number`, `code_context`.}
 #'     \item{errors}{`package`, `version`, `stage`, `file_context`, `rule`,
 #'       `message`. Captures per-file audit errors as well as tarball-level
-#'       failures (`stage` `"parse_filename"` or `"audit_tarball"`) and any
-#'       generic warnings (`stage` `"warning"`).}
+#'       failures (`stage` `"parse_filename"`, `"validate_tar"` for a refused
+#'       archive, or `"audit_tarball"`) and any generic warnings (`stage`
+#'       `"warning"`).}
 #'     \item{provenance}{`package`, `version`, `filename_name`,
 #'       `filename_version`, `desc_name`, `desc_version`, `message`. One row per
 #'       tarball whose filename disagrees with its DESCRIPTION `Package`/`Version`
@@ -84,7 +88,10 @@ audit_cran <- function(
   on_error       = c("skip", "stop"),
   workers        = parallel::detectCores(logical = FALSE) - 1L,
   chunk_size     = 200L,
-  checkpoint_dir = NULL
+  checkpoint_dir = NULL,
+  max_entries    = 100000L,
+  max_bytes      = 2 * 1024^3,
+  max_ratio      = Inf
 ) {
   on_error   <- match.arg(on_error)
   workers    <- max(1L, as.integer(workers))
@@ -125,7 +132,8 @@ audit_cran <- function(
 
     raw <- parallel::mclapply(
       idx,
-      function(i) .audit_worker(tarballs[[i]], rules, temp_dir, on_error),
+      function(i) .audit_worker(tarballs[[i]], rules, temp_dir, on_error,
+                                max_entries, max_bytes, max_ratio),
       mc.cores       = workers,
       mc.preschedule = FALSE   # better load balancing for uneven package sizes
     )
@@ -180,7 +188,8 @@ audit_cran <- function(
 # Package name and version label every row from the audited DESCRIPTION
 # (audit_package() metadata); the filename-derived values are a fallback for the
 # error path (no metadata) and a missing/malformed DESCRIPTION (metadata NA).
-.audit_worker <- function(tarball, rules, temp_dir, on_error) {
+.audit_worker <- function(tarball, rules, temp_dir, on_error,
+                          max_entries, max_bytes, max_ratio) {
   meta <- .parse_tarball_name(tarball)
   if (is.null(meta)) {
     return(.cran_fail(
@@ -200,7 +209,9 @@ audit_cran <- function(
   mism  <- list()
   audit <- tryCatch(
     withCallingHandlers(
-      pkgaudit::audit_tarball(tarball, rules = rules, temp_dir = temp_dir),
+      pkgaudit::audit_tarball(tarball, rules = rules, temp_dir = temp_dir,
+                              max_entries = max_entries, max_bytes = max_bytes,
+                              max_ratio = max_ratio),
       warning = function(w) {
         if (inherits(w, "pkgaudit_provenance_mismatch")) {
           mism[[length(mism) + 1L]] <<- w
@@ -222,8 +233,14 @@ audit_cran <- function(
   if (inherits(audit, "condition")) {
     pkg_name    <- fb_name
     pkg_version <- fb_version
-    res <- .cran_fail(pkg_name, pkg_version, "audit_tarball",
-                      conditionMessage(audit))
+    # A refused archive (validate_tar) is recorded distinctly from other
+    # audit_tarball errors so refused tarballs can be filtered at CRAN scale.
+    stage <- if (inherits(audit, "pkgaudit_invalid_tarball")) {
+      "validate_tar"
+    } else {
+      "audit_tarball"
+    }
+    res <- .cran_fail(pkg_name, pkg_version, stage, conditionMessage(audit))
   } else {
     # Authoritative name/version from the audited DESCRIPTION, filename as
     # fallback when the DESCRIPTION was missing or malformed (metadata NA).
