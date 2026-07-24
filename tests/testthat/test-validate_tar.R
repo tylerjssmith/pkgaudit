@@ -1,0 +1,105 @@
+# Build a .tar.gz from a set of top-level directories under a fresh base, each
+# given as name = list(relpath = contents). Returns the tarball path.
+build_archive <- function(dirs) {
+  base <- tempfile()
+  for (top in names(dirs)) {
+    files <- dirs[[top]]
+    for (rel in names(files)) {
+      target <- file.path(base, top, rel)
+      dir.create(dirname(target), recursive = TRUE, showWarnings = FALSE)
+      writeLines(files[[rel]], target)
+    }
+  }
+  tb  <- tempfile(fileext = ".tar.gz")
+  owd <- setwd(base); on.exit(setwd(owd), add = TRUE)
+  utils::tar(tb, files = names(dirs), compression = "gzip", tar = "internal")
+  tb
+}
+
+# happy path -------------------------------------------------------------------
+test_that("validate_tar() accepts a well-formed single-directory archive", {
+  tb <- build_archive(list(foo = list("DESCRIPTION" = "Package: foo",
+                                      "R/zzz.R" = "invisible(NULL)")))
+  on.exit(unlink(tb), add = TRUE)
+
+  e <- validate_tar(tb)
+  expect_s3_class(e, "data.frame")
+  expect_named(e, c("name", "type", "linkname", "size"))
+  expect_true(all(e$type %in% c("file", "dir")))
+  # Exactly one top-level directory.
+  expect_equal(length(unique(sub("/.*$", "", e$name))), 1L)
+})
+
+# refusals (classed condition) -------------------------------------------------
+test_that("validate_tar() refuses more than one top-level directory", {
+  tb <- build_archive(list(foo = list("DESCRIPTION" = "Package: foo"),
+                           bar = list("x.R" = "1")))
+  on.exit(unlink(tb), add = TRUE)
+
+  err <- tryCatch(validate_tar(tb), error = function(e) e)
+  expect_s3_class(err, "pkgaudit_invalid_tarball")
+  expect_match(conditionMessage(err), "top-level directories")
+})
+
+test_that("validate_tar() refuses an archive exceeding max_entries", {
+  tb <- build_archive(list(foo = stats::setNames(
+    as.list(rep("x", 6L)), sprintf("f%d.R", seq_len(6L)))))
+  on.exit(unlink(tb), add = TRUE)
+
+  err <- tryCatch(validate_tar(tb, max_entries = 3L), error = function(e) e)
+  expect_s3_class(err, "pkgaudit_invalid_tarball")
+  expect_match(conditionMessage(err), "more than 3 entries")
+})
+
+test_that("validate_tar() refuses an archive exceeding max_bytes", {
+  tb <- build_archive(list(foo = list("big.txt" = strrep("A", 5000L))))
+  on.exit(unlink(tb), add = TRUE)
+
+  err <- tryCatch(validate_tar(tb, max_bytes = 1024), error = function(e) e)
+  expect_s3_class(err, "pkgaudit_invalid_tarball")
+  expect_match(conditionMessage(err), "uncompressed size exceeds")
+})
+
+test_that("validate_tar() refuses an archive whose expansion ratio exceeds max_ratio", {
+  # A highly compressible payload: large uncompressed, tiny compressed.
+  tb <- build_archive(list(foo = list("big.txt" = strrep("A", 200000L))))
+  on.exit(unlink(tb), add = TRUE)
+
+  err <- tryCatch(validate_tar(tb, max_ratio = 5), error = function(e) e)
+  expect_s3_class(err, "pkgaudit_invalid_tarball")
+  expect_match(conditionMessage(err), "ratio exceeds")
+})
+
+test_that("validate_tar() refuses a truncated archive", {
+  tb <- build_archive(list(foo = list("DESCRIPTION" = "Package: foo")))
+  # Truncate the gzip stream partway through.
+  raw <- readBin(tb, "raw", n = file.size(tb))
+  writeBin(raw[seq_len(as.integer(length(raw) / 2))], tb)
+  on.exit(unlink(tb), add = TRUE)
+
+  err <- tryCatch(validate_tar(tb), error = function(e) e)
+  expect_s3_class(err, "pkgaudit_invalid_tarball")
+})
+
+# tar_entries() (internal) -----------------------------------------------------
+test_that("tar_entries() reports type and size without extracting", {
+  tb <- build_archive(list(foo = list("DESCRIPTION" = "Package: foo",
+                                      "R/zzz.R" = "invisible(NULL)")))
+  on.exit(unlink(tb), add = TRUE)
+
+  e <- tar_entries(tb)
+  expect_true("dir" %in% e$type)
+  expect_true("file" %in% e$type)
+  expect_true(all(e$size >= 0))
+})
+
+test_that("tar_entries() validates its arguments", {
+  tb <- build_archive(list(foo = list("DESCRIPTION" = "Package: foo")))
+  on.exit(unlink(tb), add = TRUE)
+
+  expect_error(tar_entries("/no/such/file.tar.gz"), "file.exists")
+  expect_error(tar_entries(tb, max_entries = 0),    "max_entries")
+  expect_error(tar_entries(tb, max_bytes   = -1),   "max_bytes")
+  expect_error(tar_entries(tb, max_ratio   = 0),    "max_ratio")
+  expect_error(tar_entries(tb, chunk       = 0),    "chunk")
+})

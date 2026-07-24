@@ -1,0 +1,236 @@
+# Tar header inspection and fail-closed validation for untrusted source package
+# tarballs.
+
+# Caps and rules below are justified by a survey of all 24,216 CRAN source
+# tarballs (2026-07), which found: 0 link entries, 0 non-standard typeflags
+# (GNU long-name / PAX), 0 traversal paths, 0 absolute paths, and exactly one
+# top-level directory in every archive. Maxima observed: 13,624 entries and
+# ~140 MB uncompressed. Refusing all of the above therefore rejects no
+# legitimate CRAN package.
+
+#' Validate a source package tarball before extraction
+#'
+#' Fail closed: refuse the whole archive rather than extracting a filtered
+#' subset, so a partially-validated archive is never written to disk. This is
+#' the check [audit_tarball()] runs before extracting an untrusted tarball.
+#'
+#' Rejects link entries (symlink, hard link), non-standard typeflags (GNU
+#' long-name, PAX), path traversal, absolute and drive-qualified paths, paths
+#' containing backslashes or control characters, empty paths, and archives that
+#' do not extract to exactly one top-level directory. It also enforces the
+#' entry-count, uncompressed-size, and expansion-ratio caps applied while reading
+#' (`max_entries`, `max_bytes`, `max_ratio`). A survey of all CRAN source
+#' tarballs found none of the structural problems, so the rules cost nothing on
+#' legitimate packages. Reads gzip and uncompressed tar only.
+#'
+#' A refusal is signaled as a `pkgaudit_invalid_tarball` condition (a subclass
+#' of `error`), so it stops by default but can be caught by class.
+#'
+#' @inheritParams tar_entries
+#' @return Invisibly, a data frame of the archive's entries with columns
+#'   `name`, `type`, `linkname`, and `size`.
+#'
+#' @examples
+#' \dontrun{
+#' # Stops with a "Refusing archive" error if the tarball is malicious/malformed.
+#' validate_tar("path/to/package_1.0.0.tar.gz")
+#' }
+#'
+#' @export
+validate_tar <- function(tarfile,
+                         max_entries = 100000L,
+                         max_bytes   = 2 * 1024^3,
+                         max_ratio   = Inf) {
+
+  e <- tar_entries(tarfile,
+                   max_entries = max_entries,
+                   max_bytes   = max_bytes,
+                   max_ratio   = max_ratio)
+
+  parts <- strsplit(e$name, "/", fixed = TRUE)
+
+  bad_type  <- e$type %in% c("symlink", "hardlink", "other")
+  traversal <- vapply(parts, function(p) any(p == ".."), logical(1))
+  absolute  <- grepl("^/", e$name) | grepl("^[A-Za-z]:", e$name)
+  # Backslashes are not path separators in tar, so a name containing one would
+  # be a literal character here but a separator on Windows.
+  backslash <- grepl("\\\\", e$name)
+  # Control characters and newlines in a path are never legitimate and can
+  # corrupt logs or terminal output.
+  control   <- grepl("[[:cntrl:]]", e$name)
+  empty     <- !nzchar(e$name)
+
+  toplevel  <- unique(vapply(parts, function(p) {
+    p <- p[nzchar(p)]
+    if (length(p) == 0L) NA_character_ else p[1L]
+  }, character(1)))
+  toplevel  <- toplevel[!is.na(toplevel)]
+
+  problems <- c(
+    if (any(bad_type))  paste0(sum(bad_type),  " link or non-standard entries"),
+    if (any(traversal)) paste0(sum(traversal), " traversal paths"),
+    if (any(absolute))  paste0(sum(absolute),  " absolute paths"),
+    if (any(backslash)) paste0(sum(backslash), " paths containing backslashes"),
+    if (any(control))   paste0(sum(control),   " paths containing control characters"),
+    if (any(empty))     paste0(sum(empty),     " empty paths"),
+    if (length(toplevel) != 1L)
+      paste0(length(toplevel), " top-level directories (expected 1)")
+  )
+
+  if (length(problems) > 0L) {
+    .refuse_tar("Refusing archive '", basename(tarfile), "': ",
+                paste(problems, collapse = "; "), ".")
+  }
+
+  invisible(e)
+}
+
+
+#' List tar entries with type and link target
+#'
+#' @param tarfile Path to a `.tar` or `.tar.gz` archive.
+#' @param max_entries Maximum number of entries to read before failing closed.
+#'   Default 100,000 (about 7x the largest CRAN package).
+#' @param max_bytes Maximum uncompressed bytes to read before failing closed.
+#'   Default 2 GB (about 15x the largest CRAN package). Raise for ecosystems
+#'   with larger artifacts, e.g. Bioconductor annotation and experiment-data
+#'   packages.
+#' @param max_ratio Maximum uncompressed:compressed ratio before failing closed,
+#'   or `Inf` to disable. Targets decompression bombs, which are characterised
+#'   by extreme ratios rather than absolute size. Default `Inf` until a
+#'   corpus-derived threshold is chosen.
+#' @param chunk Bytes read per call when skipping entry data. Bounds peak
+#'   allocation so a huge declared size cannot force one huge read.
+#'
+#' @return A data frame with `name`, `type`, `linkname`, and `size`. `type` is
+#'   one of `"file"`, `"hardlink"`, `"symlink"`, `"dir"`, `"other"`.
+#'
+#' @details
+#' `utils::untar(list = TRUE)` returns names only, so it cannot distinguish a
+#' symlink entry from a regular file. This reads the tar headers directly to
+#' recover each entry's typeflag and linkname, which are used to refuse link
+#' entries before extracting an untrusted archive.
+#'
+#' Reads headers only: entry data is skipped, never written to disk. Note that
+#' reaching entry N's header still requires decompressing everything before it.
+#' Reads gzip and uncompressed tar via [base::gzfile()]; bzip2/xz are not
+#' decompressed and will be refused as malformed.
+#'
+#' @keywords internal
+tar_entries <- function(tarfile,
+                        max_entries = 100000L,
+                        max_bytes   = 2 * 1024^3,
+                        max_ratio   = Inf,
+                        chunk       = 1048576L) {
+
+  stopifnot(is.character(tarfile), length(tarfile) == 1L, file.exists(tarfile))
+  stopifnot(is.numeric(max_entries), length(max_entries) == 1L, max_entries > 0)
+  stopifnot(is.numeric(max_bytes), length(max_bytes) == 1L, max_bytes > 0)
+  stopifnot(is.numeric(max_ratio), length(max_ratio) == 1L, max_ratio > 0)
+  stopifnot(is.numeric(chunk), length(chunk) == 1L, chunk > 0)
+
+  compressed <- file.size(tarfile)
+
+  con <- gzfile(tarfile, open = "rb")
+  on.exit(close(con), add = TRUE)
+
+  out   <- list()
+  bytes <- 0
+
+  repeat {
+    hdr <- readBin(con, "raw", 512L)
+    # A well-formed archive ends with zero blocks. Running out of data instead
+    # means the archive is truncated relative to its own headers; treat that as
+    # untrusted rather than returning a partial listing.
+    if (length(hdr) < 512L) {
+      .refuse_tar("Refusing archive: truncated (incomplete header block).")
+    }
+    bytes <- bytes + 512
+    if (all(hdr == as.raw(0))) break            # end-of-archive
+
+    fld <- function(off, len) {
+      raw <- hdr[(off + 1L):(off + len)]
+      raw <- raw[raw != as.raw(0)]              # strips NULs before conversion
+      trimws(rawToChar(raw))
+    }
+
+    name     <- fld(0L,   100L)
+    size_oct <- fld(124L,  12L)
+    linkname <- fld(157L, 100L)
+    prefix   <- fld(345L, 155L)                 # ustar long-path prefix
+    # Join with "/" rather than file.path(): the tar format is always
+    # "/"-separated regardless of the host platform.
+    if (nzchar(prefix)) name <- paste0(prefix, "/", name)
+
+    size <- suppressWarnings(strtoi(size_oct, base = 8L))
+    if (is.na(size) || size < 0) size <- 0
+
+    # Compare the typeflag as a BYTE. Never rawToChar() it: the byte is NUL for
+    # regular files written by older tar implementations, and R strings cannot
+    # contain a nul.
+    tf <- as.integer(hdr[157L])
+    type <- if (tf %in% c(48L, 0L)) "file"
+            else if (tf == 49L)     "hardlink"
+            else if (tf == 50L)     "symlink"
+            else if (tf == 53L)     "dir"
+            else                    "other"     # incl. 'L','K','x','g'
+
+    # GNU long-name ('L'/'K') and PAX ('x'/'g') entries carry the real path in
+    # the FOLLOWING entry's data block, so a parser that ignores them can be
+    # made to misattribute names -- a benign-looking header overridden by a
+    # long-name record. In the survey mentioned at the top of this script, no
+    # CRAN package used them, so they are refused rather than parsed.
+    # validate_tar() enforces this; the "other" type is retained here so callers
+    # can see what was found.
+
+    out[[length(out) + 1L]] <- data.frame(
+      name = name, type = type, linkname = linkname, size = size,
+      stringsAsFactors = FALSE
+    )
+
+    if (length(out) > max_entries) {
+      .refuse_tar("Refusing archive: more than ",
+                  format(max_entries, scientific = FALSE), " entries.")
+    }
+
+    # Skip data blocks in bounded chunks. A short read means the archive is
+    # truncated relative to its declared sizes.
+    skip <- ceiling(size / 512) * 512
+    while (skip > 0) {
+      want <- min(skip, chunk)
+      got  <- length(readBin(con, "raw", want))
+      bytes <- bytes + got
+      if (bytes > max_bytes) {
+        .refuse_tar("Refusing archive: uncompressed size exceeds ",
+                    format(max_bytes, scientific = FALSE), " bytes.")
+      }
+      if (is.finite(max_ratio) && !is.na(compressed) && compressed > 0 &&
+          bytes / compressed > max_ratio) {
+        .refuse_tar("Refusing archive: uncompressed:compressed ratio exceeds ",
+                    max_ratio, " (possible decompression bomb).")
+      }
+      if (got < want) {
+        .refuse_tar("Refusing archive: truncated (entry data shorter than",
+          "declared).")
+      }
+      skip <- skip - want
+    }
+  }
+
+  if (length(out) == 0L) {
+    .refuse_tar("Refusing archive: no entries found.")
+  }
+
+  do.call(rbind, out)
+}
+
+
+# Refuse an untrusted archive with a classed condition. Subclassing `error`
+# keeps the fail-closed behavior, while the `pkgaudit_invalid_tarball` class
+# lets batch callers (e.g., audit_cran()) record a refusal.
+.refuse_tar <- function(...) {
+  stop(structure(
+    class = c("pkgaudit_invalid_tarball", "error", "condition"),
+    list(message = paste0(...), call = NULL)
+  ))
+}
