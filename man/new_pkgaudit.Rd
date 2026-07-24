@@ -23,7 +23,7 @@ A \code{pkgaudit} object: a list of \code{file_contexts}, \code{code_contexts},
 \description{
 Assembles the four result data frames and a metadata list into a validated
 \code{pkgaudit} S3 object. \code{\link[=audit_package]{audit_package()}} calls this at the end of a scan; it is
-exposed for constructing objects directly (e.g. in tests or downstream tools).
+also used to construct objects directly (e.g. in tests).
 }
 \examples{
 \dontrun{
@@ -37,3 +37,4 @@ obj <- new_pkgaudit(
 }
 
 }
+\keyword{internal}

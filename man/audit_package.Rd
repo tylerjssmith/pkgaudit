@@ -14,9 +14,7 @@ current directory.}
 package as returned by \code{\link[=load_rules]{load_rules()}}.}
 
 \item{.origin}{Internal. Used by \code{\link[=audit_tarball]{audit_tarball()}} to record tarball
-provenance: a list with \code{path}, \code{sha256}, and \code{is_tarball}. Leave \code{NULL}
-for a directory scan, in which case the directory is hashed with
-\code{\link[=hash_manifest]{hash_manifest()}}.}
+provenance. Leave \code{NULL} for a directory scan.}
 }
 \value{
 A \code{\link[=new_pkgaudit]{new_pkgaudit()}} object: a named list with class \code{pkgaudit}
@@ -36,12 +34,17 @@ tables on \code{file_context} and \code{code_context}.}
 }
 \description{
 Finds security-relevant file and code contexts and code patterns for review
-before a package is trusted.
+before an R source package is trusted.
 }
 \details{
 Recoverable failures in the orchestrated finders are collected in the
 \code{errors} data frame rather than aborting the audit. File paths in every
 returned data frame are relative to the package root.
+
+When called by \code{\link[=audit_tarball]{audit_tarball()}}, \code{.origin} is a list with \code{path}, \code{sha256},
+and \code{is_tarball}, which are used for the \code{metadata} list. When calling
+\code{\link[=audit_package]{audit_package()}}.on a package directory directly, leave \code{NULL}, in which
+case the directory is hashed with \code{\link[=hash_manifest]{hash_manifest()}}.
 }
 \examples{
 \dontrun{

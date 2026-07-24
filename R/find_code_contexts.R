@@ -1,6 +1,6 @@
 #' Find code contexts in a parsed script
 #'
-#' A *code context* is top-level code or a lifecycle hook (`.onLoad`,
+#' A *code context* is top-level code or a lifecycle hook (e.g., `.onLoad`,
 #' `.onAttach`, `.onUnload`, `.onDetach`, `.Last.lib`, `rlang::on_load`) whose
 #' body executes when a package namespace is loaded, attached, unloaded, or
 #' detached. For each code-context rule this function evaluates the rule's XPath

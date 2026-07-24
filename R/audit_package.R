@@ -1,20 +1,14 @@
 #' Audit an R source package
 #'
 #' Finds security-relevant file and code contexts and code patterns for review
-#' before a package is trusted.
-#'
-#' Recoverable failures in the orchestrated finders are collected in the
-#' `errors` data frame rather than aborting the audit. File paths in every
-#' returned data frame are relative to the package root.
+#' before an R source package is trusted.
 #'
 #' @param path Path to an R source package root directory. Defaults to the
 #'   current directory.
 #' @param rules Named list of rules. Defaults to the rules bundled with the
 #'   package as returned by [load_rules()].
 #' @param .origin Internal. Used by [audit_tarball()] to record tarball
-#'   provenance: a list with `path`, `sha256`, and `is_tarball`. Leave `NULL`
-#'   for a directory scan, in which case the directory is hashed with
-#'   [hash_manifest()].
+#'   provenance. Leave `NULL` for a directory scan.
 #'
 #' @return A [new_pkgaudit()] object: a named list with class `pkgaudit`
 #'   containing four data frames and a `metadata` list.
@@ -30,6 +24,16 @@
 #'       `pkg_is_tarball`, `pkg_sha256`, `pkgaudit_version`,
 #'       `pkgaudit_rules_version`, `pkgaudit_rules_sha256`, and `scanned`.}
 #'   }
+#'
+#' @details
+#' Recoverable failures in the orchestrated finders are collected in the
+#' `errors` data frame rather than aborting the audit. File paths in every
+#' returned data frame are relative to the package root.
+#'
+#' When called by [audit_tarball()], `.origin` is a list with `path`, `sha256`,
+#' and `is_tarball`, which are used for the `metadata` list. When calling
+#' [audit_package()].on a package directory directly, leave `NULL`, in which
+#' case the directory is hashed with [hash_manifest()].
 #'
 #' @examples
 #' \dontrun{
@@ -82,12 +86,12 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
     } else {
       pat$code_context <- character(0L)
     }
-    # Drop the node handle before accumulating; rbind() ignores attributes.
+    # drop the node handle before accumulating; rbind() ignores attributes.
     attr(pat, "nodes") <- NULL
     patterns <- rbind(patterns, pat[, names(.empty_patterns()), drop = FALSE])
   }
 
-  # Provenance: hash the tarball as received when scanning one (via
+  # provenance: hash the tarball as received when scanning one (via
   # audit_tarball), otherwise hash a manifest of the directory.
   if (is.null(.origin)) {
     pkg_is_tarball <- FALSE

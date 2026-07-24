@@ -1,16 +1,14 @@
 #' Determine the code context of each pattern occurrence
 #'
 #' Assigns every pattern found by [find_patterns()] the code context it would
-#' execute in. Named contexts (the lifecycle hooks and `rlang::on_load`) are the
-#' single source of truth defined by `rules$code_contexts`: a pattern occurs in
-#' a named context iff its node is a descendant of that context's node. When a
-#' pattern sits inside more than one named context, the most-specific (innermost)
-#' one wins.
+#' execute in. Named contexts are defined by `rules$code_contexts`: a pattern
+#' occurs in a named context iff its node is a descendant of that context's
+#' node. When a pattern sits inside more than one named context, the
+#' most-specific (innermost) one wins.
 #'
 #' `"Top-level"` and `"Other"` are not rule-matched; they are computed here as
 #' the fallback, because top-level code is the whole file scope minus every
-#' function body -- a region with holes that no single containment subtree can
-#' express:
+#' function body.
 #'
 #' \enumerate{
 #'   \item inside one or more named contexts -> most-specific wins;

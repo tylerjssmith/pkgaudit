@@ -29,7 +29,7 @@
 #'
 #' Assembles the four result data frames and a metadata list into a validated
 #' `pkgaudit` S3 object. [audit_package()] calls this at the end of a scan; it is
-#' exposed for constructing objects directly (e.g. in tests or downstream tools).
+#' also used to construct objects directly (e.g. in tests).
 #'
 #' @param file_contexts,code_contexts,patterns,errors Data frames with the
 #'   columns documented in [audit_package()].
@@ -53,7 +53,7 @@
 #' )
 #' }
 #'
-#' @export
+#' @keywords internal
 new_pkgaudit <- function(file_contexts, code_contexts, patterns, errors,
                          metadata) {
   .validate_result_df(file_contexts, "file_contexts")

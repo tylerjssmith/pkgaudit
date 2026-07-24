@@ -42,8 +42,9 @@ test_that("audit_tarball() stops when no directory matches the package name", {
   expect_error(audit_tarball(tarball), "No directory named 'foo'")
 })
 
-test_that("audit_tarball() audits the named package directory and ignores siblings", {
-  # foo_0.1.0.tar.gz containing both foo/ (the package) and an unrelated bar/.
+test_that("audit_tarball() refuses an archive with more than one top-level directory", {
+  # foo_0.1.0.tar.gz containing both foo/ and an unrelated bar/: validate_tar()
+  # fails closed before extraction rather than picking one directory.
   base_dir <- tempfile()
   dir.create(file.path(base_dir, "foo", "R"), recursive = TRUE)
   dir.create(file.path(base_dir, "bar"), recursive = TRUE)
@@ -59,10 +60,16 @@ test_that("audit_tarball() audits the named package directory and ignores siblin
   setwd(old_wd)
   on.exit(unlink(c(base_dir, out_dir), recursive = TRUE), add = TRUE)
 
-  res <- audit_tarball(tarball)
-  # The package's own finding is present; nothing from the sibling bar/ dir.
-  expect_true("system_pattern" %in% res$patterns$pattern)
-  expect_false(any(grepl("bar/", res$patterns$file_context, fixed = TRUE)))
+  err <- tryCatch(audit_tarball(tarball), error = function(e) e)
+  expect_s3_class(err, "pkgaudit_invalid_tarball")
+  expect_match(conditionMessage(err), "top-level directories")
+})
+
+test_that("audit_tarball() rejects unsupported compression up front", {
+  f <- tempfile(fileext = ".tar.xz")
+  writeLines("not really xz", f)   # never read; extension is rejected first
+  on.exit(unlink(f), add = TRUE)
+  expect_error(audit_tarball(f), "unsupported archive")
 })
 
 # happy path -------------------------------------------------------------------
@@ -165,4 +172,82 @@ test_that("audit_tarball() does not warn when filename and DESCRIPTION agree", {
   tb <- make_test_tarball("invisible(NULL)", pkg_name = "testpkg", version = "0.1.0")
   on.exit(unlink(tb), add = TRUE)
   expect_no_warning(audit_tarball(tb))
+})
+
+# internal helpers -------------------------------------------------------------
+test_that(".extract_tarball() extracts into temp_dir and returns the kept dir", {
+  tb <- make_test_tarball("invisible(NULL)", pkg_name = "testpkg")
+  td <- tempfile("ex"); dir.create(td)
+  on.exit(unlink(c(tb, td), recursive = TRUE), add = TRUE)
+
+  dir <- .extract_tarball(tb, td)
+  expect_true(dir.exists(dir))                       # kept on success
+  expect_true(startsWith(dir, td))                   # created under temp_dir
+  expect_true(dir.exists(file.path(dir, "testpkg"))) # package directory present
+})
+
+test_that(".extract_tarball() cleans up its temp dir when extraction fails", {
+  td <- tempfile("ex"); dir.create(td)
+  bogus <- file.path(td, "bogus.tar")
+  writeLines("not a tar", bogus)
+  on.exit(unlink(td, recursive = TRUE), add = TRUE)
+
+  expect_error(suppressWarnings(.extract_tarball(bogus, td)))
+  # The transient on.exit removed the just-created extraction subdirectory, so
+  # a failed extraction leaks no directory under temp_dir.
+  expect_equal(length(list.dirs(td, recursive = FALSE)), 0L)
+})
+
+test_that(".validate_tarball_extraction() returns pkg_dir and the parsed names", {
+  root <- tempfile("root"); dir.create(file.path(root, "foo"), recursive = TRUE)
+  on.exit(unlink(root, recursive = TRUE), add = TRUE)
+
+  ex <- .validate_tarball_extraction("path/to/foo_1.0.tar.gz", root)
+  expect_equal(ex$pkg_name, "foo")
+  expect_equal(ex$tar_name, "foo_1.0")
+  expect_equal(ex$pkg_dir, file.path(root, "foo"))
+})
+
+test_that(".validate_tarball_extraction() errors when no matching directory exists", {
+  root <- tempfile("root"); dir.create(file.path(root, "bar"), recursive = TRUE)
+  on.exit(unlink(root, recursive = TRUE), add = TRUE)
+
+  expect_error(
+    .validate_tarball_extraction("path/to/foo_1.0.tar.gz", root),
+    "No directory named 'foo'"
+  )
+})
+
+test_that(".validate_tarball_name() is silent when filename and DESCRIPTION agree", {
+  expect_no_warning(
+    .validate_tarball_name("foo_1.0.tar.gz", "foo_1.0", "foo", "foo", "1.0")
+  )
+})
+
+test_that(".validate_tarball_name() warns with structured fields on a name mismatch", {
+  cond <- tryCatch(
+    .validate_tarball_name("foo_1.0.tar.gz", "foo_1.0", "foo", "realname", "1.0"),
+    pkgaudit_provenance_mismatch = function(w) w
+  )
+  expect_s3_class(cond, "pkgaudit_provenance_mismatch")
+  expect_s3_class(cond, "warning")
+  expect_match(conditionMessage(cond),
+               "package name 'foo' vs DESCRIPTION Package 'realname'")
+  expect_equal(cond$filename_name, "foo")
+  expect_equal(cond$filename_version, "1.0")
+  expect_equal(cond$desc_name, "realname")
+})
+
+test_that(".validate_tarball_name() warns on a version mismatch", {
+  expect_warning(
+    .validate_tarball_name("foo_1.0.tar.gz", "foo_1.0", "foo", "foo", "9.9"),
+    "version '1.0' vs DESCRIPTION Version '9.9'"
+  )
+})
+
+test_that(".validate_tarball_name() does not warn when DESCRIPTION fields are NA", {
+  expect_no_warning(
+    .validate_tarball_name("foo_1.0.tar.gz", "foo_1.0", "foo",
+                           NA_character_, NA_character_)
+  )
 })

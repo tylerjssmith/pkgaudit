@@ -1,15 +1,15 @@
 #' Compute a manifest hash for a directory
 #'
 #' Directories, unlike tarballs, have no single canonical byte stream to hash.
-#' This function instead hashes a *manifest*: a canonically ordered list of every
-#' included file's relative path and SHA-256 content hash. The manifest is
+#' This function instead hashes a *manifest*: a canonically ordered list of
+#' every included file's relative path and SHA-256 content hash. The manifest is
 #' returned alongside the hash so that two disagreeing scans can be diffed to
 #' identify which file differs -- a bare hash cannot tell you that.
 #'
-#' A directory hash is a weaker provenance claim than a tarball hash, because its
-#' scope depends on `exclude`: two directories that differ only in excluded paths
-#' hash identically. The exclusion patterns are returned so the caller can record
-#' them. For vetting untrusted code, prefer hashing the tarball.
+#' A directory hash is a weaker provenance claim than a tarball hash, because
+#' its scope depends on `exclude`: two directories that differ only in excluded
+#' paths hash identically. The exclusion patterns are returned so the caller
+#' can record them. For vetting untrusted code, prefer hashing the tarball.
 #'
 #' @param path Path to the directory to hash.
 #' @param exclude Character vector of regular expressions matched against paths
@@ -43,8 +43,7 @@ hash_manifest <- function(path, exclude = c("^\\.git/", "^\\.Rproj\\.user/")) {
 
   # ---- 1. Enumerate ----------------------------------------------------------
   # Relative paths, so the hash does not depend on where the directory sits on
-  # disk. all.files = TRUE to include dotfiles: a hidden file is still part of
-  # what was scanned, and hiding is itself a technique worth capturing.
+  # disk. all.files = TRUE to include hidden files.
   files <- list.files(path, recursive = TRUE, all.files = TRUE, no.. = TRUE)
 
   # ---- 2. Apply exclusions ---------------------------------------------------

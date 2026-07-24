@@ -4,10 +4,19 @@
 \alias{audit_tarball}
 \title{Audit an R source package tarball}
 \usage{
-audit_tarball(path, rules = load_rules(), temp_dir = tempdir())
+audit_tarball(
+  path,
+  rules = load_rules(),
+  temp_dir = tempdir(),
+  max_entries = 100000L,
+  max_bytes = 2 * 1024^3,
+  max_ratio = Inf
+)
 }
 \arguments{
-\item{path}{Path to a \code{.tar.gz} R source package tarball.}
+\item{path}{Path to a gzip-compressed or uncompressed R source package
+tarball (\code{.tar.gz}, \code{.tgz}, or \code{.tar}). bzip2/xz archives are not
+supported.}
 
 \item{rules}{Named list of rules. Defaults to the rules bundled with the
 package as returned by \code{\link[=load_rules]{load_rules()}}.}
@@ -15,37 +24,52 @@ package as returned by \code{\link[=load_rules]{load_rules()}}.}
 \item{temp_dir}{Directory used for extraction. A unique subdirectory is
 created here and removed after auditing regardless of success or failure.
 Defaults to \code{\link[base:tempdir]{base::tempdir()}}.}
+
+\item{max_entries}{Maximum number of entries to read before failing closed.
+Default 100,000 (about 7x the largest CRAN package).}
+
+\item{max_bytes}{Maximum uncompressed bytes to read before failing closed.
+Default 2 GB (about 15x the largest CRAN package). Raise for ecosystems
+with larger artifacts, e.g. Bioconductor annotation and experiment-data
+packages.}
+
+\item{max_ratio}{Maximum uncompressed:compressed ratio before failing closed,
+or \code{Inf} to disable. Targets decompression bombs, which are characterised
+by extreme ratios rather than absolute size. Default \code{Inf} until a
+corpus-derived threshold is chosen.}
 }
 \value{
-The same \code{pkgaudit} object as \code{\link[=audit_package]{audit_package()}}. File paths in the
-data frames are relative to the package root (e.g. \code{R/zzz.R}); the
-\code{metadata} records \code{pkg_is_tarball = TRUE}, \code{pkg_path} as the tarball path,
-and \code{pkg_sha256} as the SHA-256 of the tarball as received.
+The same \code{pkgaudit} object as \code{\link[=audit_package]{audit_package()}}: a named list with
+class \code{pkgaudit} containing four data frames and a \code{metadata} list.
 }
 \description{
+Finds security-relevant file and code contexts and code patterns for review
+before an R source package tarball is trusted.
+}
+\details{
 Extracts a source package tarball to a temporary directory, applies
 \code{\link[=audit_package]{audit_package()}}, removes the temporary directory, and returns the result.
 This is the typical pre-install workflow: audit a downloaded tarball and
 review the findings before calling \code{\link[utils:install.packages]{utils::install.packages()}}.
-}
-\details{
-The package directory audited is the one named after the package, derived
-from the tarball filename (\verb{<package>_<version>.tar.gz} extracts to
-\verb{<package>/}). If no directory of that name is present, the tarball is
-rejected rather than guessing which directory to audit.
 
-The reported package name and version always come from the extracted
-DESCRIPTION. If the DESCRIPTION \code{Package} or \code{Version} disagrees with the
-corresponding part of the filename (\verb{<package>_<version>.tar.gz}), a warning
-is issued to flag a possible provenance mismatch (a mislabeled or repackaged
-tarball); the DESCRIPTION values still win. The warning is a catchable
-\code{pkgaudit_provenance_mismatch} condition carrying the filename and DESCRIPTION
-name/version as fields, so callers can capture it programmatically.
+Before extracting anything, the tarball is validated with \code{\link[=validate_tar]{validate_tar()}},
+which fails closed on link entries, path traversal, absolute paths,
+decompression bombs, and archives without exactly one top-level directory.
+
+After extraction, the tarball filename must be consistent with the top-level
+directory it produced (e.g. \code{foo_0.1.0.tar.gz} must extract to \verb{foo/});
+otherwise the tarball is rejected.
+
+The audited \code{DESCRIPTION} is then checked against the tarball filename: if
+the \code{Package} name or \code{Version} disagrees with the name and version implied
+by the filename (\code{foo} and \verb{0.1.0} for \code{foo_0.1.0.tar.gz}), a warning is
+issued. The \code{DESCRIPTION} values are authoritative and are what the returned
+object reports.
 }
 \examples{
 \dontrun{
-result <- audit_tarball("path/to/package_1.0.0.tar.gz")
-result$patterns
+result <- audit_tarball("path/to/foo_0.1.0.tar.gz")
+print(result)
 }
 
 }
