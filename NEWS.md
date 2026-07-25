@@ -43,7 +43,6 @@ replaces it with three independent rule classes.
 ## New exported functions
 
 * `hash_manifest()` — reproducible SHA-256 manifest hash of a directory.
-* `new_pkgaudit()` — constructor and validator for `pkgaudit` objects.
 * `validate_tar()` — fail-closed structural validation of a source tarball
   before extraction.
 
