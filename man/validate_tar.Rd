@@ -8,7 +8,7 @@ validate_tar(
   tarfile,
   max_entries = 100000L,
   max_bytes = 2 * 1024^3,
-  max_ratio = Inf
+  max_ratio = 256
 )
 }
 \arguments{
@@ -24,8 +24,9 @@ packages.}
 
 \item{max_ratio}{Maximum uncompressed:compressed ratio before failing closed,
 or \code{Inf} to disable. Targets decompression bombs, which are characterised
-by extreme ratios rather than absolute size. Default \code{Inf} until a
-corpus-derived threshold is chosen.}
+by extreme ratios rather than absolute size. Default 256: about 3x the
+largest ratio (85) observed across CRAN, and well under the ~1032:1 ceiling
+of a single gzip layer.}
 }
 \value{
 Invisibly, a data frame of the archive's entries with columns
@@ -39,19 +40,20 @@ the check \code{\link[=audit_tarball]{audit_tarball()}} runs before extracting a
 \details{
 Rejects link entries (symlink, hard link), non-standard typeflags (GNU
 long-name, PAX), path traversal, absolute and drive-qualified paths, paths
-containing backslashes or control characters, empty paths, and archives that
-do not extract to exactly one top-level directory. It also enforces the
-entry-count, uncompressed-size, and expansion-ratio caps applied while reading
-(\code{max_entries}, \code{max_bytes}, \code{max_ratio}). A survey of all CRAN source
-tarballs found none of the structural problems, so the rules cost nothing on
-legitimate packages. Reads gzip and uncompressed tar only.
+containing backslashes or control characters, empty paths, unparseable size
+fields, and archives that do not extract to exactly one top-level directory.
+It also enforces the entry-count, uncompressed-size, and expansion-ratio caps
+applied while reading (\code{max_entries}, \code{max_bytes}, \code{max_ratio}). A survey of
+all CRAN source tarballs found none of the structural problems, so the rules
+cost nothing on legitimate packages. Reads gzip and uncompressed tar only.
 
 A refusal is signaled as a \code{pkgaudit_invalid_tarball} condition (a subclass
 of \code{error}), so it stops by default but can be caught by class.
 }
 \examples{
 \dontrun{
-# Stops with a "Refusing archive" error if the tarball is malicious/malformed.
+# Stops with a "Refusing archive" error if the tarball is
+# malicious/malformed.
 validate_tar("path/to/package_1.0.0.tar.gz")
 }
 

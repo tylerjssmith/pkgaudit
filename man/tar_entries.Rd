@@ -8,7 +8,7 @@ tar_entries(
   tarfile,
   max_entries = 100000L,
   max_bytes = 2 * 1024^3,
-  max_ratio = Inf,
+  max_ratio = 256,
   chunk = 1048576L
 )
 }
@@ -25,8 +25,9 @@ packages.}
 
 \item{max_ratio}{Maximum uncompressed:compressed ratio before failing closed,
 or \code{Inf} to disable. Targets decompression bombs, which are characterised
-by extreme ratios rather than absolute size. Default \code{Inf} until a
-corpus-derived threshold is chosen.}
+by extreme ratios rather than absolute size. Default 256: about 3x the
+largest ratio (85) observed across CRAN, and well under the ~1032:1 ceiling
+of a single gzip layer.}
 
 \item{chunk}{Bytes read per call when skipping entry data. Bounds peak
 allocation so a huge declared size cannot force one huge read.}

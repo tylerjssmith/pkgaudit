@@ -70,6 +70,25 @@ test_that("validate_tar() refuses an archive whose expansion ratio exceeds max_r
   expect_match(conditionMessage(err), "ratio exceeds")
 })
 
+test_that("validate_tar() refuses an entry with an unparseable size field", {
+  # A raw tar header whose size field is not valid octal. A base-256 or garbage
+  # size read as 0 would desync this parser from the extractor.
+  put <- function(h, off, s) {
+    b <- charToRaw(s); h[(off + 1L):(off + length(b))] <- b; h
+  }
+  hdr <- raw(512L)
+  hdr <- put(hdr, 0L,   "foo/file.txt")
+  hdr <- put(hdr, 124L, "88888888")     # '8' is not an octal digit
+  hdr[157L] <- charToRaw("0")           # typeflag '0' = regular file
+  tb <- tempfile(fileext = ".tar")
+  writeBin(c(hdr, raw(512L)), tb)        # bad header + end-of-archive block
+  on.exit(unlink(tb), add = TRUE)
+
+  err <- tryCatch(validate_tar(tb), error = function(e) e)
+  expect_s3_class(err, "pkgaudit_invalid_tarball")
+  expect_match(conditionMessage(err), "unparseable entry size")
+})
+
 test_that("validate_tar() refuses a truncated archive", {
   tb <- build_archive(list(foo = list("DESCRIPTION" = "Package: foo")))
   # Truncate the gzip stream partway through.

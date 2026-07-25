@@ -1,12 +1,15 @@
 # Tar header inspection and fail-closed validation for untrusted source package
 # tarballs.
 
-# Caps and rules below are justified by a survey of all 24,216 CRAN source
-# tarballs (2026-07), which found: 0 link entries, 0 non-standard typeflags
-# (GNU long-name / PAX), 0 traversal paths, 0 absolute paths, and exactly one
-# top-level directory in every archive. Maxima observed: 13,624 entries and
-# ~140 MB uncompressed. Refusing all of the above therefore rejects no
-# legitimate CRAN package.
+# Caps and rules below were selected based on a survey of all source package
+# on CRAN as of July 7, 2026 (n=24,216). See tools/survey_tarballs.R for
+# analysis functions. The analysis found: 0 link entries, 0 non-standard
+# typeflags (GNU long-name / PAX), 0 traversal paths, 0 absolute paths,
+# 0 backslash, control-character, or empty paths, 0 unparseable size fields, and
+# exactly one top-level directory in every archive. Maxima observed: 13,624
+# entries, ~140 MB uncompressed, and an ~85:1 expansion ratio. Refusing all of
+# the above therefore rejects no legitimate CRAN package. Note that results may
+# be different for Bioconductor, which was not surveyed.
 
 #' Validate a source package tarball before extraction
 #'
@@ -16,12 +19,12 @@
 #'
 #' Rejects link entries (symlink, hard link), non-standard typeflags (GNU
 #' long-name, PAX), path traversal, absolute and drive-qualified paths, paths
-#' containing backslashes or control characters, empty paths, and archives that
-#' do not extract to exactly one top-level directory. It also enforces the
-#' entry-count, uncompressed-size, and expansion-ratio caps applied while reading
-#' (`max_entries`, `max_bytes`, `max_ratio`). A survey of all CRAN source
-#' tarballs found none of the structural problems, so the rules cost nothing on
-#' legitimate packages. Reads gzip and uncompressed tar only.
+#' containing backslashes or control characters, empty paths, unparseable size
+#' fields, and archives that do not extract to exactly one top-level directory.
+#' It also enforces the entry-count, uncompressed-size, and expansion-ratio caps
+#' applied while reading (`max_entries`, `max_bytes`, `max_ratio`). A survey of
+#' all CRAN source tarballs found none of the structural problems, so the rules
+#' cost nothing on legitimate packages. Reads gzip and uncompressed tar only.
 #'
 #' A refusal is signaled as a `pkgaudit_invalid_tarball` condition (a subclass
 #' of `error`), so it stops by default but can be caught by class.
@@ -32,7 +35,8 @@
 #'
 #' @examples
 #' \dontrun{
-#' # Stops with a "Refusing archive" error if the tarball is malicious/malformed.
+#' # Stops with a "Refusing archive" error if the tarball is
+#' # malicious/malformed.
 #' validate_tar("path/to/package_1.0.0.tar.gz")
 #' }
 #'
@@ -40,7 +44,7 @@
 validate_tar <- function(tarfile,
                          max_entries = 100000L,
                          max_bytes   = 2 * 1024^3,
-                         max_ratio   = Inf) {
+                         max_ratio   = 256) {
 
   e <- tar_entries(tarfile,
                    max_entries = max_entries,
@@ -97,8 +101,9 @@ validate_tar <- function(tarfile,
 #'   packages.
 #' @param max_ratio Maximum uncompressed:compressed ratio before failing closed,
 #'   or `Inf` to disable. Targets decompression bombs, which are characterised
-#'   by extreme ratios rather than absolute size. Default `Inf` until a
-#'   corpus-derived threshold is chosen.
+#'   by extreme ratios rather than absolute size. Default 256: about 3x the
+#'   largest ratio (85) observed across CRAN, and well under the ~1032:1 ceiling
+#'   of a single gzip layer.
 #' @param chunk Bytes read per call when skipping entry data. Bounds peak
 #'   allocation so a huge declared size cannot force one huge read.
 #'
@@ -120,7 +125,7 @@ validate_tar <- function(tarfile,
 tar_entries <- function(tarfile,
                         max_entries = 100000L,
                         max_bytes   = 2 * 1024^3,
-                        max_ratio   = Inf,
+                        max_ratio   = 256,
                         chunk       = 1048576L) {
 
   stopifnot(is.character(tarfile), length(tarfile) == 1L, file.exists(tarfile))
@@ -163,7 +168,12 @@ tar_entries <- function(tarfile,
     if (nzchar(prefix)) name <- paste0(prefix, "/", name)
 
     size <- suppressWarnings(strtoi(size_oct, base = 8L))
-    if (is.na(size) || size < 0) size <- 0
+    # A non-empty size field that fails octal parse (base-256, garbage, or above
+    # strtoi()'s 2^31 limit) would desync this parser from the extractor: refuse.
+    if (nzchar(size_oct) && (is.na(size) || size < 0)) {
+      .refuse_tar("Refusing archive: unparseable entry size field.")
+    }
+    if (is.na(size)) size <- 0
 
     # Compare the typeflag as a BYTE. Never rawToChar() it: the byte is NUL for
     # regular files written by older tar implementations, and R strings cannot
