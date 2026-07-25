@@ -31,6 +31,11 @@ test_that("a pattern in an ordinary function is labeled Other", {
   expect_equal(pat$code_context, "Other")
 })
 
+test_that("a pattern in a backslash-lambda function is labeled Other", {
+  pat <- contexts_for("f <- \\(a) system('x')")
+  expect_equal(pat$code_context, "Other")
+})
+
 test_that("the most-specific (innermost) named context wins", {
   # system() sits inside .onAttach, which is nested inside .onLoad.
   pat <- contexts_for(c(

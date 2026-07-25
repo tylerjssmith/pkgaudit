@@ -42,6 +42,24 @@ test_that("audit_tarball() stops when no directory matches the package name", {
   expect_error(audit_tarball(tarball), "No directory named 'foo'")
 })
 
+test_that(".reject_extracted_symlinks() refuses a directory containing a symlink", {
+  skip_on_os("windows")
+  d <- tempfile(); dir.create(d)
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+  writeLines("x", file.path(d, "real.txt"))
+  file.symlink(file.path(d, "real.txt"), file.path(d, "link.txt"))
+
+  expect_error(.reject_extracted_symlinks(d), "symlink")
+})
+
+test_that(".reject_extracted_symlinks() accepts a symlink-free directory", {
+  d <- tempfile(); dir.create(file.path(d, "sub"), recursive = TRUE)
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+  writeLines("x", file.path(d, "sub", "a.txt"))
+
+  expect_true(.reject_extracted_symlinks(d))
+})
+
 test_that("audit_tarball() refuses an archive with more than one top-level directory", {
   # foo_0.1.0.tar.gz containing both foo/ and an unrelated bar/: validate_tar()
   # fails closed before extraction rather than picking one directory.
