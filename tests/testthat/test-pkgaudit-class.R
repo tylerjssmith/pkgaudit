@@ -54,7 +54,13 @@ test_that("new_pkgaudit() errors on wrong data-frame columns", {
 test_that("new_pkgaudit() errors on a missing metadata field", {
   md <- good_metadata()
   md$scanned <- NULL
-  expect_error(make_obj(metadata = md), "missing field.*scanned")
+  expect_error(make_obj(metadata = md), "missing.*scanned")
+})
+
+test_that("new_pkgaudit() errors on an unexpected metadata field", {
+  md <- good_metadata()
+  md$surprise <- "x"
+  expect_error(make_obj(metadata = md), "unexpected.*surprise")
 })
 
 test_that("new_pkgaudit() errors on a wrong-typed metadata field", {
