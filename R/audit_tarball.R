@@ -25,6 +25,9 @@
 #' Before extracting anything, the tarball is validated with [validate_tar()],
 #' which fails closed on link entries, path traversal, absolute paths,
 #' decompression bombs, and archives without exactly one top-level directory.
+#' After extraction, the extracted directory is re-checked and rejected if it
+#' contains any symlink, as defense in depth against a validate_tar()/untar()
+#' disagreement.
 #'
 #' After extraction, the tarball filename must be consistent with the top-level
 #' directory it produced (e.g. `foo_0.1.0.tar.gz` must extract to `foo/`);
@@ -49,7 +52,7 @@ audit_tarball <- function(
   temp_dir    = tempdir(),
   max_entries = 100000L,
   max_bytes   = 2 * 1024^3,
-  max_ratio   = Inf
+  max_ratio   = 256
 ) {
   stopifnot(is.character(path), length(path) == 1L, file.exists(path))
   stopifnot(is.list(rules), length(names(rules)) == 3L)
@@ -73,6 +76,7 @@ audit_tarball <- function(
     add = TRUE
   )
 
+  .reject_extracted_symlinks(extract_dir)
   ex <- .validate_tarball_extraction(path, extract_dir)
 
   result <- audit_package(
@@ -108,16 +112,37 @@ audit_tarball <- function(
   })
 
   if (!dir.create(extract_dir, recursive = TRUE, showWarnings = FALSE)) {
-    stop("Failed to create temporary extraction directory: ", extract_dir)
+    stop("Failed to create temporary extraction directory: ", extract_dir,
+         call. = FALSE)
   }
 
   rc <- utils::untar(path, exdir = extract_dir, tar = "internal")
   if (!identical(rc, 0L)) {
-    stop("untar() returned non-zero exit code: ", rc)
+    stop("untar() returned non-zero exit code: ", rc, call. = FALSE)
   }
 
   ok <- TRUE
   extract_dir
+}
+
+
+# Defense in depth against a validate_tar()/untar() parser disagreement: after
+# extraction, refuse the archive if any symlink is present under the extraction
+# directory. validate_tar() already rejects symlink *entries* before extraction;
+# this catches one a residual parser difference could smuggle past, before
+# audit_package() reads the extracted files.
+.reject_extracted_symlinks <- function(extract_dir) {
+  entries <- list.files(extract_dir, recursive = TRUE, all.files = TRUE,
+                        include.dirs = TRUE, no.. = TRUE, full.names = TRUE)
+  if (length(entries) == 0L) return(invisible(TRUE))
+
+  targets <- Sys.readlink(entries)
+  links   <- entries[!is.na(targets) & nzchar(targets)]
+  if (length(links) > 0L) {
+    stop("Refusing extracted archive: ", length(links),
+         " symlink(s) present after extraction.", call. = FALSE)
+  }
+  invisible(TRUE)
 }
 
 
@@ -137,7 +162,8 @@ audit_tarball <- function(
       "No directory named '", pkg_name, "' found after extracting ",
       basename(path), ".\n",
       "A source package tarball must extract to a directory named after the ",
-      "package (without the version)."
+      "package (without the version).",
+      call. = FALSE
     )
   }
 

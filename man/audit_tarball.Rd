@@ -10,7 +10,7 @@ audit_tarball(
   temp_dir = tempdir(),
   max_entries = 100000L,
   max_bytes = 2 * 1024^3,
-  max_ratio = Inf
+  max_ratio = 256
 )
 }
 \arguments{
@@ -35,8 +35,9 @@ packages.}
 
 \item{max_ratio}{Maximum uncompressed:compressed ratio before failing closed,
 or \code{Inf} to disable. Targets decompression bombs, which are characterised
-by extreme ratios rather than absolute size. Default \code{Inf} until a
-corpus-derived threshold is chosen.}
+by extreme ratios rather than absolute size. Default 256: about 3x the
+largest ratio (85) observed across CRAN, and well under the ~1032:1 ceiling
+of a single gzip layer.}
 }
 \value{
 The same \code{pkgaudit} object as \code{\link[=audit_package]{audit_package()}}: a named list with
@@ -55,6 +56,9 @@ review the findings before calling \code{\link[utils:install.packages]{utils::in
 Before extracting anything, the tarball is validated with \code{\link[=validate_tar]{validate_tar()}},
 which fails closed on link entries, path traversal, absolute paths,
 decompression bombs, and archives without exactly one top-level directory.
+After extraction, the extracted directory is re-checked and rejected if it
+contains any symlink, as defense in depth against a validate_tar()/untar()
+disagreement.
 
 After extraction, the tarball filename must be consistent with the top-level
 directory it produced (e.g. \code{foo_0.1.0.tar.gz} must extract to \verb{foo/});

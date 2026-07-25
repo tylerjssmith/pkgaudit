@@ -2,9 +2,9 @@
 #'
 #' Parses a single R script with `parse(keep.source = TRUE)`, converts the parse
 #' data to XML with [xmlparsedata::xml_parse_data()], and reads it into an
-#' `xml_document` with [xml2::read_xml()]. Both the parse and the XML read are
-#' wrapped in `tryCatch()` so a malformed or unreadable script yields a
-#' recoverable error rather than aborting the audit.
+#' `xml_document` with [xml2::read_xml()]. The parse and the XML
+#' conversion-and-read are each wrapped in `tryCatch()` so a malformed or
+#' unreadable script yields a recoverable error rather than aborting the audit.
 #'
 #' @param script Path to a single R script.
 #'

@@ -1,16 +1,7 @@
 #' Find security-relevant patterns in a parsed script
 #'
-#' A *pattern* is a syntactic construct of interest (e.g. `system()`,
-#' `eval(parse())`, an outbound HTTP call). For each pattern rule this function
-#' evaluates the rule's XPath against the parse tree; every matching node is a
-#' finding.
-#'
-#' Each `xml_find_all()` call is wrapped in `tryCatch()`; a failure is recorded
-#' in the errors data frame and the loop moves on to the next rule.
-#'
-#' The returned data frame carries the matched XML nodes as a `"nodes"`
-#' attribute, aligned row-for-row, so [determine_code_contexts()] can test
-#' containment by node identity without re-running the pattern XPaths.
+#' Finds patterns -- syntactic constructs of interest (e.g., `system()`,
+#' `eval(parse())`, an outbound HTTP call).
 #'
 #' @param tree The `xml_document` parse tree for one script (from
 #'   [parse_script()]).
@@ -19,13 +10,25 @@
 #' @param file_context Package-root-relative path of the script, carried through
 #'   for joining to the file-contexts table.
 #'
-#' @return A list with two elements:
+#' @return A list with two data frames:
 #'   \describe{
 #'     \item{patterns}{Data frame with columns `pattern`, `file_context`,
 #'       `line_number`, `column_number`, `message`, `attck`. Carries a `"nodes"`
 #'       attribute holding the matched nodes aligned to the rows.}
-#'     \item{errors}{Columns `stage`, `file_context`, `rule`, `message`.}
+#'     \item{errors}{Data frame with columns `stage`, `file_context`, `rule`,
+#'       `message`.}
 #'   }
+#'
+#' @details
+#' For each pattern rule, this function evaluates the rule's XPath against the
+#' parse tree with `.xml_find_all_safe()`. Every matching node is a pattern
+#' found. A failing or invalid XPath (including one that libxml2 reports only as
+#' a warning) comes back as a condition, which is recorded in the errors data
+#' frame before the loop moves on to the next rule.
+#'
+#' The returned data frame carries the matched XML nodes as a `"nodes"`
+#' attribute, aligned row-for-row, so [determine_code_contexts()] can test
+#' containment by node identity without re-running the pattern XPaths.
 #'
 #' @keywords internal
 find_patterns <- function(tree, pattern_rules, file_context) {

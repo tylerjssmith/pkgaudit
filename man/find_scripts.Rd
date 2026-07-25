@@ -19,7 +19,7 @@ installed or its namespace is loaded: the top level of \verb{R/}, \verb{R/unix/}
 other than \verb{unix/} and \verb{windows/} are not processed by R and are excluded.
 }
 \details{
-The \code{list.files()} calls are intentionally \emph{not} wrapped in \code{tryCatch()}: a
+The \code{list.files()} calls are intentionally not wrapped in \code{tryCatch()}: a
 failure to list the package's own directories is unrecoverable, so it
 propagates and aborts the audit (see \code{\link[=audit_package]{audit_package()}}).
 }

@@ -1,14 +1,9 @@
-#' Find code contexts in a parsed script
+#' Find security-relevant code contexts in a parsed script
 #'
-#' A *code context* is top-level code or a lifecycle hook (e.g., `.onLoad`,
+#' Finds code contexts -- top-level code or lifecycle hooks (e.g., `.onLoad`,
 #' `.onAttach`, `.onUnload`, `.onDetach`, `.Last.lib`, `rlang::on_load`) whose
-#' body executes when a package namespace is loaded, attached, unloaded, or
-#' detached. For each code-context rule this function evaluates the rule's XPath
-#' against the parse tree; every matching node is a code context found.
-#'
-#' Each `xml_find_all()` call is wrapped in `tryCatch()`; a failure is recorded
-#' in the errors data frame and the loop moves on to the next rule. When a rule
-#' matches more than once in a script, every match is returned.
+#' bodies execute when a package namespace is loaded, attached, unloaded, or
+#' detached.
 #'
 #' @param tree The `xml_document` parse tree for one script (from
 #'   [parse_script()]).
@@ -20,10 +15,18 @@
 #'
 #' @return A list with two data frames:
 #'   \describe{
-#'     \item{code_contexts}{Columns `code_context`, `file_context`,
-#'       `line_number`, `column_number`, `message`.}
-#'     \item{errors}{Columns `stage`, `file_context`, `rule`, `message`.}
+#'     \item{code_contexts}{Data frame with columns `code_context`,
+#'       `file_context`, `line_number`, `column_number`, `message`.}
+#'     \item{errors}{Data frame with columns `stage`, `file_context`, `rule`,
+#'       `message`.}
 #'   }
+#'
+#' @details
+#' For each code-context rule, this function evaluates the rule's XPath against
+#' the parse tree with `.xml_find_all_safe()`. Every matching node is a code
+#' context found. A failing or invalid XPath (including one that libxml2 reports
+#' only as a warning) comes back as a condition, which is recorded in the errors
+#' data frame before the loop moves on to the next rule.
 #'
 #' @keywords internal
 find_code_contexts <- function(tree, code_context_rules, file_context) {
@@ -66,18 +69,4 @@ find_code_contexts <- function(tree, code_context_rules, file_context) {
   }
 
   list(code_contexts = code_contexts, errors = errors)
-}
-
-
-# Evaluate an XPath, promoting libxml2 warnings (e.g. invalid XPath) to errors
-# so an ill-formed expression is caught rather than silently returning nothing.
-# Returns the node set on success or the caught condition on failure.
-.xml_find_all_safe <- function(tree, xpath) {
-  tryCatch(
-    withCallingHandlers(
-      xml2::xml_find_all(tree, xpath),
-      warning = function(w) stop(conditionMessage(w))
-    ),
-    error = function(e) e
-  )
 }

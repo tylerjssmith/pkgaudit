@@ -1,8 +1,8 @@
 #' Find security-relevant file contexts in a package
 #'
-#' Finds files in an R package that can be executed by `R CMD build`,
-#' `R CMD check`, or `R CMD INSTALL` (e.g. `configure`,`src/Makevars`,
-#' `src/install.libs.R`).
+#' Finds file contexts -- files in an R package that can be executed by
+#' `R CMD build`, `R CMD check`, or `R CMD INSTALL` (e.g., `configure`,
+#' `src/Makevars`, `src/install.libs.R`).
 #'
 #' @param pkg Path to the root of the package being audited.
 #' @param file_context_rules Data frame of file-context rules
@@ -11,9 +11,11 @@
 #'
 #' @return A list with two data frames:
 #'   \describe{
-#'     \item{file_contexts}{Columns `file_context` (package-root-relative path),
-#'       `file_path` (same path), and `message`. One row per file found.}
-#'     \item{errors}{Columns `stage`, `file_context`, `rule`, `message`.}
+#'     \item{file_contexts}{Data frame with columns `file_context`
+#'       (package-root-relative path; the join key), `file_path` (the same
+#'       path), and `message`.}
+#'     \item{errors}{Data frame with columns `stage`, `file_context`, `rule`,
+#'       `message`.}
 #'   }
 #'
 #' @keywords internal

@@ -7,14 +7,14 @@
 determine_code_contexts(tree, patterns, rules)
 }
 \arguments{
-\item{tree}{The \code{xml_document} parse tree for one script.}
+\item{tree}{The \code{xml_document} parse tree for one script (from
+\code{\link[=parse_script]{parse_script()}}).}
 
 \item{patterns}{Data frame from \code{\link[=find_patterns]{find_patterns()}}, carrying its matched nodes
 in the \code{"nodes"} attribute aligned to the rows.}
 
 \item{rules}{Loaded rules; only \code{rules$code_contexts} (columns \code{name},
-\code{xpath}) is used. It must not contain a "top-level" entry -- top-level is
-computed here.}
+\code{xpath}) is used.}
 }
 \value{
 \code{patterns} with an added \code{code_context} column (a named context,
@@ -23,27 +23,20 @@ dropped from the result.
 }
 \description{
 Assigns every pattern found by \code{\link[=find_patterns]{find_patterns()}} the code context it would
-execute in. Named contexts (the lifecycle hooks and \code{rlang::on_load}) are the
-single source of truth defined by \code{rules$code_contexts}: a pattern occurs in
-a named context iff its node is a descendant of that context's node. When a
-pattern sits inside more than one named context, the most-specific (innermost)
-one wins.
+execute in.
 }
 \details{
-\code{"Top-level"} and \code{"Other"} are not rule-matched; they are computed here as
-the fallback, because top-level code is the whole file scope minus every
-function body -- a region with holes that no single containment subtree can
-express:
+Named contexts are defined by \code{rules$code_contexts}: a pattern occurs in a
+named context iff its node is a descendant of that context's node. When a
+pattern sits inside more than one named context, the most-specific
+(innermost) one wins.
 
-\enumerate{
-\item inside one or more named contexts -> most-specific wins;
-\item else no \code{function} ancestor -> \code{"Top-level"} (runs when the script is
-sourced during namespace construction);
-\item else (a \code{function} ancestor, but no named hook contains it) ->
-\code{"Other"} (an ordinary function that only runs when called).
-}
+\code{"Top-level"} and \code{"Other"} are not rule-matched; they are computed here as
+fallbacks for a pattern in no named context. \code{"Top-level"} is assigned when
+the pattern has no function-definition ancestor; \code{"Other"} when it has one.
 
 Containment is tested by exact XML path identity, never by path-prefix
-comparison (sibling paths such as \code{expr[1]} and \code{expr[12]} would false-match).
+comparison (sibling paths such as \code{expr[1]} and \code{expr[12]} would
+false-match).
 }
 \keyword{internal}

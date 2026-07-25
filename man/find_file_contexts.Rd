@@ -16,14 +16,16 @@ find_file_contexts(pkg, file_context_rules)
 \value{
 A list with two data frames:
 \describe{
-\item{file_contexts}{Columns \code{file_context} (package-root-relative path),
-\code{file_path} (same path), and \code{message}. One row per file found.}
-\item{errors}{Columns \code{stage}, \code{file_context}, \code{rule}, \code{message}.}
+\item{file_contexts}{Data frame with columns \code{file_context}
+(package-root-relative path; the join key), \code{file_path} (the same
+path), and \code{message}.}
+\item{errors}{Data frame with columns \code{stage}, \code{file_context}, \code{rule},
+\code{message}.}
 }
 }
 \description{
-Finds files in an R package that can be executed by \verb{R CMD build},
-\verb{R CMD check}, or \verb{R CMD INSTALL} (e.g. \code{configure},\code{src/Makevars},
-\code{src/install.libs.R}).
+Finds file contexts -- files in an R package that can be executed by
+\verb{R CMD build}, \verb{R CMD check}, or \verb{R CMD INSTALL} (e.g., \code{configure},
+\code{src/Makevars}, \code{src/install.libs.R}).
 }
 \keyword{internal}

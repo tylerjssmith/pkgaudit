@@ -1,4 +1,4 @@
-# Internal helpers shared across pkgaudit ------------------------------------
+# This script defines internal helpers shared across pkgaudit.
 
 # Empty result-frame constructors. Every finder returns a data frame with a
 # stable schema even when it finds nothing, so downstream rbind() calls always
@@ -77,5 +77,18 @@
     startsWith(normed, prefix),
     substring(normed, nchar(prefix) + 1L),
     normed
+  )
+}
+
+# Evaluate an XPath, promoting libxml2 warnings (e.g. invalid XPath) to errors
+# so an ill-formed expression is caught rather than silently returning nothing.
+# Returns the node set on success or the caught condition on failure.
+.xml_find_all_safe <- function(tree, xpath) {
+  tryCatch(
+    withCallingHandlers(
+      xml2::xml_find_all(tree, xpath),
+      warning = function(w) stop(conditionMessage(w))
+    ),
+    error = function(e) e
   )
 }

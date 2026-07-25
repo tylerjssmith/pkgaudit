@@ -17,23 +17,25 @@ find_patterns(tree, pattern_rules, file_context)
 for joining to the file-contexts table.}
 }
 \value{
-A list with two elements:
+A list with two data frames:
 \describe{
 \item{patterns}{Data frame with columns \code{pattern}, \code{file_context},
 \code{line_number}, \code{column_number}, \code{message}, \code{attck}. Carries a \code{"nodes"}
 attribute holding the matched nodes aligned to the rows.}
-\item{errors}{Columns \code{stage}, \code{file_context}, \code{rule}, \code{message}.}
+\item{errors}{Data frame with columns \code{stage}, \code{file_context}, \code{rule},
+\code{message}.}
 }
 }
 \description{
-A \emph{pattern} is a syntactic construct of interest (e.g. \code{system()},
-\code{eval(parse())}, an outbound HTTP call). For each pattern rule this function
-evaluates the rule's XPath against the parse tree; every matching node is a
-finding.
+Finds patterns -- syntactic constructs of interest (e.g., \code{system()},
+\code{eval(parse())}, an outbound HTTP call).
 }
 \details{
-Each \code{xml_find_all()} call is wrapped in \code{tryCatch()}; a failure is recorded
-in the errors data frame and the loop moves on to the next rule.
+For each pattern rule, this function evaluates the rule's XPath against the
+parse tree with \code{.xml_find_all_safe()}. Every matching node is a pattern
+found. A failing or invalid XPath (including one that libxml2 reports only as
+a warning) comes back as a condition, which is recorded in the errors data
+frame before the loop moves on to the next rule.
 
 The returned data frame carries the matched XML nodes as a \code{"nodes"}
 attribute, aligned row-for-row, so \code{\link[=determine_code_contexts]{determine_code_contexts()}} can test

@@ -1,36 +1,32 @@
 #' Determine the code context of each pattern occurrence
 #'
 #' Assigns every pattern found by [find_patterns()] the code context it would
-#' execute in. Named contexts are defined by `rules$code_contexts`: a pattern
-#' occurs in a named context iff its node is a descendant of that context's
-#' node. When a pattern sits inside more than one named context, the
-#' most-specific (innermost) one wins.
+#' execute in.
 #'
-#' `"Top-level"` and `"Other"` are not rule-matched; they are computed here as
-#' the fallback, because top-level code is the whole file scope minus every
-#' function body.
-#'
-#' \enumerate{
-#'   \item inside one or more named contexts -> most-specific wins;
-#'   \item else no `function` ancestor -> `"Top-level"` (runs when the script is
-#'     sourced during namespace construction);
-#'   \item else (a `function` ancestor, but no named hook contains it) ->
-#'     `"Other"` (an ordinary function that only runs when called).
-#' }
-#'
-#' Containment is tested by exact XML path identity, never by path-prefix
-#' comparison (sibling paths such as `expr[1]` and `expr[12]` would false-match).
-#'
-#' @param tree The `xml_document` parse tree for one script.
+#' @param tree The `xml_document` parse tree for one script (from
+#'   [parse_script()]).
 #' @param patterns Data frame from [find_patterns()], carrying its matched nodes
 #'   in the `"nodes"` attribute aligned to the rows.
 #' @param rules Loaded rules; only `rules$code_contexts` (columns `name`,
-#'   `xpath`) is used. It must not contain a "top-level" entry -- top-level is
-#'   computed here.
+#'   `xpath`) is used.
 #'
 #' @return `patterns` with an added `code_context` column (a named context,
 #'   `"Top-level"`, or `"Other"`; never `NA`). The `"nodes"` attribute is
 #'   dropped from the result.
+#'
+#' @details
+#' Named contexts are defined by `rules$code_contexts`: a pattern occurs in a
+#' named context iff its node is a descendant of that context's node. When a
+#' pattern sits inside more than one named context, the most-specific
+#' (innermost) one wins.
+#'
+#' `"Top-level"` and `"Other"` are not rule-matched; they are computed here as
+#' fallbacks for a pattern in no named context. `"Top-level"` is assigned when
+#' the pattern has no function-definition ancestor; `"Other"` when it has one.
+#'
+#' Containment is tested by exact XML path identity, never by path-prefix
+#' comparison (sibling paths such as `expr[1]` and `expr[12]` would
+#' false-match).
 #'
 #' @keywords internal
 determine_code_contexts <- function(tree, patterns, rules) {
@@ -104,7 +100,7 @@ determine_code_contexts <- function(tree, patterns, rules) {
 # Top-level/Other discriminator.
 .has_function_ancestor <- function(pnode) {
   len <- tryCatch(
-    length(xml2::xml_find_all(pnode, "ancestor::expr[FUNCTION]")),
+    length(xml2::xml_find_all(pnode, "ancestor::expr[FUNCTION or OP-LAMBDA]")),
     error = function(e) 0L
   )
   isTRUE(len > 0L)

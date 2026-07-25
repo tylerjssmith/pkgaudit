@@ -2,7 +2,7 @@
 % Please edit documentation in R/find_code_contexts.R
 \name{find_code_contexts}
 \alias{find_code_contexts}
-\title{Find code contexts in a parsed script}
+\title{Find security-relevant code contexts in a parsed script}
 \usage{
 find_code_contexts(tree, code_context_rules, file_context)
 }
@@ -20,21 +20,23 @@ for joining to the file-contexts table.}
 \value{
 A list with two data frames:
 \describe{
-\item{code_contexts}{Columns \code{code_context}, \code{file_context},
-\code{line_number}, \code{column_number}, \code{message}.}
-\item{errors}{Columns \code{stage}, \code{file_context}, \code{rule}, \code{message}.}
+\item{code_contexts}{Data frame with columns \code{code_context},
+\code{file_context}, \code{line_number}, \code{column_number}, \code{message}.}
+\item{errors}{Data frame with columns \code{stage}, \code{file_context}, \code{rule},
+\code{message}.}
 }
 }
 \description{
-A \emph{code context} is top-level code or a lifecycle hook (\code{.onLoad},
+Finds code contexts -- top-level code or lifecycle hooks (e.g., \code{.onLoad},
 \code{.onAttach}, \code{.onUnload}, \code{.onDetach}, \code{.Last.lib}, \code{rlang::on_load}) whose
-body executes when a package namespace is loaded, attached, unloaded, or
-detached. For each code-context rule this function evaluates the rule's XPath
-against the parse tree; every matching node is a code context found.
+bodies execute when a package namespace is loaded, attached, unloaded, or
+detached.
 }
 \details{
-Each \code{xml_find_all()} call is wrapped in \code{tryCatch()}; a failure is recorded
-in the errors data frame and the loop moves on to the next rule. When a rule
-matches more than once in a script, every match is returned.
+For each code-context rule, this function evaluates the rule's XPath against
+the parse tree with \code{.xml_find_all_safe()}. Every matching node is a code
+context found. A failing or invalid XPath (including one that libxml2 reports
+only as a warning) comes back as a condition, which is recorded in the errors
+data frame before the loop moves on to the next rule.
 }
 \keyword{internal}

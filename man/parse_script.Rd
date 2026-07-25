@@ -19,8 +19,8 @@ A list with two elements:
 \description{
 Parses a single R script with \code{parse(keep.source = TRUE)}, converts the parse
 data to XML with \code{\link[xmlparsedata:xml_parse_data]{xmlparsedata::xml_parse_data()}}, and reads it into an
-\code{xml_document} with \code{\link[xml2:read_xml]{xml2::read_xml()}}. Both the parse and the XML read are
-wrapped in \code{tryCatch()} so a malformed or unreadable script yields a
-recoverable error rather than aborting the audit.
+\code{xml_document} with \code{\link[xml2:read_xml]{xml2::read_xml()}}. The parse and the XML
+conversion-and-read are each wrapped in \code{tryCatch()} so a malformed or
+unreadable script yields a recoverable error rather than aborting the audit.
 }
 \keyword{internal}
