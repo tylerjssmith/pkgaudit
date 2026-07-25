@@ -36,7 +36,7 @@ Verification is time-of-check to time-of-use (TOCTOU): the database is hashed
 and then re-opened by path to query it, so a file swapped in the interval
 between the two is not detected. This does not weaken the bundled default --
 an attacker able to win that race already has write access to the installed
-package and could replace the sidecar or this package's code outright. When
+package and could replace the sidecar or this package's code outright. If
 loading rules from a path other parties can write, treat the SHA-256 check as
 protection against accidental corruption or a substituted database given an
 authentic sidecar -- not against an attacker who can modify the file
