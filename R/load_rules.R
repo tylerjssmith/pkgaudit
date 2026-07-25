@@ -1,22 +1,39 @@
+# This script contains functions for verifying and reading the pkgaudit rules
+# database and obtaining the database version.
+
 #' Load security rules from the pkgaudit rules database
 #'
 #' Loads the file-context, code-context, and pattern rules from the bundled
-#' SQLite database as a named list suitable for passing to [audit_package()].
-#' Before reading, the database is verified against its SHA-256 sidecar so a
-#' tampered or corrupted rules file is rejected rather than silently trusted.
+#' SQLite database as a named list suitable for passing to [audit_package()] or
+#' [audit_tarball()].
 #'
-#' @param db_path Path to the SQLite rules database. Defaults to the database
-#'   bundled with the installed package.
+#' @param db_path Path to the rules database. Defaults to the database bundled
+#'   with the installed package.
 #'
 #' @return A named list with three data frames:
 #'   \describe{
-#'     \item{file_contexts}{Columns `name`, `version`, `type`, `message`,
-#'       `path`, `recursive`, `pattern`.}
-#'     \item{code_contexts}{Columns `name`, `version`, `type`, `message`,
-#'       `xpath`.}
-#'     \item{patterns}{Columns `name`, `version`, `type`, `message`, `attck`,
-#'       `xpath`.}
+#'     \item{file_contexts}{Data frame with columns `name`, `version`, `type`,
+#'       `message`, `path`, `recursive`, `pattern`.}
+#'     \item{code_contexts}{Data frame with columns `name`, `version`, `type`,
+#'       `message`, `xpath`.}
+#'     \item{patterns}{Data frame with columns `name`, `version`, `type`,
+#'       `message`, `attck`, `xpath`.}
 #'   }
+#'
+#' @details
+#' Before reading, the database is verified against its SHA-256 sidecar so that
+#' a tampered or corrupted rules file is rejected rather than silently trusted.
+#'
+#' @section Security considerations:
+#' Verification is time-of-check to time-of-use (TOCTOU): the database is hashed
+#' and then re-opened by path to query it, so a file swapped in the interval
+#' between the two is not detected. This does not weaken the bundled default --
+#' an attacker able to win that race already has write access to the installed
+#' package and could replace the sidecar or this package's code outright. If
+#' loading rules from a path other parties can write, treat the SHA-256 check as
+#' protection against accidental corruption or a substituted database given an
+#' authentic sidecar -- not against an attacker who can modify the file
+#' concurrently. Load from a path only trusted writers control.
 #'
 #' @examples
 #' \dontrun{
@@ -52,7 +69,7 @@ load_rules <- function(db_path = .db_path()) {
     if (nrow(file_contexts) == 0L &&
         nrow(code_contexts) == 0L &&
         nrow(patterns) == 0L) {
-      stop("No rules found in rules database: ", db_path)
+      stop("No rules found in rules database: ", db_path, call. = FALSE)
     }
 
     list(
@@ -70,10 +87,15 @@ load_rules <- function(db_path = .db_path()) {
 #' package. Findings reports should always record the rules version to ensure
 #' reproducibility across audit cycles.
 #'
-#' @param db_path Path to the SQLite rules database.
+#' @param db_path Path to the SQLite rules database. Defaults to the database
+#'   bundled with the installed package.
 #'
 #' @return A character string giving the rules database version (e.g.,
 #'   `"0.1.0"`).
+#'
+#' @details
+#' Like [load_rules()], this verifies the database against its SHA-256 sidecar
+#' before reading; see its Security considerations.
 #'
 #' @examples
 #' \dontrun{
@@ -92,7 +114,7 @@ rules_version <- function(db_path = .db_path()) {
     )
 
     if (nrow(version) == 0L) {
-      stop("No version found in rules database: ", db_path)
+      stop("No version found in rules database: ", db_path, call. = FALSE)
     }
 
     version$version[[1L]]
@@ -101,7 +123,10 @@ rules_version <- function(db_path = .db_path()) {
 
 
 # --- Helpers ------------------------------------------------------------------
+
+# Return the path to the bundled database.
 .db_path <- function() system.file("db", "rules.db", package = "pkgaudit")
+
 
 # Open the rules database, verify its integrity, run fn(con), and always
 # disconnect. Verification happens before any query so a tampered database is
@@ -110,15 +135,22 @@ rules_version <- function(db_path = .db_path()) {
   if (!nzchar(db_path) || !file.exists(db_path)) {
     stop(
       "Rules database not found: ",
-      if (nzchar(db_path)) db_path else "(empty path -- is pkgaudit installed?)"
+      if (nzchar(db_path)) db_path else "(empty path--is pkgaudit installed?)",
+      call. = FALSE
     )
   }
   .verify_db(db_path)
 
+  # Verification is time-of-check to time-of-use: the hash is computed above and
+  # dbConnect() below re-opens the path, so a file swapped between the two is
+  # not caught. Accepted deliberately (see ?load_rules, Security considerations) --
+  # closing it would require staging a private copy, adding a filesystem write
+  # to this otherwise read-only path.
   con <- DBI::dbConnect(RSQLite::SQLite(), db_path)
   on.exit(DBI::dbDisconnect(con), add = TRUE)
   fn(con)
 }
+
 
 # Verify the database against its SHA-256 sidecar. A missing sidecar or a hash
 # mismatch is fatal: this is a security tool, and silently loading unverified
@@ -128,17 +160,27 @@ rules_version <- function(db_path = .db_path()) {
   if (!file.exists(hash_path)) {
     stop(
       "Rules database hash sidecar not found: ", hash_path, "\n",
-      "Refusing to load unverified rules database."
+      "Refusing to load unverified rules database.",
+      call. = FALSE
     )
   }
-  expected <- trimws(readLines(hash_path, warn = FALSE)[[1L]])
+  lines <- readLines(hash_path, warn = FALSE)
+  if (length(lines) == 0L || !nzchar(trimws(lines[[1L]]))) {
+    stop(
+      "Rules database hash sidecar is empty: ", hash_path, "\n",
+      "Refusing to load unverified rules database.",
+      call. = FALSE
+    )
+  }
+  expected <- trimws(lines[[1L]])
   actual   <- digest::digest(db_path, algo = "sha256", file = TRUE)
   if (!identical(tolower(expected), tolower(actual))) {
     stop(
       "Rules database failed SHA-256 verification.\n",
       "  expected: ", expected, "\n",
       "  actual:   ", actual, "\n",
-      "Refusing to load a modified rules database."
+      "Refusing to load a modified rules database.",
+      call. = FALSE
     )
   }
   invisible(TRUE)

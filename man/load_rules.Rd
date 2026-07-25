@@ -7,26 +7,42 @@
 load_rules(db_path = .db_path())
 }
 \arguments{
-\item{db_path}{Path to the SQLite rules database. Defaults to the database
-bundled with the installed package.}
+\item{db_path}{Path to the rules database. Defaults to the database bundled
+with the installed package.}
 }
 \value{
 A named list with three data frames:
 \describe{
-\item{file_contexts}{Columns \code{name}, \code{version}, \code{type}, \code{message},
-\code{path}, \code{recursive}, \code{pattern}.}
-\item{code_contexts}{Columns \code{name}, \code{version}, \code{type}, \code{message},
-\code{xpath}.}
-\item{patterns}{Columns \code{name}, \code{version}, \code{type}, \code{message}, \code{attck},
-\code{xpath}.}
+\item{file_contexts}{Data frame with columns \code{name}, \code{version}, \code{type},
+\code{message}, \code{path}, \code{recursive}, \code{pattern}.}
+\item{code_contexts}{Data frame with columns \code{name}, \code{version}, \code{type},
+\code{message}, \code{xpath}.}
+\item{patterns}{Data frame with columns \code{name}, \code{version}, \code{type},
+\code{message}, \code{attck}, \code{xpath}.}
 }
 }
 \description{
 Loads the file-context, code-context, and pattern rules from the bundled
-SQLite database as a named list suitable for passing to \code{\link[=audit_package]{audit_package()}}.
-Before reading, the database is verified against its SHA-256 sidecar so a
-tampered or corrupted rules file is rejected rather than silently trusted.
+SQLite database as a named list suitable for passing to \code{\link[=audit_package]{audit_package()}} or
+\code{\link[=audit_tarball]{audit_tarball()}}.
 }
+\details{
+Before reading, the database is verified against its SHA-256 sidecar so that
+a tampered or corrupted rules file is rejected rather than silently trusted.
+}
+\section{Security considerations}{
+
+Verification is time-of-check to time-of-use (TOCTOU): the database is hashed
+and then re-opened by path to query it, so a file swapped in the interval
+between the two is not detected. This does not weaken the bundled default --
+an attacker able to win that race already has write access to the installed
+package and could replace the sidecar or this package's code outright. When
+loading rules from a path other parties can write, treat the SHA-256 check as
+protection against accidental corruption or a substituted database given an
+authentic sidecar -- not against an attacker who can modify the file
+concurrently. Load from a path only trusted writers control.
+}
+
 \examples{
 \dontrun{
 rules <- load_rules()

@@ -38,6 +38,15 @@ test_that("load_rules() refuses a database with a missing hash sidecar", {
   expect_error(load_rules(db), "hash sidecar not found")
 })
 
+test_that("load_rules() refuses a database with an empty hash sidecar", {
+  db <- tempfile(fileext = ".db")
+  file.copy(.db_path(), db)
+  writeLines(character(0L), paste0(db, ".sha256"))
+  on.exit(unlink(c(db, paste0(db, ".sha256"))), add = TRUE)
+
+  expect_error(load_rules(db), "hash sidecar is empty")
+})
+
 test_that("load_rules() refuses a tampered database (hash mismatch)", {
   db <- tempfile(fileext = ".db")
   file.copy(.db_path(), db)

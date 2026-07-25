@@ -7,7 +7,8 @@
 rules_version(db_path = .db_path())
 }
 \arguments{
-\item{db_path}{Path to the SQLite rules database.}
+\item{db_path}{Path to the SQLite rules database. Defaults to the database
+bundled with the installed package.}
 }
 \value{
 A character string giving the rules database version (e.g.,
@@ -17,6 +18,10 @@ A character string giving the rules database version (e.g.,
 Returns the version string of the rules database currently shipped with the
 package. Findings reports should always record the rules version to ensure
 reproducibility across audit cycles.
+}
+\details{
+Like \code{\link[=load_rules]{load_rules()}}, this verifies the database against its SHA-256 sidecar
+before reading; see its Security considerations.
 }
 \examples{
 \dontrun{
