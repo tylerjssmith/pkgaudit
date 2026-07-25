@@ -57,6 +57,33 @@ test_that("hash_manifest() is independent of the directory's location on disk", 
   expect_equal(hash_manifest(d1)$hash, hash_manifest(d2)$hash)
 })
 
+test_that("hash_manifest() excludes a leaf symlink and reports it", {
+  skip_on_os("windows")
+  d <- make_dir(list("real.txt" = "content"))
+  on.exit(unlink(d, recursive = TRUE), add = TRUE)
+  file.symlink(file.path(d, "real.txt"), file.path(d, "link.txt"))
+
+  res <- hash_manifest(d)
+  expect_equal(res$n_files, 1L)
+  expect_equal(res$symlinks, "link.txt")
+  expect_false(grepl("link.txt", res$manifest, fixed = TRUE))
+})
+
+test_that("hash_manifest() does not hash content reached via a symlinked dir", {
+  skip_on_os("windows")
+  outside <- make_dir(list("leak.txt" = "secret"))
+  d       <- make_dir(list("in.txt" = "x"))
+  on.exit(unlink(c(outside, d), recursive = TRUE), add = TRUE)
+  # A symlinked directory pointing outside `d`: list.files() descends into it,
+  # but its files must not enter the manifest.
+  file.symlink(outside, file.path(d, "linkdir"))
+
+  res <- hash_manifest(d)
+  expect_equal(res$n_files, 1L)
+  expect_true("linkdir/leak.txt" %in% res$symlinks)
+  expect_false(grepl("leak.txt", res$manifest, fixed = TRUE))
+})
+
 test_that("hash_manifest() honors exclusion patterns", {
   d <- make_dir(list("keep.txt" = "x", ".git/config" = "secret"))
   on.exit(unlink(d, recursive = TRUE), add = TRUE)

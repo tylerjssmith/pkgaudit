@@ -16,28 +16,35 @@ Pass \code{character(0)} to hash everything present.}
 }
 \value{
 A list with:
+\describe{
 \item{hash}{SHA-256 of the manifest text (character scalar).}
 \item{manifest}{The manifest text (character scalar), one line per file,
 formatted as \code{"<hash>  <relative path>"}.}
 \item{n_files}{Number of files included (integer).}
 \item{exclude}{The exclusion patterns applied, for recording in metadata.}
-\item{symlinks}{Relative paths of symlinks, excluded from the manifest
-(character).}
-\item{unreadable}{Relative paths that could not be hashed, excluded from the
-manifest (character).}
+\item{symlinks}{Relative paths of symlinks and files under symlinked
+directories, excluded from the manifest (character).}
+\item{unreadable}{Relative paths that could not be hashed, excluded from
+the manifest (character).}
+}
 }
 \description{
-Directories, unlike tarballs, have no single canonical byte stream to hash.
-This function instead hashes a \emph{manifest}: a canonically ordered list of every
-included file's relative path and SHA-256 content hash. The manifest is
-returned alongside the hash so that two disagreeing scans can be diffed to
-identify which file differs -- a bare hash cannot tell you that.
+Hashes a package manifest, a canonically ordered list of every included
+file's relative path and SHA-256 content hash.
 }
 \details{
-A directory hash is a weaker provenance claim than a tarball hash, because its
-scope depends on \code{exclude}: two directories that differ only in excluded paths
-hash identically. The exclusion patterns are returned so the caller can record
-them. For vetting untrusted code, prefer hashing the tarball.
+Directories, unlike tarballs, have no single canonical byte stream to hash.
+This function instead hashes a manifest: a canonically ordered list of
+every included file's relative path and SHA-256 content hash. The manifest is
+returned alongside the hash so that two disagreeing scans can be diffed to
+identify which file differs.
+
+A directory hash is a weaker provenance claim than a tarball hash, because
+its scope depends on \code{exclude}: two directories that differ only in excluded
+paths hash identically. The exclusion patterns are returned so the caller
+can record them. Empty directories and symlinks are likewise not represented
+in the manifest, so two trees differing only in those also hash identically.
+For vetting untrusted code, prefer hashing the tarball.
 }
 \examples{
 \dontrun{
