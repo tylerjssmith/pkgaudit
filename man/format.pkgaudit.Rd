@@ -13,8 +13,7 @@
 \item{x}{A \code{pkgaudit} object.}
 
 \item{path}{Logical; if \code{TRUE} (default) include the \verb{Path:} line showing the
-local filesystem location scanned. Set \code{FALSE} to omit local paths from
-output that will be shared.}
+local filesystem location scanned. Set \code{FALSE} to omit local paths.}
 
 \item{...}{Ignored, for S3 compatibility.}
 }
@@ -25,16 +24,13 @@ output that will be shared.}
 \description{
 \code{format.pkgaudit()} renders the scan metadata and finding counts as a
 character vector of lines; \code{print.pkgaudit()} writes those lines and returns
-the object invisibly. The output reports what was observed -- counts of file
-contexts, code contexts, patterns, and errors -- without any verdict. The
-rules-database SHA-256 is held in metadata but not shown.
+the object invisibly.
 }
 \examples{
 \dontrun{
 result <- audit_package("/path/to/package")
-print(result)                 # metadata + finding counts
+print(result)
 print(result, path = FALSE)   # omit the local Path: line for sharing
-writeLines(format(result))    # the same lines as a character vector
 }
 
 }

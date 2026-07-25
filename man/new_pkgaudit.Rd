@@ -2,7 +2,7 @@
 % Please edit documentation in R/pkgaudit.R
 \name{new_pkgaudit}
 \alias{new_pkgaudit}
-\title{Construct a pkgaudit result object}
+\title{Construct a pkgaudit object}
 \usage{
 new_pkgaudit(file_contexts, code_contexts, patterns, errors, metadata)
 }
@@ -10,31 +10,16 @@ new_pkgaudit(file_contexts, code_contexts, patterns, errors, metadata)
 \item{file_contexts, code_contexts, patterns, errors}{Data frames with the
 columns documented in \code{\link[=audit_package]{audit_package()}}.}
 
-\item{metadata}{Named list with the nine fields documented in
-\code{\link[=audit_package]{audit_package()}} (\code{pkg_name}, \code{pkg_version}, \code{pkg_path}, \code{pkg_is_tarball},
-\code{pkg_sha256}, \code{pkgaudit_version}, \code{pkgaudit_rules_version},
-\code{pkgaudit_rules_sha256}, \code{scanned}), each a length-one value of the
-expected type.}
+\item{metadata}{Named list with the fields documented in \code{\link[=audit_package]{audit_package()}},
+each a length-one value of the expected type.}
 }
 \value{
-A \code{pkgaudit} object: a list of \code{file_contexts}, \code{code_contexts},
-\code{patterns}, \code{errors}, and \code{metadata}.
+A \code{pkgaudit} object: a named list of \code{file_contexts},
+\code{code_contexts}, \code{patterns}, \code{errors}, and \code{metadata}.
 }
 \description{
 Assembles the four result data frames and a metadata list into a validated
-\code{pkgaudit} S3 object. \code{\link[=audit_package]{audit_package()}} calls this at the end of a scan; it is
-also used to construct objects directly (e.g. in tests).
-}
-\examples{
-\dontrun{
-# Most callers get a pkgaudit object from audit_package(); new_pkgaudit()
-# is for constructing one directly, e.g. from stored results.
-result <- audit_package("/path/to/package")
-obj <- new_pkgaudit(
-  result$file_contexts, result$code_contexts,
-  result$patterns, result$errors, result$metadata
-)
-}
-
+\code{pkgaudit} S3 object. \code{\link[=audit_package]{audit_package()}} calls this at the end of a scan. It
+is also used to construct objects directly (e.g., in tests).
 }
 \keyword{internal}
