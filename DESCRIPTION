@@ -1,5 +1,5 @@
 Package: pkgaudit
-Title: Static Analysis Security Testing for R Packages
+Title: Static Analysis Security Testing (SAST) for R Packages
 Version: 0.3.0
 Authors@R:
     person("Tyler", "Smith", , "tylerjssmith@gmail.com", role = c("aut", "cre"))
