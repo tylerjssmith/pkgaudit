@@ -17,3 +17,9 @@ permissions:
 jobs:
   scan-scheduled:
     uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@9a498708959aeaef5ef730655706c5a1df1edbc2" # v2.3.8
+    with:
+      # Scan only the default profile's lockfile. Overrides the action default
+      # ("-r ./"), which would also walk the repo and pick up
+      # renv/profiles/dev/renv.lock.
+      scan-args: |-
+        --lockfile=renv.lock
