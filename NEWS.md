@@ -15,6 +15,12 @@ replaces it with three independent rule classes.
 * `audit_package()` and `audit_tarball()` now return a `pkgaudit` S3 object: a
   named list of `file_contexts`, `code_contexts`, `patterns`, and `errors` data
   frames plus a `metadata` list, with `format()` and `print()` methods.
+* `summary()` on a `pkgaudit` object returns a `summary.pkgaudit` object and
+  prints a sectioned report of the findings themselves: the distinct file and
+  code contexts found, how often each pattern was found and the MITRE ATT&CK
+  techniques it carries, and any errors, each followed by a note stating what
+  scan coverage the failure cost. Like `print()`, it takes `path = FALSE` to
+  omit local paths from shared output.
 * `metadata` records provenance: package name and version (from `DESCRIPTION`),
   a SHA-256 (the tarball hash for tarball scans, or a directory manifest hash
   for directory scans), the pkgaudit and rules versions, the rules-database

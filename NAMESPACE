@@ -2,6 +2,8 @@
 
 S3method(format,pkgaudit)
 S3method(print,pkgaudit)
+S3method(print,summary.pkgaudit)
+S3method(summary,pkgaudit)
 export(audit_package)
 export(audit_tarball)
 export(hash_manifest)
