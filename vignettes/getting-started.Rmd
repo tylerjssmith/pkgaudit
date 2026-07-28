@@ -1,0 +1,229 @@
+---
+title: "Getting Started with pkgaudit"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with pkgaudit}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>"
+)
+```
+
+pkgaudit is a static analysis security testing (SAST) tool for R source
+packages. It flags security-relevant files and R source code for manual review, 
+and organizes what it finds by the point in the R package lifecycle at which the
+code runs (e.g., build, check, install, load).
+
+A finding is not an accusation. Most flagged code is legitimate: packages
+compile source code, download data, and call shell tools for good reasons. The
+purpose of a scan is to help you identify *which* parts of an unfamiliar package
+deserve your attention before you install and load it.
+
+```{r setup}
+library(pkgaudit)
+```
+
+## pkgaudit Rules
+
+pkgaudit v0.3.0 separates *when* code executes from *what* code does using three
+categories of rules:
+
+- **File contexts** are files that R executes at build-, check-, or 
+install-time, such as `configure` and `src/Makevars`.
+- **Code contexts** are top-level R source code and lifecycle hooks whose bodies
+run automatically when a namespace is loaded, attached, unloaded, or detached,
+such as `.onLoad()` and `.onAttach()`.
+- **Patterns** are security-relevant function calls, such as `system()`, which
+can execute arbitrary shell commands.
+
+The three combine to give a finding its weight. A `system()` call inside an
+ordinary function only runs if you call that function; the same call inside
+`.onLoad()` runs the moment the namespace loads. Every pattern finding is
+therefore attributed to the code context that contains it.
+
+The full rule set is documented in
+[RULES.md](https://github.com/tylerjssmith/pkgaudit/blob/master/RULES.md).
+
+## An Example Package
+
+As a demonstration, we will scan `untrustedpkg`, a small source package shipped
+with pkgaudit that does several things a reviewer would want to know about. It
+is never built, installed, or loaded; it exists only to be scanned.
+
+```{r example-package}
+tarball <- system.file(
+  "extdata", "untrustedpkg", "untrustedpkg_0.1.0.tar.gz",
+  package = "pkgaudit"
+)
+
+exdir <- file.path(tempdir(), "untrustedpkg-example")
+utils::untar(tarball, exdir = exdir)
+
+pkg <- file.path(exdir, "untrustedpkg")
+list.files(pkg, recursive = TRUE)
+```
+
+Three of those files are worth reading before we scan them. A `configure` script
+runs at install time, before any R code is loaded:
+
+```{r example-configure, echo = FALSE, comment = ""}
+cat(readLines(file.path(pkg, "configure")), sep = "\n")
+```
+
+`.onLoad()` runs automatically when the namespace is loaded, so its body
+executes on `library(untrustedpkg)`:
+
+```{r example-onload, echo = FALSE, comment = ""}
+cat(readLines(file.path(pkg, "R", "zzz.R")), sep = "\n")
+```
+
+An ordinary function only runs if the user calls it:
+
+```{r example-fetch, echo = FALSE, comment = ""}
+cat(readLines(file.path(pkg, "R", "fetch.R")), sep = "\n")
+```
+
+The script that generates this package is in
+[data-raw/create_untrustedpkg.R](https://github.com/tylerjssmith/pkgaudit/blob/master/data-raw/create_untrustedpkg.R).
+
+## Auditing a Package Directory
+
+`audit_package()` scans an unpacked source package:
+
+```{r audit}
+result <- audit_package(pkg)
+```
+
+Printing the result gives the scan metadata and the number of findings by
+category:
+
+```{r print}
+result
+```
+
+`summary()` reports the findings themselves: which contexts were found, how
+often each pattern matched, and the MITRE ATT&CK techniques involved.
+
+```{r summary}
+summary(result)
+```
+
+Both methods accept `path = FALSE`, which omits the local filesystem path from
+the output. This is useful when sharing results, since the path may reveal a
+username or directory layout.
+
+```{r print-nopath}
+print(result, path = FALSE)
+```
+
+## Working with pkgaudit Results
+
+A `pkgaudit` object is a named list of ordinary data frames, so you can filter,
+join, and report on the findings however you like.
+
+```{r components}
+result$file_contexts
+result$code_contexts
+result$patterns
+```
+
+Each row of `result$patterns` carries the code context it was found in, so the
+distinction that matters most is a single subset away:
+
+```{r at-load}
+result$patterns[result$patterns$code_context == "onload_code", ]
+```
+
+Two further components round out the object. `result$errors` records any file or
+rule that could not be processed, so a parse failure is reported rather than
+silently dropped; an empty data frame means the scan was complete.
+`result$metadata` records what was scanned and with what.
+
+```{r metadata}
+result$errors
+str(result$metadata)
+```
+
+## Auditing a Tarball
+
+The more common workflow is to scan a package you have not yet installed.
+`audit_tarball()` takes a `.tar.gz` source package, validates it, extracts it to
+a temporary directory, and scans the result.
+
+This is the `untrustedpkg` tarball we extracted above, scanned directly:
+
+```{r tarball}
+audit_tarball(tarball)
+```
+
+Because an untrusted archive is itself an attack surface, it is checked before
+anything is written to disk. `validate_tar()` performs that check on its own. It
+fails closed, refusing the whole archive rather than extracting a filtered
+subset: any link entry, path traversal, absolute path, or malformed path is
+grounds for refusal, as is an archive that does not extract to exactly one
+top-level directory. It also enforces limits on entry count, uncompressed size,
+and compression ratio, guarding against archives that expand to exhaust the
+disk:
+
+```{r validate}
+str(validate_tar(tarball))
+```
+
+## Rules and Database Integrity
+
+The rules live in a versioned SQLite database shipped with the package.
+`load_rules()` reads it, and `rules_version()` reports the version:
+
+```{r rules}
+rules_version()
+
+rules <- load_rules()
+nrow(rules$file_contexts)
+nrow(rules$code_contexts)
+nrow(rules$patterns)
+```
+
+Passing the rules explicitly avoids re-reading and re-verifying the database on
+every call, which is worthwhile when scanning many packages:
+
+```{r reuse-rules, eval = FALSE}
+rules   <- load_rules()
+results <- lapply(tarballs, audit_tarball, rules = rules)
+```
+
+Because the rules determine what a scan can find, a modified database is a way
+to make a scan come back clean. `load_rules()` verifies the database against its
+bundled SHA-256 sidecar on every call and refuses to load a modified one. You
+can also check the hash of your installed copy against the value published in
+the [README](https://github.com/tylerjssmith/pkgaudit#database-integrity):
+
+```{r hash}
+digest::digest(
+  system.file("db", "rules.db", package = "pkgaudit"),
+  algo = "sha256",
+  file = TRUE
+)
+```
+
+## Interpreting a Scan
+
+A clean scan is weak evidence of safety: pkgaudit reasons about syntax, so
+sufficiently indirect code can evade any pattern rule. A scan with findings is
+better understood as a reading list than a verdict. In review, the questions
+worth asking are roughly:
+
+- Does the package need this capability at all, given what it claims to do?
+- Does it run without being asked, at install or load time, rather than when a
+  user calls a function?
+- Does it reach the network, and if so, is the destination fixed and
+  identifiable in the source?
+- Is the code being run visible in the source, or is it assembled, decoded, or
+  fetched at runtime?
+
+Findings that answer badly on several of these at once are the ones to read
+closely.
