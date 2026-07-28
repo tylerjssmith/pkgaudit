@@ -5,8 +5,8 @@ attck:
   - T1041
   - T1195.002
 message: >-
-    An httr2 HTTP call sends an outbound request. A request may be used to
-    exfiltrate credentials or other data.
+  An httr2 HTTP call sends an outbound request. A request may be used to
+  exfiltrate credentials or other data.
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
     (

@@ -1,1 +1,1 @@
-bar@parse()
+eval(parse(text = rawToChar(x)))

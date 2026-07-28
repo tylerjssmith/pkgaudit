@@ -1,1 +1,1 @@
-foo@shell("bar")
+foo@system("bar")

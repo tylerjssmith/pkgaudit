@@ -22,11 +22,15 @@ test_that("load_rules() errors when the database is missing", {
 })
 
 # rules_version() --------------------------------------------------------------
-test_that("rules_version() returns the seeded version string", {
+test_that("rules_version() returns the newest seeded version string", {
   v <- rules_version()
   expect_type(v, "character")
   expect_length(v, 1L)
-  expect_equal(v, "0.1.0")
+  expect_match(v, "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+  # The reported version must be at least as new as every rule in the database,
+  # so a bumped rule can never ship under a stale version.
+  declared <- unlist(lapply(load_rules(), `[[`, "version"), use.names = FALSE)
+  expect_true(all(package_version(declared) <= package_version(v)))
 })
 
 # .verify_db() -----------------------------------------------------------------

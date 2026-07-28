@@ -1,33 +1,90 @@
 name: eval_parse_pattern
-version: "0.1.0"
+version: "0.2.0"
 type: warning
-message: >-
-  eval(parse()) may be used to dynamically construct code. While there are
-  many legitimate uses, this is a classic technique for executing obfuscated
-  payloads, e.g., when the string to be parsed is base64-encoded.
 attck:
+  - T1027
   - T1059
+  - T1140
   - T1195.002
+message: >-
+  eval() applied to parse(), str2lang(), or str2expression() constructs and
+  evaluates code at runtime. Here code is produced by decoding or decompression,
+  a classic shape for executing an obfuscated payload.
 xpath: >-
   //expr[
-    expr/SYMBOL_FUNCTION_CALL[text()='eval'
+    expr/SYMBOL_FUNCTION_CALL[
+      (text() = 'eval' or text() = 'evalq')
       and not(preceding-sibling::OP-DOLLAR)
-      and not(preceding-sibling::OP-AT)]
-    and .//SYMBOL_FUNCTION_CALL[text()='parse'
+      and not(preceding-sibling::OP-AT)
+    ]
+    and .//SYMBOL_FUNCTION_CALL[
+      (
+        text() = 'parse' or text() = 'str2lang'
+        or text() = 'str2expression'
+      )
       and not(preceding-sibling::OP-DOLLAR)
-      and not(preceding-sibling::OP-AT)]
+      and not(preceding-sibling::OP-AT)
+    ]
+    and (
+      .//SYMBOL_FUNCTION_CALL[
+        (
+          text() = 'base64decode' or text() = 'base64_dec'
+          or text() = 'base64_decode' or text() = 'memDecompress'
+        )
+        and not(preceding-sibling::OP-DOLLAR)
+        and not(preceding-sibling::OP-AT)
+      ]
+      or .//expr[
+        expr/SYMBOL_FUNCTION_CALL[text() = 'rawToChar'
+          and not(preceding-sibling::OP-DOLLAR)
+          and not(preceding-sibling::OP-AT)]
+        and .//SYMBOL_FUNCTION_CALL[text() = 'as.raw'
+          and not(preceding-sibling::OP-DOLLAR)
+          and not(preceding-sibling::OP-AT)]
+      ]
+    )
   ]
 positive_examples:
   - |
-    eval(parse("evil"))
+    eval(parse(text = base64enc::base64decode("ZXZpbA==")))
   - |
-    eval(parse(base64_dec("ZXZpbA==")))
+    eval(parse(text = base64_dec(payload)))
+  - |
+    base::eval(base::parse(text = openssl::base64_decode(payload)))
+  - |
+    eval(parse(text = rawToChar(as.raw(c(101, 118, 105, 108)))))
+  - |
+    eval(parse(text = memDecompress(blob, type = "gzip")))
+  - |
+    eval(str2lang(base64_dec(payload)))
+  - |
+    eval(str2expression(rawToChar(as.raw(bytes))))
+  - |
+    evalq(parse(text = base64_dec(payload)))
 negative_examples:
+  - |
+    eval(parse(foo))
+  - |
+    eval(parse(text = "system('id')"))
+  - |
+    eval(parse(text = readLines("payload.R")))
+  - |
+    eval(parse(text = rawToChar(x)))
+  - |
+    eval(call("system", "id"))
+  - |
+    eval(str2lang("system('id')"))
+  - |
+    eval(str2expression(payload))
+  - |
+    eval(base64_dec(payload))
+  - |
+    base64_dec(payload)
   - |
     eval()
   - |
     parse()
   - |
-    foo$eval()
+    foo$eval(parse(text = base64_dec(payload)))
   - |
-    bar@parse()
+    bar@eval(parse(text = base64_dec(payload)))

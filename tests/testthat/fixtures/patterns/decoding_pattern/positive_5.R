@@ -1,0 +1,1 @@
+memDecompress(blob, type = "gzip")

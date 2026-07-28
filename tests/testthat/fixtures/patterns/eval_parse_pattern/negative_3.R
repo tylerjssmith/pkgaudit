@@ -1,1 +1,1 @@
-foo$eval()
+eval(parse(text = readLines("payload.R")))

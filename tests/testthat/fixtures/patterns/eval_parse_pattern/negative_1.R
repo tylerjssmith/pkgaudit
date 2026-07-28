@@ -1,1 +1,1 @@
-eval()
+eval(parse(foo))

@@ -1,0 +1,1 @@
+getFromNamespace(fname, pkgname)

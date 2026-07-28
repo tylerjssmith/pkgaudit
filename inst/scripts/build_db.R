@@ -28,7 +28,9 @@
   pattern      = c("warning", "note")
 )
 
-.max_examples <- 20L
+# A generous cap. This is not a style limit -- it exists so a malicious or
+# malformed rule file cannot make the build allocate without bound.
+.max_examples <- 50L
 
 
 # --- Validation ---------------------------------------------------------------
@@ -176,11 +178,18 @@ read_pattern_yaml <- function(path) {
 # --- Database -----------------------------------------------------------------
 
 # Create a fresh rules database with the three rule tables, a rule_versions
-# table, and one seed version. Overwrites any existing file.
+# table, and the seed versions. Overwrites any existing file.
+#
+# Every version a rule declares must appear here: .assert_version() refuses to
+# load a rule whose version has no row, so a bumped rule cannot slip in without
+# its release being recorded. Rows are inserted in order, and rules_version()
+# reports the last one, so the newest release goes last.
 init_db <- function(
-  db_path = file.path("inst", "db", "rules.db"),
-  version = "0.1.0",
-  notes   = "Initial release"
+  db_path  = file.path("inst", "db", "rules.db"),
+  versions = list(
+    c("0.1.0", "Initial release"),
+    c("0.2.0", "Expanded pattern rule coverage")
+  )
 ) {
   db_dir <- dirname(db_path)
   if (!dir.exists(db_dir)) dir.create(db_dir, recursive = TRUE)
@@ -227,13 +236,16 @@ init_db <- function(
       xpath   TEXT NOT NULL
     )")
 
-  DBI::dbExecute(
-    con,
-    "INSERT INTO rule_versions (version, released_at, notes) VALUES (?, ?, ?)",
-    params = list(version, as.character(Sys.Date()), notes)
-  )
+  for (v in versions) {
+    DBI::dbExecute(
+      con,
+      "INSERT INTO rule_versions (version, released_at, notes) VALUES (?, ?, ?)",
+      params = list(v[[1L]], as.character(Sys.Date()), v[[2L]])
+    )
+  }
 
-  message("Initialized database: ", db_path, " (version ", version, ")")
+  message("Initialized database: ", db_path, " (versions ",
+          paste(vapply(versions, `[[`, character(1L), 1L), collapse = ", "), ")")
   invisible(db_path)
 }
 

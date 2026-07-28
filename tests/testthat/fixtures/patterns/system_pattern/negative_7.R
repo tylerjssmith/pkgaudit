@@ -1,1 +1,1 @@
-foo@system("bar")
+foo$shell("bar")

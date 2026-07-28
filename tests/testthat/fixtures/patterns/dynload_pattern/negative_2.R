@@ -1,0 +1,1 @@
+foo@dyn.load("x")

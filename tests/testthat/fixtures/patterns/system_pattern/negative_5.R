@@ -1,1 +1,1 @@
-foo$system2("bar")
+foo$system("bar")
