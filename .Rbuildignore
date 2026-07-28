@@ -10,3 +10,6 @@
 ^docs$
 ^references\.bib$
 ^\.claude$
+^RULES\.md$
+^[^/]+\.html$
+^data-raw$
