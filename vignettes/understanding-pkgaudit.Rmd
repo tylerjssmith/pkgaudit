@@ -1,0 +1,343 @@
+---
+title: "Understanding pkgaudit"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Understanding pkgaudit}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>"
+)
+```
+
+pkgaudit is a static analysis security testing (SAST) tool for R source
+packages. It flags security-relevant files and R source code for manual review,
+and organizes what it finds by the point in the R package lifecycle at which the
+code runs (e.g., build, check, install, load).
+
+This vignette explains how pkgaudit works. It is intended for anyone considering
+whether to incorporate pkgaudit into their workflow and for potential
+contributors. For information on how to contribute, see
+[CONTRIBUTING.md](https://github.com/tylerjssmith/pkgaudit/blob/master/.github/CONTRIBUTING.md).
+
+```{r setup}
+library(pkgaudit)
+rules <- load_rules()
+```
+
+## Entry Points
+
+pkgaudit has two entry points. `audit_package()` is used for source package
+directories. `audit_tarball()` is used for source package tarballs; it wraps
+`audit_package()` and handles tarball validation and extraction, and the removal
+of extracted files.
+
+`audit_package()` orchestrates the following internal functions:
+
+1. `find_file_contexts()` determines what file contexts are present in the
+    source package.
+
+2. `find_scripts()` finds all scripts in `R/`, `R/unix/`, and `R/windows/` with
+    file extensions recognized by R's build process (`.R`, `.r`, `.S`, `.s`,
+    `.q`), as well as `src/install.libs.R`, if present.
+
+3. For each script: `parse_script()` uses R's `parse()` and the `xmlparsedata`
+   and `xml2` packages to return an XML parse tree for the script.
+
+   a. For each code-context rule, `find_code_contexts()` finds XML nodes
+      matching XPath-based definitions of code contexts.
+
+   b. For each pattern rule, `find_patterns()` finds XML nodes matching
+      XPath-based definitions of patterns.
+
+   c. If any patterns were found, `determine_code_contexts()` determines
+      whether each pattern occurrence is located in a named code context,
+      top-level code (`Top-level`), or a regular function (`Other`).
+
+`audit_package()` returns a `pkgaudit` object: a named list of `file_contexts`,
+`code_contexts`, `patterns`, and `errors` data frames, plus a `metadata` list
+recording what was scanned and with what.
+
+Failures are contained rather than fatal. Listing files, parsing a script, and
+evaluating an XPath are each wrapped in `tryCatch()`, so an unreadable file, a
+malformed script, or an invalid XPath is recorded as a row in `errors` -- giving
+the stage, file, rule, and message -- and the scan continues with the next
+script or rule.
+
+## Rules
+
+The remainder of this document explains each category of rule and how the
+functions above are used to find the context or pattern it targets.
+
+Rules are defined by YAML files that live under `inst/rules/`. For all three
+categories, the YAML files have the following fields:
+
+- `name` is the rule identifier and the value reported in a finding.
+- `version` is the rule version, independent of the package version.
+- `message` is the explanation shown with a finding.
+- `positive_examples` and `negative_examples` are file paths or code syntax that
+should and should not be found by the rule, respectively.
+
+Each rule contains additional fields used by pkgaudit functions to find file
+contexts, code contexts, or patterns. These are explained below.
+
+The helper below prints a rule's YAML, stopping before its examples, which are
+discussed at the end.
+
+```{r helper}
+show_rule <- function(category, file) {
+  lines <- readLines(system.file("rules", category, file, package = "pkgaudit"))
+  end   <- grep("^positive_examples:", lines)
+  cat(lines[seq_len(if (length(end)) end[1] - 1L else length(lines))], sep = "\n")
+}
+```
+
+### File Context Rules
+
+A file context is a file that R executes at build-, check-, or install-time,
+such as `configure` and `src/Makevars`. These files have many legitimate uses
+but can execute arbitrary shell commands on a system. The goal of a file context
+rule is to alert a user to the existence of a file context before it is executed
+so that the file can be reviewed.
+
+In addition to `name`, `version`, `message`, and the examples, a file context
+rule has four additional fields:
+
+- `type` is the type of file (e.g., `make`, `shell`, `R`).
+- `path` is the directory to search (relative to the package root).
+- `recursive` indicates whether to descend into subdirectories.
+- `pattern` is a regular expression matched against the names of the files found
+  at the file path (recursively, if `recursive: TRUE`).
+
+`find_file_contexts()` passes the `path`, `recursive`, and `pattern` values to
+`base::list.files()`. For example, the following rule is used to find
+`configure` in the package root.
+
+```{r fc-yaml, comment = ""}
+show_rule("file_contexts", "file_configure.yaml")
+```
+
+`"."` is the package root. `recursive: FALSE` means search only in the package
+root, not subdirectories. `pattern` is anchored at both ends, so `^configure$`
+matches `configure` exactly.
+
+```{r fc-match}
+grepl("^configure$", c("configure", "configure.win", "reconfigure"))
+```
+
+For this rule, these values are passed to `list.files()` as follows, with `path`
+resolved against the root of the package being audited:
+
+```{r, eval=FALSE}
+list.files(
+  file.path(pkg, "."),
+  pattern    = "^configure$",
+  recursive  = FALSE,
+  full.names = TRUE,
+  all.files  = TRUE
+)
+```
+
+All matches are findings. Here at most one file can match, since the pattern is
+anchored and the search does not descend into subdirectories. Related files such
+as `configure.win` and `configure.ucrt` have separate rules rather than a shared
+pattern. Additionally, pkgaudit ignores directories whose names happen to match;
+only regular files are found.
+
+The YAML files are compiled into a SQLite database. `load_rules()` returns a list
+of data frames containing rules. The `file_contexts` data frame contains the
+`path`, `recursive`, and `pattern` values:
+
+```{r fc-row}
+rules$file_contexts[
+  rules$file_contexts$name == "configure_file",
+  c("name", "path", "recursive", "pattern")
+]
+```
+
+### Code Context Rules
+
+A code context is a lifecycle hook whose body can run automatically when a
+namespace is loaded, attached, unloaded, or detached, such as `.onLoad()` and
+`.onAttach()`. These contexts have many legitimate uses but can execute
+arbitrary code on a system when a user installs or loads a package, before the
+user has called any package functions. The goal of a code context rule is to
+alert a user to the existence of a code context before its contents are executed
+so that its body can be reviewed.
+
+For each script found by `find_scripts()`, `parse_script()` returns an XML parse
+tree. As a simplified example, the helpers below are used to parse a minimal
+example of `.onLoad()` and print its tree, dropping the line and column
+attributes to keep the output readable.
+
+```{r cc-helpers}
+as_xml <- function(code) {
+  xml2::read_xml(
+    xmlparsedata::xml_parse_data(
+      parse(text = code, keep.source = TRUE)
+    )
+  )
+}
+
+show_tree <- function(code) {
+  doc <- as_xml(code)
+  for (node in xml2::xml_find_all(doc, "//*")) {
+    for (attr in names(xml2::xml_attrs(node))) xml2::xml_attr(node, attr) <- NULL
+  }
+  cat(sub("^<\\?xml[^>]*\\?>\n", "", as.character(doc)))
+}
+```
+
+```{r cc-tree, comment = ""}
+show_tree(".onLoad <- function(libname, pkgname) NULL")
+```
+
+In addition to `name`, `version`, `message`, and the examples, a code context
+rule has two additional fields:
+
+- `type` is the type of code context (e.g., `hook`).
+- `xpath` is the XPath expression that defines the context.
+
+```{r cc-yaml, comment = ""}
+show_rule("code_contexts", "code_onload.yaml")
+```
+
+The XPath definition selects an expression node subject to two alternative
+conditions. The first covers assignment with `<-` or `=`: the left side must be
+the symbol `.onLoad`, and the right side must be a function definition, which
+is what `expr[FUNCTION]` tests. The second covers the same definition written
+backwards with `->`, where the symbol and the function swap sides. Expressions
+are matched under two node names because R wraps a top-level assignment made
+with `=` in an `expr_or_assign_or_help` node rather than an `expr` node.
+
+`find_code_contexts()` takes the XML parse tree and XPath definition, and calls
+`.xml_find_all_safe()`, which wraps `xml2::xml_find_all()`, to find XML nodes in
+the parse tree matching the definition. Every matching node becomes a
+code-context finding recording the rule's name and the line and column where the
+hook begins.
+
+Importantly, for the definition to match, a *function* must be assigned to the
+name of the hook. The name of the hook merely appearing somewhere is not a
+match. Below are some simple examples:
+
+```{r cc-match}
+xpath   <- rules$code_contexts$xpath[rules$code_contexts$name == "onload_code"]
+matches <- function(code) length(xml2::xml_find_all(as_xml(code), xpath)) > 0
+
+matches(".onLoad <- function(libname, pkgname) NULL")    # assignment
+matches(".onLoad = function(libname, pkgname) NULL")     # assignment with `=`
+matches("(function(libname, pkgname) NULL) -> .onLoad")  # right assignment
+matches(".onAttach <- function(libname, pkgname) NULL")  # a different hook
+matches("message('.onLoad')")                            # only a mention
+```
+
+### Pattern Rules
+
+A pattern is a security-relevant function call, such as `system()`, which can
+execute arbitrary shell commands. These functions have many legitimate uses. The
+goal of a pattern rule is to alert a user to the existence of a function call
+that should be reviewed.
+
+In addition to `name`, `version`, `message`, and the examples, a pattern rule
+has three additional fields:
+
+- `type` is a severity (`warning` or `note`).
+- `xpath` is the XPath expression that defines the pattern.
+- `attck` is a set of MITRE ATT&CK technique identifiers, carried into each
+  finding and tallied by `summary()`.
+
+As with code contexts, `find_patterns()` takes the XML parse tree and XPath
+definition, and calls `.xml_find_all_safe()`, which wraps
+`xml2::xml_find_all()`, to find XML nodes in the parse tree matching the
+definition. Every matching node becomes a pattern finding recording the rule's
+name and the line and column where the call begins.
+
+As a simplified example, the XML parse tree for `system()` is:
+
+```{r system-example, comment = ""}
+show_tree("system()")
+```
+
+The XPath definition of the pattern rule matching `system()` and similar
+function calls is:
+
+```{r pat-yaml, comment = ""}
+show_rule("patterns", "pattern_system.yaml")
+```
+
+There are two details in this XPath worth noting. The first is
+`SYMBOL_FUNCTION_CALL`. R's parser uses that label only where a name is actually
+a function call; a mention of the same name anywhere else is a plain `SYMBOL`,
+which will not match.
+
+```{r pat-symbol, comment = ""}
+show_tree("foo <- system")
+```
+
+The second is the pair of `not(...)` conditions. In `foo$system("x")`, the name
+is in call position, so the parser labels it `SYMBOL_FUNCTION_CALL` -- but it is
+a list element or an object's method, not base R's `system()`. The rule
+excludes it by refusing any call whose name is immediately preceded by `$`:
+
+```{r pat-dollar, comment = ""}
+show_tree('foo$system("x")')
+```
+
+The `@` half of that pair is belt and braces. R's parser labels the name after
+`@` as a `SLOT` rather than a call, so `foo@system("x")` will not match, but
+the condition is included as future-proofing.
+
+```{r pat-at, comment = ""}
+show_tree('foo@system("x")')
+```
+
+The following shows examples of what does and does not match:
+
+```{r pat-match}
+xpath_sys <- rules$patterns$xpath[rules$patterns$name == "system_pattern"]
+hits <- function(code) length(xml2::xml_find_all(as_xml(code), xpath_sys)) > 0
+
+hits('system("id")')
+hits('base::system("id")')   # a qualified call still matches
+hits('pipe("id")')           # one of the four names the rule covers
+hits("foo <- system")        # a reference, not a call
+hits('foo$system("id")')     # a different function
+```
+
+`base::system("id")` still matches because the name is preceded by the package
+qualifier (`::`), not by `$` or `@`. Detecting both call forms is why the rule
+tests for the exclusions rather than requiring the call to stand alone.
+
+## Putting Them Together
+
+`determine_code_contexts()` re-evaluates the code context XPath definitions
+against the XML parse tree and compares the resulting nodes with the pattern
+nodes already found, assigning each pattern the most specific code context that
+contains it. A pattern at the top level of a script is assigned `Top-level`, and
+a pattern inside a regular function is assigned `Other`.
+
+## Examples Are Tests
+
+Every rule YAML ends with `positive_examples` and `negative_examples`.
+
+```{r examples, comment = ""}
+lines <- readLines(
+  system.file("rules", "file_contexts", "file_configure.yaml",
+    package = "pkgaudit")
+)
+cat(lines[grep("^positive_examples:", lines):length(lines)], sep = "\n")
+```
+
+Every example is written out as a test fixture, and the pkgaudit test suite
+requires that every positive example is flagged by its rule and that no negative
+example is. A rule whose examples do not behave as written fails the suite, so
+the examples stay accurate as rules change.
+
+The full rule set is documented in
+[RULES.md](https://github.com/tylerjssmith/pkgaudit/blob/master/RULES.md), and
+the rules themselves live under
+[inst/rules/](https://github.com/tylerjssmith/pkgaudit/tree/master/inst/rules).
