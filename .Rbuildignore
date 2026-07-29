@@ -1,6 +1,7 @@
 ^renv$
 ^renv\.lock$
 ^\.Rhistory$
+^\.Rprofile$
 ^tools$
 ^pkgaudit\.Rproj$
 ^\.Rproj\.user$
@@ -11,5 +12,6 @@
 ^references\.bib$
 ^\.claude$
 ^RULES\.md$
+^README\.Rmd$
 ^[^/]+\.html$
 ^data-raw$

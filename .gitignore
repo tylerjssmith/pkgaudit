@@ -4,8 +4,3 @@
 .httr-oauth
 .DS_Store
 .quarto
-pkgaudit.Rproj
-CONTRIBUTING.md
-THREATMODEL.Rmd
-THREATMODEL.md
-references.bib
