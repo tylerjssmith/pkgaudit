@@ -31,15 +31,18 @@
 #'   defaults are calibrated to CRAN; raise them for larger ecosystems.
 #'
 #' @return A named list of five data frames, with `package` and `version`
-#'   prepended to the columns from [pkgaudit::audit_package()]. Novice-facing
-#'   reference columns are dropped from the finding frames -- `message` from all
-#'   three, and `attck` from patterns; the error frame keeps its `message`,
-#'   which is the runtime error text.
+#'   prepended to the columns from [pkgaudit::audit_package()]. Columns
+#'   recoverable from the rules are dropped from the finding frames, since at
+#'   CRAN scale they repeat over millions of rows: `message` from all three,
+#'   `attck` from patterns, and the nine lifecycle-phase columns from all three
+#'   (join `rules$phases` on `rule` for a context, or on `code_context` for a
+#'   pattern, to restore them). The error frame keeps its `message`, which is
+#'   the runtime error text.
 #'   \describe{
-#'     \item{file_contexts}{`package`, `version`, `file_context`, `file_path`.}
-#'     \item{code_contexts}{`package`, `version`, `code_context`,
-#'       `file_context`, `line_number`, `column_number`.}
-#'     \item{patterns}{`package`, `version`, `pattern`, `file_context`,
+#'     \item{file_contexts}{`package`, `version`, `rule`, `file_context`.}
+#'     \item{code_contexts}{`package`, `version`, `rule`, `file_context`,
+#'       `line_number`, `column_number`.}
+#'     \item{patterns}{`package`, `version`, `rule`, `file_context`,
 #'       `line_number`, `column_number`, `code_context`.}
 #'     \item{errors}{`package`, `version`, `stage`, `file_context`, `rule`,
 #'       `message`. Captures per-file audit errors as well as tarball-level
@@ -101,7 +104,11 @@ audit_cran <- function(
   if (!dir.exists(dir)) {
     stop("dir does not exist: ", dir)
   }
-  stopifnot(is.list(rules), length(names(rules)) == 3L)
+  stopifnot(
+    is.list(rules),
+    all(c("file_contexts", "code_contexts", "patterns", "phases") %in%
+          names(rules))
+  )
   stopifnot(length(chunk_size) == 1L, !is.na(chunk_size), chunk_size >= 1L)
   if (!is.null(checkpoint_dir)) {
     stopifnot(is.character(checkpoint_dir), length(checkpoint_dir) == 1L)
@@ -263,16 +270,28 @@ audit_cran <- function(
 }
 
 
+# The lifecycle-phase columns pkgaudit attaches to every findings frame. They
+# are dropped from the survey frames: a context's phases are a property of the
+# rule that matched and a pattern's of the code context it sits in, so both are
+# recoverable by joining rules$phases, and carrying nine logicals on every row
+# is dead weight at CRAN scale.
+.cran_phase_columns <- c(
+  "at_autoconf", "at_build", "at_check", "at_install_src", "at_install_bin",
+  "on_load", "on_attach", "on_unload", "on_detach"
+)
+
+
 # Prepend the resolved package name/version to each frame of an audit_tarball()
-# result, dropping the novice-facing reference columns (message from the finding
-# frames, attck from patterns).
+# result, dropping the columns recoverable from the rules (message from the
+# finding frames, attck from patterns, phases from all three).
 .prefix_audit <- function(audit, pkg_name, pkg_version) {
+  drop <- c("message", .cran_phase_columns)
   list(
-    file_contexts = .prefix_pkg(.drop_col(audit$file_contexts, "message"),
+    file_contexts = .prefix_pkg(.drop_col(audit$file_contexts, drop),
                                 pkg_name, pkg_version, .empty_cran_file_contexts),
-    code_contexts = .prefix_pkg(.drop_col(audit$code_contexts, "message"),
+    code_contexts = .prefix_pkg(.drop_col(audit$code_contexts, drop),
                                 pkg_name, pkg_version, .empty_cran_code_contexts),
-    patterns      = .prefix_pkg(.drop_col(audit$patterns, c("message", "attck")),
+    patterns      = .prefix_pkg(.drop_col(audit$patterns, c(drop, "attck")),
                                 pkg_name, pkg_version, .empty_cran_patterns),
     errors        = .prefix_pkg(audit$errors, pkg_name, pkg_version,
                                 .empty_cran_errors),
@@ -378,8 +397,8 @@ audit_cran <- function(
   data.frame(
     package      = character(0L),
     version      = character(0L),
+    rule         = character(0L),
     file_context = character(0L),
-    file_path    = character(0L),
     stringsAsFactors = FALSE
   )
 }
@@ -388,7 +407,7 @@ audit_cran <- function(
   data.frame(
     package       = character(0L),
     version       = character(0L),
-    code_context  = character(0L),
+    rule          = character(0L),
     file_context  = character(0L),
     line_number   = integer(0L),
     column_number = integer(0L),
@@ -400,7 +419,7 @@ audit_cran <- function(
   data.frame(
     package       = character(0L),
     version       = character(0L),
-    pattern       = character(0L),
+    rule          = character(0L),
     file_context  = character(0L),
     line_number   = integer(0L),
     column_number = integer(0L),
