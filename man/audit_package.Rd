@@ -20,18 +20,23 @@ provenance. Leave \code{NULL} for a directory scan.}
 A \code{\link[=new_pkgaudit]{new_pkgaudit()}} object: a named list with class \code{pkgaudit}
 containing four data frames and a \code{metadata} list.
 \describe{
-\item{file_contexts}{\code{rule}, \code{file_context}, \code{message}.}
+\item{file_contexts}{\code{rule}, \code{file_context}, \code{message}, and the phase
+columns.}
 \item{code_contexts}{\code{rule}, \code{file_context}, \code{line_number},
-\code{column_number}, \code{message}. Join to \code{file_contexts} on \code{file_context}.}
+\code{column_number}, \code{message}, and the phase columns. Join to
+\code{file_contexts} on \code{file_context}.}
 \item{patterns}{\code{rule}, \code{file_context}, \code{line_number},
-\code{column_number}, \code{message}, \code{attck}, \code{code_context}. Join to the other
-tables on \code{file_context}, and to \code{code_contexts$rule} on
-\code{code_context}.}
+\code{column_number}, \code{message}, \code{attck}, \code{code_context}, and the phase
+columns. Join to the other tables on \code{file_context}, and to
+\code{code_contexts$rule} on \code{code_context}.}
 \item{errors}{\code{stage}, \code{file_context}, \code{rule}, \code{message}.}
 \item{metadata}{List of \code{pkg_name}, \code{pkg_version}, \code{pkg_path},
 \code{pkg_is_tarball}, \code{pkg_sha256}, \code{pkgaudit_version},
-\code{pkgaudit_rules_version}, \code{pkgaudit_rules_sha256}, and \code{scanned}.}
+\code{pkgaudit_rules_version}, \code{pkgaudit_rules_sha256}, and \code{scanned}. The
+two rules fields describe the database \code{rules} was read from, and are
+\code{NA} for a rules list that did not come from \code{\link[=load_rules]{load_rules()}}.}
 }
+The phase columns are the nine described under Details.
 }
 \description{
 Finds security-relevant file and code contexts and code patterns for review
@@ -54,7 +59,7 @@ columns do not partition the rows.
 
 When called by \code{\link[=audit_tarball]{audit_tarball()}}, \code{.origin} is a list with \code{path}, \code{sha256},
 and \code{is_tarball}, which are used for the \code{metadata} list. When calling
-\code{\link[=audit_package]{audit_package()}}.on a package directory directly, leave \code{NULL}, in which
+\code{\link[=audit_package]{audit_package()}} on a package directory directly, leave \code{NULL}, in which
 case the directory is hashed with \code{\link[=hash_manifest]{hash_manifest()}}.
 }
 \examples{

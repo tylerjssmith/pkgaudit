@@ -15,7 +15,9 @@
 #'     \item{patterns}{Data frame with columns `rule` (the matching rule's
 #'       name), `file_context`, `line_number`, `column_number`, `message`,
 #'       `attck`. Carries a `"nodes"` attribute holding the matched nodes
-#'       aligned to the rows.}
+#'       aligned to the rows. The phase columns are not set here;
+#'       [audit_package()] attaches them from the code context each pattern is
+#'       assigned.}
 #'     \item{errors}{Data frame with columns `stage`, `file_context`, `rule`,
 #'       `message`.}
 #'   }

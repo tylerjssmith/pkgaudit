@@ -13,18 +13,23 @@
 #' @return A [new_pkgaudit()] object: a named list with class `pkgaudit`
 #'   containing four data frames and a `metadata` list.
 #'   \describe{
-#'     \item{file_contexts}{`rule`, `file_context`, `message`.}
+#'     \item{file_contexts}{`rule`, `file_context`, `message`, and the phase
+#'       columns.}
 #'     \item{code_contexts}{`rule`, `file_context`, `line_number`,
-#'       `column_number`, `message`. Join to `file_contexts` on `file_context`.}
+#'       `column_number`, `message`, and the phase columns. Join to
+#'       `file_contexts` on `file_context`.}
 #'     \item{patterns}{`rule`, `file_context`, `line_number`,
-#'       `column_number`, `message`, `attck`, `code_context`. Join to the other
-#'       tables on `file_context`, and to `code_contexts$rule` on
-#'       `code_context`.}
+#'       `column_number`, `message`, `attck`, `code_context`, and the phase
+#'       columns. Join to the other tables on `file_context`, and to
+#'       `code_contexts$rule` on `code_context`.}
 #'     \item{errors}{`stage`, `file_context`, `rule`, `message`.}
 #'     \item{metadata}{List of `pkg_name`, `pkg_version`, `pkg_path`,
 #'       `pkg_is_tarball`, `pkg_sha256`, `pkgaudit_version`,
-#'       `pkgaudit_rules_version`, `pkgaudit_rules_sha256`, and `scanned`.}
+#'       `pkgaudit_rules_version`, `pkgaudit_rules_sha256`, and `scanned`. The
+#'       two rules fields describe the database `rules` was read from, and are
+#'       `NA` for a rules list that did not come from [load_rules()].}
 #'   }
+#'   The phase columns are the nine described under Details.
 #'
 #' @details
 #' Recoverable failures in the orchestrated finders are collected in the
@@ -43,7 +48,7 @@
 #'
 #' When called by [audit_tarball()], `.origin` is a list with `path`, `sha256`,
 #' and `is_tarball`, which are used for the `metadata` list. When calling
-#' [audit_package()].on a package directory directly, leave `NULL`, in which
+#' [audit_package()] on a package directory directly, leave `NULL`, in which
 #' case the directory is hashed with [hash_manifest()].
 #'
 #' @examples
@@ -128,7 +133,7 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
     pkg_sha256     <- .origin$sha256
   }
 
-  metadata <- .build_metadata(path, pkg_path, pkg_is_tarball, pkg_sha256)
+  metadata <- .build_metadata(path, pkg_path, pkg_is_tarball, pkg_sha256, rules)
 
   new_pkgaudit(
     file_contexts = file_contexts,
@@ -143,9 +148,11 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
 
 # Build the nine-field metadata list for a scanned package. Package name and
 # version come from DESCRIPTION and are NA (never an error) when it is missing or
-# malformed. The rules version and hash describe the bundled rules database.
-.build_metadata <- function(pkg, pkg_path, pkg_is_tarball, pkg_sha256) {
+# malformed. The rules version and hash describe the database the scan's rules
+# were read from, which is not necessarily the bundled one.
+.build_metadata <- function(pkg, pkg_path, pkg_is_tarball, pkg_sha256, rules) {
   desc <- .read_description(pkg)
+  prov <- .rules_provenance(rules)
   list(
     pkg_name               = desc$name,
     pkg_version            = desc$version,
@@ -153,10 +160,23 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
     pkg_is_tarball         = pkg_is_tarball,
     pkg_sha256             = pkg_sha256,
     pkgaudit_version       = .pkgaudit_version(),
-    pkgaudit_rules_version = tryCatch(rules_version(), error = function(e) NA_character_),
-    pkgaudit_rules_sha256  = .rules_db_sha256(),
+    pkgaudit_rules_version = prov$version,
+    pkgaudit_rules_sha256  = prov$sha256,
     scanned                = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
   )
+}
+
+# The database a scan's rules were read from. load_rules() records it on the
+# list it returns. A rules list assembled some other way carries no provenance,
+# and the honest answer is then that it is unknown: reporting the bundled
+# database's version and hash would attribute the scan to rules it did not use.
+.rules_provenance <- function(rules) {
+  prov <- attr(rules, "provenance")
+  if (is.null(prov)) {
+    list(version = NA_character_, sha256 = NA_character_)
+  } else {
+    prov
+  }
 }
 
 # Read Package and Version from a package's DESCRIPTION. Returns NA_character_
@@ -183,13 +203,5 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
 # Installed pkgaudit version, or NA if it cannot be determined.
 .pkgaudit_version <- function() {
   tryCatch(as.character(utils::packageVersion("pkgaudit")),
-           error = function(e) NA_character_)
-}
-
-# The published SHA-256 of the bundled rules database, read from its sidecar
-# (the value load_rules() verifies the database against). NA if unavailable.
-.rules_db_sha256 <- function(db_path = .db_path()) {
-  sidecar <- paste0(db_path, ".sha256")
-  tryCatch(trimws(readLines(sidecar, warn = FALSE)[[1L]]),
            error = function(e) NA_character_)
 }

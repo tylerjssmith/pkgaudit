@@ -22,7 +22,9 @@ A list with two data frames:
 \item{patterns}{Data frame with columns \code{rule} (the matching rule's
 name), \code{file_context}, \code{line_number}, \code{column_number}, \code{message},
 \code{attck}. Carries a \code{"nodes"} attribute holding the matched nodes
-aligned to the rows.}
+aligned to the rows. The phase columns are not set here;
+\code{\link[=audit_package]{audit_package()}} attaches them from the code context each pattern is
+assigned.}
 \item{errors}{Data frame with columns \code{stage}, \code{file_context}, \code{rule},
 \code{message}.}
 }
