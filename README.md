@@ -82,18 +82,24 @@ using three categories of rules:
 
 - **File contexts** are files that R executes at build-, check-, or
   install-time.
-- **Code contexts** are top-level R source code and lifecycle hooks
-  whose bodies run automatically when a namespace is loaded, attached,
-  unloaded, or detached.
+- **Code contexts** are lifecycle hooks whose bodies run automatically
+  when a namespace is loaded, attached, unloaded, or detached.
 - **Patterns** are security-relevant function calls. Each pattern
   finding is attributed to the code context it executes in, so a
   `system()` call inside `.onLoad` is distinguished from one inside an
   ordinary function (“Other”) or at top level (“Top-level”).
 
+Every file and code context also declares the lifecycle phases in which
+its code runs – `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
+`at_install_bin`, `on_load`, `on_attach`, `on_unload`, `on_detach` – and
+a pattern inherits them from the code context it sits in. Each finding
+carries one logical column per phase, so findings can be filtered by
+when they execute, e.g. `subset(result$patterns, at_install_src)`.
+
 See [RULES.md](RULES.md) for the full rule set, with the file, hook, or
-function calls each rule covers. Each rule is defined in a YAML file
-under [inst/rules/](inst/rules/) and compiled into the SQLite database
-at `inst/db/rules.db`.
+function calls each rule covers and the phases in which it runs. Each
+rule is defined in a YAML file under [inst/rules/](inst/rules/) and
+compiled into the SQLite database at `inst/db/rules.db`.
 
 ## Installation
 
@@ -119,7 +125,7 @@ digest::digest(
 ```
 
 Expected SHA-256:
-`aaf0336597a4b4c82242a234876364b44b54da324f3b48f100aaa0e3a6a1a9aa`
+`f37e40d5d1b248c44ab071ca19914f4e45be101eb66353af1b2bec9fb0350850`
 
 The hash is regenerated automatically by `inst/scripts/build_db.R`
 whenever the database is rebuilt and should match the value above
@@ -147,7 +153,7 @@ print(result, path = FALSE)
 #> --- pkgaudit -------------------------------------------------------------------
 #> Package:        untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:        e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386
-#> Scanned:        2026-07-29 11:39 UTC with pkgaudit 0.3.0, rules v0.2.0
+#> Scanned:        2026-07-30 14:56 UTC with pkgaudit 0.3.0, rules v0.3.0
 #> 
 #> File contexts:  1
 #> Code contexts:  1
@@ -155,26 +161,40 @@ print(result, path = FALSE)
 #> Errors:         0
 ```
 
-`summary()` reports the findings themselves: the contexts found, how
-often each pattern matched, and the MITRE ATT&CK techniques involved.
+`summary()` reports the findings themselves: how many run during each
+lifecycle phase, the contexts found, how often each pattern matched, and
+the MITRE ATT&CK techniques involved.
 
 ``` r
 summary(result, path = FALSE)
 #> --- pkgaudit Summary -----------------------------------------------------------
 #> Package:        untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:        e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386
-#> Scanned:        2026-07-29 11:39 UTC with pkgaudit 0.3.0, rules v0.2.0
+#> Scanned:        2026-07-30 14:56 UTC with pkgaudit 0.3.0, rules v0.3.0
+#> 
+#> --- Findings by Phase ----------------------------------------------------------
+#> phase          file_contexts code_contexts patterns
+#> at_autoconf                0             0        0
+#> at_build                   1             1        1
+#> at_check                   1             1        1
+#> at_install_src             1             1        1
+#> at_install_bin             0             0        0
+#> on_load                    0             1        1
+#> on_attach                  0             0        0
+#> on_unload                  0             0        0
+#> on_detach                  0             0        0
+#> none                       0             0        1
 #> 
 #> --- File Contexts --------------------------------------------------------------
 #> file_context
 #> configure
 #> 
 #> --- Code Contexts --------------------------------------------------------------
-#> code_context
+#> rule
 #> onload_code
 #> 
 #> --- Patterns -------------------------------------------------------------------
-#> pattern               occurrences attck
+#> rule                  occurrences attck
 #> download_file_pattern           1 T1105 T1195.002
 #> system_pattern                  1 T1059.003 T1059.004 T1195.002
 #> 
@@ -196,3 +216,7 @@ result$patterns       # security-relevant calls, each with its code_context
 result$errors         # any files or rules that could not be processed
 result$metadata       # package name/version, SHA-256, rules version, scan time
 ```
+
+Each of the three findings frames also carries the nine phase columns,
+so `subset(result$patterns, on_load)` is the set of calls that run on
+`library()`.

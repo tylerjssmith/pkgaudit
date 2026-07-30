@@ -1,0 +1,299 @@
+---
+output:
+  github_document:
+    # Rule messages quote shell flags and make constructs verbatim, so the
+    # "smart" typography that would turn --clean into an en dash, or
+    # $(shell ...) into an ellipsis, is disabled.
+    md_extensions: "-smart"
+    # RULES.md is the deliverable; the preview would only litter the repo root.
+    html_preview: false
+---
+
+<!-- RULES.md is generated from RULES.Rmd. Please edit this file -->
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, results = "asis")
+
+library(pkgaudit)
+
+# Read the repository copy of the database so the tables below cannot drift
+# from the rules actually committed.
+rules       <- load_rules(file.path("inst", "db", "rules.db"))
+phase_names <- setdiff(names(rules$phases), c("context", "version"))
+```
+
+```{r helpers}
+# Map each rule name to the YAML file that defines it. The database records a
+# rule's name but not where it came from, so the rule sources are read for it.
+rule_files <- local({
+  paths <- list.files(file.path("inst", "rules"), pattern = "\\.yaml$",
+                      recursive = TRUE, full.names = TRUE)
+  named <- vapply(paths, function(path) {
+    line <- grep("^name: ", readLines(path), value = TRUE)
+    if (length(line) == 0L) NA_character_ else sub("^name: ", "", line[[1L]])
+  }, character(1L))
+  # Files under inst/rules/phases/ define a computed context, not a rule, and
+  # carry no name field.
+  stats::setNames(sub("^\\./", "", paths[!is.na(named)]), named[!is.na(named)])
+})
+
+# A rule name, linked to its YAML.
+rule_link <- function(name) sprintf("[%s](%s)", name, rule_files[name])
+
+# The phases a context runs in, named as the columns a caller would filter on.
+# "none" is the reading `summary()` gives it: code reached only when something
+# calls it.
+phase_cell <- function(context) {
+  row <- rules$phases[match(context, rules$phases$context), phase_names]
+  on  <- phase_names[as.logical(row)]
+  if (length(on) == 0L) "none" else paste0("`", on, "`", collapse = ", ")
+}
+
+# A file context's file name, recovered from the rule's search path and
+# anchored pattern so the table cannot disagree with what the rule matches.
+file_label <- function(path, pattern) {
+  file <- gsub("\\\\", "", sub("\\$$", "", sub("^\\^", "", pattern)))
+  ifelse(path == ".", file, paste0(path, "/", file))
+}
+
+# Render a markdown table, one row per line, escaping any cell content that
+# would otherwise be read as a column separator.
+emit_table <- function(headers, ...) {
+  cells <- lapply(list(...), function(x) gsub("|", "\\|", x, fixed = TRUE))
+  cat(
+    c(
+      paste0("| ", paste(headers, collapse = " | "), " |"),
+      paste0("|", strrep("---|", length(headers))),
+      paste0("| ", do.call(paste, c(cells, sep = " | ")), " |")
+    ),
+    sep = "\n"
+  )
+  cat("\n\n")
+}
+```
+
+```{r labels}
+# What each code-context and pattern rule covers, in the terms a reader would
+# recognize. These cannot be derived from the rule: an XPath expression is a
+# definition, not a summary of one. Every rule in the database must appear
+# here, so a new rule fails this document until it is described.
+code_labels <- c(
+  lastlib_code      = "`.Last.lib()`",
+  onattach_code     = "`.onAttach()`",
+  ondetach_code     = "`.onDetach()`",
+  onload_code       = "`.onLoad()`",
+  onload_rlang_code = "`rlang::on_load()`",
+  onunload_code     = "`.onUnload()`"
+)
+
+pattern_labels <- c(
+  curl_pattern = paste(
+    "`curl()`, `curl_fetch_memory()`, `curl_fetch_disk()`,",
+    "`curl_fetch_stream()`, `curl_fetch_multi()`, `curl_download()`,",
+    "`curl_upload()`, `multi_download()`, `multi_run()`, `send_mail()`"
+  ),
+  decoding_pattern = paste(
+    "`base64decode()`, `base64_dec()`, `base64_decode()`, `memDecompress()`,",
+    "`rawToChar(as.raw())`"
+  ),
+  deserialization_pattern =
+    "`readRDS()`, `load()`, `unserialize()`, `dget()`",
+  download_file_pattern = "`download.file()`, `url()`",
+  dynload_pattern       = "`dyn.load()`, `library.dynam()`",
+  eval_parse_pattern = paste(
+    "`eval()`/`evalq()` over `parse()`, `str2lang()`, or `str2expression()`,",
+    "when combined with a decoding call"
+  ),
+  httr_pattern = paste(
+    "`GET()`, `POST()`, `PUT()`, `PATCH()`, `DELETE()`, `HEAD()`, `VERB()`"
+  ),
+  httr2_pattern = paste(
+    "`req_perform()`, `req_perform_iterative()`, `req_perform_parallel()`,",
+    "`req_perform_sequential()`, `req_perform_stream()`,",
+    "`req_perform_connection()`, `req_perform_promise()`"
+  ),
+  indirection_pattern = paste(
+    "`do.call()`, `match.fun()`, `getFromNamespace()`, `getExportedValue()`,",
+    "`getAnywhere()`, `getFunction()`, when the first argument is a string",
+    "literal"
+  ),
+  install_pattern = paste(
+    "`install.packages()`, `install_github()`, `install_gitlab()`,",
+    "`install_bitbucket()`, `install_git()`, `install_url()`,",
+    "`install_version()`, `install_local()`, `install_bioc()`,",
+    "`install_dev()`, `install_cran()`, `pak()`, `pkg_install()`,",
+    "`local_install()`, `lockfile_install()`, `BiocManager::install()`,",
+    "`renv::install()`, `devtools::install()`"
+  ),
+  options_repos_pattern = "`options(repos = )`",
+  rcurl_pattern = paste(
+    "`getURL()`, `getURI()`, `getForm()`, `postForm()`, `curlPerform()`"
+  ),
+  socket_pattern = paste(
+    "`socketConnection()`, `make.socket()`, `serverSocket()`,",
+    "`socketAccept()`"
+  ),
+  source_pattern = "`source()`",
+  system_other_pattern = paste(
+    "`callr::r()`, `r_bg()`, `r_safe()`, `r_copycat()`, `r_vanilla()`,",
+    "`rcmd()`, `rcmd_bg()`, `rcmd_safe()`, `rcmd_copycat()`, `rscript()`,",
+    "`processx::run()`, `processx::pipeline()`, `exec_wait()`,",
+    "`exec_background()`, `exec_internal()`, `eval_safe()`, `eval_fork()`,",
+    "`r_background()`, `r_internal()`, `r_wait()`, `process$new()`,",
+    "`r_session$new()`, `r_process$new()`, `rcmd_process$new()`,",
+    "`rscript_process$new()`"
+  ),
+  system_pattern = "`system()`, `system2()`, `shell()`, `pipe()`"
+)
+
+# Descriptions of the two computed contexts. These are authored under
+# inst/rules/phases/, which carries phases but no message.
+computed_contexts <- data.frame(
+  context = c("Top-level", "Other"),
+  description = c(
+    paste(
+      "Top-level code in an R script is evaluated once, when the lazy-load",
+      "database is built during installation from source, which R CMD check",
+      "and R CMD build also perform. It is not re-evaluated when the namespace",
+      "is loaded: loading restores the values from that database."
+    ),
+    paste(
+      "Code inside an ordinary function definition runs at no lifecycle phase.",
+      "It executes only if something calls that function, never as a",
+      "consequence of building, installing, checking, or loading the package."
+    )
+  ),
+  stringsAsFactors = FALSE
+)
+
+# Every rule and computed context must be described above, and every file
+# context's derived file name must be matched by the pattern it came from.
+stopifnot(
+  all(c(rules$file_contexts$name, rules$code_contexts$name,
+        rules$patterns$name) %in% names(rule_files)),
+  setequal(names(code_labels), rules$code_contexts$name),
+  setequal(names(pattern_labels), rules$patterns$name),
+  setequal(computed_contexts$context,
+           setdiff(rules$phases$context,
+                   c(rules$file_contexts$name, rules$code_contexts$name))),
+  mapply(
+    grepl,
+    rules$file_contexts$pattern,
+    basename(file_label(rules$file_contexts$path, rules$file_contexts$pattern))
+  )
+)
+```
+
+# pkgaudit Rule Coverage
+
+pkgaudit v`r utils::packageVersion("pkgaudit")` separates *when* code executes
+from *what* code does using three categories of rules: file contexts, code
+contexts, and patterns. Each rule is defined in a YAML file under
+[inst/rules/](inst/rules/) and compiled into the SQLite database at
+`inst/db/rules.db`. The Rule columns below link to the defining YAML files.
+
+This document is generated from that database, at rules
+v`r rules_version(file.path("inst", "db", "rules.db"))`. Edit
+[RULES.Rmd](RULES.Rmd) or the rule YAML rather than this file.
+
+## Lifecycle Phases
+
+Every file and code context declares the phases of the package lifecycle in
+which its code runs. Each finding carries one logical column per phase, so
+findings can be filtered by when they execute, e.g.
+`subset(result$patterns, at_install_src)`.
+
+```{r phases-legend}
+phase_descriptions <- c(
+  at_autoconf    = "Autoconf is run to generate `configure` from its input",
+  at_build       = "`R CMD build`",
+  at_check       = "`R CMD check`",
+  at_install_src = "`R CMD INSTALL` from source",
+  at_install_bin = "a prebuilt binary package is installed",
+  on_load        = "the namespace is loaded",
+  on_attach      = "the package is attached to the search path",
+  on_unload      = "the namespace is unloaded",
+  on_detach      = "the package is detached from the search path"
+)
+stopifnot(setequal(names(phase_descriptions), phase_names))
+
+emit_table(
+  c("Phase", "Code runs when"),
+  paste0("`", phase_names, "`"),
+  phase_descriptions[phase_names]
+)
+```
+
+Phase assignments were established by running `R CMD build`, `R CMD check`, and
+`R CMD INSTALL` against instrumented packages rather than read from
+documentation. A rule can belong to several phases, and the Phases column below
+reads `none` for code that runs at no phase at all.
+
+## File Contexts
+
+File contexts are files that R executes at build-, check-, or install-time.
+
+```{r file-contexts}
+fc <- rules$file_contexts
+emit_table(
+  c("Rule", "File Context", "Phases", "Description"),
+  rule_link(fc$name),
+  paste0("`", file_label(fc$path, fc$pattern), "`"),
+  vapply(fc$name, phase_cell, character(1L)),
+  fc$message
+)
+```
+
+## Code Contexts
+
+Code contexts are lifecycle hooks whose bodies run automatically when a
+namespace is loaded, attached, unloaded, or detached.
+
+```{r code-contexts}
+cc <- rules$code_contexts
+emit_table(
+  c("Rule", "Code Context", "Phases", "Description"),
+  rule_link(cc$name),
+  code_labels[cc$name],
+  vapply(cc$name, phase_cell, character(1L)),
+  cc$message
+)
+```
+
+## Computed Contexts
+
+Every pattern is attributed to the code context that contains it. Two of those
+contexts are computed rather than matched by a rule, and so have phases but no
+rule of their own. They are defined under
+[inst/rules/phases/](inst/rules/phases/).
+
+```{r computed-contexts}
+emit_table(
+  c("Context", "Phases", "Description"),
+  paste0("`", computed_contexts$context, "`"),
+  vapply(computed_contexts$context, phase_cell, character(1L)),
+  computed_contexts$description
+)
+```
+
+## Patterns
+
+Patterns are security-relevant function calls. Each pattern finding is
+attributed to the code context it executes in, so a `system()` call inside
+`.onLoad` is distinguished from one inside an ordinary function ("Other") or at
+top level ("Top-level"). Qualified (`pkg::fn()`) and unqualified (`fn()`) call
+forms are both detected. Pattern rules carry
+[MITRE ATT&CK](https://attack.mitre.org/) technique labels.
+
+A pattern rule declares no phases of its own: a pattern inherits them from the
+code context it sits in, listed in the two tables above.
+
+```{r patterns}
+pat <- rules$patterns
+emit_table(
+  c("Rule", "Pattern", "Description"),
+  rule_link(pat$name),
+  pattern_labels[pat$name],
+  pat$message
+)
+```

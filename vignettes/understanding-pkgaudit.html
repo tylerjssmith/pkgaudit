@@ -348,7 +348,7 @@ lifecycle at which the code runs (e.g., build, check, install,
 load).</p>
 <p>This vignette explains how pkgaudit works. It is intended for anyone
 considering whether to incorporate pkgaudit into their workflow and for
-potential contributors. For information on how to contribute, see <a href="https://github.com/tylerjssmith/pkgaudit/blob/master/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
+potential contributors. For information on how to contribute, see <a href="https://github.com/tylerjssmith/pkgaudit/blob/master/.github/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(pkgaudit)</span>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>rules <span class="ot">&lt;-</span> <span class="fu">load_rules</span>()</span></code></pre></div>
 <div id="entry-points" class="section level2">
@@ -384,11 +384,17 @@ occurrence is located in a named code context, top-level code
 (<code>Top-level</code>), or a regular function
 (<code>Other</code>).</p></li>
 </ol></li>
+<li><p>Finally, the lifecycle phases in which each finding’s code runs
+are attached to the findings. A file or code context takes its phases
+from the rule that matched it; a pattern inherits them from the code
+context assigned in step 3c.</p></li>
 </ol>
 <p><code>audit_package()</code> returns a <code>pkgaudit</code> object:
 a named list of <code>file_contexts</code>, <code>code_contexts</code>,
 <code>patterns</code>, and <code>errors</code> data frames, plus a
-<code>metadata</code> list recording what was scanned and with what.</p>
+<code>metadata</code> list recording what was scanned and with what.
+Each of the three findings data frames carries one logical column per
+lifecycle phase.</p>
 <p>Failures are contained rather than fatal. Listing files, parsing a
 script, and evaluating an XPath are each wrapped in
 <code>tryCatch()</code>, so an unreadable file, a malformed script, or
@@ -414,6 +420,15 @@ version.</li>
 are file paths or code syntax that should and should not be found by the
 rule, respectively.</li>
 </ul>
+<p>File and code context rules carry nine further fields, one per
+lifecycle phase – <code>at_autoconf</code>, <code>at_build</code>,
+<code>at_check</code>, <code>at_install_src</code>,
+<code>at_install_bin</code>, <code>on_load</code>,
+<code>on_attach</code>, <code>on_unload</code>, and
+<code>on_detach</code> – each <code>TRUE</code> or <code>FALSE</code>.
+Pattern rules do not declare them: a pattern runs when the code around
+it runs, so it takes its phases from the code context that contains
+it.</p>
 <p>Each rule contains additional fields used by pkgaudit functions to
 find file contexts, code contexts, or patterns. These are explained
 below.</p>
@@ -432,12 +447,11 @@ install-time, such as <code>configure</code> and
 execute arbitrary shell commands on a system. The goal of a file context
 rule is to alert a user to the existence of a file context before it is
 executed so that the file can be reviewed.</p>
-<p>In addition to <code>name</code>, <code>version</code>,
-<code>message</code>, and the examples, a file context rule has four
-additional fields:</p>
+<p>In addition to the common fields and the nine phase fields, a file
+context rule has four additional fields:</p>
 <ul>
-<li><code>type</code> is the type of file (e.g., <code>make</code>,
-<code>shell</code>, <code>R</code>).</li>
+<li><code>type</code> is the language or format of the file (e.g.,
+<code>make</code>, <code>shell</code>, <code>R</code>).</li>
 <li><code>path</code> is the directory to search (relative to the
 package root).</li>
 <li><code>recursive</code> indicates whether to descend into
@@ -452,14 +466,25 @@ names of the files found at the file path (recursively, if
 to find <code>configure</code> in the package root.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">show_rule</span>(<span class="st">&quot;file_contexts&quot;</span>, <span class="st">&quot;file_configure.yaml&quot;</span>)</span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>name<span class="sc">:</span> configure_file</span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>version<span class="sc">:</span> <span class="st">&quot;0.1.0&quot;</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>version<span class="sc">:</span> <span class="st">&quot;0.3.0&quot;</span></span>
 <span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>type<span class="sc">:</span> shell</span>
 <span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>message<span class="sc">:</span> <span class="er">&gt;</span><span class="sc">-</span></span>
 <span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  configure is a shell script used <span class="cf">for</span> system<span class="sc">-</span>dependent configuration when</span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  packages are installed from source. It can execute arbitrary shell commands.</span>
-<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>path<span class="sc">:</span> <span class="st">&quot;.&quot;</span></span>
-<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>recursive<span class="sc">:</span> <span class="cn">FALSE</span></span>
-<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>pattern<span class="sc">:</span> <span class="st">&#39;^configure$&#39;</span></span></code></pre></div>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  packages are installed from source, including the installs performed by</span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>  R CMD check and by R CMD build when a package has vignettes. It can execute</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  arbitrary shell commands.</span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>at_autoconf<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>at_build<span class="sc">:</span> <span class="cn">TRUE</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>at_check<span class="sc">:</span> <span class="cn">TRUE</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>at_install_src<span class="sc">:</span> <span class="cn">TRUE</span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a>at_install_bin<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a>on_load<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a>on_attach<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a>on_unload<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a>on_detach<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a>path<span class="sc">:</span> <span class="st">&quot;.&quot;</span></span>
+<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a>recursive<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a>pattern<span class="sc">:</span> <span class="st">&#39;^configure$&#39;</span></span></code></pre></div>
 <p><code>&quot;.&quot;</code> is the package root. <code>recursive: FALSE</code>
 means search only in the package root, not subdirectories.
 <code>pattern</code> is anchored at both ends, so
@@ -483,16 +508,26 @@ Related files such as <code>configure.win</code> and
 pattern. Additionally, pkgaudit ignores directories whose names happen
 to match; only regular files are found.</p>
 <p>The YAML files are compiled into a SQLite database.
-<code>load_rules()</code> returns a list of data frames containing
-rules. The <code>file_contexts</code> data frame contains the
-<code>path</code>, <code>recursive</code>, and <code>pattern</code>
-values:</p>
+<code>load_rules()</code> returns a list of four data frames: one per
+rule category, plus <code>phases</code>. The <code>file_contexts</code>
+data frame contains the <code>path</code>, <code>recursive</code>, and
+<code>pattern</code> values:</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>rules<span class="sc">$</span>file_contexts[</span>
 <span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  rules<span class="sc">$</span>file_contexts<span class="sc">$</span>name <span class="sc">==</span> <span class="st">&quot;configure_file&quot;</span>,</span>
 <span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  <span class="fu">c</span>(<span class="st">&quot;name&quot;</span>, <span class="st">&quot;path&quot;</span>, <span class="st">&quot;recursive&quot;</span>, <span class="st">&quot;pattern&quot;</span>)</span>
 <span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>]</span>
 <span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co">#&gt;             name path recursive     pattern</span></span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co">#&gt; 4 configure_file    .     FALSE ^configure$</span></span></code></pre></div>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co">#&gt; 5 configure_file    .     FALSE ^configure$</span></span></code></pre></div>
+<p>The rule’s phase fields are hoisted into <code>phases</code>, keyed
+by rule name. Here they say that <code>configure</code> runs during
+<code>R CMD build</code> and <code>R CMD check</code> as well as at
+installation from source, and never once the package is loaded:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>rules<span class="sc">$</span>phases[</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  rules<span class="sc">$</span>phases<span class="sc">$</span>context <span class="sc">==</span> <span class="st">&quot;configure_file&quot;</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  <span class="fu">c</span>(<span class="st">&quot;context&quot;</span>, <span class="st">&quot;at_build&quot;</span>, <span class="st">&quot;at_check&quot;</span>, <span class="st">&quot;at_install_src&quot;</span>, <span class="st">&quot;on_load&quot;</span>)</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>]</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co">#&gt;          context at_build at_check at_install_src on_load</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co">#&gt; 7 configure_file     TRUE     TRUE           TRUE   FALSE</span></span></code></pre></div>
 </div>
 <div id="code-context-rules" class="section level3">
 <h3>Code Context Rules</h3>
@@ -509,71 +544,81 @@ body can be reviewed.</p>
 example, the helpers below are used to parse a minimal example of
 <code>.onLoad()</code> and print its tree, dropping the line and column
 attributes to keep the output readable.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>as_xml <span class="ot">&lt;-</span> <span class="cf">function</span>(code) {</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  xml2<span class="sc">::</span><span class="fu">read_xml</span>(</span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>    xmlparsedata<span class="sc">::</span><span class="fu">xml_parse_data</span>(</span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>      <span class="fu">parse</span>(<span class="at">text =</span> code, <span class="at">keep.source =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>    )</span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>  )</span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>}</span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a></span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>show_tree <span class="ot">&lt;-</span> <span class="cf">function</span>(code) {</span>
-<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>  doc <span class="ot">&lt;-</span> <span class="fu">as_xml</span>(code)</span>
-<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>  <span class="cf">for</span> (node <span class="cf">in</span> xml2<span class="sc">::</span><span class="fu">xml_find_all</span>(doc, <span class="st">&quot;//*&quot;</span>)) {</span>
-<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>    <span class="cf">for</span> (attr <span class="cf">in</span> <span class="fu">names</span>(xml2<span class="sc">::</span><span class="fu">xml_attrs</span>(node))) xml2<span class="sc">::</span><span class="fu">xml_attr</span>(node, attr) <span class="ot">&lt;-</span> <span class="cn">NULL</span></span>
-<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>  }</span>
-<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">sub</span>(<span class="st">&quot;^&lt;</span><span class="sc">\\</span><span class="st">?xml[^&gt;]*</span><span class="sc">\\</span><span class="st">?&gt;</span><span class="sc">\n</span><span class="st">&quot;</span>, <span class="st">&quot;&quot;</span>, <span class="fu">as.character</span>(doc)))</span>
-<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a>}</span></code></pre></div>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">show_tree</span>(<span class="st">&quot;.onLoad &lt;- function(libname, pkgname) NULL&quot;</span>)</span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="sc">&lt;</span>exprlist<span class="sc">&gt;</span></span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>    <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>      <span class="er">&lt;</span>SYMBOL<span class="sc">&gt;</span>.onLoad<span class="sc">&lt;</span><span class="er">/</span>SYMBOL<span class="sc">&gt;</span></span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>    <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>    <span class="er">&lt;</span>LEFT_ASSIGN<span class="sc">&gt;</span><span class="er">&amp;</span>lt;<span class="sc">-</span><span class="er">&lt;/</span>LEFT_ASSIGN<span class="sc">&gt;</span></span>
-<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>    <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
-<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>      <span class="er">&lt;</span>FUNCTION<span class="sc">&gt;</span><span class="cf">function</span><span class="sc">&lt;</span><span class="er">/</span>FUNCTION<span class="sc">&gt;</span></span>
-<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>      <span class="er">&lt;</span>OP<span class="sc">-</span>LEFT<span class="sc">-</span>PAREN<span class="sc">&gt;</span>(<span class="sc">&lt;</span><span class="er">/</span>OP<span class="sc">-</span>LEFT<span class="sc">-</span>PAREN<span class="sc">&gt;</span></span>
-<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>      <span class="er">&lt;</span>SYMBOL_FORMALS<span class="sc">&gt;</span>libname<span class="sc">&lt;</span><span class="er">/</span>SYMBOL_FORMALS<span class="sc">&gt;</span></span>
-<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a>      <span class="er">&lt;</span>OP<span class="sc">-</span>COMMA<span class="sc">&gt;</span>,<span class="sc">&lt;</span><span class="er">/</span>OP<span class="sc">-</span>COMMA<span class="sc">&gt;</span></span>
-<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a>      <span class="er">&lt;</span>SYMBOL_FORMALS<span class="sc">&gt;</span>pkgname<span class="sc">&lt;</span><span class="er">/</span>SYMBOL_FORMALS<span class="sc">&gt;</span></span>
-<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a>      <span class="er">&lt;</span>OP<span class="sc">-</span>RIGHT<span class="sc">-</span>PAREN<span class="sc">&gt;</span>)<span class="sc">&lt;</span><span class="er">/</span>OP<span class="sc">-</span>RIGHT<span class="sc">-</span>PAREN<span class="sc">&gt;</span></span>
-<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a>      <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
-<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a>        <span class="er">&lt;</span>NULL_CONST<span class="sc">&gt;</span><span class="cn">NULL</span><span class="sc">&lt;</span><span class="er">/</span>NULL_CONST<span class="sc">&gt;</span></span>
-<span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a>      <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
-<span id="cb8-18"><a href="#cb8-18" tabindex="-1"></a>    <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
-<span id="cb8-19"><a href="#cb8-19" tabindex="-1"></a>  <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
-<span id="cb8-20"><a href="#cb8-20" tabindex="-1"></a><span class="er">&lt;/</span>exprlist<span class="sc">&gt;</span></span></code></pre></div>
-<p>In addition to <code>name</code>, <code>version</code>,
-<code>message</code>, and the examples, a code context rule has two
-additional fields:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>as_xml <span class="ot">&lt;-</span> <span class="cf">function</span>(code) {</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  xml2<span class="sc">::</span><span class="fu">read_xml</span>(</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>    xmlparsedata<span class="sc">::</span><span class="fu">xml_parse_data</span>(</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>      <span class="fu">parse</span>(<span class="at">text =</span> code, <span class="at">keep.source =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>    )</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>  )</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>}</span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>show_tree <span class="ot">&lt;-</span> <span class="cf">function</span>(code) {</span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>  doc <span class="ot">&lt;-</span> <span class="fu">as_xml</span>(code)</span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>  <span class="cf">for</span> (node <span class="cf">in</span> xml2<span class="sc">::</span><span class="fu">xml_find_all</span>(doc, <span class="st">&quot;//*&quot;</span>)) {</span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a>    <span class="cf">for</span> (attr <span class="cf">in</span> <span class="fu">names</span>(xml2<span class="sc">::</span><span class="fu">xml_attrs</span>(node))) xml2<span class="sc">::</span><span class="fu">xml_attr</span>(node, attr) <span class="ot">&lt;-</span> <span class="cn">NULL</span></span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a>  }</span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="fu">sub</span>(<span class="st">&quot;^&lt;</span><span class="sc">\\</span><span class="st">?xml[^&gt;]*</span><span class="sc">\\</span><span class="st">?&gt;</span><span class="sc">\n</span><span class="st">&quot;</span>, <span class="st">&quot;&quot;</span>, <span class="fu">as.character</span>(doc)))</span>
+<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a>}</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">show_tree</span>(<span class="st">&quot;.onLoad &lt;- function(libname, pkgname) NULL&quot;</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="sc">&lt;</span>exprlist<span class="sc">&gt;</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>    <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>      <span class="er">&lt;</span>SYMBOL<span class="sc">&gt;</span>.onLoad<span class="sc">&lt;</span><span class="er">/</span>SYMBOL<span class="sc">&gt;</span></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>    <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>    <span class="er">&lt;</span>LEFT_ASSIGN<span class="sc">&gt;</span><span class="er">&amp;</span>lt;<span class="sc">-</span><span class="er">&lt;/</span>LEFT_ASSIGN<span class="sc">&gt;</span></span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>    <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>      <span class="er">&lt;</span>FUNCTION<span class="sc">&gt;</span><span class="cf">function</span><span class="sc">&lt;</span><span class="er">/</span>FUNCTION<span class="sc">&gt;</span></span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>      <span class="er">&lt;</span>OP<span class="sc">-</span>LEFT<span class="sc">-</span>PAREN<span class="sc">&gt;</span>(<span class="sc">&lt;</span><span class="er">/</span>OP<span class="sc">-</span>LEFT<span class="sc">-</span>PAREN<span class="sc">&gt;</span></span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>      <span class="er">&lt;</span>SYMBOL_FORMALS<span class="sc">&gt;</span>libname<span class="sc">&lt;</span><span class="er">/</span>SYMBOL_FORMALS<span class="sc">&gt;</span></span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a>      <span class="er">&lt;</span>OP<span class="sc">-</span>COMMA<span class="sc">&gt;</span>,<span class="sc">&lt;</span><span class="er">/</span>OP<span class="sc">-</span>COMMA<span class="sc">&gt;</span></span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a>      <span class="er">&lt;</span>SYMBOL_FORMALS<span class="sc">&gt;</span>pkgname<span class="sc">&lt;</span><span class="er">/</span>SYMBOL_FORMALS<span class="sc">&gt;</span></span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a>      <span class="er">&lt;</span>OP<span class="sc">-</span>RIGHT<span class="sc">-</span>PAREN<span class="sc">&gt;</span>)<span class="sc">&lt;</span><span class="er">/</span>OP<span class="sc">-</span>RIGHT<span class="sc">-</span>PAREN<span class="sc">&gt;</span></span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a>      <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
+<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>        <span class="er">&lt;</span>NULL_CONST<span class="sc">&gt;</span><span class="cn">NULL</span><span class="sc">&lt;</span><span class="er">/</span>NULL_CONST<span class="sc">&gt;</span></span>
+<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a>      <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
+<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a>    <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
+<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a>  <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
+<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a><span class="er">&lt;/</span>exprlist<span class="sc">&gt;</span></span></code></pre></div>
+<p>In addition to the common fields and the nine phase fields, a code
+context rule has two additional fields:</p>
 <ul>
-<li><code>type</code> is the type of code context (e.g.,
-<code>hook</code>).</li>
+<li><code>type</code> is the language of the code the context is written
+in (<code>R</code>).</li>
 <li><code>xpath</code> is the XPath expression that defines the
 context.</li>
 </ul>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">show_rule</span>(<span class="st">&quot;code_contexts&quot;</span>, <span class="st">&quot;code_onload.yaml&quot;</span>)</span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>name<span class="sc">:</span> onload_code</span>
-<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>version<span class="sc">:</span> <span class="st">&quot;0.1.0&quot;</span></span>
-<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>type<span class="sc">:</span> hook</span>
-<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>message<span class="sc">:</span> <span class="er">&gt;</span><span class="sc">-</span></span>
-<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>  <span class="fu">.onLoad</span>() executes arbitrary code when a package namespace is loaded, e.g.,</span>
-<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>  by calling <span class="fu">library</span>(), <span class="fu">require</span>(), or <span class="fu">loadNamespace</span>().</span>
-<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>xpath<span class="sc">:</span> <span class="er">&gt;</span><span class="sc">-</span></span>
-<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>  (<span class="sc">/</span><span class="er">/</span>expr <span class="sc">|</span> <span class="er">//</span>expr_or_assign_or_help)[</span>
-<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>    (</span>
-<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>      (LEFT_ASSIGN or EQ_ASSIGN)</span>
-<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a>      and expr[<span class="dv">1</span>]<span class="sc">/</span>SYMBOL[<span class="fu">text</span>() <span class="ot">=</span> <span class="st">&#39;.onLoad&#39;</span>]</span>
-<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a>      and expr[FUNCTION]</span>
-<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a>    )</span>
-<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a>    or</span>
-<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>    (</span>
-<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a>      RIGHT_ASSIGN</span>
-<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a>      and expr[<span class="dv">2</span>]<span class="sc">/</span>SYMBOL[<span class="fu">text</span>() <span class="ot">=</span> <span class="st">&#39;.onLoad&#39;</span>]</span>
-<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a>      and expr[<span class="dv">1</span>]<span class="sc">/</span><span class="er">/</span>FUNCTION</span>
-<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a>    )</span>
-<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a>  ]</span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">show_rule</span>(<span class="st">&quot;code_contexts&quot;</span>, <span class="st">&quot;code_onload.yaml&quot;</span>)</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>name<span class="sc">:</span> onload_code</span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>version<span class="sc">:</span> <span class="st">&quot;0.3.0&quot;</span></span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>type<span class="sc">:</span> R</span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>message<span class="sc">:</span> <span class="er">&gt;</span><span class="sc">-</span></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a>  <span class="fu">.onLoad</span>() executes arbitrary code when a package namespace is loaded, e.g.,</span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>  by calling <span class="fu">library</span>(), <span class="fu">require</span>(), or <span class="fu">loadNamespace</span>(), or by accessing the</span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a>  namespace with <span class="sc">::</span>. R CMD INSTALL, R CMD build, and R CMD check all load the</span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a>  package, so <span class="fu">.onLoad</span>() runs during those phases without any call from a user.</span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a>at_autoconf<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a>at_build<span class="sc">:</span> <span class="cn">TRUE</span></span>
+<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a>at_check<span class="sc">:</span> <span class="cn">TRUE</span></span>
+<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a>at_install_src<span class="sc">:</span> <span class="cn">TRUE</span></span>
+<span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a>at_install_bin<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a>on_load<span class="sc">:</span> <span class="cn">TRUE</span></span>
+<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a>on_attach<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a>on_unload<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a>on_detach<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a>xpath<span class="sc">:</span> <span class="er">&gt;</span><span class="sc">-</span></span>
+<span id="cb10-20"><a href="#cb10-20" tabindex="-1"></a>  (<span class="sc">/</span><span class="er">/</span>expr <span class="sc">|</span> <span class="er">//</span>expr_or_assign_or_help)[</span>
+<span id="cb10-21"><a href="#cb10-21" tabindex="-1"></a>    (</span>
+<span id="cb10-22"><a href="#cb10-22" tabindex="-1"></a>      (LEFT_ASSIGN or EQ_ASSIGN)</span>
+<span id="cb10-23"><a href="#cb10-23" tabindex="-1"></a>      and expr[<span class="dv">1</span>]<span class="sc">/</span>SYMBOL[<span class="fu">text</span>() <span class="ot">=</span> <span class="st">&#39;.onLoad&#39;</span>]</span>
+<span id="cb10-24"><a href="#cb10-24" tabindex="-1"></a>      and expr[FUNCTION]</span>
+<span id="cb10-25"><a href="#cb10-25" tabindex="-1"></a>    )</span>
+<span id="cb10-26"><a href="#cb10-26" tabindex="-1"></a>    or</span>
+<span id="cb10-27"><a href="#cb10-27" tabindex="-1"></a>    (</span>
+<span id="cb10-28"><a href="#cb10-28" tabindex="-1"></a>      RIGHT_ASSIGN</span>
+<span id="cb10-29"><a href="#cb10-29" tabindex="-1"></a>      and expr[<span class="dv">2</span>]<span class="sc">/</span>SYMBOL[<span class="fu">text</span>() <span class="ot">=</span> <span class="st">&#39;.onLoad&#39;</span>]</span>
+<span id="cb10-30"><a href="#cb10-30" tabindex="-1"></a>      and expr[<span class="dv">1</span>]<span class="sc">/</span><span class="er">/</span>FUNCTION</span>
+<span id="cb10-31"><a href="#cb10-31" tabindex="-1"></a>    )</span>
+<span id="cb10-32"><a href="#cb10-32" tabindex="-1"></a>  ]</span></code></pre></div>
 <p>The XPath definition selects an expression node subject to two
 alternative conditions. The first covers assignment with
 <code>&lt;-</code> or <code>=</code>: the left side must be the symbol
@@ -593,19 +638,19 @@ begins.</p>
 <p>Importantly, for the definition to match, a <em>function</em> must be
 assigned to the name of the hook. The name of the hook merely appearing
 somewhere is not a match. Below are some simple examples:</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>xpath   <span class="ot">&lt;-</span> rules<span class="sc">$</span>code_contexts<span class="sc">$</span>xpath[rules<span class="sc">$</span>code_contexts<span class="sc">$</span>name <span class="sc">==</span> <span class="st">&quot;onload_code&quot;</span>]</span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>matches <span class="ot">&lt;-</span> <span class="cf">function</span>(code) <span class="fu">length</span>(xml2<span class="sc">::</span><span class="fu">xml_find_all</span>(<span class="fu">as_xml</span>(code), xpath)) <span class="sc">&gt;</span> <span class="dv">0</span></span>
-<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a></span>
-<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="fu">matches</span>(<span class="st">&quot;.onLoad &lt;- function(libname, pkgname) NULL&quot;</span>)    <span class="co"># assignment</span></span>
-<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
-<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="fu">matches</span>(<span class="st">&quot;.onLoad = function(libname, pkgname) NULL&quot;</span>)     <span class="co"># assignment with `=`</span></span>
-<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
-<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="fu">matches</span>(<span class="st">&quot;(function(libname, pkgname) NULL) -&gt; .onLoad&quot;</span>)  <span class="co"># right assignment</span></span>
-<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
-<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a><span class="fu">matches</span>(<span class="st">&quot;.onAttach &lt;- function(libname, pkgname) NULL&quot;</span>)  <span class="co"># a different hook</span></span>
-<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a><span class="co">#&gt; [1] FALSE</span></span>
-<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a><span class="fu">matches</span>(<span class="st">&quot;message(&#39;.onLoad&#39;)&quot;</span>)                            <span class="co"># only a mention</span></span>
-<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a><span class="co">#&gt; [1] FALSE</span></span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>xpath   <span class="ot">&lt;-</span> rules<span class="sc">$</span>code_contexts<span class="sc">$</span>xpath[rules<span class="sc">$</span>code_contexts<span class="sc">$</span>name <span class="sc">==</span> <span class="st">&quot;onload_code&quot;</span>]</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>matches <span class="ot">&lt;-</span> <span class="cf">function</span>(code) <span class="fu">length</span>(xml2<span class="sc">::</span><span class="fu">xml_find_all</span>(<span class="fu">as_xml</span>(code), xpath)) <span class="sc">&gt;</span> <span class="dv">0</span></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="fu">matches</span>(<span class="st">&quot;.onLoad &lt;- function(libname, pkgname) NULL&quot;</span>)    <span class="co"># assignment</span></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="fu">matches</span>(<span class="st">&quot;.onLoad = function(libname, pkgname) NULL&quot;</span>)     <span class="co"># assignment with `=`</span></span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a><span class="fu">matches</span>(<span class="st">&quot;(function(libname, pkgname) NULL) -&gt; .onLoad&quot;</span>)  <span class="co"># right assignment</span></span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
+<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a><span class="fu">matches</span>(<span class="st">&quot;.onAttach &lt;- function(libname, pkgname) NULL&quot;</span>)  <span class="co"># a different hook</span></span>
+<span id="cb11-11"><a href="#cb11-11" tabindex="-1"></a><span class="co">#&gt; [1] FALSE</span></span>
+<span id="cb11-12"><a href="#cb11-12" tabindex="-1"></a><span class="fu">matches</span>(<span class="st">&quot;message(&#39;.onLoad&#39;)&quot;</span>)                            <span class="co"># only a mention</span></span>
+<span id="cb11-13"><a href="#cb11-13" tabindex="-1"></a><span class="co">#&gt; [1] FALSE</span></span></code></pre></div>
 </div>
 <div id="pattern-rules" class="section level3">
 <h3>Pattern Rules</h3>
@@ -614,18 +659,22 @@ somewhere is not a match. Below are some simple examples:</p>
 functions have many legitimate uses. The goal of a pattern rule is to
 alert a user to the existence of a function call that should be
 reviewed.</p>
-<p>In addition to <code>name</code>, <code>version</code>,
-<code>message</code>, and the examples, a pattern rule has three
-additional fields:</p>
+<p>In addition to the common fields, a pattern rule has three additional
+fields:</p>
 <ul>
-<li><code>type</code> is a severity (<code>warning</code> or
-<code>note</code>).</li>
+<li><code>type</code> is the language of the code the pattern matches
+(<code>R</code>).</li>
 <li><code>xpath</code> is the XPath expression that defines the
 pattern.</li>
 <li><code>attck</code> is a set of MITRE ATT&amp;CK technique
 identifiers, carried into each finding and tallied by
 <code>summary()</code>.</li>
 </ul>
+<p>A pattern rule carries no severity. How much a finding deserves your
+attention depends on the pattern together with the context it was found
+in – the same <code>system()</code> call is weightier in
+<code>.onLoad()</code> than in a function nothing calls – and a rule is
+evaluated without knowing which context it will land in.</p>
 <p>As with code contexts, <code>find_patterns()</code> takes the XML
 parse tree and XPath definition, and calls
 <code>.xml_find_all_safe()</code>, which wraps
@@ -635,88 +684,67 @@ recording the rule’s name and the line and column where the call
 begins.</p>
 <p>As a simplified example, the XML parse tree for <code>system()</code>
 is:</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">show_tree</span>(<span class="st">&quot;system()&quot;</span>)</span>
-<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="sc">&lt;</span>exprlist<span class="sc">&gt;</span></span>
-<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>  <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
-<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>    <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
-<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>      <span class="er">&lt;</span>SYMBOL_FUNCTION_CALL<span class="sc">&gt;</span>system<span class="sc">&lt;</span><span class="er">/</span>SYMBOL_FUNCTION_CALL<span class="sc">&gt;</span></span>
-<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a>    <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
-<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a>    <span class="er">&lt;</span>OP<span class="sc">-</span>LEFT<span class="sc">-</span>PAREN<span class="sc">&gt;</span>(<span class="sc">&lt;</span><span class="er">/</span>OP<span class="sc">-</span>LEFT<span class="sc">-</span>PAREN<span class="sc">&gt;</span></span>
-<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a>    <span class="er">&lt;</span>OP<span class="sc">-</span>RIGHT<span class="sc">-</span>PAREN<span class="sc">&gt;</span>)<span class="sc">&lt;</span><span class="er">/</span>OP<span class="sc">-</span>RIGHT<span class="sc">-</span>PAREN<span class="sc">&gt;</span></span>
-<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a>  <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
-<span id="cb11-10"><a href="#cb11-10" tabindex="-1"></a><span class="er">&lt;/</span>exprlist<span class="sc">&gt;</span></span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="fu">show_tree</span>(<span class="st">&quot;system()&quot;</span>)</span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="sc">&lt;</span>exprlist<span class="sc">&gt;</span></span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>  <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>    <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>      <span class="er">&lt;</span>SYMBOL_FUNCTION_CALL<span class="sc">&gt;</span>system<span class="sc">&lt;</span><span class="er">/</span>SYMBOL_FUNCTION_CALL<span class="sc">&gt;</span></span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a>    <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a>    <span class="er">&lt;</span>OP<span class="sc">-</span>LEFT<span class="sc">-</span>PAREN<span class="sc">&gt;</span>(<span class="sc">&lt;</span><span class="er">/</span>OP<span class="sc">-</span>LEFT<span class="sc">-</span>PAREN<span class="sc">&gt;</span></span>
+<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>    <span class="er">&lt;</span>OP<span class="sc">-</span>RIGHT<span class="sc">-</span>PAREN<span class="sc">&gt;</span>)<span class="sc">&lt;</span><span class="er">/</span>OP<span class="sc">-</span>RIGHT<span class="sc">-</span>PAREN<span class="sc">&gt;</span></span>
+<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a>  <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
+<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a><span class="er">&lt;/</span>exprlist<span class="sc">&gt;</span></span></code></pre></div>
 <p>The XPath definition of the pattern rule matching
 <code>system()</code> and similar function calls is:</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="fu">show_rule</span>(<span class="st">&quot;patterns&quot;</span>, <span class="st">&quot;pattern_system.yaml&quot;</span>)</span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>name<span class="sc">:</span> system_pattern</span>
-<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>version<span class="sc">:</span> <span class="st">&quot;0.2.0&quot;</span></span>
-<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>type<span class="sc">:</span> warning</span>
-<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>attck<span class="sc">:</span></span>
-<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a>  <span class="sc">-</span> T1059<span class="fl">.003</span></span>
-<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a>  <span class="sc">-</span> T1059<span class="fl">.004</span></span>
-<span id="cb12-8"><a href="#cb12-8" tabindex="-1"></a>  <span class="sc">-</span> T1195<span class="fl">.002</span></span>
-<span id="cb12-9"><a href="#cb12-9" tabindex="-1"></a>message<span class="sc">:</span> <span class="er">&gt;</span><span class="sc">-</span></span>
-<span id="cb12-10"><a href="#cb12-10" tabindex="-1"></a>  <span class="fu">system</span>(), <span class="fu">system2</span>(), <span class="fu">shell</span>() (on Windows), and <span class="fu">pipe</span>() execute arbitrary shell</span>
-<span id="cb12-11"><a href="#cb12-11" tabindex="-1"></a>  commands.</span>
-<span id="cb12-12"><a href="#cb12-12" tabindex="-1"></a>xpath<span class="sc">:</span> <span class="er">&gt;</span><span class="sc">-</span></span>
-<span id="cb12-13"><a href="#cb12-13" tabindex="-1"></a>  <span class="er">//</span>SYMBOL_FUNCTION_CALL[</span>
-<span id="cb12-14"><a href="#cb12-14" tabindex="-1"></a>    (<span class="fu">text</span>() <span class="ot">=</span> <span class="st">&#39;system&#39;</span> or <span class="fu">text</span>() <span class="ot">=</span> <span class="st">&#39;system2&#39;</span> or <span class="fu">text</span>() <span class="ot">=</span> <span class="st">&#39;shell&#39;</span></span>
-<span id="cb12-15"><a href="#cb12-15" tabindex="-1"></a>      or <span class="fu">text</span>() <span class="ot">=</span> <span class="st">&#39;pipe&#39;</span>)</span>
-<span id="cb12-16"><a href="#cb12-16" tabindex="-1"></a>    and <span class="fu">not</span>(preceding<span class="sc">-</span>sibling<span class="sc">::</span>OP<span class="sc">-</span>DOLLAR)</span>
-<span id="cb12-17"><a href="#cb12-17" tabindex="-1"></a>    and <span class="fu">not</span>(preceding<span class="sc">-</span>sibling<span class="sc">::</span>OP<span class="sc">-</span>AT)</span>
-<span id="cb12-18"><a href="#cb12-18" tabindex="-1"></a>  ]</span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">show_rule</span>(<span class="st">&quot;patterns&quot;</span>, <span class="st">&quot;pattern_system.yaml&quot;</span>)</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>name<span class="sc">:</span> system_pattern</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>version<span class="sc">:</span> <span class="st">&quot;0.3.0&quot;</span></span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>type<span class="sc">:</span> R</span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>attck<span class="sc">:</span></span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a>  <span class="sc">-</span> T1059<span class="fl">.003</span></span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>  <span class="sc">-</span> T1059<span class="fl">.004</span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a>  <span class="sc">-</span> T1195<span class="fl">.002</span></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a>message<span class="sc">:</span> <span class="er">&gt;</span><span class="sc">-</span></span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a>  <span class="fu">system</span>(), <span class="fu">system2</span>(), <span class="fu">shell</span>() (on Windows), and <span class="fu">pipe</span>() execute arbitrary shell</span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a>  commands.</span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a>xpath<span class="sc">:</span> <span class="er">&gt;</span><span class="sc">-</span></span>
+<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a>  <span class="er">//</span>SYMBOL_FUNCTION_CALL[</span>
+<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a>    (<span class="fu">text</span>() <span class="ot">=</span> <span class="st">&#39;system&#39;</span> or <span class="fu">text</span>() <span class="ot">=</span> <span class="st">&#39;system2&#39;</span> or <span class="fu">text</span>() <span class="ot">=</span> <span class="st">&#39;shell&#39;</span></span>
+<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a>      or <span class="fu">text</span>() <span class="ot">=</span> <span class="st">&#39;pipe&#39;</span>)</span>
+<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a>    and <span class="fu">not</span>(preceding<span class="sc">-</span>sibling<span class="sc">::</span>OP<span class="sc">-</span>DOLLAR)</span>
+<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a>    and <span class="fu">not</span>(preceding<span class="sc">-</span>sibling<span class="sc">::</span>OP<span class="sc">-</span>AT)</span>
+<span id="cb13-18"><a href="#cb13-18" tabindex="-1"></a>  ]</span></code></pre></div>
 <p>There are two details in this XPath worth noting. The first is
 <code>SYMBOL_FUNCTION_CALL</code>. R’s parser uses that label only where
 a name is actually a function call; a mention of the same name anywhere
 else is a plain <code>SYMBOL</code>, which will not match.</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">show_tree</span>(<span class="st">&quot;foo &lt;- system&quot;</span>)</span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="sc">&lt;</span>exprlist<span class="sc">&gt;</span></span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>  <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
-<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>    <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
-<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>      <span class="er">&lt;</span>SYMBOL<span class="sc">&gt;</span>foo<span class="sc">&lt;</span><span class="er">/</span>SYMBOL<span class="sc">&gt;</span></span>
-<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a>    <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
-<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>    <span class="er">&lt;</span>LEFT_ASSIGN<span class="sc">&gt;</span><span class="er">&amp;</span>lt;<span class="sc">-</span><span class="er">&lt;/</span>LEFT_ASSIGN<span class="sc">&gt;</span></span>
-<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a>    <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
-<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a>      <span class="er">&lt;</span>SYMBOL<span class="sc">&gt;</span>system<span class="sc">&lt;</span><span class="er">/</span>SYMBOL<span class="sc">&gt;</span></span>
-<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a>    <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
-<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a>  <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
-<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a><span class="er">&lt;/</span>exprlist<span class="sc">&gt;</span></span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="fu">show_tree</span>(<span class="st">&quot;foo &lt;- system&quot;</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="sc">&lt;</span>exprlist<span class="sc">&gt;</span></span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a>  <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a>    <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>      <span class="er">&lt;</span>SYMBOL<span class="sc">&gt;</span>foo<span class="sc">&lt;</span><span class="er">/</span>SYMBOL<span class="sc">&gt;</span></span>
+<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a>    <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
+<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a>    <span class="er">&lt;</span>LEFT_ASSIGN<span class="sc">&gt;</span><span class="er">&amp;</span>lt;<span class="sc">-</span><span class="er">&lt;/</span>LEFT_ASSIGN<span class="sc">&gt;</span></span>
+<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a>    <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
+<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a>      <span class="er">&lt;</span>SYMBOL<span class="sc">&gt;</span>system<span class="sc">&lt;</span><span class="er">/</span>SYMBOL<span class="sc">&gt;</span></span>
+<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a>    <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
+<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a>  <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
+<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="er">&lt;/</span>exprlist<span class="sc">&gt;</span></span></code></pre></div>
 <p>The second is the pair of <code>not(...)</code> conditions. In
 <code>foo$system(&quot;x&quot;)</code>, the name is in call position, so the
 parser labels it <code>SYMBOL_FUNCTION_CALL</code> – but it is a list
 element or an object’s method, not base R’s <code>system()</code>. The
 rule excludes it by refusing any call whose name is immediately preceded
 by <code>$</code>:</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="fu">show_tree</span>(<span class="st">&#39;foo$system(&quot;x&quot;)&#39;</span>)</span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="sc">&lt;</span>exprlist<span class="sc">&gt;</span></span>
-<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a>  <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
-<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a>    <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
-<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a>      <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
-<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a>        <span class="er">&lt;</span>SYMBOL<span class="sc">&gt;</span>foo<span class="sc">&lt;</span><span class="er">/</span>SYMBOL<span class="sc">&gt;</span></span>
-<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a>      <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
-<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a>      <span class="er">&lt;</span>OP<span class="sc">-</span>DOLLAR<span class="sc">&gt;</span><span class="er">$&lt;/</span>OP<span class="sc">-</span>DOLLAR<span class="sc">&gt;</span></span>
-<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a>      <span class="er">&lt;</span>SYMBOL_FUNCTION_CALL<span class="sc">&gt;</span>system<span class="sc">&lt;</span><span class="er">/</span>SYMBOL_FUNCTION_CALL<span class="sc">&gt;</span></span>
-<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a>    <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
-<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a>    <span class="er">&lt;</span>OP<span class="sc">-</span>LEFT<span class="sc">-</span>PAREN<span class="sc">&gt;</span>(<span class="sc">&lt;</span><span class="er">/</span>OP<span class="sc">-</span>LEFT<span class="sc">-</span>PAREN<span class="sc">&gt;</span></span>
-<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a>    <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
-<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a>      <span class="er">&lt;</span>STR_CONST<span class="sc">&gt;</span><span class="st">&quot;x&quot;</span><span class="sc">&lt;</span><span class="er">/</span>STR_CONST<span class="sc">&gt;</span></span>
-<span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a>    <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
-<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a>    <span class="er">&lt;</span>OP<span class="sc">-</span>RIGHT<span class="sc">-</span>PAREN<span class="sc">&gt;</span>)<span class="sc">&lt;</span><span class="er">/</span>OP<span class="sc">-</span>RIGHT<span class="sc">-</span>PAREN<span class="sc">&gt;</span></span>
-<span id="cb14-16"><a href="#cb14-16" tabindex="-1"></a>  <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
-<span id="cb14-17"><a href="#cb14-17" tabindex="-1"></a><span class="er">&lt;/</span>exprlist<span class="sc">&gt;</span></span></code></pre></div>
-<p>The <code>@</code> half of that pair is belt and braces. R’s parser
-labels the name after <code>@</code> as a <code>SLOT</code> rather than
-a call, so <code>foo@system(&quot;x&quot;)</code> will not match, but the
-condition is included as future-proofing.</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="fu">show_tree</span>(<span class="st">&#39;foo@system(&quot;x&quot;)&#39;</span>)</span>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="fu">show_tree</span>(<span class="st">&#39;foo$system(&quot;x&quot;)&#39;</span>)</span>
 <span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a><span class="sc">&lt;</span>exprlist<span class="sc">&gt;</span></span>
 <span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>  <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
 <span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>    <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
 <span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a>      <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
 <span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a>        <span class="er">&lt;</span>SYMBOL<span class="sc">&gt;</span>foo<span class="sc">&lt;</span><span class="er">/</span>SYMBOL<span class="sc">&gt;</span></span>
 <span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a>      <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
-<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a>      <span class="er">&lt;</span>OP<span class="sc">-</span>AT<span class="sc">&gt;</span><span class="er">@&lt;/</span>OP<span class="sc">-</span>AT<span class="sc">&gt;</span></span>
-<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a>      <span class="er">&lt;</span>SLOT<span class="sc">&gt;</span>system<span class="sc">&lt;</span><span class="er">/</span>SLOT<span class="sc">&gt;</span></span>
+<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a>      <span class="er">&lt;</span>OP<span class="sc">-</span>DOLLAR<span class="sc">&gt;</span><span class="er">$&lt;/</span>OP<span class="sc">-</span>DOLLAR<span class="sc">&gt;</span></span>
+<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a>      <span class="er">&lt;</span>SYMBOL_FUNCTION_CALL<span class="sc">&gt;</span>system<span class="sc">&lt;</span><span class="er">/</span>SYMBOL_FUNCTION_CALL<span class="sc">&gt;</span></span>
 <span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a>    <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
 <span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a>    <span class="er">&lt;</span>OP<span class="sc">-</span>LEFT<span class="sc">-</span>PAREN<span class="sc">&gt;</span>(<span class="sc">&lt;</span><span class="er">/</span>OP<span class="sc">-</span>LEFT<span class="sc">-</span>PAREN<span class="sc">&gt;</span></span>
 <span id="cb15-12"><a href="#cb15-12" tabindex="-1"></a>    <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
@@ -725,20 +753,41 @@ condition is included as future-proofing.</p>
 <span id="cb15-15"><a href="#cb15-15" tabindex="-1"></a>    <span class="er">&lt;</span>OP<span class="sc">-</span>RIGHT<span class="sc">-</span>PAREN<span class="sc">&gt;</span>)<span class="sc">&lt;</span><span class="er">/</span>OP<span class="sc">-</span>RIGHT<span class="sc">-</span>PAREN<span class="sc">&gt;</span></span>
 <span id="cb15-16"><a href="#cb15-16" tabindex="-1"></a>  <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
 <span id="cb15-17"><a href="#cb15-17" tabindex="-1"></a><span class="er">&lt;/</span>exprlist<span class="sc">&gt;</span></span></code></pre></div>
+<p>The <code>@</code> half of that pair is belt and braces. R’s parser
+labels the name after <code>@</code> as a <code>SLOT</code> rather than
+a call, so <code>foo@system(&quot;x&quot;)</code> will not match, but the
+condition is included as future-proofing.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="fu">show_tree</span>(<span class="st">&#39;foo@system(&quot;x&quot;)&#39;</span>)</span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a><span class="sc">&lt;</span>exprlist<span class="sc">&gt;</span></span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a>  <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
+<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a>    <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
+<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a>      <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
+<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a>        <span class="er">&lt;</span>SYMBOL<span class="sc">&gt;</span>foo<span class="sc">&lt;</span><span class="er">/</span>SYMBOL<span class="sc">&gt;</span></span>
+<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a>      <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
+<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a>      <span class="er">&lt;</span>OP<span class="sc">-</span>AT<span class="sc">&gt;</span><span class="er">@&lt;/</span>OP<span class="sc">-</span>AT<span class="sc">&gt;</span></span>
+<span id="cb16-9"><a href="#cb16-9" tabindex="-1"></a>      <span class="er">&lt;</span>SLOT<span class="sc">&gt;</span>system<span class="sc">&lt;</span><span class="er">/</span>SLOT<span class="sc">&gt;</span></span>
+<span id="cb16-10"><a href="#cb16-10" tabindex="-1"></a>    <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
+<span id="cb16-11"><a href="#cb16-11" tabindex="-1"></a>    <span class="er">&lt;</span>OP<span class="sc">-</span>LEFT<span class="sc">-</span>PAREN<span class="sc">&gt;</span>(<span class="sc">&lt;</span><span class="er">/</span>OP<span class="sc">-</span>LEFT<span class="sc">-</span>PAREN<span class="sc">&gt;</span></span>
+<span id="cb16-12"><a href="#cb16-12" tabindex="-1"></a>    <span class="er">&lt;</span>expr<span class="sc">&gt;</span></span>
+<span id="cb16-13"><a href="#cb16-13" tabindex="-1"></a>      <span class="er">&lt;</span>STR_CONST<span class="sc">&gt;</span><span class="st">&quot;x&quot;</span><span class="sc">&lt;</span><span class="er">/</span>STR_CONST<span class="sc">&gt;</span></span>
+<span id="cb16-14"><a href="#cb16-14" tabindex="-1"></a>    <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
+<span id="cb16-15"><a href="#cb16-15" tabindex="-1"></a>    <span class="er">&lt;</span>OP<span class="sc">-</span>RIGHT<span class="sc">-</span>PAREN<span class="sc">&gt;</span>)<span class="sc">&lt;</span><span class="er">/</span>OP<span class="sc">-</span>RIGHT<span class="sc">-</span>PAREN<span class="sc">&gt;</span></span>
+<span id="cb16-16"><a href="#cb16-16" tabindex="-1"></a>  <span class="er">&lt;/</span>expr<span class="sc">&gt;</span></span>
+<span id="cb16-17"><a href="#cb16-17" tabindex="-1"></a><span class="er">&lt;/</span>exprlist<span class="sc">&gt;</span></span></code></pre></div>
 <p>The following shows examples of what does and does not match:</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a>xpath_sys <span class="ot">&lt;-</span> rules<span class="sc">$</span>patterns<span class="sc">$</span>xpath[rules<span class="sc">$</span>patterns<span class="sc">$</span>name <span class="sc">==</span> <span class="st">&quot;system_pattern&quot;</span>]</span>
-<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>hits <span class="ot">&lt;-</span> <span class="cf">function</span>(code) <span class="fu">length</span>(xml2<span class="sc">::</span><span class="fu">xml_find_all</span>(<span class="fu">as_xml</span>(code), xpath_sys)) <span class="sc">&gt;</span> <span class="dv">0</span></span>
-<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a></span>
-<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a><span class="fu">hits</span>(<span class="st">&#39;system(&quot;id&quot;)&#39;</span>)</span>
-<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
-<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a><span class="fu">hits</span>(<span class="st">&#39;base::system(&quot;id&quot;)&#39;</span>)   <span class="co"># a qualified call still matches</span></span>
-<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
-<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a><span class="fu">hits</span>(<span class="st">&#39;pipe(&quot;id&quot;)&#39;</span>)           <span class="co"># one of the four names the rule covers</span></span>
-<span id="cb16-9"><a href="#cb16-9" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
-<span id="cb16-10"><a href="#cb16-10" tabindex="-1"></a><span class="fu">hits</span>(<span class="st">&quot;foo &lt;- system&quot;</span>)        <span class="co"># a reference, not a call</span></span>
-<span id="cb16-11"><a href="#cb16-11" tabindex="-1"></a><span class="co">#&gt; [1] FALSE</span></span>
-<span id="cb16-12"><a href="#cb16-12" tabindex="-1"></a><span class="fu">hits</span>(<span class="st">&#39;foo$system(&quot;id&quot;)&#39;</span>)     <span class="co"># a different function</span></span>
-<span id="cb16-13"><a href="#cb16-13" tabindex="-1"></a><span class="co">#&gt; [1] FALSE</span></span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>xpath_sys <span class="ot">&lt;-</span> rules<span class="sc">$</span>patterns<span class="sc">$</span>xpath[rules<span class="sc">$</span>patterns<span class="sc">$</span>name <span class="sc">==</span> <span class="st">&quot;system_pattern&quot;</span>]</span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>hits <span class="ot">&lt;-</span> <span class="cf">function</span>(code) <span class="fu">length</span>(xml2<span class="sc">::</span><span class="fu">xml_find_all</span>(<span class="fu">as_xml</span>(code), xpath_sys)) <span class="sc">&gt;</span> <span class="dv">0</span></span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a></span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a><span class="fu">hits</span>(<span class="st">&#39;system(&quot;id&quot;)&#39;</span>)</span>
+<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
+<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a><span class="fu">hits</span>(<span class="st">&#39;base::system(&quot;id&quot;)&#39;</span>)   <span class="co"># a qualified call still matches</span></span>
+<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
+<span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a><span class="fu">hits</span>(<span class="st">&#39;pipe(&quot;id&quot;)&#39;</span>)           <span class="co"># one of the four names the rule covers</span></span>
+<span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a><span class="co">#&gt; [1] TRUE</span></span>
+<span id="cb17-10"><a href="#cb17-10" tabindex="-1"></a><span class="fu">hits</span>(<span class="st">&quot;foo &lt;- system&quot;</span>)        <span class="co"># a reference, not a call</span></span>
+<span id="cb17-11"><a href="#cb17-11" tabindex="-1"></a><span class="co">#&gt; [1] FALSE</span></span>
+<span id="cb17-12"><a href="#cb17-12" tabindex="-1"></a><span class="fu">hits</span>(<span class="st">&#39;foo$system(&quot;id&quot;)&#39;</span>)     <span class="co"># a different function</span></span>
+<span id="cb17-13"><a href="#cb17-13" tabindex="-1"></a><span class="co">#&gt; [1] FALSE</span></span></code></pre></div>
 <p><code>base::system(&quot;id&quot;)</code> still matches because the name is
 preceded by the package qualifier (<code>::</code>), not by
 <code>$</code> or <code>@</code>. Detecting both call forms is why the
@@ -754,22 +803,32 @@ nodes with the pattern nodes already found, assigning each pattern the
 most specific code context that contains it. A pattern at the top level
 of a script is assigned <code>Top-level</code>, and a pattern inside a
 regular function is assigned <code>Other</code>.</p>
+<p>That assignment is also what gives a pattern its phases.
+<code>Top-level</code> and <code>Other</code> are computed rather than
+matched by a rule, so they have no rule to take phases from; theirs are
+authored separately, under <code>inst/rules/phases/</code>. Top-level
+code is evaluated once, when the lazy-load database is built during
+installation from source, so <code>Top-level</code> carries the build,
+check, and source-install phases. <code>Other</code> carries none at
+all, which is the reading intended: code inside an ordinary function
+runs only if something calls it, never as a consequence of building,
+installing, checking, or loading the package.</p>
 </div>
 <div id="examples-are-tests" class="section level2">
 <h2>Examples Are Tests</h2>
 <p>Every rule YAML ends with <code>positive_examples</code> and
 <code>negative_examples</code>.</p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>lines <span class="ot">&lt;-</span> <span class="fu">readLines</span>(</span>
-<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>  <span class="fu">system.file</span>(<span class="st">&quot;rules&quot;</span>, <span class="st">&quot;file_contexts&quot;</span>, <span class="st">&quot;file_configure.yaml&quot;</span>,</span>
-<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>    <span class="at">package =</span> <span class="st">&quot;pkgaudit&quot;</span>)</span>
-<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a>)</span>
-<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a><span class="fu">cat</span>(lines[<span class="fu">grep</span>(<span class="st">&quot;^positive_examples:&quot;</span>, lines)<span class="sc">:</span><span class="fu">length</span>(lines)], <span class="at">sep =</span> <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
-<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a>positive_examples<span class="sc">:</span></span>
-<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a>  <span class="sc">-</span> configure</span>
-<span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a>negative_examples<span class="sc">:</span></span>
-<span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a>  <span class="sc">-</span> configure.win</span>
-<span id="cb17-10"><a href="#cb17-10" tabindex="-1"></a>  <span class="sc">-</span> tools<span class="sc">/</span>configure</span>
-<span id="cb17-11"><a href="#cb17-11" tabindex="-1"></a>  <span class="sc">-</span> reconfigure</span></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a>lines <span class="ot">&lt;-</span> <span class="fu">readLines</span>(</span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a>  <span class="fu">system.file</span>(<span class="st">&quot;rules&quot;</span>, <span class="st">&quot;file_contexts&quot;</span>, <span class="st">&quot;file_configure.yaml&quot;</span>,</span>
+<span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a>    <span class="at">package =</span> <span class="st">&quot;pkgaudit&quot;</span>)</span>
+<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a>)</span>
+<span id="cb18-5"><a href="#cb18-5" tabindex="-1"></a><span class="fu">cat</span>(lines[<span class="fu">grep</span>(<span class="st">&quot;^positive_examples:&quot;</span>, lines)<span class="sc">:</span><span class="fu">length</span>(lines)], <span class="at">sep =</span> <span class="st">&quot;</span><span class="sc">\n</span><span class="st">&quot;</span>)</span>
+<span id="cb18-6"><a href="#cb18-6" tabindex="-1"></a>positive_examples<span class="sc">:</span></span>
+<span id="cb18-7"><a href="#cb18-7" tabindex="-1"></a>  <span class="sc">-</span> configure</span>
+<span id="cb18-8"><a href="#cb18-8" tabindex="-1"></a>negative_examples<span class="sc">:</span></span>
+<span id="cb18-9"><a href="#cb18-9" tabindex="-1"></a>  <span class="sc">-</span> configure.win</span>
+<span id="cb18-10"><a href="#cb18-10" tabindex="-1"></a>  <span class="sc">-</span> tools<span class="sc">/</span>configure</span>
+<span id="cb18-11"><a href="#cb18-11" tabindex="-1"></a>  <span class="sc">-</span> reconfigure</span></code></pre></div>
 <p>Every example is written out as a test fixture, and the pkgaudit test
 suite requires that every positive example is flagged by its rule and
 that no negative example is. A rule whose examples do not behave as

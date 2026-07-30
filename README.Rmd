@@ -97,17 +97,24 @@ categories of rules:
 
 - **File contexts** are files that R executes at build-, check-, or
 install-time.
-- **Code contexts** are top-level R source code and lifecycle hooks whose bodies
-run automatically when a namespace is loaded, attached, unloaded, or detached.
+- **Code contexts** are lifecycle hooks whose bodies run automatically when a
+namespace is loaded, attached, unloaded, or detached.
 - **Patterns** are security-relevant function calls. Each pattern finding is
 attributed to the code context it executes in, so a `system()` call inside
 `.onLoad` is distinguished from one inside an ordinary function ("Other") or at
 top level ("Top-level").
 
+Every file and code context also declares the lifecycle phases in which its code
+runs -- `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
+`at_install_bin`, `on_load`, `on_attach`, `on_unload`, `on_detach` -- and a
+pattern inherits them from the code context it sits in. Each finding carries one
+logical column per phase, so findings can be filtered by when they execute, e.g.
+`subset(result$patterns, at_install_src)`.
+
 See [RULES.md](RULES.md) for the full rule set, with the file, hook, or function
-calls each rule covers. Each rule is defined in a YAML file under
-[inst/rules/](inst/rules/) and compiled into the SQLite database at
-`inst/db/rules.db`.
+calls each rule covers and the phases in which it runs. Each rule is defined in
+a YAML file under [inst/rules/](inst/rules/) and compiled into the SQLite
+database at `inst/db/rules.db`.
 
 ## Installation
 
@@ -157,8 +164,9 @@ result <- audit_tarball(tarball, rules = rules)
 print(result, path = FALSE)
 ```
 
-`summary()` reports the findings themselves: the contexts found, how often each
-pattern matched, and the MITRE ATT&CK techniques involved.
+`summary()` reports the findings themselves: how many run during each lifecycle
+phase, the contexts found, how often each pattern matched, and the MITRE ATT&CK
+techniques involved.
 
 ```{r usage-summary}
 summary(result, path = FALSE)
@@ -174,3 +182,7 @@ result$patterns       # security-relevant calls, each with its code_context
 result$errors         # any files or rules that could not be processed
 result$metadata       # package name/version, SHA-256, rules version, scan time
 ```
+
+Each of the three findings frames also carries the nine phase columns, so
+`subset(result$patterns, on_load)` is the set of calls that run on
+`library()`.

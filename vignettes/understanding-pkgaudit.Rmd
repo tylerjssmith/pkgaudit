@@ -58,9 +58,15 @@ of extracted files.
       whether each pattern occurrence is located in a named code context,
       top-level code (`Top-level`), or a regular function (`Other`).
 
+4. Finally, the lifecycle phases in which each finding's code runs are attached
+   to the findings. A file or code context takes its phases from the rule that
+   matched it; a pattern inherits them from the code context assigned in
+   step 3c.
+
 `audit_package()` returns a `pkgaudit` object: a named list of `file_contexts`,
 `code_contexts`, `patterns`, and `errors` data frames, plus a `metadata` list
-recording what was scanned and with what.
+recording what was scanned and with what. Each of the three findings data frames
+carries one logical column per lifecycle phase.
 
 Failures are contained rather than fatal. Listing files, parsing a script, and
 evaluating an XPath are each wrapped in `tryCatch()`, so an unreadable file, a
@@ -81,6 +87,12 @@ categories, the YAML files have the following fields:
 - `message` is the explanation shown with a finding.
 - `positive_examples` and `negative_examples` are file paths or code syntax that
 should and should not be found by the rule, respectively.
+
+File and code context rules carry nine further fields, one per lifecycle phase
+-- `at_autoconf`, `at_build`, `at_check`, `at_install_src`, `at_install_bin`,
+`on_load`, `on_attach`, `on_unload`, and `on_detach` -- each `TRUE` or `FALSE`.
+Pattern rules do not declare them: a pattern runs when the code around it runs,
+so it takes its phases from the code context that contains it.
 
 Each rule contains additional fields used by pkgaudit functions to find file
 contexts, code contexts, or patterns. These are explained below.
@@ -104,10 +116,10 @@ but can execute arbitrary shell commands on a system. The goal of a file context
 rule is to alert a user to the existence of a file context before it is executed
 so that the file can be reviewed.
 
-In addition to `name`, `version`, `message`, and the examples, a file context
-rule has four additional fields:
+In addition to the common fields and the nine phase fields, a file context rule
+has four additional fields:
 
-- `type` is the type of file (e.g., `make`, `shell`, `R`).
+- `type` is the language or format of the file (e.g., `make`, `shell`, `R`).
 - `path` is the directory to search (relative to the package root).
 - `recursive` indicates whether to descend into subdirectories.
 - `pattern` is a regular expression matched against the names of the files found
@@ -148,14 +160,26 @@ as `configure.win` and `configure.ucrt` have separate rules rather than a shared
 pattern. Additionally, pkgaudit ignores directories whose names happen to match;
 only regular files are found.
 
-The YAML files are compiled into a SQLite database. `load_rules()` returns a list
-of data frames containing rules. The `file_contexts` data frame contains the
-`path`, `recursive`, and `pattern` values:
+The YAML files are compiled into a SQLite database. `load_rules()` returns a
+list of four data frames: one per rule category, plus `phases`. The
+`file_contexts` data frame contains the `path`, `recursive`, and `pattern`
+values:
 
 ```{r fc-row}
 rules$file_contexts[
   rules$file_contexts$name == "configure_file",
   c("name", "path", "recursive", "pattern")
+]
+```
+
+The rule's phase fields are hoisted into `phases`, keyed by rule name. Here they
+say that `configure` runs during `R CMD build` and `R CMD check` as well as at
+installation from source, and never once the package is loaded:
+
+```{r fc-phases}
+rules$phases[
+  rules$phases$context == "configure_file",
+  c("context", "at_build", "at_check", "at_install_src", "on_load")
 ]
 ```
 
@@ -196,10 +220,10 @@ show_tree <- function(code) {
 show_tree(".onLoad <- function(libname, pkgname) NULL")
 ```
 
-In addition to `name`, `version`, `message`, and the examples, a code context
-rule has two additional fields:
+In addition to the common fields and the nine phase fields, a code context rule
+has two additional fields:
 
-- `type` is the type of code context (e.g., `hook`).
+- `type` is the language of the code the context is written in (`R`).
 - `xpath` is the XPath expression that defines the context.
 
 ```{r cc-yaml, comment = ""}
@@ -242,13 +266,17 @@ execute arbitrary shell commands. These functions have many legitimate uses. The
 goal of a pattern rule is to alert a user to the existence of a function call
 that should be reviewed.
 
-In addition to `name`, `version`, `message`, and the examples, a pattern rule
-has three additional fields:
+In addition to the common fields, a pattern rule has three additional fields:
 
-- `type` is a severity (`warning` or `note`).
+- `type` is the language of the code the pattern matches (`R`).
 - `xpath` is the XPath expression that defines the pattern.
 - `attck` is a set of MITRE ATT&CK technique identifiers, carried into each
   finding and tallied by `summary()`.
+
+A pattern rule carries no severity. How much a finding deserves your attention
+depends on the pattern together with the context it was found in -- the same
+`system()` call is weightier in `.onLoad()` than in a function nothing calls --
+and a rule is evaluated without knowing which context it will land in.
 
 As with code contexts, `find_patterns()` takes the XML parse tree and XPath
 definition, and calls `.xml_find_all_safe()`, which wraps
@@ -319,6 +347,15 @@ against the XML parse tree and compares the resulting nodes with the pattern
 nodes already found, assigning each pattern the most specific code context that
 contains it. A pattern at the top level of a script is assigned `Top-level`, and
 a pattern inside a regular function is assigned `Other`.
+
+That assignment is also what gives a pattern its phases. `Top-level` and `Other`
+are computed rather than matched by a rule, so they have no rule to take phases
+from; theirs are authored separately, under `inst/rules/phases/`. Top-level code
+is evaluated once, when the lazy-load database is built during installation from
+source, so `Top-level` carries the build, check, and source-install phases.
+`Other` carries none at all, which is the reading intended: code inside an
+ordinary function runs only if something calls it, never as a consequence of
+building, installing, checking, or loading the package.
 
 ## Examples Are Tests
 

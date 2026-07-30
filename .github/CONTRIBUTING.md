@@ -103,6 +103,28 @@ function call).
 - a **code context** rule adds `xpath`;
 - a **pattern** rule adds `xpath` and `attck` (MITRE ATT&CK technique IDs).
 
+`type` is the language or format of what the rule matches, not a severity. A
+file context rule is `R`, `shell`, `make`, or `other`; a code context or pattern
+rule is always `R`, since both are matched against R's parse tree. How much a
+finding matters is a property of the pattern together with the context it was
+found in, which a rule cannot know, so no rule declares one.
+
+**Phases.** A file or code context rule must also declare, as `TRUE` or `FALSE`,
+each of the nine lifecycle phases in which its code runs: `at_autoconf`,
+`at_build`, `at_check`, `at_install_src`, `at_install_bin`, `on_load`,
+`on_attach`, `on_unload`, and `on_detach`. All nine are required, and the
+database will not build without them. A pattern rule declares none: a pattern
+inherits the phases of the code context it sits in.
+
+Claim a phase only where the behavior has been observed. The existing
+assignments were established by running `R CMD build`, `R CMD check`, and
+`R CMD INSTALL` against instrumented packages rather than read from
+documentation, and several are narrower than the documentation implies. Say in
+the issue thread how you determined yours.
+
+The two computed contexts, `Top-level` and `Other`, are not rules and are
+authored separately under [inst/rules/phases/](../inst/rules/phases/).
+
 `message` is shown to the user with every finding. It should be 1-2 short 
 sentences. Write it so that someone who has never read the rule understands what 
 was found and why it matters.
