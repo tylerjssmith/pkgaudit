@@ -1,10 +1,23 @@
 name: lastlib_code
-version: "0.1.0"
-type: hook
+version: "0.3.0"
+type: R
 message: >-
-  .Last.lib() executes arbitrary code when a package namespace is detached from
-  the R search path, e.g., by calling detach(). In modern R, this has been
-  superseded by .onDetach().
+  .Last.lib() executes arbitrary code when a package is detached from the R
+  search path, e.g., by calling detach(); it does not run on unloadNamespace().
+  It runs only if the package exports it and does not define .onDetach(), which
+  supersedes it; R CMD check reports "NB: .Last.lib will not be used unless it
+  is exported". R CMD check detaches the package while checking that it can be
+  unloaded cleanly, so .Last.lib() runs during checking without any call from a
+  user.
+at_autoconf: FALSE
+at_build: FALSE
+at_check: TRUE
+at_install_src: FALSE
+at_install_bin: FALSE
+on_load: FALSE
+on_attach: FALSE
+on_unload: FALSE
+on_detach: TRUE
 xpath: >-
   (//expr | //expr_or_assign_or_help)[
     (

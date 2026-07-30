@@ -1,10 +1,21 @@
 name: src_makevars_win_file
-version: "0.1.0"
+version: "0.3.0"
 type: make
 message: >-
   src/Makevars.win sets make variables used to compile code in src/ on Windows
-  when a package is installed from source. It is read by make and can execute
-  shell via make constructs such as $(shell ...).
+  when a package is installed from source, including the installs performed by
+  R CMD check and by R CMD build; R CMD build also reads it when cleaning src/.
+  It is read by make and can execute shell via make constructs such as
+  $(shell ...).
+at_autoconf: FALSE
+at_build: TRUE
+at_check: TRUE
+at_install_src: TRUE
+at_install_bin: FALSE
+on_load: FALSE
+on_attach: FALSE
+on_unload: FALSE
+on_detach: FALSE
 path: "src"
 recursive: FALSE
 pattern: '^Makevars\.win$'

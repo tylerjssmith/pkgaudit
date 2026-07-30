@@ -1,10 +1,22 @@
 name: onload_rlang_code
-version: "0.1.0"
-type: hook
+version: "0.3.0"
+type: R
 message: >-
   rlang::on_load() registers arbitrary code to execute when a package namespace
-  is loaded, e.g., by calling library(), require(), or loadNamespace().
-  on_load() requires .onLoad() to contain rlang::run_on_load().
+  is loaded, e.g., by calling library(), require(), or loadNamespace(), or by
+  accessing the namespace with ::. R CMD INSTALL, R CMD build, and R CMD check
+  all load the package, so the registered code runs during those phases without
+  any call from a user. on_load() requires .onLoad() to contain
+  rlang::run_on_load().
+at_autoconf: FALSE
+at_build: TRUE
+at_check: TRUE
+at_install_src: TRUE
+at_install_bin: FALSE
+on_load: TRUE
+on_attach: FALSE
+on_unload: FALSE
+on_detach: FALSE
 xpath: >-
   //expr[
     expr/SYMBOL_FUNCTION_CALL[

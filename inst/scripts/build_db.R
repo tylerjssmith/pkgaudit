@@ -22,10 +22,23 @@
 
 .example_fields <- c("positive_examples", "negative_examples")
 
+# Lifecycle phases. Every file- and code-context rule declares all nine; they
+# are hoisted out of those rules into the phases table, which also holds the
+# computed contexts authored under inst/rules/phases/. Pattern rules do not
+# declare them: a pattern inherits its phases from the context it sits in.
+.phase_fields <- c(
+  "at_autoconf", "at_build", "at_check", "at_install_src", "at_install_bin",
+  "on_load", "on_attach", "on_unload", "on_detach"
+)
+
+# A rule's type is the language of what it matches, not a severity: severity is
+# a property of a pattern together with the context it was found in, which a
+# rule is in no position to know. Code contexts and patterns are both matched
+# against R's parse tree, so "R" is the only language available to them for now.
 .valid_types <- list(
   file_context = c("R", "shell", "make", "other"),
-  code_context = c("top-level", "hook", "other"),
-  pattern      = c("warning", "note")
+  code_context = c("R"),
+  pattern      = c("R")
 )
 
 # A generous cap. This is not a style limit -- it exists so a malicious or
@@ -87,6 +100,17 @@
   invisible(TRUE)
 }
 
+# Validate that every phase field is present as TRUE or FALSE.
+.validate_phases <- function(rule, path) {
+  for (field in .phase_fields) {
+    value <- rule[[field]]
+    if (!is.logical(value) || length(value) != 1L || is.na(value)) {
+      stop("Field '", field, "' must be TRUE or FALSE in: ", path)
+    }
+  }
+  invisible(TRUE)
+}
+
 # Validate that a string compiles as a regular expression.
 .validate_regex <- function(pattern, path) {
   ok <- tryCatch({
@@ -107,9 +131,11 @@ read_file_context_yaml <- function(path) {
   stopifnot(file.exists(path))
   rule <- yaml::read_yaml(path)
 
-  expected <- c(.file_context_scalars, "recursive", .example_fields)
+  expected <- c(.file_context_scalars, "recursive", .phase_fields,
+                .example_fields)
   .check_fields(rule, expected, path)
   .validate_common(rule, path, .file_context_scalars, "file_context")
+  .validate_phases(rule, path)
 
   if (!is.logical(rule$recursive) || length(rule$recursive) != 1L ||
       is.na(rule$recursive)) {
@@ -129,9 +155,10 @@ read_code_context_yaml <- function(path) {
   stopifnot(file.exists(path))
   rule <- yaml::read_yaml(path)
 
-  expected <- c(.code_context_scalars, .example_fields)
+  expected <- c(.code_context_scalars, .phase_fields, .example_fields)
   .check_fields(rule, expected, path)
   .validate_common(rule, path, .code_context_scalars, "code_context")
+  .validate_phases(rule, path)
   .validate_xpath(rule$xpath, path)
 
   rule$positive_examples <- unlist(rule$positive_examples)
@@ -156,6 +183,30 @@ read_pattern_yaml <- function(path) {
 
   rule$positive_examples <- unlist(rule$positive_examples)
   rule$negative_examples <- unlist(rule$negative_examples)
+  rule
+}
+
+# Read one computed-context phases file: a context name and the nine phases,
+# with no rule attached. The context name allows the punctuation the computed
+# contexts use ("Top-level"), which rule names may not contain.
+read_phase_yaml <- function(path) {
+  stopifnot(file.exists(path))
+  rule <- yaml::read_yaml(path)
+
+  .check_fields(rule, c("context", "version", .phase_fields), path)
+  if (!is.character(rule$context) || length(rule$context) != 1L ||
+      !grepl("^[A-Za-z][A-Za-z0-9_.-]{0,63}$", rule$context)) {
+    stop(
+      "Field 'context' must start with a letter, contain only letters, ",
+      "digits, underscores, hyphens, and periods, and be at most 64 ",
+      "characters in: ", path
+    )
+  }
+  if (!is.character(rule$version) || length(rule$version) != 1L ||
+      nchar(trimws(rule$version)) == 0L) {
+    stop("Field 'version' must be a single string in: ", path)
+  }
+  .validate_phases(rule, path)
   rule
 }
 
@@ -188,7 +239,8 @@ init_db <- function(
   db_path  = file.path("inst", "db", "rules.db"),
   versions = list(
     c("0.1.0", "Initial release"),
-    c("0.2.0", "Expanded pattern rule coverage")
+    c("0.2.0", "Expanded pattern rule coverage"),
+    c("0.3.0", "Phase metadata and corrected context messages")
   )
 ) {
   db_dir <- dirname(db_path)
@@ -236,6 +288,18 @@ init_db <- function(
       xpath   TEXT NOT NULL
     )")
 
+  # One row per context that code can execute in: every file- and code-context
+  # rule, plus the computed contexts. Keyed by context name so resolving a
+  # finding's phases is a lookup on the rule that matched it, or -- for a
+  # pattern -- on the code context it sits in.
+  DBI::dbExecute(con, sprintf("
+    CREATE TABLE phases (
+      context TEXT PRIMARY KEY,
+      version TEXT NOT NULL REFERENCES rule_versions(version),
+      %s
+    )", paste(sprintf("%s INTEGER NOT NULL", .phase_fields),
+              collapse = ",\n      ")))
+
   for (v in versions) {
     DBI::dbExecute(
       con,
@@ -282,6 +346,22 @@ load_code_context <- function(rule, con, path) {
   invisible(rule$name)
 }
 
+# Insert one phases row. Used both for the phases hoisted out of a file- or
+# code-context rule and for the computed contexts, which have no rule.
+load_phases <- function(context, version, values, con, path) {
+  .assert_version(con, version, path)
+  sql <- sprintf(
+    "INSERT INTO phases (context, version, %s) VALUES (%s)",
+    paste(.phase_fields, collapse = ", "),
+    paste(rep("?", length(.phase_fields) + 2L), collapse = ", ")
+  )
+  DBI::dbExecute(con, sql, params = c(
+    list(context, version),
+    lapply(.phase_fields, function(field) as.integer(values[[field]]))
+  ))
+  invisible(context)
+}
+
 load_pattern <- function(rule, con, path) {
   .assert_version(con, rule$version, path)
   DBI::dbExecute(
@@ -304,9 +384,12 @@ build_rules_db <- function(
   db_path    = file.path("inst", "db", "rules.db")
 ) {
   classes <- list(
-    file_contexts = list(reader = read_file_context_yaml, loader = load_file_context),
-    code_contexts = list(reader = read_code_context_yaml, loader = load_code_context),
-    patterns      = list(reader = read_pattern_yaml,      loader = load_pattern)
+    file_contexts = list(reader = read_file_context_yaml,
+                         loader = load_file_context, has_phases = TRUE),
+    code_contexts = list(reader = read_code_context_yaml,
+                         loader = load_code_context, has_phases = TRUE),
+    patterns      = list(reader = read_pattern_yaml,
+                         loader = load_pattern,      has_phases = FALSE)
   )
 
   con <- DBI::dbConnect(RSQLite::SQLite(), db_path)
@@ -324,10 +407,27 @@ build_rules_db <- function(
       for (f in yaml_files) {
         rule <- classes[[cls]]$reader(f)
         classes[[cls]]$loader(rule, con, f)
+        if (isTRUE(classes[[cls]]$has_phases)) {
+          load_phases(rule$name, rule$version, rule, con, f)
+        }
         message("  Loaded [", cls, "]: ", rule$name)
         names_loaded <- c(names_loaded, rule$name)
       }
     }
+
+    # The computed contexts: phases with no rule of their own.
+    phase_dir <- file.path(rules_root, "phases")
+    if (!dir.exists(phase_dir)) stop("Rules directory not found: ", phase_dir)
+    phase_files <- list.files(phase_dir, pattern = "\\.ya?ml$",
+                              full.names = TRUE)
+    if (length(phase_files) == 0L) stop("No YAML files found in: ", phase_dir)
+    for (f in phase_files) {
+      computed <- read_phase_yaml(f)
+      load_phases(computed$context, computed$version, computed, con, f)
+      message("  Loaded [phases]: ", computed$context)
+      names_loaded <- c(names_loaded, computed$context)
+    }
+
     DBI::dbExecute(con, "COMMIT")
     names_loaded
   }, error = function(e) {

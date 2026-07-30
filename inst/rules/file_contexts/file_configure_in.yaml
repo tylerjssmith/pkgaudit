@@ -1,10 +1,19 @@
 name: configure_in_file
-version: "0.1.0"
+version: "0.3.0"
 type: shell
 message: >-
   configure.in is a legacy-named Autoconf input file that does not itself
   execute; it is processed by Autoconf to generate the configure script, which
   executes shell commands when a package is installed from source.
+at_autoconf: TRUE
+at_build: FALSE
+at_check: FALSE
+at_install_src: FALSE
+at_install_bin: FALSE
+on_load: FALSE
+on_attach: FALSE
+on_unload: FALSE
+on_detach: FALSE
 path: "."
 recursive: FALSE
 pattern: '^configure\.in$'

@@ -1,0 +1,26 @@
+name: cleanup_ucrt_file
+version: "0.3.0"
+type: shell
+message: >-
+  cleanup.ucrt is a shell script run on the Windows UCRT toolchain at the end of
+  R CMD build, and during installation from source only under R CMD INSTALL
+  --clean or --preclean; it takes precedence over cleanup.win when present. It
+  can execute arbitrary shell commands.
+at_autoconf: FALSE
+at_build: TRUE
+at_check: FALSE
+at_install_src: FALSE
+at_install_bin: FALSE
+on_load: FALSE
+on_attach: FALSE
+on_unload: FALSE
+on_detach: FALSE
+path: "."
+recursive: FALSE
+pattern: '^cleanup\.ucrt$'
+positive_examples:
+  - cleanup.ucrt
+negative_examples:
+  - cleanup.win
+  - tools/cleanup.ucrt
+  - cleanup.ucrtx

@@ -1,0 +1,18 @@
+# Phases for a code context that is computed rather than rule-matched.
+#
+# Top-level code in an R script is evaluated once, when the lazy-load database
+# is built during installation from source -- which R CMD check and R CMD build
+# also perform. It is not re-evaluated when the namespace is loaded: loading
+# restores the values from that database, so a top-level side effect does not
+# run again, even when the value it produced is forced.
+context: "Top-level"
+version: "0.3.0"
+at_autoconf: FALSE
+at_build: TRUE
+at_check: TRUE
+at_install_src: TRUE
+at_install_bin: FALSE
+on_load: FALSE
+on_attach: FALSE
+on_unload: FALSE
+on_detach: FALSE

@@ -1,6 +1,6 @@
 name: system_pattern
-version: "0.2.0"
-type: warning
+version: "0.3.0"
+type: R
 attck:
   - T1059.003
   - T1059.004

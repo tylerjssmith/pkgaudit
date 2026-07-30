@@ -1,9 +1,19 @@
 name: cleanup_win_file
-version: "0.1.0"
+version: "0.3.0"
 type: shell
 message: >-
-  cleanup.win is a shell script executed after a package is installed from
-  source on Windows. It can execute arbitrary shell commands.
+  cleanup.win is a shell script run on Windows at the end of R CMD build, and
+  during installation from source only under R CMD INSTALL --clean or
+  --preclean. It can execute arbitrary shell commands.
+at_autoconf: FALSE
+at_build: TRUE
+at_check: FALSE
+at_install_src: FALSE
+at_install_bin: FALSE
+on_load: FALSE
+on_attach: FALSE
+on_unload: FALSE
+on_detach: FALSE
 path: "."
 recursive: FALSE
 pattern: '^cleanup\.win$'

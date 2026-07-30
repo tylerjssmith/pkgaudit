@@ -1,0 +1,17 @@
+# Phases for a code context that is computed rather than rule-matched.
+#
+# Code inside an ordinary function definition runs at no lifecycle phase: it
+# executes only if something calls that function. Every phase is FALSE, which
+# distinguishes such code from code that runs as a consequence of building,
+# installing, checking, or loading the package.
+context: "Other"
+version: "0.3.0"
+at_autoconf: FALSE
+at_build: FALSE
+at_check: FALSE
+at_install_src: FALSE
+at_install_bin: FALSE
+on_load: FALSE
+on_attach: FALSE
+on_unload: FALSE
+on_detach: FALSE

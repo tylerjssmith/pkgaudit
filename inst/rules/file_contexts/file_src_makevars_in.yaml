@@ -1,10 +1,20 @@
 name: src_makevars_in_file
-version: "0.1.0"
+version: "0.3.0"
 type: make
 message: >-
   src/Makevars.in is a template that does not itself execute; it is processed by
-  the configure script to generate src/Makevars, which is read by make to compile
-  code in src/ when a package is installed from source.
+  the configure script to generate src/Makevars, whose contents are then read by
+  make to compile code in src/ when a package is installed from source,
+  including the installs performed by R CMD check and by R CMD build.
+at_autoconf: FALSE
+at_build: TRUE
+at_check: TRUE
+at_install_src: TRUE
+at_install_bin: FALSE
+on_load: FALSE
+on_attach: FALSE
+on_unload: FALSE
+on_detach: FALSE
 path: "src"
 recursive: FALSE
 pattern: '^Makevars\.in$'

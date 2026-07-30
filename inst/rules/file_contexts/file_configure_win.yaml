@@ -1,9 +1,19 @@
 name: configure_win_file
-version: "0.1.0"
+version: "0.3.0"
 type: shell
 message: >-
   configure.win is a shell script for system-dependent configuration on Windows,
-  executed when a package is installed from source.
+  executed when a package is installed from source, including the installs
+  performed by R CMD check and by R CMD build when a package has vignettes.
+at_autoconf: FALSE
+at_build: TRUE
+at_check: TRUE
+at_install_src: TRUE
+at_install_bin: FALSE
+on_load: FALSE
+on_attach: FALSE
+on_unload: FALSE
+on_detach: FALSE
 path: "."
 recursive: FALSE
 pattern: '^configure\.win$'

@@ -1,11 +1,21 @@
 name: src_makevars_ucrt_file
-version: "0.1.0"
+version: "0.3.0"
 type: make
 message: >-
   src/Makevars.ucrt sets make variables used to compile code in src/ on the
-  Windows UCRT toolchain when a package is installed from source; it takes
-  precedence over Makevars.win. It is read by make and can execute shell via
-  make constructs such as $(shell ...).
+  Windows UCRT toolchain when a package is installed from source, including the
+  installs performed by R CMD check and by R CMD build; it takes precedence over
+  Makevars.win, and R CMD build also reads it when cleaning src/. It is read by
+  make and can execute shell via make constructs such as $(shell ...).
+at_autoconf: FALSE
+at_build: TRUE
+at_check: TRUE
+at_install_src: TRUE
+at_install_bin: FALSE
+on_load: FALSE
+on_attach: FALSE
+on_unload: FALSE
+on_detach: FALSE
 path: "src"
 recursive: FALSE
 pattern: '^Makevars\.ucrt$'

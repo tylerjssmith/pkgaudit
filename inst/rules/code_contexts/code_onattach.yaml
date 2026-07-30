@@ -1,9 +1,20 @@
 name: onattach_code
-version: "0.1.0"
-type: hook
+version: "0.3.0"
+type: R
 message: >-
-  .onAttach() executes arbitrary code when a package namespace is attached to
-  the R search path, e.g., by calling library(), require(), or attach().
+  .onAttach() executes arbitrary code when a package is attached to the R search
+  path by library() or require(); attach() does not trigger it. R CMD INSTALL,
+  R CMD build, and R CMD check attach the package while testing that it loads,
+  so .onAttach() runs during those phases without any call from a user.
+at_autoconf: FALSE
+at_build: TRUE
+at_check: TRUE
+at_install_src: TRUE
+at_install_bin: FALSE
+on_load: FALSE
+on_attach: TRUE
+on_unload: FALSE
+on_detach: FALSE
 xpath: >-
   (//expr | //expr_or_assign_or_help)[
     (
