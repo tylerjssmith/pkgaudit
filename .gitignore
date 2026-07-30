@@ -4,3 +4,6 @@
 .httr-oauth
 .DS_Store
 .quarto
+
+# Vignette HTML is a build artifact; R CMD build renders it into inst/doc.
+vignettes/*.html

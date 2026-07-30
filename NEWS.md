@@ -129,6 +129,18 @@ replaces it with three independent rule categories.
 * Rules are stored in a versioned, hash-verified SQLite database. `load_rules()`
   verifies the database against its bundled SHA-256 sidecar on every call and
   refuses to load a modified database.
+* `load_rules()` records the database it read on the list it returns, as a
+  `"provenance"` attribute of `db_path`, `version`, and `sha256`, and a scan's
+  `metadata` reports those. Previously `pkgaudit_rules_version` and
+  `pkgaudit_rules_sha256` always described the bundled database, so a scan run
+  with rules from another `db_path` reported a version and hash that were not
+  the ones it used. A rules list not produced by `load_rules()` carries no
+  provenance and both fields are now `NA` rather than the bundled values.
+* The recorded `sha256` is the hash computed from the database while verifying
+  it, not a later re-read of the sidecar. The time-of-check to time-of-use
+  window is unchanged, but a scan now reports what it measured: were the
+  database and its sidecar both replaced after verification, the recorded hash
+  would no longer match the file, rather than agreeing with it.
 
 ## New exported functions
 
