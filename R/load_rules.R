@@ -23,6 +23,11 @@
 #'       execute in: every file- and code-context rule, plus the computed
 #'       contexts `"Top-level"` and `"Other"`.}
 #'   }
+#'   The list carries a `"provenance"` attribute recording the database the
+#'   rules were read from -- a list of `db_path`, `version`, and `sha256` --
+#'   which [audit_package()] reports in a scan's `metadata`. The `sha256` is the
+#'   hash computed from the database during verification, not a value re-read
+#'   from the sidecar afterwards, so it records what this call measured.
 #'
 #' @details
 #' Before reading, the database is verified against its SHA-256 sidecar so that
@@ -46,7 +51,7 @@
 #'
 #' @export
 load_rules <- function(db_path = .db_path()) {
-  .with_db(db_path, function(con) {
+  .with_db(db_path, function(con, sha256) {
     file_contexts <- DBI::dbGetQuery(
       con,
       "SELECT name, version, type, message, path, recursive, pattern
@@ -89,11 +94,21 @@ load_rules <- function(db_path = .db_path()) {
 
     .validate_phase_coverage(file_contexts, code_contexts, phases, db_path)
 
-    list(
-      file_contexts = file_contexts,
-      code_contexts = code_contexts,
-      patterns      = patterns,
-      phases        = phases
+    # Record which database these rules came from. A scan reports the rules it
+    # actually used, and without this it could only report whichever database
+    # happens to be bundled -- a different one whenever db_path is not default.
+    structure(
+      list(
+        file_contexts = file_contexts,
+        code_contexts = code_contexts,
+        patterns      = patterns,
+        phases        = phases
+      ),
+      provenance = list(
+        db_path = db_path,
+        version = .query_version(con, db_path),
+        sha256  = sha256
+      )
     )
   })
 }
@@ -142,21 +157,7 @@ load_rules <- function(db_path = .db_path()) {
 #'
 #' @export
 rules_version <- function(db_path = .db_path()) {
-  .with_db(db_path, function(con) {
-    version <- DBI::dbGetQuery(
-      con,
-      "SELECT version
-         FROM rule_versions
-        ORDER BY released_at DESC, rowid DESC
-        LIMIT 1"
-    )
-
-    if (nrow(version) == 0L) {
-      stop("No version found in rules database: ", db_path, call. = FALSE)
-    }
-
-    version$version[[1L]]
-  })
+  .with_db(db_path, function(con, sha256) .query_version(con, db_path))
 }
 
 
@@ -164,6 +165,26 @@ rules_version <- function(db_path = .db_path()) {
 
 # Return the path to the bundled database.
 .db_path <- function() system.file("db", "rules.db", package = "pkgaudit")
+
+
+# The latest version recorded in an open database. Shared by rules_version()
+# and load_rules(), which reads it on the connection it already holds rather
+# than re-opening and re-verifying the file.
+.query_version <- function(con, db_path) {
+  version <- DBI::dbGetQuery(
+    con,
+    "SELECT version
+       FROM rule_versions
+      ORDER BY released_at DESC, rowid DESC
+      LIMIT 1"
+  )
+
+  if (nrow(version) == 0L) {
+    stop("No version found in rules database: ", db_path, call. = FALSE)
+  }
+
+  version$version[[1L]]
+}
 
 
 # Open the rules database, verify its integrity, run fn(con), and always
@@ -177,7 +198,7 @@ rules_version <- function(db_path = .db_path()) {
       call. = FALSE
     )
   }
-  .verify_db(db_path)
+  sha256 <- .verify_db(db_path)
 
   # Verification is time-of-check to time-of-use: the hash is computed above and
   # dbConnect() below re-opens the path, so a file swapped between the two is
@@ -186,13 +207,22 @@ rules_version <- function(db_path = .db_path()) {
   # to this otherwise read-only path.
   con <- DBI::dbConnect(RSQLite::SQLite(), db_path)
   on.exit(DBI::dbDisconnect(con), add = TRUE)
-  fn(con)
+
+  # The verified hash is handed to fn rather than left to be re-read later. It
+  # is a measurement this call took of the file's bytes; re-reading the sidecar
+  # afterwards would instead record whatever that file says at that later
+  # moment, which is the very thing verification exists to distrust.
+  fn(con, sha256)
 }
 
 
 # Verify the database against its SHA-256 sidecar. A missing sidecar or a hash
 # mismatch is fatal: this is a security tool, and silently loading unverified
 # rules would undermine its guarantees.
+#
+# Returns the hash computed from the database, so a caller that needs to record
+# what it loaded can use the value measured here rather than reading the
+# sidecar again.
 .verify_db <- function(db_path) {
   hash_path <- paste0(db_path, ".sha256")
   if (!file.exists(hash_path)) {
@@ -221,5 +251,5 @@ rules_version <- function(db_path = .db_path()) {
       call. = FALSE
     )
   }
-  invisible(TRUE)
+  invisible(actual)
 }

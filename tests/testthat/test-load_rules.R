@@ -101,3 +101,38 @@ test_that("load_rules() refuses a tampered database (hash mismatch)", {
 
   expect_error(load_rules(db), "failed SHA-256 verification")
 })
+
+test_that("load_rules() records the database it read as provenance", {
+  rules <- load_rules()
+  prov  <- attr(rules, "provenance")
+
+  expect_named(prov, c("db_path", "version", "sha256"))
+  expect_equal(prov$db_path, system.file("db", "rules.db", package = "pkgaudit"))
+  expect_equal(prov$version, rules_version())
+  expect_equal(prov$sha256,
+               digest::digest(prov$db_path, algo = "sha256", file = TRUE))
+})
+
+test_that(".verify_db() returns the hash it computed from the database", {
+  db <- system.file("db", "rules.db", package = "pkgaudit")
+  expect_equal(.verify_db(db),
+               digest::digest(db, algo = "sha256", file = TRUE))
+})
+
+test_that("provenance sha256 is measured from the database, not read back from the sidecar", {
+  # The sidecar is written in upper case, which verification accepts because it
+  # compares case-insensitively. The recorded hash is therefore distinguishable:
+  # the lower-case digest means it was computed here, and the upper-case sidecar
+  # text would mean it was re-read from a file an attacker could have rewritten
+  # after verification passed.
+  db <- tempfile(fileext = ".db")
+  file.copy(system.file("db", "rules.db", package = "pkgaudit"), db)
+  on.exit(unlink(c(db, paste0(db, ".sha256"))), add = TRUE)
+
+  computed <- digest::digest(db, algo = "sha256", file = TRUE)
+  writeLines(toupper(computed), paste0(db, ".sha256"))
+
+  prov <- attr(load_rules(db), "provenance")
+  expect_equal(prov$sha256, computed)
+  expect_false(identical(prov$sha256, toupper(computed)))
+})

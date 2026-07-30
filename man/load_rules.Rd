@@ -24,6 +24,11 @@ logical column per lifecycle phase. One row per context code can
 execute in: every file- and code-context rule, plus the computed
 contexts \code{"Top-level"} and \code{"Other"}.}
 }
+The list carries a \code{"provenance"} attribute recording the database the
+rules were read from -- a list of \code{db_path}, \code{version}, and \code{sha256} --
+which \code{\link[=audit_package]{audit_package()}} reports in a scan's \code{metadata}. The \code{sha256} is the
+hash computed from the database during verification, not a value re-read
+from the sidecar afterwards, so it records what this call measured.
 }
 \description{
 Loads the file-context, code-context, and pattern rules, and the lifecycle

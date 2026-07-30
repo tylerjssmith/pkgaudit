@@ -96,3 +96,53 @@ test_that("audit_tarball() sets tarball provenance in metadata", {
   # pkg_sha256 is the hash of the tarball as received, before extraction.
   expect_equal(m$pkg_sha256, digest::digest(tb, algo = "sha256", file = TRUE))
 })
+
+# Rules provenance -------------------------------------------------------------
+test_that("metadata records the rules database actually used, not the bundled one", {
+  # A copy of the bundled database with a later version row, so the value it
+  # reports is distinguishable from the bundled database's.
+  alt <- tempfile(fileext = ".db")
+  file.copy(system.file("db", "rules.db", package = "pkgaudit"), alt)
+  on.exit(unlink(c(alt, paste0(alt, ".sha256"))), add = TRUE)
+
+  con <- DBI::dbConnect(RSQLite::SQLite(), alt)
+  DBI::dbExecute(
+    con,
+    "INSERT INTO rule_versions (version, released_at) VALUES ('9.9.9', '2099-01-01')"
+  )
+  DBI::dbDisconnect(con)
+  alt_hash <- digest::digest(alt, algo = "sha256", file = TRUE)
+  writeLines(alt_hash, paste0(alt, ".sha256"))
+
+  alt_rules <- load_rules(alt)
+  expect_equal(attr(alt_rules, "provenance")$db_path, alt)
+  expect_equal(attr(alt_rules, "provenance")$version, "9.9.9")
+  expect_equal(attr(alt_rules, "provenance")$sha256, alt_hash)
+
+  pkg <- tempfile("pkg"); dir.create(file.path(pkg, "R"), recursive = TRUE)
+  writeLines(c("Package: mypkg", "Version: 1.0"), file.path(pkg, "DESCRIPTION"))
+  writeLines("invisible(NULL)", file.path(pkg, "R", "zzz.R"))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  m <- audit_package(pkg, alt_rules)$metadata
+  expect_equal(m$pkgaudit_rules_version, "9.9.9")
+  expect_equal(m$pkgaudit_rules_sha256, alt_hash)
+  # The bundled database's values must not leak in when another was used.
+  expect_false(identical(m$pkgaudit_rules_version, rules_version()))
+})
+
+test_that("metadata reports unknown rules provenance rather than guessing", {
+  # A rules list not produced by load_rules() carries no provenance, and
+  # attributing the scan to the bundled database would be wrong.
+  bare <- unclass(load_rules())
+  attr(bare, "provenance") <- NULL
+
+  pkg <- tempfile("pkg"); dir.create(file.path(pkg, "R"), recursive = TRUE)
+  writeLines(c("Package: mypkg", "Version: 1.0"), file.path(pkg, "DESCRIPTION"))
+  writeLines("invisible(NULL)", file.path(pkg, "R", "zzz.R"))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  m <- audit_package(pkg, bare)$metadata
+  expect_true(is.na(m$pkgaudit_rules_version))
+  expect_true(is.na(m$pkgaudit_rules_sha256))
+})
