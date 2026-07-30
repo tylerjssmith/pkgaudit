@@ -55,7 +55,11 @@ audit_tarball <- function(
   max_ratio   = 256
 ) {
   stopifnot(is.character(path), length(path) == 1L, file.exists(path))
-  stopifnot(is.list(rules), length(names(rules)) == 3L)
+  stopifnot(
+    is.list(rules),
+    all(c("file_contexts", "code_contexts", "patterns", "phases") %in%
+          names(rules))
+  )
   stopifnot(is.character(temp_dir), length(temp_dir) == 1L)
 
   # validate_tar() reads gzip/uncompressed tar only

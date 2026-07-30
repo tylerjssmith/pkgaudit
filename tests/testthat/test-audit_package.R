@@ -14,14 +14,48 @@ test_that("audit_package() returns a pkgaudit object of four frames plus metadat
   }
   expect_type(res$metadata, "list")
 
-  expect_named(res$file_contexts, c("file_context", "file_path", "message"))
+  expect_named(res$file_contexts,
+               c("rule", "file_context", "message", .phase_columns))
   expect_named(res$code_contexts,
-               c("code_context", "file_context", "line_number",
-                 "column_number", "message"))
+               c("rule", "file_context", "line_number", "column_number",
+                 "message", .phase_columns))
   expect_named(res$patterns,
-               c("pattern", "file_context", "line_number", "column_number",
-                 "message", "attck", "code_context"))
+               c("rule", "file_context", "line_number", "column_number",
+                 "message", "attck", "code_context", .phase_columns))
   expect_named(res$errors, c("stage", "file_context", "rule", "message"))
+})
+
+test_that("audit_package() resolves the phases of every finding", {
+  pkg <- make_pkg(files = list(
+    "configure" = "#!/bin/sh",
+    "R/zzz.R"   = c(".onLoad <- function(libname, pkgname) {",
+                    "  system('id')", "}",
+                    "helper <- function() system('id')")
+  ))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+
+  # A file context takes its phases from the rule that matched it.
+  configure <- res$file_contexts[res$file_contexts$rule == "configure_file", ]
+  expect_true(configure$at_install_src)
+  expect_true(configure$at_check)
+  expect_false(configure$on_load)
+
+  # A code context takes its phases from its own rule, so .onLoad() adds on_load
+  # to the phases that install it.
+  onload <- res$code_contexts[res$code_contexts$rule == "onload_code", ]
+  expect_true(onload$on_load)
+  expect_true(onload$at_install_src)
+
+  # A pattern inherits the phases of the code context it sits in: the hook's
+  # system() call runs at load, the one in an ordinary function runs never.
+  hook <- res$patterns[res$patterns$code_context == "onload_code", ]
+  expect_true(all(hook$on_load))
+
+  uncalled <- res$patterns[res$patterns$code_context == "Other", ]
+  expect_equal(nrow(uncalled), 1L)
+  expect_false(any(unlist(uncalled[, .phase_columns])))
 })
 
 test_that("audit_package() errors on a non-directory", {
@@ -45,21 +79,21 @@ test_that("audit_package() finds file contexts, code contexts and patterns", {
 
   res <- audit_package(pkg, rules)
 
-  expect_setequal(res$file_contexts$file_path,
+  expect_setequal(res$file_contexts$file_context,
                   c("configure", "src/Makevars", "src/install.libs.R"))
-  expect_true("onload_code" %in% res$code_contexts$code_context)
+  expect_true("onload_code" %in% res$code_contexts$rule)
 
   # system() in the hook, source() at top level, system2() at top level of
   # install.libs.R -> the three code-context labels are attributed correctly.
-  sys_hook <- res$patterns[res$patterns$pattern == "system_pattern" &
+  sys_hook <- res$patterns[res$patterns$rule == "system_pattern" &
                              res$patterns$file_context == "R/zzz.R", ]
   expect_equal(sys_hook$code_context, "onload_code")
 
-  src_top <- res$patterns[res$patterns$pattern == "source_pattern", ]
+  src_top <- res$patterns[res$patterns$rule == "source_pattern", ]
   expect_equal(src_top$code_context, "Top-level")
 
   installlibs <- res$patterns[res$patterns$file_context == "src/install.libs.R", ]
-  expect_equal(installlibs$pattern, "system_pattern")
+  expect_equal(installlibs$rule, "system_pattern")
   expect_equal(installlibs$code_context, "Top-level")
 
   expect_equal(nrow(res$errors), 0L)

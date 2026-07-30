@@ -12,13 +12,17 @@ test_that("find_file_contexts() finds matching files with relative paths", {
 
   res <- find_file_contexts(pkg, rules$file_contexts)
   expect_named(res, c("file_contexts", "errors"))
-  expect_named(res$file_contexts, c("file_context", "file_path", "message"))
+  # The finder does not set the phase columns; audit_package() attaches them.
+  expect_named(res$file_contexts, c("rule", "file_context", "message"))
   expect_equal(nrow(res$errors), 0L)
 
-  expect_setequal(res$file_contexts$file_path,
+  expect_setequal(res$file_contexts$file_context,
                   c("configure", "src/Makevars", "src/install.libs.R"))
-  # file_context is the join key: identical to the relative path.
-  expect_equal(res$file_contexts$file_context, res$file_contexts$file_path)
+  # rule names the rule that matched, and joins to the rules database.
+  expect_equal(
+    res$file_contexts$rule[res$file_contexts$file_context == "configure"],
+    "configure_file"
+  )
 })
 
 test_that("find_file_contexts() returns empty frame when nothing matches", {

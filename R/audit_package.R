@@ -13,12 +13,13 @@
 #' @return A [new_pkgaudit()] object: a named list with class `pkgaudit`
 #'   containing four data frames and a `metadata` list.
 #'   \describe{
-#'     \item{file_contexts}{`file_context`, `file_path`, `message`.}
-#'     \item{code_contexts}{`code_context`, `file_context`, `line_number`,
+#'     \item{file_contexts}{`rule`, `file_context`, `message`.}
+#'     \item{code_contexts}{`rule`, `file_context`, `line_number`,
 #'       `column_number`, `message`. Join to `file_contexts` on `file_context`.}
-#'     \item{patterns}{`pattern`, `file_context`, `line_number`,
+#'     \item{patterns}{`rule`, `file_context`, `line_number`,
 #'       `column_number`, `message`, `attck`, `code_context`. Join to the other
-#'       tables on `file_context` and `code_context`.}
+#'       tables on `file_context`, and to `code_contexts$rule` on
+#'       `code_context`.}
 #'     \item{errors}{`stage`, `file_context`, `rule`, `message`.}
 #'     \item{metadata}{List of `pkg_name`, `pkg_version`, `pkg_path`,
 #'       `pkg_is_tarball`, `pkg_sha256`, `pkgaudit_version`,
@@ -29,6 +30,16 @@
 #' Recoverable failures in the orchestrated finders are collected in the
 #' `errors` data frame rather than aborting the audit. File paths in every
 #' returned data frame are relative to the package root.
+#'
+#' Each findings data frame also carries one logical column per package
+#' lifecycle phase -- `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
+#' `at_install_bin`, `on_load`, `on_attach`, `on_unload`, and `on_detach` --
+#' which is `TRUE` when that finding's code runs during the phase, so findings
+#' can be filtered by when they execute. A file or code context takes its phases
+#' from the rule that matched; a pattern inherits them from its `code_context`.
+#' A pattern in an ordinary function is `FALSE` for every phase: it runs only if
+#' something calls it. A finding can belong to several phases, so the phase
+#' columns do not partition the rows.
 #'
 #' When called by [audit_tarball()], `.origin` is a list with `path`, `sha256`,
 #' and `is_tarball`, which are used for the `metadata` list. When calling
@@ -47,11 +58,17 @@
 #' @export
 audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
   stopifnot(is.character(path), length(path) == 1L, dir.exists(path))
-  stopifnot(is.list(rules), length(names(rules)) == 3L)
+  stopifnot(
+    is.list(rules),
+    all(c("file_contexts", "code_contexts", "patterns", "phases") %in%
+          names(rules))
+  )
 
+  # The finders build frames without phase columns; phases are attached once,
+  # from rules$phases, after every script has been scanned.
   errors        <- .empty_errors()
-  code_contexts <- .empty_code_contexts()
-  patterns      <- .empty_patterns()
+  code_contexts <- .empty_code_contexts(with_phases = FALSE)
+  patterns      <- .empty_patterns(with_phases = FALSE)
 
   fc            <- find_file_contexts(path, rules$file_contexts)
   file_contexts <- fc$file_contexts
@@ -88,8 +105,15 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
     }
     # drop the node handle before accumulating; rbind() ignores attributes.
     attr(pat, "nodes") <- NULL
-    patterns <- rbind(patterns, pat[, names(.empty_patterns()), drop = FALSE])
+    patterns <- rbind(
+      patterns,
+      pat[, names(.empty_patterns(with_phases = FALSE)), drop = FALSE]
+    )
   }
+
+  file_contexts <- .attach_phases(file_contexts, rules$phases)
+  code_contexts <- .attach_phases(code_contexts, rules$phases)
+  patterns      <- .resolve_pattern_phases(patterns, rules$phases)
 
   # provenance: hash the tarball as received when scanning one (via
   # audit_tarball), otherwise hash a manifest of the directory.

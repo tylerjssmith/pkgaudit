@@ -12,10 +12,10 @@ test_that("find_patterns() returns findings with the documented columns", {
   tree <- tree_from_text("system('id')")
   res  <- find_patterns(tree, rules$patterns, "R/zzz.R")
   expect_named(res$patterns,
-               c("pattern", "file_context", "line_number", "column_number",
+               c("rule", "file_context", "line_number", "column_number",
                  "message", "attck"))
   expect_equal(nrow(res$patterns), 1L)
-  expect_equal(res$patterns$pattern, "system_pattern")
+  expect_equal(res$patterns$rule, "system_pattern")
   expect_equal(res$patterns$file_context, "R/zzz.R")
   expect_equal(nrow(res$errors), 0L)
 })

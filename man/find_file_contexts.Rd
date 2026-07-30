@@ -16,9 +16,10 @@ find_file_contexts(pkg, file_context_rules)
 \value{
 A list with two data frames:
 \describe{
-\item{file_contexts}{Data frame with columns \code{file_context}
-(package-root-relative path; the join key), \code{file_path} (the same
-path), and \code{message}.}
+\item{file_contexts}{Data frame with columns \code{rule} (the matching rule's
+name), \code{file_context} (package-root-relative path; the join key), and
+\code{message}. The phase columns are not set here; \code{\link[=audit_package]{audit_package()}}
+attaches them from the rules database.}
 \item{errors}{Data frame with columns \code{stage}, \code{file_context}, \code{rule},
 \code{message}.}
 }

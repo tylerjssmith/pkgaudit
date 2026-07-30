@@ -15,9 +15,9 @@ test_that("find_code_contexts() returns a row per matched context", {
   ))
   res <- find_code_contexts(tree, rules$code_contexts, "R/zzz.R")
   expect_named(res$code_contexts,
-               c("code_context", "file_context", "line_number",
+               c("rule", "file_context", "line_number",
                  "column_number", "message"))
-  expect_setequal(res$code_contexts$code_context, c("onload_code", "onattach_code"))
+  expect_setequal(res$code_contexts$rule, c("onload_code", "onattach_code"))
   expect_true(all(res$code_contexts$file_context == "R/zzz.R"))
   expect_equal(nrow(res$errors), 0L)
 })

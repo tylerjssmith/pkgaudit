@@ -17,7 +17,7 @@ contexts_for <- function(text) {
 
 test_that("a pattern in a named hook is labeled with that context", {
   pat <- contexts_for(".onLoad <- function(a, b) system('x')")
-  expect_equal(pat$pattern, "system_pattern")
+  expect_equal(pat$rule, "system_pattern")
   expect_equal(pat$code_context, "onload_code")
 })
 

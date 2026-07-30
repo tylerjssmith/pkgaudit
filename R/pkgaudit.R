@@ -69,13 +69,32 @@ new_pkgaudit <- function(
 }
 
 
-# Expected columns for each result data frame
+# The package lifecycle phases, in the order they occur. Every findings frame
+# carries one logical column per phase, TRUE when that finding's code runs
+# during the phase. Defined here, ahead of .pkgaudit_columns, because that
+# object is built at build time and R/ files are collated alphabetically.
+.phase_columns <- c(
+  "at_autoconf", "at_build", "at_check", "at_install_src", "at_install_bin",
+  "on_load", "on_attach", "on_unload", "on_detach"
+)
+
+
+# The two code contexts that are computed rather than rule-matched. Both have
+# rows in the phases table, so resolving a pattern's phases stays a lookup.
+.context_top_level <- "Top-level"
+.context_other     <- "Other"
+.sentinel_contexts <- c(.context_top_level, .context_other)
+
+
+# Expected columns for each result data frame. `rule` names the rule that
+# produced the row and joins to the rules database; `file_context` is the
+# package-root-relative path and joins the frames to each other.
 .pkgaudit_columns <- list(
-  file_contexts = c("file_context", "file_path", "message"),
-  code_contexts = c("code_context", "file_context", "line_number",
-                    "column_number", "message"),
-  patterns      = c("pattern", "file_context", "line_number", "column_number",
-                    "message", "attck", "code_context"),
+  file_contexts = c("rule", "file_context", "message", .phase_columns),
+  code_contexts = c("rule", "file_context", "line_number", "column_number",
+                    "message", .phase_columns),
+  patterns      = c("rule", "file_context", "line_number", "column_number",
+                    "message", "attck", "code_context", .phase_columns),
   errors        = c("stage", "file_context", "rule", "message")
 )
 

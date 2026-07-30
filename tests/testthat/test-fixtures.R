@@ -17,7 +17,7 @@ test_that("code-context rules match their positive fixtures and reject negatives
       res  <- find_code_contexts(tree, rule, basename(pos))
       expect_gt(nrow(res$code_contexts), 0L)
       expect_equal(nrow(res$errors), 0L)
-      expect_equal(unique(res$code_contexts$code_context), name, info = pos)
+      expect_equal(unique(res$code_contexts$rule), name, info = pos)
     }
     for (neg in list.files(rule_dir, pattern = "^negative_\\d+\\.R$", full.names = TRUE)) {
       tree <- tree_from_file(neg)
@@ -40,7 +40,7 @@ test_that("pattern rules match their positive fixtures and reject negatives", {
       res  <- find_patterns(tree, rule, basename(pos))
       expect_gt(nrow(res$patterns), 0L)
       expect_equal(nrow(res$errors), 0L)
-      expect_equal(unique(res$patterns$pattern), name, info = pos)
+      expect_equal(unique(res$patterns$rule), name, info = pos)
     }
     for (neg in list.files(rule_dir, pattern = "^negative_\\d+\\.R$", full.names = TRUE)) {
       tree <- tree_from_file(neg)
@@ -80,7 +80,7 @@ test_that("file-context rules find their positive paths and reject negatives", {
     }
 
     res   <- find_file_contexts(pkg, rule)
-    found <- sort(res$file_contexts$file_path)
+    found <- sort(res$file_contexts$file_context)
     expect_equal(nrow(res$errors), 0L)
     expect_equal(found, sort(positives), info = name)
     expect_false(any(negatives %in% found), info = name)

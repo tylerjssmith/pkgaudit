@@ -20,8 +20,10 @@ for joining to the file-contexts table.}
 \value{
 A list with two data frames:
 \describe{
-\item{code_contexts}{Data frame with columns \code{code_context},
-\code{file_context}, \code{line_number}, \code{column_number}, \code{message}.}
+\item{code_contexts}{Data frame with columns \code{rule} (the matching rule's
+name), \code{file_context}, \code{line_number}, \code{column_number}, \code{message}. The
+phase columns are not set here; \code{\link[=audit_package]{audit_package()}} attaches them from
+the rules database.}
 \item{errors}{Data frame with columns \code{stage}, \code{file_context}, \code{rule},
 \code{message}.}
 }

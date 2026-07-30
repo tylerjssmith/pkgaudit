@@ -15,8 +15,10 @@
 #'
 #' @return A list with two data frames:
 #'   \describe{
-#'     \item{code_contexts}{Data frame with columns `code_context`,
-#'       `file_context`, `line_number`, `column_number`, `message`.}
+#'     \item{code_contexts}{Data frame with columns `rule` (the matching rule's
+#'       name), `file_context`, `line_number`, `column_number`, `message`. The
+#'       phase columns are not set here; [audit_package()] attaches them from
+#'       the rules database.}
 #'     \item{errors}{Data frame with columns `stage`, `file_context`, `rule`,
 #'       `message`.}
 #'   }
@@ -34,7 +36,8 @@ find_code_contexts <- function(tree, code_context_rules, file_context) {
   errors <- .empty_errors()
 
   if (is.null(code_context_rules) || nrow(code_context_rules) == 0L) {
-    return(list(code_contexts = .empty_code_contexts(), errors = errors))
+    return(list(code_contexts = .empty_code_contexts(with_phases = FALSE),
+                errors = errors))
   }
 
   for (i in seq_len(nrow(code_context_rules))) {
@@ -53,7 +56,7 @@ find_code_contexts <- function(tree, code_context_rules, file_context) {
     if (length(nodes) == 0L) next
 
     found[[length(found) + 1L]] <- data.frame(
-      code_context  = rule$name,
+      rule          = rule$name,
       file_context  = file_context,
       line_number   = as.integer(xml2::xml_attr(nodes, "line1")),
       column_number = as.integer(xml2::xml_attr(nodes, "col1")),

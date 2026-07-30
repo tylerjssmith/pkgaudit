@@ -12,9 +12,10 @@
 #'
 #' @return A list with two data frames:
 #'   \describe{
-#'     \item{patterns}{Data frame with columns `pattern`, `file_context`,
-#'       `line_number`, `column_number`, `message`, `attck`. Carries a `"nodes"`
-#'       attribute holding the matched nodes aligned to the rows.}
+#'     \item{patterns}{Data frame with columns `rule` (the matching rule's
+#'       name), `file_context`, `line_number`, `column_number`, `message`,
+#'       `attck`. Carries a `"nodes"` attribute holding the matched nodes
+#'       aligned to the rows.}
 #'     \item{errors}{Data frame with columns `stage`, `file_context`, `rule`,
 #'       `message`.}
 #'   }
@@ -37,7 +38,7 @@ find_patterns <- function(tree, pattern_rules, file_context) {
   errors    <- .empty_errors()
 
   if (is.null(pattern_rules) || nrow(pattern_rules) == 0L) {
-    out <- .empty_patterns()
+    out <- .empty_patterns(with_phases = FALSE)
     out$code_context <- NULL
     attr(out, "nodes") <- list()
     return(list(patterns = out, errors = errors))
@@ -59,7 +60,7 @@ find_patterns <- function(tree, pattern_rules, file_context) {
     if (length(nodes) == 0L) next
 
     rows[[length(rows) + 1L]] <- data.frame(
-      pattern       = rule$name,
+      rule          = rule$name,
       file_context  = file_context,
       line_number   = as.integer(xml2::xml_attr(nodes, "line1")),
       column_number = as.integer(xml2::xml_attr(nodes, "col1")),
@@ -73,7 +74,7 @@ find_patterns <- function(tree, pattern_rules, file_context) {
   }
 
   patterns <- if (length(rows) == 0L) {
-    out <- .empty_patterns()
+    out <- .empty_patterns(with_phases = FALSE)
     out$code_context <- NULL
     out
   } else {

@@ -1,7 +1,7 @@
 # load_rules() -----------------------------------------------------------------
-test_that("load_rules() returns three rule data frames with expected columns", {
+test_that("load_rules() returns four rule data frames with expected columns", {
   rules <- load_rules()
-  expect_named(rules, c("file_contexts", "code_contexts", "patterns"))
+  expect_named(rules, c("file_contexts", "code_contexts", "patterns", "phases"))
 
   expect_named(rules$file_contexts,
                c("name", "version", "type", "message", "path", "recursive", "pattern"))
@@ -9,11 +9,48 @@ test_that("load_rules() returns three rule data frames with expected columns", {
                c("name", "version", "type", "message", "xpath"))
   expect_named(rules$patterns,
                c("name", "version", "type", "message", "attck", "xpath"))
+  expect_named(rules$phases, c("context", "version", .phase_columns))
 
   expect_type(rules$file_contexts$recursive, "logical")
   expect_gt(nrow(rules$file_contexts), 0L)
   expect_gt(nrow(rules$code_contexts), 0L)
   expect_gt(nrow(rules$patterns), 0L)
+})
+
+test_that("load_rules() returns phases as logicals for every context", {
+  rules <- load_rules()
+
+  for (phase in .phase_columns) expect_type(rules$phases[[phase]], "logical")
+
+  # Every context a finding can be attributed to has a row: each file- and
+  # code-context rule, plus the computed contexts.
+  expect_setequal(
+    rules$phases$context,
+    c(rules$file_contexts$name, rules$code_contexts$name, .sentinel_contexts)
+  )
+
+  # The computed contexts carry the phases established for them: top-level code
+  # runs when the package is installed, built, or checked but not when it is
+  # loaded; code in an ordinary function runs at no phase at all.
+  top <- rules$phases[rules$phases$context == "Top-level", ]
+  expect_true(top$at_install_src && top$at_build && top$at_check)
+  expect_false(top$on_load)
+
+  other <- rules$phases[rules$phases$context == "Other", ]
+  expect_false(any(unlist(other[, .phase_columns])))
+})
+
+test_that("load_rules() refuses a database missing phases for a context", {
+  db <- tempfile(fileext = ".db")
+  file.copy(pkgaudit:::.db_path(), db)
+  con <- DBI::dbConnect(RSQLite::SQLite(), db)
+  DBI::dbExecute(con, "DELETE FROM phases WHERE context = 'onload_code'")
+  DBI::dbDisconnect(con)
+  writeLines(digest::digest(db, algo = "sha256", file = TRUE),
+             paste0(db, ".sha256"))
+  on.exit(unlink(c(db, paste0(db, ".sha256"))), add = TRUE)
+
+  expect_error(load_rules(db), "missing phases for: onload_code")
 })
 
 test_that("load_rules() errors when the database is missing", {

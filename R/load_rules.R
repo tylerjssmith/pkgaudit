@@ -3,14 +3,14 @@
 
 #' Load security rules from the pkgaudit rules database
 #'
-#' Loads the file-context, code-context, and pattern rules from the bundled
-#' SQLite database as a named list suitable for passing to [audit_package()] or
-#' [audit_tarball()].
+#' Loads the file-context, code-context, and pattern rules, and the lifecycle
+#' phases of every context, from the bundled SQLite database as a named list
+#' suitable for passing to [audit_package()] or [audit_tarball()].
 #'
 #' @param db_path Path to the rules database. Defaults to the database bundled
 #'   with the installed package.
 #'
-#' @return A named list with three data frames:
+#' @return A named list with four data frames:
 #'   \describe{
 #'     \item{file_contexts}{Data frame with columns `name`, `version`, `type`,
 #'       `message`, `path`, `recursive`, `pattern`.}
@@ -18,6 +18,10 @@
 #'       `message`, `xpath`.}
 #'     \item{patterns}{Data frame with columns `name`, `version`, `type`,
 #'       `message`, `attck`, `xpath`.}
+#'     \item{phases}{Data frame with columns `context`, `version`, and one
+#'       logical column per lifecycle phase. One row per context code can
+#'       execute in: every file- and code-context rule, plus the computed
+#'       contexts `"Top-level"` and `"Other"`.}
 #'   }
 #'
 #' @details
@@ -66,18 +70,52 @@ load_rules <- function(db_path = .db_path()) {
         ORDER BY name"
     )
 
+    phases <- DBI::dbGetQuery(
+      con,
+      sprintf("SELECT context, version, %s
+                 FROM phases
+                ORDER BY context",
+              paste(.phase_columns, collapse = ", "))
+    )
+    for (phase in .phase_columns) {
+      phases[[phase]] <- as.logical(phases[[phase]])
+    }
+
     if (nrow(file_contexts) == 0L &&
         nrow(code_contexts) == 0L &&
         nrow(patterns) == 0L) {
       stop("No rules found in rules database: ", db_path, call. = FALSE)
     }
 
+    .validate_phase_coverage(file_contexts, code_contexts, phases, db_path)
+
     list(
       file_contexts = file_contexts,
       code_contexts = code_contexts,
-      patterns      = patterns
+      patterns      = patterns,
+      phases        = phases
     )
   })
+}
+
+
+# Every context a finding can be attributed to must have a phases row, or that
+# finding would silently report no phases at all. The contexts are the file- and
+# code-context rules plus the computed contexts assigned by
+# determine_code_contexts(). A gap is a malformed database, not a runtime
+# condition, so it is refused here rather than papered over downstream.
+.validate_phase_coverage <- function(file_contexts, code_contexts, phases,
+                                     db_path) {
+  needed  <- c(file_contexts$name, code_contexts$name, .sentinel_contexts)
+  missing <- setdiff(needed, phases$context)
+  if (length(missing) > 0L) {
+    stop(
+      "Rules database is missing phases for: ",
+      paste(missing, collapse = ", "), "\n  Database: ", db_path,
+      call. = FALSE
+    )
+  }
+  invisible(TRUE)
 }
 
 

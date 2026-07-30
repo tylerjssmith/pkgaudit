@@ -20,12 +20,13 @@ provenance. Leave \code{NULL} for a directory scan.}
 A \code{\link[=new_pkgaudit]{new_pkgaudit()}} object: a named list with class \code{pkgaudit}
 containing four data frames and a \code{metadata} list.
 \describe{
-\item{file_contexts}{\code{file_context}, \code{file_path}, \code{message}.}
-\item{code_contexts}{\code{code_context}, \code{file_context}, \code{line_number},
+\item{file_contexts}{\code{rule}, \code{file_context}, \code{message}.}
+\item{code_contexts}{\code{rule}, \code{file_context}, \code{line_number},
 \code{column_number}, \code{message}. Join to \code{file_contexts} on \code{file_context}.}
-\item{patterns}{\code{pattern}, \code{file_context}, \code{line_number},
+\item{patterns}{\code{rule}, \code{file_context}, \code{line_number},
 \code{column_number}, \code{message}, \code{attck}, \code{code_context}. Join to the other
-tables on \code{file_context} and \code{code_context}.}
+tables on \code{file_context}, and to \code{code_contexts$rule} on
+\code{code_context}.}
 \item{errors}{\code{stage}, \code{file_context}, \code{rule}, \code{message}.}
 \item{metadata}{List of \code{pkg_name}, \code{pkg_version}, \code{pkg_path},
 \code{pkg_is_tarball}, \code{pkg_sha256}, \code{pkgaudit_version},
@@ -40,6 +41,16 @@ before an R source package is trusted.
 Recoverable failures in the orchestrated finders are collected in the
 \code{errors} data frame rather than aborting the audit. File paths in every
 returned data frame are relative to the package root.
+
+Each findings data frame also carries one logical column per package
+lifecycle phase -- \code{at_autoconf}, \code{at_build}, \code{at_check}, \code{at_install_src},
+\code{at_install_bin}, \code{on_load}, \code{on_attach}, \code{on_unload}, and \code{on_detach} --
+which is \code{TRUE} when that finding's code runs during the phase, so findings
+can be filtered by when they execute. A file or code context takes its phases
+from the rule that matched; a pattern inherits them from its \code{code_context}.
+A pattern in an ordinary function is \code{FALSE} for every phase: it runs only if
+something calls it. A finding can belong to several phases, so the phase
+columns do not partition the rows.
 
 When called by \code{\link[=audit_tarball]{audit_tarball()}}, \code{.origin} is a list with \code{path}, \code{sha256},
 and \code{is_tarball}, which are used for the \code{metadata} list. When calling

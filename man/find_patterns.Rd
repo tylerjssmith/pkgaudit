@@ -19,9 +19,10 @@ for joining to the file-contexts table.}
 \value{
 A list with two data frames:
 \describe{
-\item{patterns}{Data frame with columns \code{pattern}, \code{file_context},
-\code{line_number}, \code{column_number}, \code{message}, \code{attck}. Carries a \code{"nodes"}
-attribute holding the matched nodes aligned to the rows.}
+\item{patterns}{Data frame with columns \code{rule} (the matching rule's
+name), \code{file_context}, \code{line_number}, \code{column_number}, \code{message},
+\code{attck}. Carries a \code{"nodes"} attribute holding the matched nodes
+aligned to the rows.}
 \item{errors}{Data frame with columns \code{stage}, \code{file_context}, \code{rule},
 \code{message}.}
 }

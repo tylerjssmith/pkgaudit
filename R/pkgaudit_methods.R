@@ -63,10 +63,11 @@ print.pkgaudit <- function(x, path = TRUE, ...) {
 
 #' Summarize a pkgaudit result
 #'
-#' `summary.pkgaudit()` rolls a scan up into the distinct file and code contexts
-#' found, the frequency of each pattern with its MITRE ATT&CK techniques, and
-#' the errors, if any. `print.summary.pkgaudit()` writes that summary as a
-#' sectioned report and returns the object invisibly.
+#' `summary.pkgaudit()` rolls a scan up into the findings counted by the
+#' lifecycle phase they execute in, the distinct file and code contexts found,
+#' the frequency of each pattern with its MITRE ATT&CK techniques, and the
+#' errors, if any. `print.summary.pkgaudit()` writes that summary as a sectioned
+#' report and returns the object invisibly.
 #'
 #' @param object A `pkgaudit` object.
 #' @param x A `summary.pkgaudit` object.
@@ -77,13 +78,16 @@ print.pkgaudit <- function(x, path = TRUE, ...) {
 #' @param ... Ignored, for S3 compatibility.
 #'
 #' @return `summary.pkgaudit()` returns a `summary.pkgaudit` object: a named list
-#'   of three summary data frames, the errors, the scan `metadata`, and the
+#'   of four summary data frames, the errors, the scan `metadata`, and the
 #'   recorded `path`.
 #'   \describe{
+#'     \item{phases}{`phase`, `file_contexts`, `code_contexts`, `patterns`: how
+#'       many findings of each kind execute during each lifecycle phase, with a
+#'       trailing `none` row for findings that execute in no phase.}
 #'     \item{file_contexts}{`file_context`: each file context found, once.}
-#'     \item{code_contexts}{`code_context`: each code context found, once.}
-#'     \item{patterns}{`pattern`, `occurrences`, `attck`: how often each pattern
-#'       was found and the ATT&CK techniques its rule carries.}
+#'     \item{code_contexts}{`rule`: each code-context rule matched, once.}
+#'     \item{patterns}{`rule`, `occurrences`, `attck`: how often each pattern
+#'       rule was matched and the ATT&CK techniques it carries.}
 #'     \item{errors}{`stage`, `script`, `rule`, `error`: the rows of the object's
 #'       `errors` data frame, renamed for display.}
 #'   }
@@ -116,10 +120,10 @@ print.pkgaudit <- function(x, path = TRUE, ...) {
 summary.pkgaudit <- function(object, path = TRUE, ...) {
   structure(
     list(
+      phases        = .summarize_phases(object),
       file_contexts = .summarize_contexts(object$file_contexts$file_context,
                                           "file_context"),
-      code_contexts = .summarize_contexts(object$code_contexts$code_context,
-                                          "code_context"),
+      code_contexts = .summarize_contexts(object$code_contexts$rule, "rule"),
       patterns      = .summarize_patterns(object$patterns),
       errors        = .summarize_errors(object$errors),
       metadata      = object$metadata,
@@ -154,11 +158,46 @@ print.summary.pkgaudit <- function(x, path = x$path, ...) {
 # The labels come from the rule, so they are constant across a rule's rows and
 # the first row's value describes them all.
 .summarize_patterns <- function(patterns) {
-  found <- sort(unique(patterns$pattern))
+  found <- sort(unique(patterns$rule))
   data.frame(
-    pattern     = found,
-    occurrences = tabulate(match(patterns$pattern, found), length(found)),
-    attck       = patterns$attck[match(found, patterns$pattern)],
+    rule        = found,
+    occurrences = tabulate(match(patterns$rule, found), length(found)),
+    attck       = patterns$attck[match(found, patterns$rule)],
+    stringsAsFactors = FALSE
+  )
+}
+
+
+# Count findings by the lifecycle phase they execute in, one row per phase and
+# one column per findings frame, in lifecycle order.
+#
+# A finding can execute in several phases, so a row is counted once per phase it
+# belongs to and the columns do not sum to the number of findings. The trailing
+# "none" row counts findings that execute in no phase at all -- code reached only
+# when something calls it.
+.summarize_phases <- function(object) {
+  frames <- list(
+    file_contexts = object$file_contexts,
+    code_contexts = object$code_contexts,
+    patterns      = object$patterns
+  )
+
+  in_phase <- function(df, phase) if (nrow(df) == 0L) 0L else sum(df[[phase]])
+  in_none  <- function(df) {
+    if (nrow(df) == 0L) return(0L)
+    sum(rowSums(as.matrix(df[, .phase_columns, drop = FALSE])) == 0L)
+  }
+
+  counts <- lapply(frames, function(df) {
+    c(vapply(.phase_columns, function(p) in_phase(df, p), integer(1L)),
+      none = in_none(df))
+  })
+
+  data.frame(
+    phase         = c(.phase_columns, "none"),
+    file_contexts = unname(counts$file_contexts),
+    code_contexts = unname(counts$code_contexts),
+    patterns      = unname(counts$patterns),
     stringsAsFactors = FALSE
   )
 }
@@ -185,6 +224,9 @@ print.summary.pkgaudit <- function(x, path = x$path, ...) {
   c(
     .section_header("pkgaudit Summary"),
     .metadata_lines(x$metadata, path = path),
+    "",
+    .section_header("Findings by Phase"),
+    .format_table(x$phases),
     "",
     .section_header("File Contexts"),
     .summary_section(x$file_contexts, "No file contexts were found."),

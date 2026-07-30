@@ -11,7 +11,7 @@ load_rules(db_path = .db_path())
 with the installed package.}
 }
 \value{
-A named list with three data frames:
+A named list with four data frames:
 \describe{
 \item{file_contexts}{Data frame with columns \code{name}, \code{version}, \code{type},
 \code{message}, \code{path}, \code{recursive}, \code{pattern}.}
@@ -19,12 +19,16 @@ A named list with three data frames:
 \code{message}, \code{xpath}.}
 \item{patterns}{Data frame with columns \code{name}, \code{version}, \code{type},
 \code{message}, \code{attck}, \code{xpath}.}
+\item{phases}{Data frame with columns \code{context}, \code{version}, and one
+logical column per lifecycle phase. One row per context code can
+execute in: every file- and code-context rule, plus the computed
+contexts \code{"Top-level"} and \code{"Other"}.}
 }
 }
 \description{
-Loads the file-context, code-context, and pattern rules from the bundled
-SQLite database as a named list suitable for passing to \code{\link[=audit_package]{audit_package()}} or
-\code{\link[=audit_tarball]{audit_tarball()}}.
+Loads the file-context, code-context, and pattern rules, and the lifecycle
+phases of every context, from the bundled SQLite database as a named list
+suitable for passing to \code{\link[=audit_package]{audit_package()}} or \code{\link[=audit_tarball]{audit_tarball()}}.
 }
 \details{
 Before reading, the database is verified against its SHA-256 sidecar so that

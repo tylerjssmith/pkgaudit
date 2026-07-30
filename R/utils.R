@@ -3,30 +3,44 @@
 # Empty result-frame constructors. Every finder returns a data frame with a
 # stable schema even when it finds nothing, so downstream rbind() calls always
 # align and callers never have to special-case zero rows.
+#
+# The finders do not know a rule's lifecycle phases -- those live in the rules
+# database and are attached once, in audit_package(). Each constructor therefore
+# takes with_phases: TRUE gives the object's public schema, FALSE the narrower
+# frame a finder builds before the phase columns are joined on.
 
-.empty_file_contexts <- function() {
-  data.frame(
+# A data frame of the nine phase columns, all FALSE, with n rows.
+.empty_phase_cols <- function(n = 0L) {
+  cols        <- lapply(.phase_columns, function(nm) logical(n))
+  names(cols) <- .phase_columns
+  as.data.frame(cols, stringsAsFactors = FALSE)
+}
+
+.empty_file_contexts <- function(with_phases = TRUE) {
+  df <- data.frame(
+    rule         = character(0L),
     file_context = character(0L),
-    file_path    = character(0L),
     message      = character(0L),
     stringsAsFactors = FALSE
   )
+  if (with_phases) cbind(df, .empty_phase_cols()) else df
 }
 
-.empty_code_contexts <- function() {
-  data.frame(
-    code_context  = character(0L),
+.empty_code_contexts <- function(with_phases = TRUE) {
+  df <- data.frame(
+    rule          = character(0L),
     file_context  = character(0L),
     line_number   = integer(0L),
     column_number = integer(0L),
     message       = character(0L),
     stringsAsFactors = FALSE
   )
+  if (with_phases) cbind(df, .empty_phase_cols()) else df
 }
 
-.empty_patterns <- function() {
-  data.frame(
-    pattern       = character(0L),
+.empty_patterns <- function(with_phases = TRUE) {
+  df <- data.frame(
+    rule          = character(0L),
     file_context  = character(0L),
     line_number   = integer(0L),
     column_number = integer(0L),
@@ -35,6 +49,7 @@
     code_context  = character(0L),
     stringsAsFactors = FALSE
   )
+  if (with_phases) cbind(df, .empty_phase_cols()) else df
 }
 
 .empty_errors <- function() {

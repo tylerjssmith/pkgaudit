@@ -11,9 +11,10 @@
 #'
 #' @return A list with two data frames:
 #'   \describe{
-#'     \item{file_contexts}{Data frame with columns `file_context`
-#'       (package-root-relative path; the join key), `file_path` (the same
-#'       path), and `message`.}
+#'     \item{file_contexts}{Data frame with columns `rule` (the matching rule's
+#'       name), `file_context` (package-root-relative path; the join key), and
+#'       `message`. The phase columns are not set here; [audit_package()]
+#'       attaches them from the rules database.}
 #'     \item{errors}{Data frame with columns `stage`, `file_context`, `rule`,
 #'       `message`.}
 #'   }
@@ -27,7 +28,8 @@ find_file_contexts <- function(pkg, file_context_rules) {
   errors <- .empty_errors()
 
   if (is.null(file_context_rules) || nrow(file_context_rules) == 0L) {
-    return(list(file_contexts = .empty_file_contexts(), errors = errors))
+    return(list(file_contexts = .empty_file_contexts(with_phases = FALSE),
+                errors = errors))
   }
 
   for (i in seq_len(nrow(file_context_rules))) {
@@ -61,15 +63,15 @@ find_file_contexts <- function(pkg, file_context_rules) {
 
     rel <- .relativize(hits, pkg)
     found[[length(found) + 1L]] <- data.frame(
+      rule         = rule$name,
       file_context = rel,
-      file_path    = rel,
       message      = rule$message,
       stringsAsFactors = FALSE
     )
   }
 
   file_contexts <- if (length(found) == 0L) {
-    .empty_file_contexts()
+    .empty_file_contexts(with_phases = FALSE)
   } else {
     do.call(rbind, found)
   }
