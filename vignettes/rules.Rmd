@@ -1,44 +1,52 @@
 ---
+title: "pkgaudit Rule Coverage"
 output:
-  github_document:
+  rmarkdown::html_vignette:
     # Rule messages quote shell flags and make constructs verbatim, so the
     # "smart" typography that would turn --clean into an en dash, or
     # $(shell ...) into an ellipsis, is disabled.
     md_extensions: "-smart"
-    # RULES.md is the deliverable; the preview would only litter the repo root.
-    html_preview: false
+vignette: >
+  %\VignetteIndexEntry{pkgaudit Rule Coverage}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
-
-<!-- RULES.md is generated from RULES.Rmd. Please edit this file -->
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = FALSE, results = "asis")
 
 library(pkgaudit)
 
-# Read the repository copy of the database so the tables below cannot drift
-# from the rules actually committed.
-rules       <- load_rules(file.path("inst", "db", "rules.db"))
+# Read the installed database so the tables below cannot drift from the rules
+# the package actually ships.
+rules       <- load_rules()
 phase_names <- setdiff(names(rules$phases), c("context", "version"))
 ```
 
 ```{r helpers}
-# Map each rule name to the YAML file that defines it. The database records a
-# rule's name but not where it came from, so the rule sources are read for it.
+# The rule sources are read from the installed package, but linked in the
+# repository, where a reader can browse them.
+repo <- "https://github.com/tylerjssmith/pkgaudit/blob/master/"
+
+# Map each rule name to the YAML file that defines it, as a path relative to
+# inst/rules/. The database records a rule's name but not where it came from,
+# so the rule sources are read for it.
 rule_files <- local({
-  paths <- list.files(file.path("inst", "rules"), pattern = "\\.yaml$",
-                      recursive = TRUE, full.names = TRUE)
+  root  <- system.file("rules", package = "pkgaudit")
+  paths <- list.files(root, pattern = "\\.yaml$", recursive = TRUE)
   named <- vapply(paths, function(path) {
-    line <- grep("^name: ", readLines(path), value = TRUE)
+    line <- grep("^name: ", readLines(file.path(root, path)), value = TRUE)
     if (length(line) == 0L) NA_character_ else sub("^name: ", "", line[[1L]])
   }, character(1L))
   # Files under inst/rules/phases/ define a computed context, not a rule, and
   # carry no name field.
-  stats::setNames(sub("^\\./", "", paths[!is.na(named)]), named[!is.na(named)])
+  stats::setNames(paths[!is.na(named)], named[!is.na(named)])
 })
 
 # A rule name, linked to its YAML.
-rule_link <- function(name) sprintf("[%s](%s)", name, rule_files[name])
+rule_link <- function(name) {
+  sprintf("[%s](%sinst/rules/%s)", name, repo, rule_files[name])
+}
 
 # The phases a context runs in, named as the columns a caller would filter on.
 # "none" is the reading `summary()` gives it: code reached only when something
@@ -184,17 +192,15 @@ stopifnot(
 )
 ```
 
-# pkgaudit Rule Coverage
-
 pkgaudit v`r utils::packageVersion("pkgaudit")` separates *when* code executes
 from *what* code does using three categories of rules: file contexts, code
 contexts, and patterns. Each rule is defined in a YAML file under
-[inst/rules/](inst/rules/) and compiled into the SQLite database at
-`inst/db/rules.db`. The Rule columns below link to the defining YAML files.
+[inst/rules/](https://github.com/tylerjssmith/pkgaudit/tree/master/inst/rules)
+and compiled into the SQLite database at `inst/db/rules.db`. The Rule columns
+below link to the defining YAML files.
 
-This document is generated from that database, at rules
-v`r rules_version(file.path("inst", "db", "rules.db"))`. Edit
-[RULES.Rmd](RULES.Rmd) or the rule YAML rather than this file.
+This vignette is generated from that database, at rules
+v`r rules_version()`.
 
 ## Lifecycle Phases
 
@@ -265,7 +271,7 @@ emit_table(
 Every pattern is attributed to the code context that contains it. Two of those
 contexts are computed rather than matched by a rule, and so have phases but no
 rule of their own. They are defined under
-[inst/rules/phases/](inst/rules/phases/).
+[inst/rules/phases/](https://github.com/tylerjssmith/pkgaudit/tree/master/inst/rules/phases).
 
 ```{r computed-contexts}
 emit_table(

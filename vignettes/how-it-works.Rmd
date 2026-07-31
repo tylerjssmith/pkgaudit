@@ -1,8 +1,8 @@
 ---
-title: "Understanding pkgaudit"
+title: "How pkgaudit Works"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Understanding pkgaudit}
+  %\VignetteIndexEntry{How pkgaudit Works}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -375,6 +375,6 @@ example is. A rule whose examples do not behave as written fails the suite, so
 the examples stay accurate as rules change.
 
 The full rule set is documented in
-[RULES.md](https://github.com/tylerjssmith/pkgaudit/blob/master/RULES.md), and
+[pkgaudit Rule Coverage](rules.html), and
 the rules themselves live under
 [inst/rules/](https://github.com/tylerjssmith/pkgaudit/tree/master/inst/rules).

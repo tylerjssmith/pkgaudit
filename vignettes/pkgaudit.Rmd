@@ -14,15 +14,17 @@ knitr::opts_chunk$set(
 )
 ```
 
-pkgaudit is a static analysis security testing (SAST) tool for R source
-packages. It flags security-relevant files and R source code for manual review, 
-and organizes what it finds by the point in the R package lifecycle at which the
-code runs (e.g., build, check, install, load).
+pkgaudit scans R source packages for files that can execute arbitrary commands
+during builds, checks, and installations, and for lifecycle hooks whose bodies
+run automatically when a namespace is loaded, attached, unloaded, or detached.
+It also scans R source code for security-relevant patterns like `system()`
+calls.
 
-A finding is not an accusation. Most flagged code is legitimate: packages
-compile source code, download data, and call shell tools for good reasons. The
-purpose of a scan is to help you identify *which* parts of an unfamiliar package
-deserve your attention before you install and load it.
+A finding is not an accusation. In many cases, flagged files and code will be
+legitimate: files that can execute shell commands are needed for
+system-dependent configuration, and many call system tools or download files for
+good reason. pkgaudit helps you identify which parts of an untrusted package
+should be reviewed before you install and load it.
 
 ```{r setup}
 library(pkgaudit)
@@ -30,30 +32,63 @@ library(pkgaudit)
 
 ## pkgaudit Rules
 
-pkgaudit v0.3.0 separates *when* code executes from *what* code does using three
-categories of rules:
+pkgaudit separates *when* code executes from *what* code does using three rule
+categories:
 
-- **File contexts** are files that R executes at build-, check-, or 
-install-time, such as `configure` and `src/Makevars`.
+- **File contexts** are files that can execute arbitrary commands during
+builds, checks, and installations. These are primarily files involved in
+compiling non-R source code, such as `configure`, `src/Makevars`, and
+`src/Makefile`.
 - **Code contexts** are lifecycle hooks whose bodies run automatically when a
 namespace is loaded, attached, unloaded, or detached, such as `.onLoad()` and
 `.onAttach()`.
-- **Patterns** are security-relevant function calls, such as `system()`, which
-can execute arbitrary shell commands.
+- **Patterns** are security-relevant function calls. `system()`, for example,
+can execute arbitrary shell commands. `source()` can fetch and execute a remote
+payload.
 
-The three combine to give a finding its weight. A `system()` call inside an
-ordinary function only runs if you call that function; the same call inside
-`.onLoad()` runs the moment the namespace loads. Every pattern finding is
-therefore attributed to the code context that contains it.
+Every pattern finding is attributed to the code context that contains it. A
+`system()` call inside an ordinary function only runs if you call that function;
+the same call inside `.onLoad()` runs automatically when a namespace is loaded.
 
-The full rule set is documented in
-[RULES.md](https://github.com/tylerjssmith/pkgaudit/blob/master/RULES.md).
+The full rule set is documented in [pkgaudit Rule Coverage](rules.html).
+
+## Rules and Database Integrity
+
+The rules live in a versioned SQLite database shipped with the package.
+`load_rules()` reads it, and `rules_version()` reports the version:
+
+```{r rules}
+rules_version()
+
+rules <- load_rules()
+nrow(rules$file_contexts)
+nrow(rules$code_contexts)
+nrow(rules$patterns)
+nrow(rules$phases)
+```
+
+`phases` holds one row per context code can execute in: every file- and
+code-context rule, plus `Top-level` and `Other`.
+
+A modified database is one way to evade a scanner. `load_rules()` verifies the
+database against its bundled SHA-256 sidecar on every call and refuses to load
+a modified one. You can also check the hash of your installed copy against the
+value published in the
+[README](https://github.com/tylerjssmith/pkgaudit#database-integrity):
+
+```{r hash}
+digest::digest(
+  system.file("db", "rules.db", package = "pkgaudit"),
+  algo = "sha256",
+  file = TRUE
+)
+```
 
 ## An Example Package
 
 As a demonstration, we will scan `untrustedpkg`, a small source package shipped
 with pkgaudit that does several things a reviewer would want to know about. It
-is never built, installed, or loaded; it exists only to be scanned.
+is never built, checked, installed, or loaded; it exists only to be scanned.
 
 ```{r example-package}
 tarball <- system.file(
@@ -69,7 +104,7 @@ list.files(pkg, recursive = TRUE)
 ```
 
 Three of those files are worth reading before we scan them. A `configure` script
-runs at install time, before any R code is loaded:
+runs during installations from source, before any R source code is loaded:
 
 ```{r example-configure, echo = FALSE, comment = ""}
 cat(readLines(file.path(pkg, "configure")), sep = "\n")
@@ -103,11 +138,12 @@ Printing the result gives the scan metadata and the number of findings by
 category:
 
 ```{r print}
-result
+print(result)
 ```
 
-`summary()` reports the findings themselves: which contexts were found, how
-often each pattern matched, and the MITRE ATT&CK techniques involved.
+`summary()` reports the findings themselves: how many run in each lifecycle
+phase, which contexts were found, how often each pattern matched, and the MITRE
+ATT&CK techniques involved.
 
 ```{r summary}
 summary(result)
@@ -117,60 +153,26 @@ Both methods accept `path = FALSE`, which omits the local filesystem path from
 the output. This is useful when sharing results, since the path may reveal a
 username or directory layout.
 
-```{r print-nopath}
-print(result, path = FALSE)
-```
-
-## Working with pkgaudit Results
-
 A `pkgaudit` object is a named list of ordinary data frames, so you can filter,
-join, and report on the findings however you like.
+join, and report on the findings however you like. The columns below are a
+subset: each frame also carries the rule's `message`, too long to print legibly
+and documented in [pkgaudit Rule Coverage](rules.html), the MITRE ATT&CK
+techniques in `attck`, and one logical column per lifecycle phase.
 
-Every findings frame also carries one logical column per lifecycle phase, which
-the next section covers; the columns shown here are the rest.
-
-```{r components}
-result$file_contexts[, 1:3]
-result$code_contexts[, 1:5]
-result$patterns[, 1:7]
+```{r patterns-columns}
+result$patterns[, c("rule", "file_context", "code_context", "line_number",
+                    "column_number")]
 ```
-
-Each row of `result$patterns` carries the code context it was found in, so the
-distinction that matters most is a single subset away:
-
-```{r at-load}
-result$patterns[result$patterns$code_context == "onload_code", 1:7]
-```
-
-## Filtering by Lifecycle Phase
 
 Each finding also records when its code runs, as one logical column per phase:
 `at_autoconf`, `at_build`, `at_check`, `at_install_src`, `at_install_bin`,
-`on_load`, `on_attach`, `on_unload`, and `on_detach`. A file or code context
-takes these from the rule that matched it; a pattern inherits them from its code
-context.
-
-That makes "what runs if I merely install this package?" a subset:
+`on_load`, `on_attach`, `on_unload`, and `on_detach`. A pattern inside an
+ordinary function is `FALSE` for every one of them -- it runs only if something
+calls it -- and is counted in the `none` row of `summary()`.
 
 ```{r by-phase}
-result$patterns[result$patterns$at_install_src,
+result$patterns[result$patterns$on_load,
                 c("rule", "file_context", "code_context")]
-```
-
-A finding can run in several phases, so the columns do not partition the rows. A
-pattern inside an ordinary function is `FALSE` for every phase: it runs only if
-something calls it, which is a materially weaker claim on your attention than
-code that runs on installation. The `Findings by Phase` section of `summary()`
-counts findings by phase, with a trailing `none` row for exactly that case.
-
-Two further components round out the object. `result$errors` records any file or
-rule that could not be processed, so a parse failure is reported rather than
-silently dropped; an empty data frame means the scan was complete.
-`result$metadata` records what was scanned and with what.
-
-```{r metadata}
-result$errors
-str(result$metadata)
 ```
 
 ## Auditing a Tarball
@@ -185,57 +187,16 @@ This is the `untrustedpkg` tarball we extracted above, scanned directly:
 audit_tarball(tarball)
 ```
 
-Because an untrusted archive is itself an attack surface, it is checked before
-anything is written to disk. `validate_tar()` performs that check on its own. It
-fails closed, refusing the whole archive rather than extracting a filtered
-subset: any link entry, path traversal, absolute path, or malformed path is
-grounds for refusal, as is an archive that does not extract to exactly one
-top-level directory. It also enforces limits on entry count, uncompressed size,
-and compression ratio, guarding against archives that expand to exhaust the
-disk:
+Because an untrusted archive is itself an attack surface, `audit_tarball()`
+calls `validate_tar()` to check the tarball before its contents are extracted.
+This check fails closed, refusing the whole archive, if it detects any link
+entry, path traversal, absolute path, or malformed path or if the archive does
+not extract to exactly one top-level directory. It also enforces limits on entry
+count, uncompressed size, and compression ratio, guarding against archives that
+expand to exhaust the disk.
 
 ```{r validate}
 str(validate_tar(tarball))
-```
-
-## Rules and Database Integrity
-
-The rules live in a versioned SQLite database shipped with the package.
-`load_rules()` reads it, and `rules_version()` reports the version:
-
-```{r rules}
-rules_version()
-
-rules <- load_rules()
-nrow(rules$file_contexts)
-nrow(rules$code_contexts)
-nrow(rules$patterns)
-nrow(rules$phases)
-```
-
-`phases` holds one row per context code can execute in: every file- and
-code-context rule, plus `Top-level` and `Other`.
-
-Passing the rules explicitly avoids re-reading and re-verifying the database on
-every call, which is worthwhile when scanning many packages:
-
-```{r reuse-rules, eval = FALSE}
-rules   <- load_rules()
-results <- lapply(tarballs, audit_tarball, rules = rules)
-```
-
-Because the rules determine what a scan can find, a modified database is a way
-to make a scan come back clean. `load_rules()` verifies the database against its
-bundled SHA-256 sidecar on every call and refuses to load a modified one. You
-can also check the hash of your installed copy against the value published in
-the [README](https://github.com/tylerjssmith/pkgaudit#database-integrity):
-
-```{r hash}
-digest::digest(
-  system.file("db", "rules.db", package = "pkgaudit"),
-  algo = "sha256",
-  file = TRUE
-)
 ```
 
 ## Interpreting a Scan
