@@ -1,0 +1,31 @@
+url: https://tylerjssmith.github.io/pkgaudit/
+template:
+  bootstrap: 5
+
+reference:
+- title: "Entry points"
+  contents:
+  - audit_package
+  - audit_tarball
+- title: "Rules"
+  contents:
+  - load_rules
+  - rules_version
+- title: "Methods"
+  contents:
+  - print.pkgaudit
+  - summary.pkgaudit
+- title: "Utilities"
+  contents:
+  - hash_manifest
+  - validate_tar
+
+articles:
+- title: "Articles"
+  navbar: ~
+  contents:
+  - r-package-security
+  - how-it-works
+  - rules
+
+

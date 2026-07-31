@@ -11,8 +11,8 @@
 ^docs$
 ^references\.bib$
 ^\.claude$
-^RULES\.md$
-^RULES\.Rmd$
 ^README\.Rmd$
 ^[^/]+\.html$
 ^data-raw$
+^_pkgdown\.yml$
+^pkgdown$

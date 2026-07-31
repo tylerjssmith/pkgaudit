@@ -86,7 +86,7 @@ rule usually catches something it should not.
 A rule is data, not code, so contributing one means writing a YAML file rather
 than R. The clearest starting point is an existing rule in the same category
 under [inst/rules/](../inst/rules/). The
-[Understanding pkgaudit](../vignettes/understanding-pkgaudit.Rmd) vignette walks
+[How pkgaudit Works](../vignettes/how-it-works.Rmd) vignette walks
 through one rule of each category and explains how its fields are used.
 
 **Categories.** A rule is a file context (a file R executes during build, check,

@@ -1,0 +1,105 @@
+---
+output:
+  github_document:
+    html_preview: false
+---
+
+<!-- index.md is generated from index.Rmd. Please edit this file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>"
+)
+
+# Published SHA-256 of the shipped rules database. Read from the repository copy
+# so the value below cannot drift from the database actually committed. knitr
+# makes this file's own directory the working directory, so the repository root
+# is one level up; knitting from the root is tolerated as well.
+db_path <- file.path("..", "inst", "db", "rules.db")
+if (!file.exists(db_path)) db_path <- file.path("inst", "db", "rules.db")
+stopifnot(file.exists(db_path))
+db_hash <- digest::digest(db_path, algo = "sha256", file = TRUE)
+
+# Wrap in backticks for inline use. The backtick is built from its code point so
+# that it does not terminate the inline expression that emits it.
+backtick    <- intToUtf8(96L)
+db_hash_md  <- paste0(backtick, db_hash, backtick)
+```
+
+# pkgaudit
+
+[![R-CMD-check](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml)
+[![osv-scanner](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml)
+
+pkgaudit is a static analysis security testing (SAST) tool for R packages. It
+scans R source packages for files that can execute arbitrary commands during
+builds, checks, and installations, and for lifecycle hooks whose bodies run
+automatically when a namespace is loaded, attached, unloaded, or detached. It
+also scans R source code for security-relevant patterns like `system()` calls.
+
+R packages are the primary mechanism for sharing R code. They are also
+[potential attack vectors](articles/r-package-security.html). pkgaudit helps you
+identify which parts of an untrusted package deserve your attention before you
+install and load it.
+
+## Installation
+
+You can install pkgaudit as follows:
+
+``` r
+remotes::install_github("tylerjssmith/pkgaudit")
+```
+
+pkgaudit detects security-relevant files and code using a SQLite database of
+rules shipped with the package at `inst/db/rules.db`. The
+[Rule Coverage](articles/rules.html) vignette documents the full rule set. To
+verify that your installed copy of the database has not been modified since
+publication, check its SHA-256 hash against the value published here.
+
+``` r
+digest::digest(
+  system.file("db", "rules.db", package = "pkgaudit"),
+  algo = "sha256",
+  file = TRUE
+)
+```
+
+Expected SHA-256: `r db_hash_md`
+
+## Usage
+
+The [Getting Started with pkgaudit](articles/pkgaudit.html) and
+[How pkgaudit Works](articles/how-it-works.html) vignettes document usage. The
+example below scans `untrustedpkg`, a small package shipped with pkgaudit for
+demonstration:
+
+```{r usage}
+library(pkgaudit)
+
+tarball <- system.file(
+  "extdata", "untrustedpkg", "untrustedpkg_0.1.0.tar.gz",
+  package = "pkgaudit"
+)
+
+rules  <- load_rules()
+result <- audit_tarball(tarball, rules = rules)
+```
+
+`summary()` reports the file contexts, code contexts, and patterns found, and
+counts them by the R package lifecycle phase in which the file or code may
+execute (e.g., build, check, source installation, binary installation, load).
+These phases can overlap (for example, builds and checks test that a package
+can be installed and loaded), so the same findings may be associated with more
+than one phase below.
+
+Below, we see that untrustedpkg includes a `configure` script, which is used
+for system-dependent configuration but can execute arbitrary shell commands. It
+also calls `system()` inside `.onLoad()`, which runs on `library(untrustedpkg)`,
+and `download.file()` inside an ordinary function, which runs only if a user
+calls it and so belongs to no phase. Code that runs without being asked is the
+stronger claim on a reviewer's attention.
+
+```{r usage-summary}
+summary(result, path = FALSE)
+```

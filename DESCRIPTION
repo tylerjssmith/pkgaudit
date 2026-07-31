@@ -9,7 +9,8 @@ Description: A static analysis security testing (SAST) tool for R packages.
     load, attach, unload, detach), using file-context, code-context, and pattern
     rules stored in a versioned and hash-verified SQLite database.
 License: Apache License (>= 2)
-URL: https://github.com/tylerjssmith/pkgaudit
+URL: https://github.com/tylerjssmith/pkgaudit,
+    https://tylerjssmith.github.io/pkgaudit/
 BugReports: https://github.com/tylerjssmith/pkgaudit/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

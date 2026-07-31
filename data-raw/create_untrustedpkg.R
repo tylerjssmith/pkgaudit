@@ -1,4 +1,4 @@
-# Build the example source package scanned in vignettes/getting-started.Rmd.
+# Build the example source package scanned in vignettes/pkgaudit.Rmd.
 #
 # Run from the package root:
 #   Rscript data-raw/create_untrustedpkg.R
