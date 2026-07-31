@@ -1,0 +1,12 @@
+pandoc: 3.8.3
+pkgdown: 2.2.1
+pkgdown_sha: ~
+articles:
+  how-it-works: how-it-works.html
+  pkgaudit: pkgaudit.html
+  r-package-security: r-package-security.html
+  rules: rules.html
+last_built: 2026-07-31T22:05Z
+urls:
+  reference: https://tylerjssmith.github.io/pkgaudit/reference
+  article: https://tylerjssmith.github.io/pkgaudit/articles
