@@ -5,10 +5,10 @@
 
 pkgaudit is a static analysis security testing (SAST) tool for R
 packages. It scans R source packages for files that can execute
-arbitrary commands during builds, checks, and installations, and for
-lifecycle hooks whose bodies run automatically when a namespace is
-loaded, attached, unloaded, or detached. It also scans R source code for
-security-relevant patterns like
+arbitrary commands during autoconf, builds, checks, and installations,
+and for lifecycle hooks whose bodies run automatically when a namespace
+is loaded, attached, unloaded, or detached. It also scans R source code
+for security-relevant patterns like
 [`system()`](https://rdrr.io/r/base/system.html) calls.
 
 R packages are the primary mechanism for sharing R code. They are also
@@ -92,7 +92,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary -----------------------------------------------------------
 #> Package:        untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:        e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386
-#> Scanned:        2026-07-31 18:29 UTC with pkgaudit 0.3.0, rules v0.3.0
+#> Scanned:        2026-07-31 23:03 UTC with pkgaudit 0.3.0, rules v0.3.0
 #> 
 #> --- Findings by Phase ----------------------------------------------------------
 #> phase          file_contexts code_contexts patterns

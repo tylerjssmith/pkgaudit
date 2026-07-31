@@ -6,7 +6,7 @@ articles:
   pkgaudit: pkgaudit.html
   r-package-security: r-package-security.html
   rules: rules.html
-last_built: 2026-07-31T23:08Z
+last_built: 2026-07-31T23:19Z
 urls:
   reference: https://tylerjssmith.github.io/pkgaudit/reference
   article: https://tylerjssmith.github.io/pkgaudit/articles

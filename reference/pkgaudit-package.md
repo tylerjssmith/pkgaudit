@@ -2,9 +2,10 @@
 
 A static analysis security testing (SAST) tool for R packages. Flags
 security-relevant files and code in R source packages for manual review.
-Organizes results by R package lifecycle (build, check, install, load,
-attach, unload, detach), using file-context, code-context, and pattern
-rules stored in a versioned and hash-verified SQLite database.
+Organizes results by R package lifecycle (autoconf, build, check, source
+and binary installation, load, attach, unload, detach), using
+file-context, code-context, and pattern rules stored in a versioned and
+hash-verified SQLite database.
 
 ## Details
 

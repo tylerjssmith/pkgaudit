@@ -58,4 +58,4 @@ both the data processed in R sessions and the underlying systems on
 which R runs, which can provide compute resources and credentials for
 lateral movement. pkgaudit provides one layer of defense against an
 under-appreciated risk, flagging security-relevant files and code in R
-packages for human review.
+packages for manual review.

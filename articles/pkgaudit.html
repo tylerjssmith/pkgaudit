@@ -69,9 +69,9 @@
     
     
 <p>pkgaudit scans R source packages for files that can execute arbitrary
-commands during builds, checks, and installations, and for lifecycle
-hooks whose bodies run automatically when a namespace is loaded,
-attached, unloaded, or detached. It also scans R source code for
+commands during autoconf, builds, checks, and installations, and for
+lifecycle hooks whose bodies run automatically when a namespace is
+loaded, attached, unloaded, or detached. It also scans R source code for
 security-relevant patterns like <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> calls.</p>
 <p>A finding is not an accusation. In many cases, flagged files and code
 will be legitimate: files that can execute shell commands are needed for
@@ -88,8 +88,8 @@ code does using three rule categories:</p>
 <ul>
 <li>
 <strong>File contexts</strong> are files that can execute arbitrary
-commands during builds, checks, and installations. These are primarily
-files involved in compiling non-R source code, such as
+commands during autoconf, builds, checks, and installations. These are
+primarily files involved in compiling non-R source code, such as
 <code>configure</code>, <code>src/Makevars</code>, and
 <code>src/Makefile</code>.</li>
 <li>
@@ -192,9 +192,9 @@ findings by category:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
 <span><span class="co">#&gt; --- pkgaudit -------------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:        untrustedpkg v0.1.0 (source directory)</span></span>
-<span><span class="co">#&gt; Path:           /tmp/Rtmp9NnTCc/untrustedpkg-example/untrustedpkg</span></span>
+<span><span class="co">#&gt; Path:           /tmp/RtmpMfEzYH/untrustedpkg-example/untrustedpkg</span></span>
 <span><span class="co">#&gt; SHA-256:        a78cd9f1541a5de58ad69ef084233609c324853b900efd7039e74d4cfe6152f5</span></span>
-<span><span class="co">#&gt; Scanned:        2026-07-31 23:08 UTC with pkgaudit 0.3.0, rules v0.3.0</span></span>
+<span><span class="co">#&gt; Scanned:        2026-07-31 23:20 UTC with pkgaudit 0.3.0, rules v0.3.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; File contexts:  1</span></span>
 <span><span class="co">#&gt; Code contexts:  1</span></span>
@@ -207,9 +207,9 @@ pattern matched, and the MITRE ATT&amp;CK techniques involved.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
 <span><span class="co">#&gt; --- pkgaudit Summary -----------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:        untrustedpkg v0.1.0 (source directory)</span></span>
-<span><span class="co">#&gt; Path:           /tmp/Rtmp9NnTCc/untrustedpkg-example/untrustedpkg</span></span>
+<span><span class="co">#&gt; Path:           /tmp/RtmpMfEzYH/untrustedpkg-example/untrustedpkg</span></span>
 <span><span class="co">#&gt; SHA-256:        a78cd9f1541a5de58ad69ef084233609c324853b900efd7039e74d4cfe6152f5</span></span>
-<span><span class="co">#&gt; Scanned:        2026-07-31 23:08 UTC with pkgaudit 0.3.0, rules v0.3.0</span></span>
+<span><span class="co">#&gt; Scanned:        2026-07-31 23:20 UTC with pkgaudit 0.3.0, rules v0.3.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- Findings by Phase ----------------------------------------------------------</span></span>
 <span><span class="co">#&gt; phase          file_contexts code_contexts patterns</span></span>
@@ -287,7 +287,7 @@ scanned directly:</p>
 <span><span class="co">#&gt; Package:        untrustedpkg v0.1.0 (source tarball)</span></span>
 <span><span class="co">#&gt; Path:           /home/runner/.cache/R/renv/library/profiles/dev/renv/pkgaudit-f1939151/linux-ubuntu-noble/R-4.6/x86_64-pc-linux-gnu/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz</span></span>
 <span><span class="co">#&gt; SHA-256:        e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386</span></span>
-<span><span class="co">#&gt; Scanned:        2026-07-31 23:08 UTC with pkgaudit 0.3.0, rules v0.3.0</span></span>
+<span><span class="co">#&gt; Scanned:        2026-07-31 23:20 UTC with pkgaudit 0.3.0, rules v0.3.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; File contexts:  1</span></span>
 <span><span class="co">#&gt; Code contexts:  1</span></span>

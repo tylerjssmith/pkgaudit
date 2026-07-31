@@ -1,9 +1,9 @@
 # Getting Started with pkgaudit
 
 pkgaudit scans R source packages for files that can execute arbitrary
-commands during builds, checks, and installations, and for lifecycle
-hooks whose bodies run automatically when a namespace is loaded,
-attached, unloaded, or detached. It also scans R source code for
+commands during autoconf, builds, checks, and installations, and for
+lifecycle hooks whose bodies run automatically when a namespace is
+loaded, attached, unloaded, or detached. It also scans R source code for
 security-relevant patterns like
 [`system()`](https://rdrr.io/r/base/system.html) calls.
 
@@ -24,9 +24,9 @@ pkgaudit separates *when* code executes from *what* code does using
 three rule categories:
 
 - **File contexts** are files that can execute arbitrary commands during
-  builds, checks, and installations. These are primarily files involved
-  in compiling non-R source code, such as `configure`, `src/Makevars`,
-  and `src/Makefile`.
+  autoconf, builds, checks, and installations. These are primarily files
+  involved in compiling non-R source code, such as `configure`,
+  `src/Makevars`, and `src/Makefile`.
 - **Code contexts** are lifecycle hooks whose bodies run automatically
   when a namespace is loaded, attached, unloaded, or detached, such as
   `.onLoad()` and `.onAttach()`.
@@ -152,9 +152,9 @@ by category:
 print(result)
 #> --- pkgaudit -------------------------------------------------------------------
 #> Package:        untrustedpkg v0.1.0 (source directory)
-#> Path:           /tmp/Rtmp9NnTCc/untrustedpkg-example/untrustedpkg
+#> Path:           /tmp/RtmpMfEzYH/untrustedpkg-example/untrustedpkg
 #> SHA-256:        a78cd9f1541a5de58ad69ef084233609c324853b900efd7039e74d4cfe6152f5
-#> Scanned:        2026-07-31 23:08 UTC with pkgaudit 0.3.0, rules v0.3.0
+#> Scanned:        2026-07-31 23:20 UTC with pkgaudit 0.3.0, rules v0.3.0
 #> 
 #> File contexts:  1
 #> Code contexts:  1
@@ -172,9 +172,9 @@ involved.
 summary(result)
 #> --- pkgaudit Summary -----------------------------------------------------------
 #> Package:        untrustedpkg v0.1.0 (source directory)
-#> Path:           /tmp/Rtmp9NnTCc/untrustedpkg-example/untrustedpkg
+#> Path:           /tmp/RtmpMfEzYH/untrustedpkg-example/untrustedpkg
 #> SHA-256:        a78cd9f1541a5de58ad69ef084233609c324853b900efd7039e74d4cfe6152f5
-#> Scanned:        2026-07-31 23:08 UTC with pkgaudit 0.3.0, rules v0.3.0
+#> Scanned:        2026-07-31 23:20 UTC with pkgaudit 0.3.0, rules v0.3.0
 #> 
 #> --- Findings by Phase ----------------------------------------------------------
 #> phase          file_contexts code_contexts patterns
@@ -262,7 +262,7 @@ audit_tarball(tarball)
 #> Package:        untrustedpkg v0.1.0 (source tarball)
 #> Path:           /home/runner/.cache/R/renv/library/profiles/dev/renv/pkgaudit-f1939151/linux-ubuntu-noble/R-4.6/x86_64-pc-linux-gnu/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
 #> SHA-256:        e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386
-#> Scanned:        2026-07-31 23:08 UTC with pkgaudit 0.3.0, rules v0.3.0
+#> Scanned:        2026-07-31 23:20 UTC with pkgaudit 0.3.0, rules v0.3.0
 #> 
 #> File contexts:  1
 #> Code contexts:  1

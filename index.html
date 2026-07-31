@@ -11,8 +11,8 @@
 <script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Static Analysis Security Testing (SAST) for R Packages">
-<meta name="description" content="A static analysis security testing (SAST) tool for R packages. Flags security-relevant files and code in R source packages for manual review. Organizes results by R package lifecycle (build, check, install, load, attach, unload, detach), using file-context, code-context, and pattern rules stored in a versioned and hash-verified SQLite database.">
-<meta property="og:description" content="A static analysis security testing (SAST) tool for R packages. Flags security-relevant files and code in R source packages for manual review. Organizes results by R package lifecycle (build, check, install, load, attach, unload, detach), using file-context, code-context, and pattern rules stored in a versioned and hash-verified SQLite database.">
+<meta name="description" content="A static analysis security testing (SAST) tool for R packages. Flags security-relevant files and code in R source packages for manual review. Organizes results by R package lifecycle (autoconf, build, check, source and binary installation, load, attach, unload, detach), using file-context, code-context, and pattern rules stored in a versioned and hash-verified SQLite database.">
+<meta property="og:description" content="A static analysis security testing (SAST) tool for R packages. Flags security-relevant files and code in R source packages for manual review. Organizes results by R package lifecycle (autoconf, build, check, source and binary installation, load, attach, unload, detach), using file-context, code-context, and pattern rules stored in a versioned and hash-verified SQLite database.">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -59,7 +59,7 @@
 <div class="page-header"><h1 id="pkgaudit">pkgaudit<a class="anchor" aria-label="anchor" href="#pkgaudit"></a>
 </h1></div>
 <p><a href="https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a> <a href="https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml" class="external-link"><img src="https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml/badge.svg" alt="osv-scanner"></a></p>
-<p>pkgaudit is a static analysis security testing (SAST) tool for R packages. It scans R source packages for files that can execute arbitrary commands during builds, checks, and installations, and for lifecycle hooks whose bodies run automatically when a namespace is loaded, attached, unloaded, or detached. It also scans R source code for security-relevant patterns like <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> calls.</p>
+<p>pkgaudit is a static analysis security testing (SAST) tool for R packages. It scans R source packages for files that can execute arbitrary commands during autoconf, builds, checks, and installations, and for lifecycle hooks whose bodies run automatically when a namespace is loaded, attached, unloaded, or detached. It also scans R source code for security-relevant patterns like <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> calls.</p>
 <p>R packages are the primary mechanism for sharing R code. They are also <a href="articles/r-package-security.html">potential attack vectors</a>. pkgaudit helps you identify which parts of an untrusted package deserve your attention before you install and load it.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -97,7 +97,7 @@
 <span><span class="co">#&gt; --- pkgaudit Summary -----------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:        untrustedpkg v0.1.0 (source tarball)</span></span>
 <span><span class="co">#&gt; SHA-256:        e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386</span></span>
-<span><span class="co">#&gt; Scanned:        2026-07-31 18:29 UTC with pkgaudit 0.3.0, rules v0.3.0</span></span>
+<span><span class="co">#&gt; Scanned:        2026-07-31 23:03 UTC with pkgaudit 0.3.0, rules v0.3.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- Findings by Phase ----------------------------------------------------------</span></span>
 <span><span class="co">#&gt; phase          file_contexts code_contexts patterns</span></span>
