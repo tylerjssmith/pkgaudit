@@ -15,8 +15,9 @@ knitr::opts_chunk$set(
 ```
 
 pkgaudit scans R source packages for files that can execute arbitrary commands
-during builds, checks, and installations, and for lifecycle hooks whose bodies
-run automatically when a namespace is loaded, attached, unloaded, or detached.
+during autoconf, builds, checks, and installations, and for lifecycle hooks
+whose bodies run automatically when a namespace is loaded, attached, unloaded,
+or detached.
 It also scans R source code for security-relevant patterns like `system()`
 calls.
 
@@ -36,9 +37,9 @@ pkgaudit separates *when* code executes from *what* code does using three rule
 categories:
 
 - **File contexts** are files that can execute arbitrary commands during
-builds, checks, and installations. These are primarily files involved in
-compiling non-R source code, such as `configure`, `src/Makevars`, and
-`src/Makefile`.
+autoconf, builds, checks, and installations. These are primarily files
+involved in compiling non-R source code, such as `configure`, `src/Makevars`,
+and `src/Makefile`.
 - **Code contexts** are lifecycle hooks whose bodies run automatically when a
 namespace is loaded, attached, unloaded, or detached, such as `.onLoad()` and
 `.onAttach()`.

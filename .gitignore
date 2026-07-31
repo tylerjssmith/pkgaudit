@@ -7,3 +7,10 @@
 
 # Vignette HTML is a build artifact; R CMD build renders it into inst/doc.
 vignettes/*.html
+
+# Root-level HTML is a knitr preview artifact; the .md files are the deliverable.
+/*.html
+
+# The pkgdown site is built by CI and deployed to the gh-pages branch, so the
+# local build is never committed.
+docs

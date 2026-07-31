@@ -8,16 +8,17 @@
 
 pkgaudit is a static analysis security testing (SAST) tool for R
 packages. It scans R source packages for files that can execute
-arbitrary commands during builds, checks, and installations, and for
-lifecycle hooks whose bodies run automatically when a namespace is
-loaded, attached, unloaded, or detached. It also scans R source code for
-security-relevant patterns like `system()` calls.
+arbitrary commands during autoconf, builds, checks, and installations,
+and for lifecycle hooks whose bodies run automatically when a namespace
+is loaded, attached, unloaded, or detached. It also scans R source code
+for security-relevant patterns like `system()` calls.
 
 A finding is not an accusation. In many cases, flagged files and code
 will be legitimate: files that can execute shell commands are needed for
-system-dependent configuration, and many call system tools or download
-files for good reason. pkgaudit helps you identify which parts of an
-untrusted package should be reviewed before you install and load it.
+system-dependent configuration, and many packages call system tools or
+download files for good reason. pkgaudit helps you identify which parts
+of an untrusted package should be reviewed before you install and load
+it.
 
 ## Background
 
@@ -74,7 +75,7 @@ both the data processed in R sessions and the underlying systems on
 which R runs, which can provide compute resources and credentials for
 lateral movement. pkgaudit provides one layer of defense against an
 under-appreciated risk, flagging security-relevant files and code in R
-packages for human review.
+packages for manual review.
 
 ## Rule Coverage
 
@@ -160,7 +161,7 @@ print(result, path = FALSE)
 #> --- pkgaudit -------------------------------------------------------------------
 #> Package:        untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:        e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386
-#> Scanned:        2026-07-31 21:49 UTC with pkgaudit 0.3.0, rules v0.3.0
+#> Scanned:        2026-07-31 23:03 UTC with pkgaudit 0.3.0, rules v0.3.0
 #> 
 #> File contexts:  1
 #> Code contexts:  1
@@ -177,7 +178,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary -----------------------------------------------------------
 #> Package:        untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:        e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386
-#> Scanned:        2026-07-31 21:49 UTC with pkgaudit 0.3.0, rules v0.3.0
+#> Scanned:        2026-07-31 23:03 UTC with pkgaudit 0.3.0, rules v0.3.0
 #> 
 #> --- Findings by Phase ----------------------------------------------------------
 #> phase          file_contexts code_contexts patterns
@@ -214,7 +215,7 @@ summary(result, path = FALSE)
 
 Both methods take `path = FALSE`, used above, to omit the local file
 path from output that will be shared. The result itself is a named list
-of data frames:
+of data frames and a list of metadata.
 
 ``` r
 result$file_contexts  # security-relevant files
