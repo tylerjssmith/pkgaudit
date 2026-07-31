@@ -162,6 +162,14 @@ replaces it with three independent rule categories.
   pattern rule, with the file, hook, or function calls it covers and a link to
   its defining YAML.
 
+## Licensing
+
+* pkgaudit is now released under the Apache License 2.0, previously the MIT
+  License. The Apache License adds an express patent grant and explicit terms
+  for redistribution and contribution, which organizations reviewing the package
+  before adoption commonly require. `LICENSE.md` carries the full license text
+  and the MIT `LICENSE` template file has been removed.
+
 ## Removed
 
 * `audit_file()` and `audit_dir()` (replaced by the context pipeline) and the
