@@ -1,4 +1,4 @@
-name: src_makevars_file
+name: src_makevars
 version: "0.3.0"
 type: make
 message: >-
@@ -11,10 +11,10 @@ at_build: TRUE
 at_check: TRUE
 at_install_src: TRUE
 at_install_bin: FALSE
-on_load: FALSE
-on_attach: FALSE
-on_unload: FALSE
-on_detach: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
 path: "src"
 recursive: FALSE
 pattern: '^Makevars$'

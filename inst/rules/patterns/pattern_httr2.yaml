@@ -1,9 +1,8 @@
-name: httr2_pattern
+name: httr2
 version: "0.3.0"
 type: R
 attck:
   - T1041
-  - T1195.002
 message: >-
   An httr2 HTTP call sends an outbound request. A request may be used to
   exfiltrate credentials or other data.

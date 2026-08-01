@@ -1,10 +1,9 @@
-name: indirection_pattern
+name: indirection
 version: "0.3.0"
 type: R
 attck:
   - T1027
   - T1059
-  - T1195.002
 message: >-
   These functions resolve a function by name at runtime. A string-literal target
   is not a call site, so it evades pattern matching, and the namespace

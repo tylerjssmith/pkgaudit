@@ -277,7 +277,7 @@ audit_cran <- function(
 # is dead weight at CRAN scale.
 .cran_phase_columns <- c(
   "at_autoconf", "at_build", "at_check", "at_install_src", "at_install_bin",
-  "on_load", "on_attach", "on_unload", "on_detach"
+  "at_load", "at_attach", "at_unload", "at_detach"
 )
 
 

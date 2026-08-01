@@ -1,9 +1,8 @@
-name: deserialization_pattern
+name: deserialization
 version: "0.3.0"
 type: R
 attck:
   - T1059
-  - T1195.002
 message: >-
   readRDS(), load(), unserialize(), and dget() deserialize R objects or code,
   which can enable arbitrary code execution (CVE-2024-27322 for RDS).

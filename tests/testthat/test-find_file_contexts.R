@@ -21,7 +21,7 @@ test_that("find_file_contexts() finds matching files with relative paths", {
   # rule names the rule that matched, and joins to the rules database.
   expect_equal(
     res$file_contexts$rule[res$file_contexts$file_context == "configure"],
-    "configure_file"
+    "configure"
   )
 })
 
@@ -46,14 +46,14 @@ test_that("find_file_contexts() records an error for an invalid regex pattern", 
   pkg <- make_pkg(files = list("configure" = "x"))
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
 
-  bad <- rule_row(rules$file_contexts, "configure_file")
+  bad <- rule_row(rules$file_contexts, "configure")
   bad$pattern <- "("   # invalid regex -> list.files() errors
 
   res <- find_file_contexts(pkg, bad)
   expect_equal(nrow(res$file_contexts), 0L)
   expect_equal(nrow(res$errors), 1L)
   expect_equal(res$errors$stage, "find_file_contexts")
-  expect_equal(res$errors$rule, "configure_file")
+  expect_equal(res$errors$rule, "configure")
 })
 
 test_that("find_file_contexts() does not match directories", {
@@ -61,6 +61,6 @@ test_that("find_file_contexts() does not match directories", {
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
   dir.create(file.path(pkg, "configure"))  # a *directory* named configure
 
-  res <- find_file_contexts(pkg, rule_row(rules$file_contexts, "configure_file"))
+  res <- find_file_contexts(pkg, rule_row(rules$file_contexts, "configure"))
   expect_equal(nrow(res$file_contexts), 0L)
 })

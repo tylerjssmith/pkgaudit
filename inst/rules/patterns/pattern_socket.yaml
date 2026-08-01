@@ -1,10 +1,9 @@
-name: socket_pattern
+name: socket
 version: "0.3.0"
 type: R
 attck:
   - T1041
   - T1095
-  - T1195.002
 message: >-
   These functions open a raw network socket, which may be used to exfiltrate
   data or receive a remote payload outside the usual HTTP clients.

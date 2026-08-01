@@ -1,9 +1,8 @@
-name: rcurl_pattern
+name: rcurl
 version: "0.3.0"
 type: R
 attck:
   - T1041
-  - T1195.002
 message: >-
   An RCurl network call sends an outbound HTTP request. A request may be used to
   exfiltrate credentials or other data, or to fetch a remote payload.

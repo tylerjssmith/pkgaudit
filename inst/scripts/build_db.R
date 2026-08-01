@@ -28,7 +28,7 @@
 # declare them: a pattern inherits its phases from the context it sits in.
 .phase_fields <- c(
   "at_autoconf", "at_build", "at_check", "at_install_src", "at_install_bin",
-  "on_load", "on_attach", "on_unload", "on_detach"
+  "at_load", "at_attach", "at_unload", "at_detach"
 )
 
 # A rule's type is the language of what it matches, not a severity: severity is

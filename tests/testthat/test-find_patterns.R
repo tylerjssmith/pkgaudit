@@ -15,14 +15,14 @@ test_that("find_patterns() returns findings with the documented columns", {
                c("rule", "file_context", "line_number", "column_number",
                  "message", "attck"))
   expect_equal(nrow(res$patterns), 1L)
-  expect_equal(res$patterns$rule, "system_pattern")
+  expect_equal(res$patterns$rule, "system")
   expect_equal(res$patterns$file_context, "R/zzz.R")
   expect_equal(nrow(res$errors), 0L)
 })
 
 test_that("find_patterns() attaches matched nodes aligned to rows", {
   tree  <- tree_from_text(c("system('a')", "system('b')"))
-  res   <- find_patterns(tree, rule_row(rules$patterns, "system_pattern"), "R/zzz.R")
+  res   <- find_patterns(tree, rule_row(rules$patterns, "system"), "R/zzz.R")
   nodes <- attr(res$patterns, "nodes")
   expect_equal(nrow(res$patterns), 2L)
   expect_length(nodes, 2L)
@@ -39,12 +39,12 @@ test_that("find_patterns() returns empty (with nodes attr) when nothing matches"
 # tryCatch path ----------------------------------------------------------------
 test_that("find_patterns() records an error for an invalid XPath", {
   tree <- tree_from_text("x <- 1")
-  bad  <- rule_row(rules$patterns, "system_pattern")
+  bad  <- rule_row(rules$patterns, "system")
   bad$xpath <- "//["
 
   res <- find_patterns(tree, bad, "R/zzz.R")
   expect_equal(nrow(res$patterns), 0L)
   expect_equal(nrow(res$errors), 1L)
   expect_equal(res$errors$stage, "find_patterns")
-  expect_equal(res$errors$rule, "system_pattern")
+  expect_equal(res$errors$rule, "system")
 })

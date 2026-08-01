@@ -1,9 +1,8 @@
-name: decoding_pattern
+name: decoding
 version: "0.3.0"
 type: R
 attck:
   - T1140
-  - T1195.002
 message: >-
   These functions decode or decompress data. Payloads may be encoded (e.g., as
   base64) to evade static detection and decoded at runtime.

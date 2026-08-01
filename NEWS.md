@@ -10,6 +10,25 @@ replaces it with three independent rule categories.
 * **Code contexts** are lifecycle hooks whose bodies run automatically when a namespace is loaded, attached, unloaded, or detached.
 * **Patterns** are security-relevant function calls. Each pattern finding is attributed to the code context it executes in, so a `system()` call inside `.onLoad` is distinguished from one inside an ordinary function (`Other`) or at top level (`Top-level`).
 
+## Rule names
+
+* A rule's `name` no longer repeats its category: the `_file`, `_code`, and
+  `_pattern` suffixes are gone, so `configure_file` is now `configure`,
+  `system_pattern` is `system`, and so on. The YAML file names keep their
+  `file_`, `code_`, `pattern_`, and `phase_` prefixes.
+* Code-context rules are named for the hook they match and the package that
+  defines it, following their own capitalization and separators, so a finding
+  connects to the underlying hook: `onload_code` is now `onLoad_base`,
+  `onattach_code` is `onAttach_base`, `onunload_code` is `onUnload_base`,
+  `ondetach_code` is `onDetach_base`, `lastlib_code` is `LastLib_base`, and
+  `onload_rlang_code` is `on_load_rlang`.
+* `system_other_pattern` is split into one rule per package -- `system_callr`,
+  `system_processx`, and `system_sys` -- so a finding connects to the underlying
+  function calls.
+* Pattern rules no longer carry the `T1195.002` ATT&CK label, which applied to
+  every rule and so distinguished none of them. It remains on `options_repos`,
+  where redirecting the package repository is the technique itself.
+
 ## Results and metadata
 
 * `audit_package()` and `audit_tarball()` now return a `pkgaudit` S3 object: a
@@ -24,27 +43,31 @@ replaces it with three independent rule categories.
   the pattern executes in, which is a `code_contexts$rule` value or one of the
   computed contexts `Top-level` and `Other`.
 * `summary()` on a `pkgaudit` object returns a `summary.pkgaudit` object and
-  prints a sectioned report of the findings themselves: the findings counted by
-  the lifecycle phase they execute in, the distinct file and code contexts found,
-  how often each pattern was found and the MITRE ATT&CK techniques it carries,
-  and any errors, each followed by a note stating what scan coverage the failure
-  cost. Like `print()`, it takes `path = FALSE` to omit local paths from shared
+  prints a sectioned report of the findings themselves: the distinct file and
+  code contexts found, how often each pattern was found in each context and
+  lifecycle phase along with the MITRE ATT&CK techniques it carries, and any
+  errors, each followed by a note stating what scan coverage the failure cost.
+  Like `print()`, it takes `path = FALSE` to omit local paths from shared
   output.
+* Both reports are 77 characters wide, so output prefixed with `#> ` in a
+  knitted document still fits in 80 columns.
 
 ## Lifecycle phases
 
 * Every findings data frame carries one logical column per package lifecycle
   phase -- `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
-  `at_install_bin`, `on_load`, `on_attach`, `on_unload`, `on_detach` -- so
+  `at_install_bin`, `at_load`, `at_attach`, `at_unload`, `at_detach` -- so
   findings can be filtered by when they execute, e.g.
-  `subset(result$patterns, at_install_src)`.
+  `subset(result$patterns, at_install_src)`. Every phase is prefixed `at_`, so a
+  phase is not mistaken for a code context of a similar name.
 * A file or code context takes its phases from the rule that matched it; a
   pattern inherits them from the code context it sits in. A pattern inside an
   ordinary function is `FALSE` for every phase: it runs only if something calls
   it. A finding can belong to several phases, so the columns do not partition
   the rows.
-* `summary()` gains a "Findings by Phase" section counting each kind of finding
-  per phase, with a trailing `none` row for findings that execute in no phase.
+* `summary()` counts patterns by the phase and code context they execute in. An
+  occurrence is counted once per phase, and one that executes in no phase at all
+  is gathered under `none`.
 * The rules database gains a `phases` table with one row per context: every
   file- and code-context rule, plus the computed contexts `Top-level` and
   `Other`, which are authored in `inst/rules/phases/`. `load_rules()` returns it

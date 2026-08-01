@@ -53,10 +53,9 @@ remotes::install_github("tylerjssmith/pkgaudit")
 ```
 
 pkgaudit detects security-relevant files and code using a SQLite database of
-rules shipped with the package at `inst/db/rules.db`. The
-[Rule Coverage](articles/rules.html) vignette documents the full rule set. To
-verify that your installed copy of the database has not been modified since
-publication, check its SHA-256 hash against the value published here.
+rules shipped with the package at `inst/db/rules.db`. To verify that the
+installed copy of the database has not been modified since publication, check
+its SHA-256 hash.
 
 ``` r
 digest::digest(
@@ -72,6 +71,7 @@ Expected SHA-256: `r db_hash_md`
 
 The [Getting Started with pkgaudit](articles/pkgaudit.html) and
 [How pkgaudit Works](articles/how-it-works.html) vignettes document usage. The
+[Rule Coverage](articles/rules.html) vignette documents the full rule set. The
 example below scans `untrustedpkg`, a small package shipped with pkgaudit for
 demonstration:
 
@@ -87,19 +87,19 @@ rules  <- load_rules()
 result <- audit_tarball(tarball, rules = rules)
 ```
 
-`summary()` reports the file contexts, code contexts, and patterns found, and
-counts them by the R package lifecycle phase in which the file or code may
-execute (e.g., build, check, source installation, binary installation, load).
-These phases can overlap (for example, builds and checks test that a package
-can be installed and loaded), so the same findings may be associated with more
-than one phase below.
+`summary.pkgaudit()` reports the file and code contexts found in untrustedpkg,
+and counts the patterns found in each of them by the R package lifecycle phase
+in which the code may execute (e.g., build, installation from source,
+installation from binary, load). These phases can overlap (e.g., builds test
+that a package can be installed from source and loaded), so a pattern may be
+counted under more than one phase.
 
 Below, we see that untrustedpkg includes a `configure` script, which is used
 for system-dependent configuration but can execute arbitrary shell commands. It
 also calls `system()` inside `.onLoad()`, which runs on `library(untrustedpkg)`,
 and `download.file()` inside an ordinary function, which runs only if a user
-calls it and so belongs to no phase. Code that runs without being asked is the
-stronger claim on a reviewer's attention.
+calls the parent function and so belongs to no phase. Code that runs without
+being asked deserves closer attention.
 
 ```{r usage-summary}
 summary(result, path = FALSE)

@@ -86,46 +86,46 @@ emit_table <- function(headers, ...) {
 # definition, not a summary of one. Every rule in the database must appear
 # here, so a new rule fails this document until it is described.
 code_labels <- c(
-  lastlib_code      = "`.Last.lib()`",
-  onattach_code     = "`.onAttach()`",
-  ondetach_code     = "`.onDetach()`",
-  onload_code       = "`.onLoad()`",
-  onload_rlang_code = "`rlang::on_load()`",
-  onunload_code     = "`.onUnload()`"
+  LastLib_base  = "`.Last.lib()`",
+  onAttach_base = "`.onAttach()`",
+  onDetach_base = "`.onDetach()`",
+  onLoad_base   = "`.onLoad()`",
+  on_load_rlang = "`rlang::on_load()`",
+  onUnload_base = "`.onUnload()`"
 )
 
 pattern_labels <- c(
-  curl_pattern = paste(
+  curl = paste(
     "`curl()`, `curl_fetch_memory()`, `curl_fetch_disk()`,",
     "`curl_fetch_stream()`, `curl_fetch_multi()`, `curl_download()`,",
     "`curl_upload()`, `multi_download()`, `multi_run()`, `send_mail()`"
   ),
-  decoding_pattern = paste(
+  decoding = paste(
     "`base64decode()`, `base64_dec()`, `base64_decode()`, `memDecompress()`,",
     "`rawToChar(as.raw())`"
   ),
-  deserialization_pattern =
+  deserialization =
     "`readRDS()`, `load()`, `unserialize()`, `dget()`",
-  download_file_pattern = "`download.file()`, `url()`",
-  dynload_pattern       = "`dyn.load()`, `library.dynam()`",
-  eval_parse_pattern = paste(
+  download_file = "`download.file()`, `url()`",
+  dynload       = "`dyn.load()`, `library.dynam()`",
+  eval_parse = paste(
     "`eval()`/`evalq()` over `parse()`, `str2lang()`, or `str2expression()`,",
     "when combined with a decoding call"
   ),
-  httr_pattern = paste(
+  httr = paste(
     "`GET()`, `POST()`, `PUT()`, `PATCH()`, `DELETE()`, `HEAD()`, `VERB()`"
   ),
-  httr2_pattern = paste(
+  httr2 = paste(
     "`req_perform()`, `req_perform_iterative()`, `req_perform_parallel()`,",
     "`req_perform_sequential()`, `req_perform_stream()`,",
     "`req_perform_connection()`, `req_perform_promise()`"
   ),
-  indirection_pattern = paste(
+  indirection = paste(
     "`do.call()`, `match.fun()`, `getFromNamespace()`, `getExportedValue()`,",
     "`getAnywhere()`, `getFunction()`, when the first argument is a string",
     "literal"
   ),
-  install_pattern = paste(
+  install = paste(
     "`install.packages()`, `install_github()`, `install_gitlab()`,",
     "`install_bitbucket()`, `install_git()`, `install_url()`,",
     "`install_version()`, `install_local()`, `install_bioc()`,",
@@ -133,25 +133,29 @@ pattern_labels <- c(
     "`local_install()`, `lockfile_install()`, `BiocManager::install()`,",
     "`renv::install()`, `devtools::install()`"
   ),
-  options_repos_pattern = "`options(repos = )`",
-  rcurl_pattern = paste(
+  options_repos = "`options(repos = )`",
+  rcurl = paste(
     "`getURL()`, `getURI()`, `getForm()`, `postForm()`, `curlPerform()`"
   ),
-  socket_pattern = paste(
+  socket = paste(
     "`socketConnection()`, `make.socket()`, `serverSocket()`,",
     "`socketAccept()`"
   ),
-  source_pattern = "`source()`",
-  system_other_pattern = paste(
+  source = "`source()`",
+  system_callr = paste(
     "`callr::r()`, `r_bg()`, `r_safe()`, `r_copycat()`, `r_vanilla()`,",
-    "`rcmd()`, `rcmd_bg()`, `rcmd_safe()`, `rcmd_copycat()`, `rscript()`,",
-    "`processx::run()`, `processx::pipeline()`, `exec_wait()`,",
-    "`exec_background()`, `exec_internal()`, `eval_safe()`, `eval_fork()`,",
-    "`r_background()`, `r_internal()`, `r_wait()`, `process$new()`,",
-    "`r_session$new()`, `r_process$new()`, `rcmd_process$new()`,",
-    "`rscript_process$new()`"
+    "`callr::rcmd()`, `rcmd_bg()`, `rcmd_safe()`, `rcmd_copycat()`,",
+    "`rscript()`, `r_session$new()`, `r_process$new()`,",
+    "`rcmd_process$new()`, `rscript_process$new()`"
   ),
-  system_pattern = "`system()`, `system2()`, `shell()`, `pipe()`"
+  system_processx = paste(
+    "`processx::run()`, `processx::pipeline()`, `process$new()`"
+  ),
+  system_sys = paste(
+    "`exec_wait()`, `exec_background()`, `exec_internal()`, `eval_safe()`,",
+    "`eval_fork()`, `r_background()`, `r_internal()`, `r_wait()`"
+  ),
+  system = "`system()`, `system2()`, `shell()`, `pipe()`"
 )
 
 # Descriptions of the two computed contexts. These are authored under
@@ -216,10 +220,10 @@ phase_descriptions <- c(
   at_check       = "`R CMD check`",
   at_install_src = "`R CMD INSTALL` from source",
   at_install_bin = "a prebuilt binary package is installed",
-  on_load        = "the namespace is loaded",
-  on_attach      = "the package is attached to the search path",
-  on_unload      = "the namespace is unloaded",
-  on_detach      = "the package is detached from the search path"
+  at_load        = "the namespace is loaded",
+  at_attach      = "the package is attached to the search path",
+  at_unload      = "the namespace is unloaded",
+  at_detach      = "the package is detached from the search path"
 )
 stopifnot(setequal(names(phase_descriptions), phase_names))
 

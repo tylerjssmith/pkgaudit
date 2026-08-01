@@ -34,7 +34,7 @@ test_that("load_rules() returns phases as logicals for every context", {
   # loaded; code in an ordinary function runs at no phase at all.
   top <- rules$phases[rules$phases$context == "Top-level", ]
   expect_true(top$at_install_src && top$at_build && top$at_check)
-  expect_false(top$on_load)
+  expect_false(top$at_load)
 
   other <- rules$phases[rules$phases$context == "Other", ]
   expect_false(any(unlist(other[, .phase_columns])))
@@ -44,13 +44,13 @@ test_that("load_rules() refuses a database missing phases for a context", {
   db <- tempfile(fileext = ".db")
   file.copy(pkgaudit:::.db_path(), db)
   con <- DBI::dbConnect(RSQLite::SQLite(), db)
-  DBI::dbExecute(con, "DELETE FROM phases WHERE context = 'onload_code'")
+  DBI::dbExecute(con, "DELETE FROM phases WHERE context = 'onLoad_base'")
   DBI::dbDisconnect(con)
   writeLines(digest::digest(db, algo = "sha256", file = TRUE),
              paste0(db, ".sha256"))
   on.exit(unlink(c(db, paste0(db, ".sha256"))), add = TRUE)
 
-  expect_error(load_rules(db), "missing phases for: onload_code")
+  expect_error(load_rules(db), "missing phases for: onLoad_base")
 })
 
 test_that("load_rules() errors when the database is missing", {

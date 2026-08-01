@@ -100,10 +100,10 @@ test_that("audit_tarball() returns the four-frame result and relative paths", {
   expect_named(res, c("file_contexts", "code_contexts", "patterns", "errors",
                       "metadata"))
 
-  expect_true("onload_code" %in% res$code_contexts$rule)
-  sys <- res$patterns[res$patterns$rule == "system_pattern", ]
+  expect_true("onLoad_base" %in% res$code_contexts$rule)
+  sys <- res$patterns[res$patterns$rule == "system", ]
   expect_equal(nrow(sys), 1L)
-  expect_equal(sys$code_context, "onload_code")
+  expect_equal(sys$code_context, "onLoad_base")
 
   # Paths are relative to the package root, not the extraction temp dir.
   expect_true(all(startsWith(res$patterns$file_context, "R/")))
@@ -114,7 +114,7 @@ test_that("audit_tarball() handles a package name containing a dot", {
   tb <- make_test_tarball("system('id')", pkg_name = "my.pkg", version = "1.2.3")
   on.exit(unlink(tb), add = TRUE)
   res <- audit_tarball(tb)
-  expect_true("system_pattern" %in% res$patterns$rule)
+  expect_true("system" %in% res$patterns$rule)
 })
 
 test_that("audit_tarball() returns no patterns for a clean package", {

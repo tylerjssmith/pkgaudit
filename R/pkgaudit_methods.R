@@ -42,10 +42,10 @@ format.pkgaudit <- function(x, path = TRUE, ...) {
     .section_header("pkgaudit"),
     .metadata_lines(x$metadata, path = path),
     "",
-    .field("File contexts:", nrow(x$file_contexts)),
-    .field("Code contexts:", nrow(x$code_contexts)),
-    .field("Patterns:",      nrow(x$patterns)),
-    .field("Errors:",        err_value)
+    .field("File contexts:", nrow(x$file_contexts), .count_label_width),
+    .field("Code contexts:", nrow(x$code_contexts), .count_label_width),
+    .field("Patterns:",      nrow(x$patterns),      .count_label_width),
+    .field("Errors:",        err_value,             .count_label_width)
   )
 }
 
@@ -63,11 +63,11 @@ print.pkgaudit <- function(x, path = TRUE, ...) {
 
 #' Summarize a pkgaudit result
 #'
-#' `summary.pkgaudit()` rolls a scan up into the findings counted by the
-#' lifecycle phase they execute in, the distinct file and code contexts found,
-#' the frequency of each pattern with its MITRE ATT&CK techniques, and the
-#' errors, if any. `print.summary.pkgaudit()` writes that summary as a sectioned
-#' report and returns the object invisibly.
+#' `summary.pkgaudit()` rolls a scan up into the distinct file and code contexts
+#' found, the frequency of each pattern by the lifecycle phase and code context
+#' it executes in with its MITRE ATT&CK techniques, and the errors, if any.
+#' `print.summary.pkgaudit()` writes that summary as a sectioned report and
+#' returns the object invisibly.
 #'
 #' @param object A `pkgaudit` object.
 #' @param x A `summary.pkgaudit` object.
@@ -78,16 +78,16 @@ print.pkgaudit <- function(x, path = TRUE, ...) {
 #' @param ... Ignored, for S3 compatibility.
 #'
 #' @return `summary.pkgaudit()` returns a `summary.pkgaudit` object: a named list
-#'   of four summary data frames, the errors, the scan `metadata`, and the
+#'   of three summary data frames, the errors, the scan `metadata`, and the
 #'   recorded `path`.
 #'   \describe{
-#'     \item{phases}{`phase`, `file_contexts`, `code_contexts`, `patterns`: how
-#'       many findings of each kind execute during each lifecycle phase, with a
-#'       trailing `none` row for findings that execute in no phase.}
 #'     \item{file_contexts}{`file_context`: each file context found, once.}
-#'     \item{code_contexts}{`rule`: each code-context rule matched, once.}
-#'     \item{patterns}{`rule`, `occurrences`, `attck`: how often each pattern
-#'       rule was matched and the ATT&CK techniques it carries.}
+#'     \item{code_contexts}{`code_context`: each code-context rule matched,
+#'       once.}
+#'     \item{patterns}{`phase`, `code_context`, `rule`, `n`, `attck`: how often
+#'       each pattern rule was matched in each code context, split by the
+#'       lifecycle phase that context executes in, with the ATT&CK techniques
+#'       the rule carries.}
 #'     \item{errors}{`stage`, `script`, `rule`, `error`: the rows of the object's
 #'       `errors` data frame, renamed for display.}
 #'   }
@@ -96,6 +96,11 @@ print.pkgaudit <- function(x, path = TRUE, ...) {
 #' @details
 #' The report opens with the same metadata block as [print.pkgaudit()], then
 #' gives one section per result. A section with nothing to report says so.
+#'
+#' A pattern occurrence executes in every phase its code context does, so it
+#' contributes one row per phase and the `n` column sums to more than the number
+#' of occurrences. Occurrences that execute in no phase at all are gathered
+#' under `none`.
 #'
 #' The `Errors` section lists every error, whatever stage produced it, and is
 #' followed by one note per stage stating what scan coverage was lost. An error
@@ -120,10 +125,10 @@ print.pkgaudit <- function(x, path = TRUE, ...) {
 summary.pkgaudit <- function(object, path = TRUE, ...) {
   structure(
     list(
-      phases        = .summarize_phases(object),
       file_contexts = .summarize_contexts(object$file_contexts$file_context,
                                           "file_context"),
-      code_contexts = .summarize_contexts(object$code_contexts$rule, "rule"),
+      code_contexts = .summarize_contexts(object$code_contexts$rule,
+                                          "code_context"),
       patterns      = .summarize_patterns(object$patterns),
       errors        = .summarize_errors(object$errors),
       metadata      = object$metadata,
@@ -154,52 +159,51 @@ print.summary.pkgaudit <- function(x, path = x$path, ...) {
 }
 
 
-# Count pattern occurrences by rule name, carrying each rule's ATT&CK labels.
-# The labels come from the rule, so they are constant across a rule's rows and
-# the first row's value describes them all.
-.summarize_patterns <- function(patterns) {
-  found <- sort(unique(patterns$rule))
-  data.frame(
-    rule        = found,
-    occurrences = tabulate(match(patterns$rule, found), length(found)),
-    attck       = patterns$attck[match(found, patterns$rule)],
-    stringsAsFactors = FALSE
-  )
-}
-
-
-# Count findings by the lifecycle phase they execute in, one row per phase and
-# one column per findings frame, in lifecycle order.
+# Count pattern occurrences by the phase and code context they execute in, one
+# row per phase, code context, and rule, carrying each rule's ATT&CK labels.
 #
-# A finding can execute in several phases, so a row is counted once per phase it
-# belongs to and the columns do not sum to the number of findings. The trailing
-# "none" row counts findings that execute in no phase at all -- code reached only
-# when something calls it.
-.summarize_phases <- function(object) {
-  frames <- list(
-    file_contexts = object$file_contexts,
-    code_contexts = object$code_contexts,
-    patterns      = object$patterns
+# An occurrence executes in every phase its code context does, so it is counted
+# once per phase and `n` sums to more than the number of occurrences. An
+# occurrence that executes in no phase -- code reached only when something calls
+# it -- is gathered under "none". The ATT&CK labels come from the rule, so they
+# are constant across a rule's rows and any one of them describes them all.
+#
+# Rows are ordered by phase in lifecycle order with "none" last, then by code
+# context and rule name. Context and rule names mix cases, so those two are
+# sorted in the C locale: a report of the same scan reads the same wherever it
+# is run.
+.summarize_patterns <- function(patterns) {
+  empty <- data.frame(
+    phase = character(0L), code_context = character(0L), rule = character(0L),
+    n = integer(0L), attck = character(0L), stringsAsFactors = FALSE
   )
+  if (nrow(patterns) == 0L) return(empty)
 
-  in_phase <- function(df, phase) if (nrow(df) == 0L) 0L else sum(df[[phase]])
-  in_none  <- function(df) {
-    if (nrow(df) == 0L) return(0L)
-    sum(rowSums(as.matrix(df[, .phase_columns, drop = FALSE])) == 0L)
-  }
+  levels <- c(.phase_columns, "none")
+  rows   <- lapply(levels, function(phase) {
+    in_phase <- if (phase == "none") {
+      rowSums(as.matrix(patterns[, .phase_columns, drop = FALSE])) == 0L
+    } else {
+      patterns[[phase]]
+    }
+    if (!any(in_phase)) return(empty)
 
-  counts <- lapply(frames, function(df) {
-    c(vapply(.phase_columns, function(p) in_phase(df, p), integer(1L)),
-      none = in_none(df))
+    found <- patterns[in_phase, , drop = FALSE]
+    keys  <- paste(found$code_context, found$rule, sep = "\r")
+    first <- match(sort(unique(keys), method = "radix"), keys)
+    data.frame(
+      phase        = phase,
+      code_context = found$code_context[first],
+      rule         = found$rule[first],
+      n            = tabulate(match(keys, keys[first]), length(first)),
+      attck        = found$attck[first],
+      stringsAsFactors = FALSE
+    )
   })
 
-  data.frame(
-    phase         = c(.phase_columns, "none"),
-    file_contexts = unname(counts$file_contexts),
-    code_contexts = unname(counts$code_contexts),
-    patterns      = unname(counts$patterns),
-    stringsAsFactors = FALSE
-  )
+  out <- do.call(rbind, rows)
+  row.names(out) <- NULL
+  out
 }
 
 
@@ -225,23 +229,16 @@ print.summary.pkgaudit <- function(x, path = x$path, ...) {
     .section_header("pkgaudit Summary"),
     .metadata_lines(x$metadata, path = path),
     "",
-    .section_header("Findings by Phase"),
-    .format_table(x$phases),
-    "",
-    .section_header("File Contexts"),
+    .section_header("Contexts"),
     .summary_section(x$file_contexts, "No file contexts were found."),
     "",
-    .section_header("Code Contexts"),
     .summary_section(x$code_contexts, "No code contexts were found."),
     "",
     .section_header("Patterns"),
     .summary_section(x$patterns, "No patterns were found."),
     "",
     .section_header("Errors"),
-    .errors_section(x$errors),
-    "",
-    .section_header("Notes"),
-    "pkgaudit is intended to assist with manual review, not replace it."
+    .errors_section(x$errors)
   )
 }
 
@@ -256,7 +253,7 @@ print.summary.pkgaudit <- function(x, path = x$path, ...) {
 # Render the Errors section: the table of every error followed by the notes
 # describing the coverage lost, or the all-clear when there were none.
 .errors_section <- function(errors) {
-  if (nrow(errors) == 0L) return("All R scripts were successfully parsed.")
+  if (nrow(errors) == 0L) return("No exceptions were raised.")
   c(.format_table(errors), "", .error_notes(errors))
 }
 
@@ -284,7 +281,7 @@ print.summary.pkgaudit <- function(x, path = x$path, ...) {
     ))
   }
 
-  wrapped <- lapply(notes, strwrap, width = 80L)
+  wrapped <- lapply(notes, strwrap, width = .report_width)
   unlist(.interleave(wrapped, ""), use.names = FALSE)
 }
 
@@ -366,7 +363,7 @@ print.summary.pkgaudit <- function(x, path = x$path, ...) {
 
   scanned_value <- paste0(
     .format_scanned(m$scanned),
-    " with pkgaudit ", .or_unknown(m$pkgaudit_version),
+    " with pkgaudit v", .or_unknown(m$pkgaudit_version),
     ", rules v", .or_unknown(m$pkgaudit_rules_version)
   )
 
@@ -382,24 +379,34 @@ print.summary.pkgaudit <- function(x, path = x$path, ...) {
 }
 
 
-# Render one labelled metadata line.
-.field <- function(label, value) {
-  sprintf("%-16s%s", label, as.character(value))
+# The report width. Three characters narrower than a terminal line, so that
+# knitr output prefixed with "#> " still fits in 80 columns.
+.report_width <- 77L
+
+# Label field widths. The metadata labels are short enough to set their values
+# close to the left margin; the finding counts carry longer labels of their own.
+.metadata_label_width <- 11L
+.count_label_width    <- 16L
+
+
+# Render one labelled line, padding the label to the given field width.
+.field <- function(label, value, width = .metadata_label_width) {
+  sprintf("%-*s%s", width, label, as.character(value))
 }
 
 
 # Render a section rule: the label set off by dashes to the report width.
 .section_header <- function(label) {
   prefix <- paste0("--- ", label, " ")
-  paste0(prefix, strrep("-", max(0L, 80L - nchar(prefix))))
+  paste0(prefix, strrep("-", max(0L, .report_width - nchar(prefix))))
 }
 
 
 # Render a data frame as aligned text: a header line of column names followed by
-# one line per row, columns one space apart. Character columns are left-aligned
-# and numeric columns right-aligned, and NA renders blank. print.data.frame()
-# cannot be used here: it right-aligns character columns and reserves a leading
-# gutter for row names.
+# one line per row, columns three spaces apart. Character columns are
+# left-aligned and numeric columns right-aligned, and NA renders blank.
+# print.data.frame() cannot be used here: it right-aligns character columns and
+# reserves a leading gutter for row names.
 .format_table <- function(df) {
   columns <- lapply(names(df), function(column) {
     values <- df[[column]]
@@ -410,7 +417,7 @@ print.summary.pkgaudit <- function(x, path = x$path, ...) {
       flag  = if (is.numeric(values)) "" else "-"
     )
   })
-  trimws(do.call(paste, c(columns, sep = " ")), which = "right")
+  trimws(do.call(paste, c(columns, sep = "   ")), which = "right")
 }
 
 

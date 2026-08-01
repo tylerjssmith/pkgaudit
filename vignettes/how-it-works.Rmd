@@ -90,7 +90,7 @@ should and should not be found by the rule, respectively.
 
 File and code context rules carry nine further fields, one per lifecycle phase
 -- `at_autoconf`, `at_build`, `at_check`, `at_install_src`, `at_install_bin`,
-`on_load`, `on_attach`, `on_unload`, and `on_detach` -- each `TRUE` or `FALSE`.
+`at_load`, `at_attach`, `at_unload`, and `at_detach` -- each `TRUE` or `FALSE`.
 Pattern rules do not declare them: a pattern runs when the code around it runs,
 so it takes its phases from the code context that contains it.
 
@@ -167,7 +167,7 @@ values:
 
 ```{r fc-row}
 rules$file_contexts[
-  rules$file_contexts$name == "configure_file",
+  rules$file_contexts$name == "configure",
   c("name", "path", "recursive", "pattern")
 ]
 ```
@@ -178,8 +178,8 @@ installation from source, and never once the package is loaded:
 
 ```{r fc-phases}
 rules$phases[
-  rules$phases$context == "configure_file",
-  c("context", "at_build", "at_check", "at_install_src", "on_load")
+  rules$phases$context == "configure",
+  c("context", "at_build", "at_check", "at_install_src", "at_load")
 ]
 ```
 
@@ -249,7 +249,7 @@ name of the hook. The name of the hook merely appearing somewhere is not a
 match. Below are some simple examples:
 
 ```{r cc-match}
-xpath   <- rules$code_contexts$xpath[rules$code_contexts$name == "onload_code"]
+xpath   <- rules$code_contexts$xpath[rules$code_contexts$name == "onLoad_base"]
 matches <- function(code) length(xml2::xml_find_all(as_xml(code), xpath)) > 0
 
 matches(".onLoad <- function(libname, pkgname) NULL")    # assignment
@@ -326,7 +326,7 @@ show_tree('foo@system("x")')
 The following shows examples of what does and does not match:
 
 ```{r pat-match}
-xpath_sys <- rules$patterns$xpath[rules$patterns$name == "system_pattern"]
+xpath_sys <- rules$patterns$xpath[rules$patterns$name == "system"]
 hits <- function(code) length(xml2::xml_find_all(as_xml(code), xpath_sys)) > 0
 
 hits('system("id")')

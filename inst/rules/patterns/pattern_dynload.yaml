@@ -1,9 +1,8 @@
-name: dynload_pattern
+name: dynload
 version: "0.3.0"
 type: R
 attck:
   - T1129
-  - T1195.002
 message: >-
   dyn.load() and library.dynam() load compiled code from a shared object, which
   executes outside the visible R source.

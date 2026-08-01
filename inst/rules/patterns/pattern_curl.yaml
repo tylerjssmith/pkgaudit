@@ -1,9 +1,8 @@
-name: curl_pattern
+name: curl
 version: "0.3.0"
 type: R
 attck:
   - T1041
-  - T1195.002
 message: >-
   A curl network call sends an outbound HTTP request or opens a connection to a
   remote host. A request may be used to exfiltrate credentials or other data, or

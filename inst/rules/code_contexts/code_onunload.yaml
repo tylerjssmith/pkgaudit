@@ -1,4 +1,4 @@
-name: onunload_code
+name: onUnload_base
 version: "0.3.0"
 type: R
 message: >-
@@ -11,10 +11,10 @@ at_build: FALSE
 at_check: TRUE
 at_install_src: FALSE
 at_install_bin: FALSE
-on_load: FALSE
-on_attach: FALSE
-on_unload: TRUE
-on_detach: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: TRUE
+at_detach: FALSE
 xpath: >-
   (//expr | //expr_or_assign_or_help)[
     (

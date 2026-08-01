@@ -1,4 +1,4 @@
-name: onattach_code
+name: onAttach_base
 version: "0.3.0"
 type: R
 message: >-
@@ -11,10 +11,10 @@ at_build: TRUE
 at_check: TRUE
 at_install_src: TRUE
 at_install_bin: FALSE
-on_load: FALSE
-on_attach: TRUE
-on_unload: FALSE
-on_detach: FALSE
+at_load: FALSE
+at_attach: TRUE
+at_unload: FALSE
+at_detach: FALSE
 xpath: >-
   (//expr | //expr_or_assign_or_help)[
     (

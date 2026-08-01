@@ -1,0 +1,49 @@
+name: system_processx
+version: "0.3.0"
+type: R
+attck:
+  - T1059
+message: >-
+  These processx functions run an external process, which may be used to
+  execute arbitrary shell commands outside the visible R source.
+xpath: >-
+  //SYMBOL_FUNCTION_CALL[
+    (
+      text() = 'run' or text() = 'pipeline'
+    )
+    and preceding-sibling::SYMBOL_PACKAGE[
+      text() = 'processx'
+    ]
+  ]
+  |
+  //expr[
+    OP-DOLLAR
+    and SYMBOL_FUNCTION_CALL[text() = 'new']
+    and .//SYMBOL[
+      text() = 'process'
+    ]
+  ]
+positive_examples:
+  - |
+    processx::run("sh", c("-c", "id"))
+  - |
+    processx::pipeline(p1, p2)
+  - |
+    processx::process$new("sh", c("-c", "id"))
+  - |
+    p <- process$new("sh", c("-c", "id"))
+negative_examples:
+  - |
+    run(model, data)
+  - |
+    pipeline(steps)
+  - |
+    process(x)
+  - |
+    out <- data |> run()
+  - |
+    foo$run("x")
+  - |
+    foo@run("x")
+  - |
+    foo$new("x")

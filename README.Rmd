@@ -117,7 +117,7 @@ the same call inside `.onLoad()` runs automatically when a namespace is loaded.
 
 Every file and code context also declares the lifecycle phases in which its code
 runs -- `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
-`at_install_bin`, `on_load`, `on_attach`, `on_unload`, `on_detach` -- and a
+`at_install_bin`, `at_load`, `at_attach`, `at_unload`, `at_detach` -- and a
 pattern inherits them from the code context it sits in. Each finding carries one
 logical column per phase, so findings can be filtered by when they execute.
 
@@ -172,8 +172,8 @@ result <- audit_tarball(tarball, rules = rules)
 print(result, path = FALSE)
 ```
 
-`summary()` reports the findings themselves: how many run during each lifecycle
-phase, the contexts found, how often each pattern matched, and the MITRE ATT&CK
+`summary()` reports the findings themselves: the contexts found, how often each
+pattern matched in each context and lifecycle phase, and the MITRE ATT&CK
 techniques involved.
 
 ```{r usage-summary}

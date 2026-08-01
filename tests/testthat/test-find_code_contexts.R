@@ -17,7 +17,7 @@ test_that("find_code_contexts() returns a row per matched context", {
   expect_named(res$code_contexts,
                c("rule", "file_context", "line_number",
                  "column_number", "message"))
-  expect_setequal(res$code_contexts$rule, c("onload_code", "onattach_code"))
+  expect_setequal(res$code_contexts$rule, c("onLoad_base", "onAttach_base"))
   expect_true(all(res$code_contexts$file_context == "R/zzz.R"))
   expect_equal(nrow(res$errors), 0L)
 })
@@ -28,7 +28,7 @@ test_that("find_code_contexts() returns all matches for a repeated context", {
     ".onLoad <- function(a, b) invisible(NULL)",
     ".onLoad <- function(a, b) invisible(NULL)"
   ))
-  res <- find_code_contexts(tree, rule_row(rules$code_contexts, "onload_code"), "R/zzz.R")
+  res <- find_code_contexts(tree, rule_row(rules$code_contexts, "onLoad_base"), "R/zzz.R")
   expect_equal(nrow(res$code_contexts), 2L)
 })
 
@@ -42,13 +42,13 @@ test_that("find_code_contexts() returns empty when no context matches", {
 # tryCatch path ----------------------------------------------------------------
 test_that("find_code_contexts() records an error for an invalid XPath", {
   tree <- tree_from_text("x <- 1")
-  bad  <- rule_row(rules$code_contexts, "onload_code")
+  bad  <- rule_row(rules$code_contexts, "onLoad_base")
   bad$xpath <- "//["   # malformed XPath
 
   res <- find_code_contexts(tree, bad, "R/zzz.R")
   expect_equal(nrow(res$code_contexts), 0L)
   expect_equal(nrow(res$errors), 1L)
   expect_equal(res$errors$stage, "find_code_contexts")
-  expect_equal(res$errors$rule, "onload_code")
+  expect_equal(res$errors$rule, "onLoad_base")
   expect_equal(res$errors$file_context, "R/zzz.R")
 })

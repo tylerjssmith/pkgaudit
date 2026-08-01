@@ -1,9 +1,8 @@
-name: install_pattern
+name: install
 version: "0.3.0"
 type: R
 attck:
   - T1105
-  - T1195.002
 message: >-
   These functions install packages, optionally from a specified or remote
   source. A non-default source can introduce attacker-controlled code.

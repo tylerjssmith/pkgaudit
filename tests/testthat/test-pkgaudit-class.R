@@ -56,7 +56,7 @@ test_that("format.pkgaudit() returns a character vector with the expected lines"
   expect_true(any(grepl("^Code contexts:\\s+6$", lines)))
   expect_true(any(grepl("^Patterns:\\s+17$", lines)))
   # Scanned line renders the ISO value as YYYY-MM-DD HH:MM UTC.
-  expect_true(any(grepl("^Scanned:\\s+2026-07-23 14:02 UTC with pkgaudit 0.3.0, rules v0.1.0$", lines)))
+  expect_true(any(grepl("^Scanned:\\s+2026-07-23 14:02 UTC with pkgaudit v0.3.0, rules v0.1.0$", lines)))
 })
 
 test_that("format.pkgaudit() counts match the data-frame row counts", {
@@ -96,7 +96,7 @@ test_that("format.pkgaudit() renders NA metadata values uniformly as <unknown>",
   expect_true(any(grepl("^Path:\\s+<unknown>$", lines)))
   expect_true(any(grepl("^SHA-256:\\s+<unknown>$", lines)))
   expect_true(any(grepl("^Package:\\s+<unknown> \\(source directory\\)$", lines)))
-  expect_true(any(grepl("with pkgaudit <unknown>, rules v<unknown>$", lines)))
+  expect_true(any(grepl("with pkgaudit v<unknown>, rules v<unknown>$", lines)))
 })
 
 test_that("format.pkgaudit() shows the tarball/directory kind", {

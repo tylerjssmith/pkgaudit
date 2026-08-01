@@ -1,9 +1,8 @@
-name: httr_pattern
+name: httr
 version: "0.3.0"
 type: R
 attck:
   - T1041
-  - T1195.002
 message: >-
   An httr HTTP call sends an outbound request. A request may be used to
   exfiltrate credentials or other data, or to fetch a remote payload.

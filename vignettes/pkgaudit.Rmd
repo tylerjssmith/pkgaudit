@@ -142,8 +142,8 @@ category:
 print(result)
 ```
 
-`summary()` reports the findings themselves: how many run in each lifecycle
-phase, which contexts were found, how often each pattern matched, and the MITRE
+`summary()` reports the findings themselves: which contexts were found, how
+often each pattern matched in each context and lifecycle phase, and the MITRE
 ATT&CK techniques involved.
 
 ```{r summary}
@@ -167,12 +167,12 @@ result$patterns[, c("rule", "file_context", "code_context", "line_number",
 
 Each finding also records when its code runs, as one logical column per phase:
 `at_autoconf`, `at_build`, `at_check`, `at_install_src`, `at_install_bin`,
-`on_load`, `on_attach`, `on_unload`, and `on_detach`. A pattern inside an
+`at_load`, `at_attach`, `at_unload`, and `at_detach`. A pattern inside an
 ordinary function is `FALSE` for every one of them -- it runs only if something
-calls it -- and is counted in the `none` row of `summary()`.
+calls it -- and is gathered under `none` by `summary()`.
 
 ```{r by-phase}
-result$patterns[result$patterns$on_load,
+result$patterns[result$patterns$at_load,
                 c("rule", "file_context", "code_context")]
 ```
 

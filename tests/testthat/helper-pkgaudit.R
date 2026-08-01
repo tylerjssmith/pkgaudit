@@ -45,15 +45,15 @@ make_obj <- function(n_file = 0L, n_code = 0L, n_pat = 0L, n_err = 0L,
   install_phases <- phase_values("at_build", "at_check", "at_install_src")
 
   for (i in seq_len(n_file)) {
-    fc[i, ] <- c(list("configure_file", "configure", "m"), install_phases)
+    fc[i, ] <- c(list("configure", "configure", "m"), install_phases)
   }
   for (i in seq_len(n_code)) {
-    cc[i, ] <- c(list("onload_code", "R/zzz.R", 1L, 1L, "m"),
+    cc[i, ] <- c(list("onLoad_base", "R/zzz.R", 1L, 1L, "m"),
                  phase_values("at_build", "at_check", "at_install_src",
-                              "on_load"))
+                              "at_load"))
   }
   for (i in seq_len(n_pat)) {
-    pt[i, ] <- c(list("system_pattern", "R/zzz.R", 1L, 1L, "m", "T1059",
+    pt[i, ] <- c(list("system", "R/zzz.R", 1L, 1L, "m", "T1059",
                       "Top-level"), install_phases)
   }
   for (i in seq_len(n_err))  er[i, ] <- list("parse_script", "R/bad.R", NA_character_, "boom")

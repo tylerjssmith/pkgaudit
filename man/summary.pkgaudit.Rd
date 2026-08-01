@@ -23,31 +23,36 @@ local filesystem location scanned. Set \code{FALSE} to omit local paths.
 }
 \value{
 \code{summary.pkgaudit()} returns a \code{summary.pkgaudit} object: a named list
-of four summary data frames, the errors, the scan \code{metadata}, and the
+of three summary data frames, the errors, the scan \code{metadata}, and the
 recorded \code{path}.
 \describe{
-\item{phases}{\code{phase}, \code{file_contexts}, \code{code_contexts}, \code{patterns}: how
-many findings of each kind execute during each lifecycle phase, with a
-trailing \code{none} row for findings that execute in no phase.}
 \item{file_contexts}{\code{file_context}: each file context found, once.}
-\item{code_contexts}{\code{rule}: each code-context rule matched, once.}
-\item{patterns}{\code{rule}, \code{occurrences}, \code{attck}: how often each pattern
-rule was matched and the ATT&CK techniques it carries.}
+\item{code_contexts}{\code{code_context}: each code-context rule matched,
+once.}
+\item{patterns}{\code{phase}, \code{code_context}, \code{rule}, \code{n}, \code{attck}: how often
+each pattern rule was matched in each code context, split by the
+lifecycle phase that context executes in, with the ATT&CK techniques
+the rule carries.}
 \item{errors}{\code{stage}, \code{script}, \code{rule}, \code{error}: the rows of the object's
 \code{errors} data frame, renamed for display.}
 }
 \code{print.summary.pkgaudit()} returns \code{x} invisibly.
 }
 \description{
-\code{summary.pkgaudit()} rolls a scan up into the findings counted by the
-lifecycle phase they execute in, the distinct file and code contexts found,
-the frequency of each pattern with its MITRE ATT&CK techniques, and the
-errors, if any. \code{print.summary.pkgaudit()} writes that summary as a sectioned
-report and returns the object invisibly.
+\code{summary.pkgaudit()} rolls a scan up into the distinct file and code contexts
+found, the frequency of each pattern by the lifecycle phase and code context
+it executes in with its MITRE ATT&CK techniques, and the errors, if any.
+\code{print.summary.pkgaudit()} writes that summary as a sectioned report and
+returns the object invisibly.
 }
 \details{
 The report opens with the same metadata block as \code{\link[=print.pkgaudit]{print.pkgaudit()}}, then
 gives one section per result. A section with nothing to report says so.
+
+A pattern occurrence executes in every phase its code context does, so it
+contributes one row per phase and the \code{n} column sums to more than the number
+of occurrences. Occurrences that execute in no phase at all are gathered
+under \code{none}.
 
 The \code{Errors} section lists every error, whatever stage produced it, and is
 followed by one note per stage stating what scan coverage was lost. An error

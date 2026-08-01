@@ -1,9 +1,8 @@
-name: source_pattern
+name: source
 version: "0.3.0"
 type: R
 attck:
   - T1059
-  - T1195.002
 message: >-
   source() can fetch and execute local and remote R scripts.
 xpath: >-

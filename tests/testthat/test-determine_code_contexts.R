@@ -17,8 +17,8 @@ contexts_for <- function(text) {
 
 test_that("a pattern in a named hook is labeled with that context", {
   pat <- contexts_for(".onLoad <- function(a, b) system('x')")
-  expect_equal(pat$rule, "system_pattern")
-  expect_equal(pat$code_context, "onload_code")
+  expect_equal(pat$rule, "system")
+  expect_equal(pat$code_context, "onLoad_base")
 })
 
 test_that("a top-level pattern is labeled Top-level", {
@@ -45,7 +45,7 @@ test_that("the most-specific (innermost) named context wins", {
     "  }",
     "}"
   ))
-  expect_equal(pat$code_context, "onattach_code")
+  expect_equal(pat$code_context, "onAttach_base")
 })
 
 test_that("rlang on_load inside .onLoad wins over the .onLoad hook", {
@@ -54,7 +54,7 @@ test_that("rlang on_load inside .onLoad wins over the .onLoad hook", {
     "  on_load(system('x'))",
     "}"
   ))
-  expect_equal(pat$code_context, "onload_rlang_code")
+  expect_equal(pat$code_context, "on_load_rlang")
 })
 
 test_that("determine_code_contexts() returns unchanged frame for zero patterns", {

@@ -1,4 +1,4 @@
-name: configure_in_file
+name: configure_in
 version: "0.3.0"
 type: shell
 message: >-
@@ -10,10 +10,10 @@ at_build: FALSE
 at_check: FALSE
 at_install_src: FALSE
 at_install_bin: FALSE
-on_load: FALSE
-on_attach: FALSE
-on_unload: FALSE
-on_detach: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
 path: "."
 recursive: FALSE
 pattern: '^configure\.in$'

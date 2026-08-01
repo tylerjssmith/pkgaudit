@@ -1,4 +1,4 @@
-name: ondetach_code
+name: onDetach_base
 version: "0.3.0"
 type: R
 message: >-
@@ -12,10 +12,10 @@ at_build: FALSE
 at_check: TRUE
 at_install_src: FALSE
 at_install_bin: FALSE
-on_load: FALSE
-on_attach: FALSE
-on_unload: FALSE
-on_detach: TRUE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: TRUE
 xpath: >-
   (//expr | //expr_or_assign_or_help)[
     (

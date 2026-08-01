@@ -1,11 +1,10 @@
-name: eval_parse_pattern
+name: eval_parse
 version: "0.3.0"
 type: R
 attck:
   - T1027
   - T1059
   - T1140
-  - T1195.002
 message: >-
   eval() applied to parse(), str2lang(), or str2expression() constructs and
   evaluates code at runtime. Here code is produced by decoding or decompression,

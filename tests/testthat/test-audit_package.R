@@ -37,21 +37,21 @@ test_that("audit_package() resolves the phases of every finding", {
   res <- audit_package(pkg, rules)
 
   # A file context takes its phases from the rule that matched it.
-  configure <- res$file_contexts[res$file_contexts$rule == "configure_file", ]
+  configure <- res$file_contexts[res$file_contexts$rule == "configure", ]
   expect_true(configure$at_install_src)
   expect_true(configure$at_check)
-  expect_false(configure$on_load)
+  expect_false(configure$at_load)
 
-  # A code context takes its phases from its own rule, so .onLoad() adds on_load
+  # A code context takes its phases from its own rule, so .onLoad() adds at_load
   # to the phases that install it.
-  onload <- res$code_contexts[res$code_contexts$rule == "onload_code", ]
-  expect_true(onload$on_load)
+  onload <- res$code_contexts[res$code_contexts$rule == "onLoad_base", ]
+  expect_true(onload$at_load)
   expect_true(onload$at_install_src)
 
   # A pattern inherits the phases of the code context it sits in: the hook's
   # system() call runs at load, the one in an ordinary function runs never.
-  hook <- res$patterns[res$patterns$code_context == "onload_code", ]
-  expect_true(all(hook$on_load))
+  hook <- res$patterns[res$patterns$code_context == "onLoad_base", ]
+  expect_true(all(hook$at_load))
 
   uncalled <- res$patterns[res$patterns$code_context == "Other", ]
   expect_equal(nrow(uncalled), 1L)
@@ -81,19 +81,19 @@ test_that("audit_package() finds file contexts, code contexts and patterns", {
 
   expect_setequal(res$file_contexts$file_context,
                   c("configure", "src/Makevars", "src/install.libs.R"))
-  expect_true("onload_code" %in% res$code_contexts$rule)
+  expect_true("onLoad_base" %in% res$code_contexts$rule)
 
   # system() in the hook, source() at top level, system2() at top level of
   # install.libs.R -> the three code-context labels are attributed correctly.
-  sys_hook <- res$patterns[res$patterns$rule == "system_pattern" &
+  sys_hook <- res$patterns[res$patterns$rule == "system" &
                              res$patterns$file_context == "R/zzz.R", ]
-  expect_equal(sys_hook$code_context, "onload_code")
+  expect_equal(sys_hook$code_context, "onLoad_base")
 
-  src_top <- res$patterns[res$patterns$rule == "source_pattern", ]
+  src_top <- res$patterns[res$patterns$rule == "source", ]
   expect_equal(src_top$code_context, "Top-level")
 
   installlibs <- res$patterns[res$patterns$file_context == "src/install.libs.R", ]
-  expect_equal(installlibs$rule, "system_pattern")
+  expect_equal(installlibs$rule, "system")
   expect_equal(installlibs$code_context, "Top-level")
 
   expect_equal(nrow(res$errors), 0L)

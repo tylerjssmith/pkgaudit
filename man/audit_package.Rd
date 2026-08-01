@@ -49,7 +49,7 @@ returned data frame are relative to the package root.
 
 Each findings data frame also carries one logical column per package
 lifecycle phase -- \code{at_autoconf}, \code{at_build}, \code{at_check}, \code{at_install_src},
-\code{at_install_bin}, \code{on_load}, \code{on_attach}, \code{on_unload}, and \code{on_detach} --
+\code{at_install_bin}, \code{at_load}, \code{at_attach}, \code{at_unload}, and \code{at_detach} --
 which is \code{TRUE} when that finding's code runs during the phase, so findings
 can be filtered by when they execute. A file or code context takes its phases
 from the rule that matched; a pattern inherits them from its \code{code_context}.
