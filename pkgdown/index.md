@@ -1,29 +1,22 @@
----
-output:
-  github_document:
-    html_preview: false
----
 
 <!-- index.md is generated from index.Rmd. Please edit this file -->
-
-
 
 # pkgaudit
 
 [![R-CMD-check](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml)
 [![osv-scanner](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml)
 
-pkgaudit is a static analysis security testing (SAST) tool for R packages. It
-scans R source packages for files that can execute arbitrary commands during
-autoconf, builds, checks, and installations, and for lifecycle hooks whose
-bodies run automatically when a namespace is loaded, attached, unloaded, or
-detached. It also scans R source code for security-relevant patterns like
-`system()` calls.
+pkgaudit is a static analysis security testing (SAST) tool for R
+packages. It scans R source packages for files that can execute
+arbitrary commands during autoconf, builds, checks, and installations,
+and for lifecycle hooks whose bodies run automatically when a namespace
+is loaded, attached, unloaded, or detached. It also scans R source code
+for security-relevant patterns like `system()` calls.
 
 R packages are the primary mechanism for sharing R code. They are also
-[potential attack vectors](articles/r-package-security.html). pkgaudit helps you
-identify which parts of an untrusted package deserve your attention before you
-install and load it.
+[potential attack vectors](articles/r-package-security.html). pkgaudit
+helps you identify which parts of an untrusted package deserve your
+attention before you install and load it.
 
 ## Installation
 
@@ -33,10 +26,10 @@ You can install pkgaudit as follows:
 remotes::install_github("tylerjssmith/pkgaudit")
 ```
 
-pkgaudit detects security-relevant files and code using a SQLite database of
-rules shipped with the package at `inst/db/rules.db`. To verify that the
-installed copy of the database has not been modified since publication, check
-its SHA-256 hash.
+pkgaudit detects security-relevant files and code using a SQLite
+database of rules shipped with the package at `inst/db/rules.db`. To
+verify that the installed copy of the database has not been modified
+since publication, check its SHA-256 hash.
 
 ``` r
 digest::digest(
@@ -46,16 +39,16 @@ digest::digest(
 )
 ```
 
-Expected SHA-256: `2139a0ff1cffcd922c6e290efd329909e277c2bd28a2ca325143da3f1b7f4aa7`
+Expected SHA-256:
+`2139a0ff1cffcd922c6e290efd329909e277c2bd28a2ca325143da3f1b7f4aa7`
 
 ## Usage
 
-The [Getting Started with pkgaudit](articles/pkgaudit.html) and
-[How pkgaudit Works](articles/how-it-works.html) vignettes document usage. The
-[Rule Coverage](articles/rules.html) vignette documents the full rule set. The
-example below scans `untrustedpkg`, a small package shipped with pkgaudit for
-demonstration:
-
+The [Getting Started with pkgaudit](articles/pkgaudit.html) and [How
+pkgaudit Works](articles/how-it-works.html) vignettes document usage.
+The [Rule Coverage](articles/rules.html) vignette documents the full
+rule set. The example below scans `untrustedpkg`, a small package
+shipped with pkgaudit for demonstration:
 
 ``` r
 library(pkgaudit)
@@ -69,27 +62,28 @@ rules  <- load_rules()
 result <- audit_tarball(tarball, rules = rules)
 ```
 
-`summary.pkgaudit()` reports the file and code contexts found in untrustedpkg,
-and counts the patterns found in each of them by the R package lifecycle phase
-in which the code may execute (e.g., build, installation from source,
-installation from binary, load). These phases can overlap (e.g., builds test
-that a package can be installed from source and loaded), so a pattern may be
-counted under more than one phase.
+`summary.pkgaudit()` reports the file and code contexts found in
+untrustedpkg, and counts the patterns found in each of them by the R
+package lifecycle phase in which the code may execute (e.g., build,
+installation from source, installation from binary, load). These phases
+can overlap (e.g., builds test that a package can be installed from
+source and loaded), so a pattern may be counted under more than one
+phase.
 
-Below, we see that untrustedpkg includes a `configure` script, which is used
-for system-dependent configuration but can execute arbitrary shell commands. It
-also calls `system()` inside `.onLoad()`, which runs on `library(untrustedpkg)`,
-and `download.file()` inside an ordinary function, which runs only if a user
-calls the parent function and so belongs to no phase. Code that runs without
-being asked deserves closer attention.
-
+Below, we see that untrustedpkg includes a `configure` script, which is
+used for system-dependent configuration but can execute arbitrary shell
+commands. It also calls `system()` inside `.onLoad()`, which runs on
+`library(untrustedpkg)`, and `download.file()` inside an ordinary
+function, which runs only if a user calls the parent function and so
+belongs to no phase. Code that runs without being asked deserves closer
+attention.
 
 ``` r
 summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386
-#> Scanned:   2026-08-01 18:01 UTC with pkgaudit v0.3.0, rules v0.3.0
+#> Scanned:   2026-08-01 18:14 UTC with pkgaudit v0.3.0, rules v0.3.0
 #> 
 #> --- Contexts ----------------------------------------------------------------
 #> file_context
