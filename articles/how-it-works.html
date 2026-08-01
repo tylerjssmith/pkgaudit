@@ -159,9 +159,9 @@ rule, respectively.</li>
 <p>File and code context rules carry nine further fields, one per
 lifecycle phase – <code>at_autoconf</code>, <code>at_build</code>,
 <code>at_check</code>, <code>at_install_src</code>,
-<code>at_install_bin</code>, <code>on_load</code>,
-<code>on_attach</code>, <code>on_unload</code>, and
-<code>on_detach</code> – each <code>TRUE</code> or <code>FALSE</code>.
+<code>at_install_bin</code>, <code>at_load</code>,
+<code>at_attach</code>, <code>at_unload</code>, and
+<code>at_detach</code> – each <code>TRUE</code> or <code>FALSE</code>.
 Pattern rules do not declare them: a pattern runs when the code around
 it runs, so it takes its phases from the code context that contains
 it.</p>
@@ -207,7 +207,7 @@ names of the files found at the file path (recursively, if
 <code><a href="https://rdrr.io/r/base/list.files.html" class="external-link">base::list.files()</a></code>. For example, the following rule is used
 to find <code>configure</code> in the package root.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">show_rule</span>(<span class="st">"file_contexts"</span>, <span class="st">"file_configure.yaml"</span>)</span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>name<span class="sc">:</span> configure_file</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>name<span class="sc">:</span> configure</span>
 <span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>version<span class="sc">:</span> <span class="st">"0.3.0"</span></span>
 <span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>type<span class="sc">:</span> shell</span>
 <span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>message<span class="sc">:</span> <span class="er">&gt;</span><span class="sc">-</span></span>
@@ -220,10 +220,10 @@ to find <code>configure</code> in the package root.</p>
 <span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>at_check<span class="sc">:</span> <span class="cn">TRUE</span></span>
 <span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>at_install_src<span class="sc">:</span> <span class="cn">TRUE</span></span>
 <span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a>at_install_bin<span class="sc">:</span> <span class="cn">FALSE</span></span>
-<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a>on_load<span class="sc">:</span> <span class="cn">FALSE</span></span>
-<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a>on_attach<span class="sc">:</span> <span class="cn">FALSE</span></span>
-<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a>on_unload<span class="sc">:</span> <span class="cn">FALSE</span></span>
-<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a>on_detach<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a>at_load<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a>at_attach<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a>at_unload<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a>at_detach<span class="sc">:</span> <span class="cn">FALSE</span></span>
 <span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a>path<span class="sc">:</span> <span class="st">"."</span></span>
 <span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a>recursive<span class="sc">:</span> <span class="cn">FALSE</span></span>
 <span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a>pattern<span class="sc">:</span> <span class="st">'^configure$'</span></span></code></pre></div>
@@ -258,22 +258,22 @@ data frame contains the <code>path</code>, <code>recursive</code>, and
 <code>pattern</code> values:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">rules</span><span class="op">$</span><span class="va">file_contexts</span><span class="op">[</span></span>
-<span>  <span class="va">rules</span><span class="op">$</span><span class="va">file_contexts</span><span class="op">$</span><span class="va">name</span> <span class="op">==</span> <span class="st">"configure_file"</span>,</span>
+<span>  <span class="va">rules</span><span class="op">$</span><span class="va">file_contexts</span><span class="op">$</span><span class="va">name</span> <span class="op">==</span> <span class="st">"configure"</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"name"</span>, <span class="st">"path"</span>, <span class="st">"recursive"</span>, <span class="st">"pattern"</span><span class="op">)</span></span>
 <span><span class="op">]</span></span>
-<span><span class="co">#&gt;             name path recursive     pattern</span></span>
-<span><span class="co">#&gt; 5 configure_file    .     FALSE ^configure$</span></span></code></pre></div>
+<span><span class="co">#&gt;        name path recursive     pattern</span></span>
+<span><span class="co">#&gt; 4 configure    .     FALSE ^configure$</span></span></code></pre></div>
 <p>The rule’s phase fields are hoisted into <code>phases</code>, keyed
 by rule name. Here they say that <code>configure</code> runs during
 <code>R CMD build</code> and <code>R CMD check</code> as well as at
 installation from source, and never once the package is loaded:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">rules</span><span class="op">$</span><span class="va">phases</span><span class="op">[</span></span>
-<span>  <span class="va">rules</span><span class="op">$</span><span class="va">phases</span><span class="op">$</span><span class="va">context</span> <span class="op">==</span> <span class="st">"configure_file"</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"context"</span>, <span class="st">"at_build"</span>, <span class="st">"at_check"</span>, <span class="st">"at_install_src"</span>, <span class="st">"on_load"</span><span class="op">)</span></span>
+<span>  <span class="va">rules</span><span class="op">$</span><span class="va">phases</span><span class="op">$</span><span class="va">context</span> <span class="op">==</span> <span class="st">"configure"</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"context"</span>, <span class="st">"at_build"</span>, <span class="st">"at_check"</span>, <span class="st">"at_install_src"</span>, <span class="st">"at_load"</span><span class="op">)</span></span>
 <span><span class="op">]</span></span>
-<span><span class="co">#&gt;          context at_build at_check at_install_src on_load</span></span>
-<span><span class="co">#&gt; 7 configure_file     TRUE     TRUE           TRUE   FALSE</span></span></code></pre></div>
+<span><span class="co">#&gt;     context at_build at_check at_install_src at_load</span></span>
+<span><span class="co">#&gt; 7 configure     TRUE     TRUE           TRUE   FALSE</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="code-context-rules">Code Context Rules<a class="anchor" aria-label="anchor" href="#code-context-rules"></a>
@@ -338,7 +338,7 @@ in (<code>R</code>).</li>
 context.</li>
 </ul>
 <div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">show_rule</span>(<span class="st">"code_contexts"</span>, <span class="st">"code_onload.yaml"</span>)</span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>name<span class="sc">:</span> onload_code</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>name<span class="sc">:</span> onLoad_base</span>
 <span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>version<span class="sc">:</span> <span class="st">"0.3.0"</span></span>
 <span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>type<span class="sc">:</span> R</span>
 <span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>message<span class="sc">:</span> <span class="er">&gt;</span><span class="sc">-</span></span>
@@ -351,10 +351,10 @@ context.</li>
 <span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a>at_check<span class="sc">:</span> <span class="cn">TRUE</span></span>
 <span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a>at_install_src<span class="sc">:</span> <span class="cn">TRUE</span></span>
 <span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a>at_install_bin<span class="sc">:</span> <span class="cn">FALSE</span></span>
-<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a>on_load<span class="sc">:</span> <span class="cn">TRUE</span></span>
-<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a>on_attach<span class="sc">:</span> <span class="cn">FALSE</span></span>
-<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a>on_unload<span class="sc">:</span> <span class="cn">FALSE</span></span>
-<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a>on_detach<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a>at_load<span class="sc">:</span> <span class="cn">TRUE</span></span>
+<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a>at_attach<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a>at_unload<span class="sc">:</span> <span class="cn">FALSE</span></span>
+<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a>at_detach<span class="sc">:</span> <span class="cn">FALSE</span></span>
 <span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a>xpath<span class="sc">:</span> <span class="er">&gt;</span><span class="sc">-</span></span>
 <span id="cb10-20"><a href="#cb10-20" tabindex="-1"></a>  (<span class="sc">/</span><span class="er">/</span>expr <span class="sc">|</span> <span class="er">//</span>expr_or_assign_or_help)[</span>
 <span id="cb10-21"><a href="#cb10-21" tabindex="-1"></a>    (</span>
@@ -389,7 +389,7 @@ begins.</p>
 assigned to the name of the hook. The name of the hook merely appearing
 somewhere is not a match. Below are some simple examples:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">xpath</span>   <span class="op">&lt;-</span> <span class="va">rules</span><span class="op">$</span><span class="va">code_contexts</span><span class="op">$</span><span class="va">xpath</span><span class="op">[</span><span class="va">rules</span><span class="op">$</span><span class="va">code_contexts</span><span class="op">$</span><span class="va">name</span> <span class="op">==</span> <span class="st">"onload_code"</span><span class="op">]</span></span>
+<code class="sourceCode R"><span><span class="va">xpath</span>   <span class="op">&lt;-</span> <span class="va">rules</span><span class="op">$</span><span class="va">code_contexts</span><span class="op">$</span><span class="va">xpath</span><span class="op">[</span><span class="va">rules</span><span class="op">$</span><span class="va">code_contexts</span><span class="op">$</span><span class="va">name</span> <span class="op">==</span> <span class="st">"onLoad_base"</span><span class="op">]</span></span>
 <span><span class="va">matches</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">code</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu">xml2</span><span class="fu">::</span><span class="fu"><a href="http://xml2.r-lib.org/reference/xml_find_all.html" class="external-link">xml_find_all</a></span><span class="op">(</span><span class="fu">as_xml</span><span class="op">(</span><span class="va">code</span><span class="op">)</span>, <span class="va">xpath</span><span class="op">)</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0</span></span>
 <span></span>
 <span><span class="fu">matches</span><span class="op">(</span><span class="st">".onLoad &lt;- function(libname, pkgname) NULL"</span><span class="op">)</span>    <span class="co"># assignment</span></span>
@@ -452,23 +452,22 @@ is:</p>
 <p>The XPath definition of the pattern rule matching
 <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> and similar function calls is:</p>
 <div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">show_rule</span>(<span class="st">"patterns"</span>, <span class="st">"pattern_system.yaml"</span>)</span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>name<span class="sc">:</span> system_pattern</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>name<span class="sc">:</span> system</span>
 <span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>version<span class="sc">:</span> <span class="st">"0.3.0"</span></span>
 <span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>type<span class="sc">:</span> R</span>
 <span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>attck<span class="sc">:</span></span>
 <span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a>  <span class="sc">-</span> T1059<span class="fl">.003</span></span>
 <span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>  <span class="sc">-</span> T1059<span class="fl">.004</span></span>
-<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a>  <span class="sc">-</span> T1195<span class="fl">.002</span></span>
-<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a>message<span class="sc">:</span> <span class="er">&gt;</span><span class="sc">-</span></span>
-<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a>  <span class="fu">system</span>(), <span class="fu">system2</span>(), <span class="fu">shell</span>() (on Windows), and <span class="fu">pipe</span>() execute arbitrary shell</span>
-<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a>  commands.</span>
-<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a>xpath<span class="sc">:</span> <span class="er">&gt;</span><span class="sc">-</span></span>
-<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a>  <span class="er">//</span>SYMBOL_FUNCTION_CALL[</span>
-<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a>    (<span class="fu">text</span>() <span class="ot">=</span> <span class="st">'system'</span> or <span class="fu">text</span>() <span class="ot">=</span> <span class="st">'system2'</span> or <span class="fu">text</span>() <span class="ot">=</span> <span class="st">'shell'</span></span>
-<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a>      or <span class="fu">text</span>() <span class="ot">=</span> <span class="st">'pipe'</span>)</span>
-<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a>    and <span class="fu">not</span>(preceding<span class="sc">-</span>sibling<span class="sc">::</span>OP<span class="sc">-</span>DOLLAR)</span>
-<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a>    and <span class="fu">not</span>(preceding<span class="sc">-</span>sibling<span class="sc">::</span>OP<span class="sc">-</span>AT)</span>
-<span id="cb13-18"><a href="#cb13-18" tabindex="-1"></a>  ]</span></code></pre></div>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a>message<span class="sc">:</span> <span class="er">&gt;</span><span class="sc">-</span></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a>  <span class="fu">system</span>(), <span class="fu">system2</span>(), <span class="fu">shell</span>() (on Windows), and <span class="fu">pipe</span>() execute arbitrary shell</span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a>  commands.</span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a>xpath<span class="sc">:</span> <span class="er">&gt;</span><span class="sc">-</span></span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a>  <span class="er">//</span>SYMBOL_FUNCTION_CALL[</span>
+<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a>    (<span class="fu">text</span>() <span class="ot">=</span> <span class="st">'system'</span> or <span class="fu">text</span>() <span class="ot">=</span> <span class="st">'system2'</span> or <span class="fu">text</span>() <span class="ot">=</span> <span class="st">'shell'</span></span>
+<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a>      or <span class="fu">text</span>() <span class="ot">=</span> <span class="st">'pipe'</span>)</span>
+<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a>    and <span class="fu">not</span>(preceding<span class="sc">-</span>sibling<span class="sc">::</span>OP<span class="sc">-</span>DOLLAR)</span>
+<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a>    and <span class="fu">not</span>(preceding<span class="sc">-</span>sibling<span class="sc">::</span>OP<span class="sc">-</span>AT)</span>
+<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a>  ]</span></code></pre></div>
 <p>There are two details in this XPath worth noting. The first is
 <code>SYMBOL_FUNCTION_CALL</code>. R’s parser uses that label only where
 a name is actually a function call; a mention of the same name anywhere
@@ -531,7 +530,7 @@ condition is included as future-proofing.</p>
 <span id="cb16-17"><a href="#cb16-17" tabindex="-1"></a><span class="er">&lt;/</span>exprlist<span class="sc">&gt;</span></span></code></pre></div>
 <p>The following shows examples of what does and does not match:</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">xpath_sys</span> <span class="op">&lt;-</span> <span class="va">rules</span><span class="op">$</span><span class="va">patterns</span><span class="op">$</span><span class="va">xpath</span><span class="op">[</span><span class="va">rules</span><span class="op">$</span><span class="va">patterns</span><span class="op">$</span><span class="va">name</span> <span class="op">==</span> <span class="st">"system_pattern"</span><span class="op">]</span></span>
+<code class="sourceCode R"><span><span class="va">xpath_sys</span> <span class="op">&lt;-</span> <span class="va">rules</span><span class="op">$</span><span class="va">patterns</span><span class="op">$</span><span class="va">xpath</span><span class="op">[</span><span class="va">rules</span><span class="op">$</span><span class="va">patterns</span><span class="op">$</span><span class="va">name</span> <span class="op">==</span> <span class="st">"system"</span><span class="op">]</span></span>
 <span><span class="va">hits</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">code</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu">xml2</span><span class="fu">::</span><span class="fu"><a href="http://xml2.r-lib.org/reference/xml_find_all.html" class="external-link">xml_find_all</a></span><span class="op">(</span><span class="fu">as_xml</span><span class="op">(</span><span class="va">code</span><span class="op">)</span>, <span class="va">xpath_sys</span><span class="op">)</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0</span></span>
 <span></span>
 <span><span class="fu">hits</span><span class="op">(</span><span class="st">'system("id")'</span><span class="op">)</span></span>

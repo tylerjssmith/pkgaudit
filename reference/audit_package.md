@@ -74,8 +74,8 @@ returned data frame are relative to the package root.
 
 Each findings data frame also carries one logical column per package
 lifecycle phase – `at_autoconf`, `at_build`, `at_check`,
-`at_install_src`, `at_install_bin`, `on_load`, `on_attach`, `on_unload`,
-and `on_detach` – which is `TRUE` when that finding's code runs during
+`at_install_src`, `at_install_bin`, `at_load`, `at_attach`, `at_unload`,
+and `at_detach` – which is `TRUE` when that finding's code runs during
 the phase, so findings can be filtered by when they execute. A file or
 code context takes its phases from the rule that matched; a pattern
 inherits them from its `code_context`. A pattern in an ordinary function

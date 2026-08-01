@@ -115,19 +115,19 @@ input</td>
 <td>a prebuilt binary package is installed</td>
 </tr>
 <tr class="even">
-<td><code>on_load</code></td>
+<td><code>at_load</code></td>
 <td>the namespace is loaded</td>
 </tr>
 <tr class="odd">
-<td><code>on_attach</code></td>
+<td><code>at_attach</code></td>
 <td>the package is attached to the search path</td>
 </tr>
 <tr class="even">
-<td><code>on_unload</code></td>
+<td><code>at_unload</code></td>
 <td>the namespace is unloaded</td>
 </tr>
 <tr class="odd">
-<td><code>on_detach</code></td>
+<td><code>at_detach</code></td>
 <td>the package is detached from the search path</td>
 </tr>
 </tbody>
@@ -159,7 +159,7 @@ install-time.</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_cleanup.yaml" class="external-link">cleanup_file</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_cleanup.yaml" class="external-link">cleanup</a></td>
 <td><code>cleanup</code></td>
 <td><code>at_build</code></td>
 <td>cleanup is a shell script run on Unix-like systems at the end of R
@@ -167,7 +167,7 @@ CMD build, and during installation from source only under R CMD INSTALL
 –clean or –preclean. It can execute arbitrary shell commands.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_cleanup_ucrt.yaml" class="external-link">cleanup_ucrt_file</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_cleanup_ucrt.yaml" class="external-link">cleanup_ucrt</a></td>
 <td><code>cleanup.ucrt</code></td>
 <td><code>at_build</code></td>
 <td>cleanup.ucrt is a shell script run on the Windows UCRT toolchain at
@@ -176,7 +176,7 @@ CMD INSTALL –clean or –preclean; it takes precedence over cleanup.win
 when present. It can execute arbitrary shell commands.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_cleanup_win.yaml" class="external-link">cleanup_win_file</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_cleanup_win.yaml" class="external-link">cleanup_win</a></td>
 <td><code>cleanup.win</code></td>
 <td><code>at_build</code></td>
 <td>cleanup.win is a shell script run on Windows at the end of R CMD
@@ -184,15 +184,7 @@ build, and during installation from source only under R CMD INSTALL
 –clean or –preclean. It can execute arbitrary shell commands.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure_ac.yaml" class="external-link">configure_ac_file</a></td>
-<td><code>configure.ac</code></td>
-<td><code>at_autoconf</code></td>
-<td>configure.ac is an Autoconf input file that does not itself execute;
-it is processed by Autoconf to generate the configure script, which
-executes shell commands when a package is installed from source.</td>
-</tr>
-<tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure.yaml" class="external-link">configure_file</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure.yaml" class="external-link">configure</a></td>
 <td><code>configure</code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -203,8 +195,16 @@ when packages are installed from source, including the installs
 performed by R CMD check and by R CMD build when a package has
 vignettes. It can execute arbitrary shell commands.</td>
 </tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure_ac.yaml" class="external-link">configure_ac</a></td>
+<td><code>configure.ac</code></td>
+<td><code>at_autoconf</code></td>
+<td>configure.ac is an Autoconf input file that does not itself execute;
+it is processed by Autoconf to generate the configure script, which
+executes shell commands when a package is installed from source.</td>
+</tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure_in.yaml" class="external-link">configure_in_file</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure_in.yaml" class="external-link">configure_in</a></td>
 <td><code>configure.in</code></td>
 <td><code>at_autoconf</code></td>
 <td>configure.in is a legacy-named Autoconf input file that does not
@@ -213,7 +213,7 @@ script, which executes shell commands when a package is installed from
 source.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure_ucrt.yaml" class="external-link">configure_ucrt_file</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure_ucrt.yaml" class="external-link">configure_ucrt</a></td>
 <td><code>configure.ucrt</code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -226,7 +226,7 @@ build when a package has vignettes; it takes precedence over
 configure.win when present.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure_win.yaml" class="external-link">configure_win_file</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure_win.yaml" class="external-link">configure_win</a></td>
 <td><code>configure.win</code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -238,7 +238,7 @@ the installs performed by R CMD check and by R CMD build when a package
 has vignettes.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_install_libs_R.yaml" class="external-link">src_install_libs_R_file</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_install_libs_R.yaml" class="external-link">src_install_libs_R</a></td>
 <td><code>src/install.libs.R</code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -250,7 +250,7 @@ including the installs performed by R CMD check and by R CMD build when
 a package has vignettes. It can run arbitrary R code.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makefile.yaml" class="external-link">src_makefile_file</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makefile.yaml" class="external-link">src_makefile</a></td>
 <td><code>src/Makefile</code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -263,7 +263,7 @@ CMD build runs its clean target. It is read by make and its recipes
 execute arbitrary shell commands.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makefile_ucrt.yaml" class="external-link">src_makefile_ucrt_file</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makefile_ucrt.yaml" class="external-link">src_makefile_ucrt</a></td>
 <td><code>src/Makefile.ucrt</code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -277,7 +277,7 @@ It is read by make and its recipes execute arbitrary shell
 commands.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makefile_win.yaml" class="external-link">src_makefile_win_file</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makefile_win.yaml" class="external-link">src_makefile_win</a></td>
 <td><code>src/Makefile.win</code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -290,7 +290,7 @@ also use it, and R CMD build runs its clean target. It is read by make
 and its recipes execute arbitrary shell commands.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makevars.yaml" class="external-link">src_makevars_file</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makevars.yaml" class="external-link">src_makevars</a></td>
 <td><code>src/Makevars</code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -303,7 +303,7 @@ src/. It is read by make and can execute shell via make constructs such
 as $(shell …).</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makevars_in.yaml" class="external-link">src_makevars_in_file</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makevars_in.yaml" class="external-link">src_makevars_in</a></td>
 <td><code>src/Makevars.in</code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -316,7 +316,7 @@ installed from source, including the installs performed by R CMD check
 and by R CMD build.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makevars_ucrt.yaml" class="external-link">src_makevars_ucrt_file</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makevars_ucrt.yaml" class="external-link">src_makevars_ucrt</a></td>
 <td><code>src/Makevars.ucrt</code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -330,7 +330,7 @@ cleaning src/. It is read by make and can execute shell via make
 constructs such as $(shell …).</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makevars_win.yaml" class="external-link">src_makevars_win_file</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makevars_win.yaml" class="external-link">src_makevars_win</a></td>
 <td><code>src/Makevars.win</code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -365,10 +365,10 @@ a namespace is loaded, attached, unloaded, or detached.</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_lastlib.yaml" class="external-link">lastlib_code</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_lastlib.yaml" class="external-link">LastLib_base</a></td>
 <td><code>.Last.lib()</code></td>
 <td>
-<code>at_check</code>, <code>on_detach</code>
+<code>at_check</code>, <code>at_detach</code>
 </td>
 <td>.Last.lib() executes arbitrary code when a package is detached from
 the R search path, e.g., by calling detach(); it does not run on
@@ -379,11 +379,11 @@ the package while checking that it can be unloaded cleanly, so
 .Last.lib() runs during checking without any call from a user.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_onattach.yaml" class="external-link">onattach_code</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_onattach.yaml" class="external-link">onAttach_base</a></td>
 <td><code>.onAttach()</code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
-<code>at_install_src</code>, <code>on_attach</code>
+<code>at_install_src</code>, <code>at_attach</code>
 </td>
 <td>.onAttach() executes arbitrary code when a package is attached to
 the R search path by library() or require(); attach() does not trigger
@@ -392,10 +392,10 @@ testing that it loads, so .onAttach() runs during those phases without
 any call from a user.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_ondetach.yaml" class="external-link">ondetach_code</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_ondetach.yaml" class="external-link">onDetach_base</a></td>
 <td><code>.onDetach()</code></td>
 <td>
-<code>at_check</code>, <code>on_detach</code>
+<code>at_check</code>, <code>at_detach</code>
 </td>
 <td>.onDetach() executes arbitrary code when a package is detached from
 the R search path, e.g., by calling detach(); it takes precedence over
@@ -404,11 +404,11 @@ while checking that it can be unloaded cleanly, so .onDetach() runs
 during checking without any call from a user.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_onload.yaml" class="external-link">onload_code</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_onload.yaml" class="external-link">onLoad_base</a></td>
 <td><code>.onLoad()</code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
-<code>at_install_src</code>, <code>on_load</code>
+<code>at_install_src</code>, <code>at_load</code>
 </td>
 <td>.onLoad() executes arbitrary code when a package namespace is
 loaded, e.g., by calling library(), require(), or loadNamespace(), or by
@@ -417,11 +417,23 @@ check all load the package, so .onLoad() runs during those phases
 without any call from a user.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_onload_rlang.yaml" class="external-link">onload_rlang_code</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_onunload.yaml" class="external-link">onUnload_base</a></td>
+<td><code>.onUnload()</code></td>
+<td>
+<code>at_check</code>, <code>at_unload</code>
+</td>
+<td>.onUnload() executes arbitrary code when a package namespace is
+unloaded, e.g., by calling unloadNamespace() or detach(unload=TRUE). R
+CMD check unloads the namespace while checking that it can be unloaded
+cleanly, so .onUnload() runs during checking without any call from a
+user.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_onload_rlang.yaml" class="external-link">on_load_rlang</a></td>
 <td><code><a href="https://rlang.r-lib.org/reference/on_load.html" class="external-link">rlang::on_load()</a></code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
-<code>at_install_src</code>, <code>on_load</code>
+<code>at_install_src</code>, <code>at_load</code>
 </td>
 <td>rlang::on_load() registers arbitrary code to execute when a package
 namespace is loaded, e.g., by calling library(), require(), or
@@ -429,18 +441,6 @@ loadNamespace(), or by accessing the namespace with ::. R CMD INSTALL, R
 CMD build, and R CMD check all load the package, so the registered code
 runs during those phases without any call from a user. on_load()
 requires .onLoad() to contain rlang::run_on_load().</td>
-</tr>
-<tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_onunload.yaml" class="external-link">onunload_code</a></td>
-<td><code>.onUnload()</code></td>
-<td>
-<code>at_check</code>, <code>on_unload</code>
-</td>
-<td>.onUnload() executes arbitrary code when a package namespace is
-unloaded, e.g., by calling unloadNamespace() or detach(unload=TRUE). R
-CMD check unloads the namespace while checking that it can be unloaded
-cleanly, so .onUnload() runs during checking without any call from a
-user.</td>
 </tr>
 </tbody>
 </table>
@@ -510,7 +510,7 @@ from the code context it sits in, listed in the two tables above.</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_curl.yaml" class="external-link">curl_pattern</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_curl.yaml" class="external-link">curl</a></td>
 <td>
 <code>curl()</code>, <code>curl_fetch_memory()</code>,
 <code>curl_fetch_disk()</code>, <code>curl_fetch_stream()</code>,
@@ -523,7 +523,7 @@ connection to a remote host. A request may be used to exfiltrate
 credentials or other data, or to fetch a remote payload.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_decoding.yaml" class="external-link">decoding_pattern</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_decoding.yaml" class="external-link">decoding</a></td>
 <td>
 <code>base64decode()</code>, <code>base64_dec()</code>,
 <code>base64_decode()</code>, <code><a href="https://rdrr.io/r/base/memCompress.html" class="external-link">memDecompress()</a></code>,
@@ -533,7 +533,7 @@ credentials or other data, or to fetch a remote payload.</td>
 (e.g., as base64) to evade static detection and decoded at runtime.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_deserialization.yaml" class="external-link">deserialization_pattern</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_deserialization.yaml" class="external-link">deserialization</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS()</a></code>, <code><a href="https://rdrr.io/r/base/load.html" class="external-link">load()</a></code>,
 <code><a href="https://rdrr.io/r/base/serialize.html" class="external-link">unserialize()</a></code>, <code><a href="https://rdrr.io/r/base/dput.html" class="external-link">dget()</a></code>
@@ -543,7 +543,7 @@ or code, which can enable arbitrary code execution (CVE-2024-27322 for
 RDS).</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_download_file.yaml" class="external-link">download_file_pattern</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_download_file.yaml" class="external-link">download_file</a></td>
 <td>
 <code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file()</a></code>, <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">url()</a></code>
 </td>
@@ -552,7 +552,7 @@ resource. This can stage a payload for execution via source() or
 system() in a two-stage attack.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_dynload.yaml" class="external-link">dynload_pattern</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_dynload.yaml" class="external-link">dynload</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/dynload.html" class="external-link">dyn.load()</a></code>, <code><a href="https://rdrr.io/r/base/library.dynam.html" class="external-link">library.dynam()</a></code>
 </td>
@@ -560,7 +560,7 @@ system() in a two-stage attack.</td>
 object, which executes outside the visible R source.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_eval_parse.yaml" class="external-link">eval_parse_pattern</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_eval_parse.yaml" class="external-link">eval_parse</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/eval.html" class="external-link">eval()</a></code>/<code><a href="https://rdrr.io/r/base/eval.html" class="external-link">evalq()</a></code> over <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">parse()</a></code>,
 <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">str2lang()</a></code>, or <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">str2expression()</a></code>, when combined
@@ -571,7 +571,18 @@ decoding or decompression, a classic shape for executing an obfuscated
 payload.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_httr2.yaml" class="external-link">httr2_pattern</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_httr.yaml" class="external-link">httr</a></td>
+<td>
+<code>GET()</code>, <code>POST()</code>, <code>PUT()</code>,
+<code>PATCH()</code>, <code>DELETE()</code>, <code>HEAD()</code>,
+<code>VERB()</code>
+</td>
+<td>An httr HTTP call sends an outbound request. A request may be used
+to exfiltrate credentials or other data, or to fetch a remote
+payload.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_httr2.yaml" class="external-link">httr2</a></td>
 <td>
 <code>req_perform()</code>, <code>req_perform_iterative()</code>,
 <code>req_perform_parallel()</code>,
@@ -583,19 +594,8 @@ payload.</td>
 <td>An httr2 HTTP call sends an outbound request. A request may be used
 to exfiltrate credentials or other data.</td>
 </tr>
-<tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_httr.yaml" class="external-link">httr_pattern</a></td>
-<td>
-<code>GET()</code>, <code>POST()</code>, <code>PUT()</code>,
-<code>PATCH()</code>, <code>DELETE()</code>, <code>HEAD()</code>,
-<code>VERB()</code>
-</td>
-<td>An httr HTTP call sends an outbound request. A request may be used
-to exfiltrate credentials or other data, or to fetch a remote
-payload.</td>
-</tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_indirection.yaml" class="external-link">indirection_pattern</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_indirection.yaml" class="external-link">indirection</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call()</a></code>, <code><a href="https://rdrr.io/r/base/match.fun.html" class="external-link">match.fun()</a></code>,
 <code><a href="https://rdrr.io/r/utils/getFromNamespace.html" class="external-link">getFromNamespace()</a></code>, <code><a href="https://rdrr.io/r/base/ns-reflect.html" class="external-link">getExportedValue()</a></code>,
@@ -607,7 +607,7 @@ and the namespace accessors additionally reach functions a package does
 not export.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_install.yaml" class="external-link">install_pattern</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_install.yaml" class="external-link">install</a></td>
 <td>
 <code><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages()</a></code>, <code>install_github()</code>,
 <code>install_gitlab()</code>, <code>install_bitbucket()</code>,
@@ -624,7 +624,7 @@ remote source. A non-default source can introduce attacker-controlled
 code.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_options_repos.yaml" class="external-link">options_repos_pattern</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_options_repos.yaml" class="external-link">options_repos</a></td>
 <td><code>options(repos = )</code></td>
 <td>options(repos = …) replaces the CRAN mirror for the R session.
 Subsequent install.packages() calls will fetch packages from the
@@ -632,7 +632,7 @@ configured repository. If set to an attacker-controlled server, this
 poisons the installation source.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_rcurl.yaml" class="external-link">rcurl_pattern</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_rcurl.yaml" class="external-link">rcurl</a></td>
 <td>
 <code>getURL()</code>, <code>getURI()</code>,
 <code>getForm()</code>, <code>postForm()</code>,
@@ -643,7 +643,7 @@ be used to exfiltrate credentials or other data, or to fetch a remote
 payload.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_socket.yaml" class="external-link">socket_pattern</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_socket.yaml" class="external-link">socket</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">socketConnection()</a></code>, <code><a href="https://rdrr.io/r/utils/make.socket.html" class="external-link">make.socket()</a></code>,
 <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">serverSocket()</a></code>, <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">socketAccept()</a></code>
@@ -653,38 +653,54 @@ exfiltrate data or receive a remote payload outside the usual HTTP
 clients.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_source.yaml" class="external-link">source_pattern</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_source.yaml" class="external-link">source</a></td>
 <td><code><a href="https://rdrr.io/r/base/source.html" class="external-link">source()</a></code></td>
 <td>source() can fetch and execute local and remote R scripts.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system_other.yaml" class="external-link">system_other_pattern</a></td>
-<td>
-<code><a href="https://callr.r-lib.org/reference/r.html" class="external-link">callr::r()</a></code>, <code>r_bg()</code>, <code>r_safe()</code>,
-<code>r_copycat()</code>, <code>r_vanilla()</code>, <code>rcmd()</code>,
-<code>rcmd_bg()</code>, <code>rcmd_safe()</code>,
-<code>rcmd_copycat()</code>, <code>rscript()</code>,
-<code><a href="http://processx.r-lib.org/reference/run.html" class="external-link">processx::run()</a></code>, <code><a href="http://processx.r-lib.org/reference/pipeline.html" class="external-link">processx::pipeline()</a></code>,
-<code>exec_wait()</code>, <code>exec_background()</code>,
-<code>exec_internal()</code>, <code>eval_safe()</code>,
-<code>eval_fork()</code>, <code>r_background()</code>,
-<code>r_internal()</code>, <code>r_wait()</code>,
-<code>process$new()</code>, <code>r_session$new()</code>,
-<code>r_process$new()</code>, <code>rcmd_process$new()</code>,
-<code>rscript_process$new()</code>
-</td>
-<td>These callr, processx, and sys functions run an external process,
-which may be used to execute arbitrary shell commands or a second R
-session outside the visible R source.</td>
-</tr>
-<tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system.yaml" class="external-link">system_pattern</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system.yaml" class="external-link">system</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code>, <code><a href="https://rdrr.io/r/base/system2.html" class="external-link">system2()</a></code>, <code>shell()</code>,
 <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">pipe()</a></code>
 </td>
 <td>system(), system2(), shell() (on Windows), and pipe() execute
 arbitrary shell commands.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system_callr.yaml" class="external-link">system_callr</a></td>
+<td>
+<code><a href="https://callr.r-lib.org/reference/r.html" class="external-link">callr::r()</a></code>, <code>r_bg()</code>, <code>r_safe()</code>,
+<code>r_copycat()</code>, <code>r_vanilla()</code>,
+<code><a href="https://callr.r-lib.org/reference/rcmd.html" class="external-link">callr::rcmd()</a></code>, <code>rcmd_bg()</code>,
+<code>rcmd_safe()</code>, <code>rcmd_copycat()</code>,
+<code>rscript()</code>, <code>r_session$new()</code>,
+<code>r_process$new()</code>, <code>rcmd_process$new()</code>,
+<code>rscript_process$new()</code>
+</td>
+<td>These callr functions start a separate R session or run an R CMD
+command, which may be used to execute arbitrary R code or shell commands
+outside the visible R source.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system_processx.yaml" class="external-link">system_processx</a></td>
+<td>
+<code><a href="http://processx.r-lib.org/reference/run.html" class="external-link">processx::run()</a></code>, <code><a href="http://processx.r-lib.org/reference/pipeline.html" class="external-link">processx::pipeline()</a></code>,
+<code>process$new()</code>
+</td>
+<td>These processx functions run an external process, which may be used
+to execute arbitrary shell commands outside the visible R source.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system_sys.yaml" class="external-link">system_sys</a></td>
+<td>
+<code>exec_wait()</code>, <code>exec_background()</code>,
+<code>exec_internal()</code>, <code>eval_safe()</code>,
+<code>eval_fork()</code>, <code>r_background()</code>,
+<code>r_internal()</code>, <code>r_wait()</code>
+</td>
+<td>These sys functions run an external process or fork the R session,
+which may be used to execute arbitrary shell commands or a second R
+session outside the visible R source.</td>
 </tr>
 </tbody>
 </table>

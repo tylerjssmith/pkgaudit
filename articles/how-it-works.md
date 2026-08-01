@@ -93,7 +93,7 @@ three categories, the YAML files have the following fields:
 
 File and code context rules carry nine further fields, one per lifecycle
 phase – `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
-`at_install_bin`, `on_load`, `on_attach`, `on_unload`, and `on_detach` –
+`at_install_bin`, `at_load`, `at_attach`, `at_unload`, and `at_detach` –
 each `TRUE` or `FALSE`. Pattern rules do not declare them: a pattern
 runs when the code around it runs, so it takes its phases from the code
 context that contains it.
@@ -140,7 +140,7 @@ root.
 
 ``` r
 show_rule("file_contexts", "file_configure.yaml")
-name: configure_file
+name: configure
 version: "0.3.0"
 type: shell
 message: >-
@@ -153,10 +153,10 @@ at_build: TRUE
 at_check: TRUE
 at_install_src: TRUE
 at_install_bin: FALSE
-on_load: FALSE
-on_attach: FALSE
-on_unload: FALSE
-on_detach: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
 path: "."
 recursive: FALSE
 pattern: '^configure$'
@@ -202,11 +202,11 @@ returns a list of four data frames: one per rule category, plus
 ``` r
 
 rules$file_contexts[
-  rules$file_contexts$name == "configure_file",
+  rules$file_contexts$name == "configure",
   c("name", "path", "recursive", "pattern")
 ]
-#>             name path recursive     pattern
-#> 5 configure_file    .     FALSE ^configure$
+#>        name path recursive     pattern
+#> 4 configure    .     FALSE ^configure$
 ```
 
 The rule’s phase fields are hoisted into `phases`, keyed by rule name.
@@ -217,11 +217,11 @@ package is loaded:
 ``` r
 
 rules$phases[
-  rules$phases$context == "configure_file",
-  c("context", "at_build", "at_check", "at_install_src", "on_load")
+  rules$phases$context == "configure",
+  c("context", "at_build", "at_check", "at_install_src", "at_load")
 ]
-#>          context at_build at_check at_install_src on_load
-#> 7 configure_file     TRUE     TRUE           TRUE   FALSE
+#>     context at_build at_check at_install_src at_load
+#> 7 configure     TRUE     TRUE           TRUE   FALSE
 ```
 
 ### Code Context Rules
@@ -292,7 +292,7 @@ context rule has two additional fields:
 
 ``` r
 show_rule("code_contexts", "code_onload.yaml")
-name: onload_code
+name: onLoad_base
 version: "0.3.0"
 type: R
 message: >-
@@ -305,10 +305,10 @@ at_build: TRUE
 at_check: TRUE
 at_install_src: TRUE
 at_install_bin: FALSE
-on_load: TRUE
-on_attach: FALSE
-on_unload: FALSE
-on_detach: FALSE
+at_load: TRUE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
 xpath: >-
   (//expr | //expr_or_assign_or_help)[
     (
@@ -348,7 +348,7 @@ is not a match. Below are some simple examples:
 
 ``` r
 
-xpath   <- rules$code_contexts$xpath[rules$code_contexts$name == "onload_code"]
+xpath   <- rules$code_contexts$xpath[rules$code_contexts$name == "onLoad_base"]
 matches <- function(code) length(xml2::xml_find_all(as_xml(code), xpath)) > 0
 
 matches(".onLoad <- function(libname, pkgname) NULL")    # assignment
@@ -417,13 +417,12 @@ calls is:
 
 ``` r
 show_rule("patterns", "pattern_system.yaml")
-name: system_pattern
+name: system
 version: "0.3.0"
 type: R
 attck:
   - T1059.003
   - T1059.004
-  - T1195.002
 message: >-
   system(), system2(), shell() (on Windows), and pipe() execute arbitrary shell
   commands.
@@ -511,7 +510,7 @@ The following shows examples of what does and does not match:
 
 ``` r
 
-xpath_sys <- rules$patterns$xpath[rules$patterns$name == "system_pattern"]
+xpath_sys <- rules$patterns$xpath[rules$patterns$name == "system"]
 hits <- function(code) length(xml2::xml_find_all(as_xml(code), xpath_sys)) > 0
 
 hits('system("id")')

@@ -67,19 +67,19 @@
 <p>You can install pkgaudit as follows:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"tylerjssmith/pkgaudit"</span><span class="op">)</span></span></code></pre></div>
-<p>pkgaudit detects security-relevant files and code using a SQLite database of rules shipped with the package at <code>inst/db/rules.db</code>. The <a href="articles/rules.html">Rule Coverage</a> vignette documents the full rule set. To verify that your installed copy of the database has not been modified since publication, check its SHA-256 hash against the value published here.</p>
+<p>pkgaudit detects security-relevant files and code using a SQLite database of rules shipped with the package at <code>inst/db/rules.db</code>. To verify that the installed copy of the database has not been modified since publication, check its SHA-256 hash.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">digest</span><span class="fu">::</span><span class="fu"><a href="https://eddelbuettel.github.io/digest/man/digest.html" class="external-link">digest</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"db"</span>, <span class="st">"rules.db"</span>, package <span class="op">=</span> <span class="st">"pkgaudit"</span><span class="op">)</span>,</span>
 <span>  algo <span class="op">=</span> <span class="st">"sha256"</span>,</span>
 <span>  file <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>Expected SHA-256: <code>f37e40d5d1b248c44ab071ca19914f4e45be101eb66353af1b2bec9fb0350850</code></p>
+<p>Expected SHA-256: <code>2139a0ff1cffcd922c6e290efd329909e277c2bd28a2ca325143da3f1b7f4aa7</code></p>
 </div>
 <div class="section level2">
 <h2 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
 </h2>
-<p>The <a href="articles/pkgaudit.html">Getting Started with pkgaudit</a> and <a href="articles/how-it-works.html">How pkgaudit Works</a> vignettes document usage. The example below scans <code>untrustedpkg</code>, a small package shipped with pkgaudit for demonstration:</p>
+<p>The <a href="articles/pkgaudit.html">Getting Started with pkgaudit</a> and <a href="articles/how-it-works.html">How pkgaudit Works</a> vignettes document usage. The <a href="articles/rules.html">Rule Coverage</a> vignette documents the full rule set. The example below scans <code>untrustedpkg</code>, a small package shipped with pkgaudit for demonstration:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/tylerjssmith/pkgaudit" class="external-link">pkgaudit</a></span><span class="op">)</span></span>
 <span></span>
@@ -90,46 +90,32 @@
 <span></span>
 <span><span class="va">rules</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/load_rules.html">load_rules</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/audit_tarball.html">audit_tarball</a></span><span class="op">(</span><span class="va">tarball</span>, rules <span class="op">=</span> <span class="va">rules</span><span class="op">)</span></span></code></pre></div>
-<p><code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> reports the file contexts, code contexts, and patterns found, and counts them by the R package lifecycle phase in which the file or code may execute (e.g., build, check, source installation, binary installation, load). These phases can overlap (for example, builds and checks test that a package can be installed and loaded), so the same findings may be associated with more than one phase below.</p>
-<p>Below, we see that untrustedpkg includes a <code>configure</code> script, which is used for system-dependent configuration but can execute arbitrary shell commands. It also calls <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> inside <code>.onLoad()</code>, which runs on <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library(untrustedpkg)</a></code>, and <code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file()</a></code> inside an ordinary function, which runs only if a user calls it and so belongs to no phase. Code that runs without being asked is the stronger claim on a reviewer’s attention.</p>
+<p><code><a href="reference/summary.pkgaudit.html">summary.pkgaudit()</a></code> reports the file and code contexts found in untrustedpkg, and counts the patterns found in each of them by the R package lifecycle phase in which the code may execute (e.g., build, installation from source, installation from binary, load). These phases can overlap (e.g., builds test that a package can be installed from source and loaded), so a pattern may be counted under more than one phase.</p>
+<p>Below, we see that untrustedpkg includes a <code>configure</code> script, which is used for system-dependent configuration but can execute arbitrary shell commands. It also calls <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> inside <code>.onLoad()</code>, which runs on <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library(untrustedpkg)</a></code>, and <code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file()</a></code> inside an ordinary function, which runs only if a user calls the parent function and so belongs to no phase. Code that runs without being asked deserves closer attention.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span>, path <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="co">#&gt; --- pkgaudit Summary -----------------------------------------------------------</span></span>
-<span><span class="co">#&gt; Package:        untrustedpkg v0.1.0 (source tarball)</span></span>
-<span><span class="co">#&gt; SHA-256:        e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386</span></span>
-<span><span class="co">#&gt; Scanned:        2026-07-31 23:03 UTC with pkgaudit 0.3.0, rules v0.3.0</span></span>
+<span><span class="co">#&gt; --- pkgaudit Summary --------------------------------------------------------</span></span>
+<span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source tarball)</span></span>
+<span><span class="co">#&gt; SHA-256:   e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-01 18:01 UTC with pkgaudit v0.3.0, rules v0.3.0</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- Findings by Phase ----------------------------------------------------------</span></span>
-<span><span class="co">#&gt; phase          file_contexts code_contexts patterns</span></span>
-<span><span class="co">#&gt; at_autoconf                0             0        0</span></span>
-<span><span class="co">#&gt; at_build                   1             1        1</span></span>
-<span><span class="co">#&gt; at_check                   1             1        1</span></span>
-<span><span class="co">#&gt; at_install_src             1             1        1</span></span>
-<span><span class="co">#&gt; at_install_bin             0             0        0</span></span>
-<span><span class="co">#&gt; on_load                    0             1        1</span></span>
-<span><span class="co">#&gt; on_attach                  0             0        0</span></span>
-<span><span class="co">#&gt; on_unload                  0             0        0</span></span>
-<span><span class="co">#&gt; on_detach                  0             0        0</span></span>
-<span><span class="co">#&gt; none                       0             0        1</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- File Contexts --------------------------------------------------------------</span></span>
+<span><span class="co">#&gt; --- Contexts ----------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; file_context</span></span>
 <span><span class="co">#&gt; configure</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- Code Contexts --------------------------------------------------------------</span></span>
-<span><span class="co">#&gt; rule</span></span>
-<span><span class="co">#&gt; onload_code</span></span>
+<span><span class="co">#&gt; code_context</span></span>
+<span><span class="co">#&gt; onLoad_base</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- Patterns -------------------------------------------------------------------</span></span>
-<span><span class="co">#&gt; rule                  occurrences attck</span></span>
-<span><span class="co">#&gt; download_file_pattern           1 T1105 T1195.002</span></span>
-<span><span class="co">#&gt; system_pattern                  1 T1059.003 T1059.004 T1195.002</span></span>
+<span><span class="co">#&gt; --- Patterns ----------------------------------------------------------------</span></span>
+<span><span class="co">#&gt; phase            code_context   rule            n   attck</span></span>
+<span><span class="co">#&gt; at_build         onLoad_base    system          1   T1059.003 T1059.004</span></span>
+<span><span class="co">#&gt; at_check         onLoad_base    system          1   T1059.003 T1059.004</span></span>
+<span><span class="co">#&gt; at_install_src   onLoad_base    system          1   T1059.003 T1059.004</span></span>
+<span><span class="co">#&gt; at_load          onLoad_base    system          1   T1059.003 T1059.004</span></span>
+<span><span class="co">#&gt; none             Other          download_file   1   T1105</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- Errors ---------------------------------------------------------------------</span></span>
-<span><span class="co">#&gt; All R scripts were successfully parsed.</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- Notes ----------------------------------------------------------------------</span></span>
-<span><span class="co">#&gt; pkgaudit is intended to assist with manual review, not replace it.</span></span></code></pre></div>
+<span><span class="co">#&gt; --- Errors ------------------------------------------------------------------</span></span>
+<span><span class="co">#&gt; No exceptions were raised.</span></span></code></pre></div>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">

@@ -109,7 +109,7 @@ two rules fields describe the database <code>rules</code> was read from, and are
 returned data frame are relative to the package root.</p>
 <p>Each findings data frame also carries one logical column per package
 lifecycle phase – <code>at_autoconf</code>, <code>at_build</code>, <code>at_check</code>, <code>at_install_src</code>,
-<code>at_install_bin</code>, <code>on_load</code>, <code>on_attach</code>, <code>on_unload</code>, and <code>on_detach</code> –
+<code>at_install_bin</code>, <code>at_load</code>, <code>at_attach</code>, <code>at_unload</code>, and <code>at_detach</code> –
 which is <code>TRUE</code> when that finding's code runs during the phase, so findings
 can be filtered by when they execute. A file or code context takes its phases
 from the rule that matched; a pattern inherits them from its <code>code_context</code>.

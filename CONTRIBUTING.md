@@ -106,6 +106,16 @@ build, check, or install), a code context (a lifecycle hook whose body
 runs when a namespace is loaded, attached, unloaded, or detached), or a
 pattern (a security-relevant function call).
 
+**Names.** The YAML file name is prefixed with the rule’s category —
+`file_`, `code_`, or `pattern_` — but the `name` field inside it is not:
+the category is already known from where the rule lives, and the name is
+what a finding reports. A code context is named for the hook it matches
+and the package that defines it, joined by an underscore, following
+their own capitalization and separators (`onLoad_base`,
+`on_load_rlang`). A pattern that covers one package’s functions carries
+that package’s name (`system_callr`), so a finding points at the calls
+behind it.
+
 **Fields.** Every rule has `name`, `version`, `type`, `message`,
 `positive_examples`, and `negative_examples`. Beyond those:
 
@@ -126,7 +136,7 @@ know, so no rule declares one.
 **Phases.** A file or code context rule must also declare, as `TRUE` or
 `FALSE`, each of the nine lifecycle phases in which its code runs:
 `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
-`at_install_bin`, `on_load`, `on_attach`, `on_unload`, and `on_detach`.
+`at_install_bin`, `at_load`, `at_attach`, `at_unload`, and `at_detach`.
 All nine are required, and the database will not build without them. A
 pattern rule declares none: a pattern inherits the phases of the code
 context it sits in.

@@ -126,7 +126,7 @@ package. <code><a href="../reference/load_rules.html">load_rules()</a></code> re
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">rules</span><span class="op">$</span><span class="va">code_contexts</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 6</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">rules</span><span class="op">$</span><span class="va">patterns</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 16</span></span>
+<span><span class="co">#&gt; [1] 18</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">rules</span><span class="op">$</span><span class="va">phases</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 24</span></span></code></pre></div>
 <p><code>phases</code> holds one row per context code can execute in:
@@ -143,7 +143,7 @@ published in the <a href="https://github.com/tylerjssmith/pkgaudit#database-inte
 <span>  algo <span class="op">=</span> <span class="st">"sha256"</span>,</span>
 <span>  file <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "f37e40d5d1b248c44ab071ca19914f4e45be101eb66353af1b2bec9fb0350850"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "2139a0ff1cffcd922c6e290efd329909e277c2bd28a2ca325143da3f1b7f4aa7"</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="an-example-package">An Example Package<a class="anchor" aria-label="anchor" href="#an-example-package"></a>
@@ -190,58 +190,44 @@ loaded, so its body executes on <code><a href="https://rdrr.io/r/base/library.ht
 findings by category:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span><span class="co">#&gt; --- pkgaudit -------------------------------------------------------------------</span></span>
-<span><span class="co">#&gt; Package:        untrustedpkg v0.1.0 (source directory)</span></span>
-<span><span class="co">#&gt; Path:           /tmp/RtmpMfEzYH/untrustedpkg-example/untrustedpkg</span></span>
-<span><span class="co">#&gt; SHA-256:        a78cd9f1541a5de58ad69ef084233609c324853b900efd7039e74d4cfe6152f5</span></span>
-<span><span class="co">#&gt; Scanned:        2026-07-31 23:20 UTC with pkgaudit 0.3.0, rules v0.3.0</span></span>
+<span><span class="co">#&gt; --- pkgaudit ----------------------------------------------------------------</span></span>
+<span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source directory)</span></span>
+<span><span class="co">#&gt; Path:      /tmp/Rtmp4UxOYz/untrustedpkg-example/untrustedpkg</span></span>
+<span><span class="co">#&gt; SHA-256:   a78cd9f1541a5de58ad69ef084233609c324853b900efd7039e74d4cfe6152f5</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-01 18:16 UTC with pkgaudit v0.3.0, rules v0.3.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; File contexts:  1</span></span>
 <span><span class="co">#&gt; Code contexts:  1</span></span>
 <span><span class="co">#&gt; Patterns:       2</span></span>
 <span><span class="co">#&gt; Errors:         0</span></span></code></pre></div>
-<p><code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> reports the findings themselves: how many run
-in each lifecycle phase, which contexts were found, how often each
-pattern matched, and the MITRE ATT&amp;CK techniques involved.</p>
+<p><code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> reports the findings themselves: which
+contexts were found, how often each pattern matched in each context and
+lifecycle phase, and the MITRE ATT&amp;CK techniques involved.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span><span class="co">#&gt; --- pkgaudit Summary -----------------------------------------------------------</span></span>
-<span><span class="co">#&gt; Package:        untrustedpkg v0.1.0 (source directory)</span></span>
-<span><span class="co">#&gt; Path:           /tmp/RtmpMfEzYH/untrustedpkg-example/untrustedpkg</span></span>
-<span><span class="co">#&gt; SHA-256:        a78cd9f1541a5de58ad69ef084233609c324853b900efd7039e74d4cfe6152f5</span></span>
-<span><span class="co">#&gt; Scanned:        2026-07-31 23:20 UTC with pkgaudit 0.3.0, rules v0.3.0</span></span>
+<span><span class="co">#&gt; --- pkgaudit Summary --------------------------------------------------------</span></span>
+<span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source directory)</span></span>
+<span><span class="co">#&gt; Path:      /tmp/Rtmp4UxOYz/untrustedpkg-example/untrustedpkg</span></span>
+<span><span class="co">#&gt; SHA-256:   a78cd9f1541a5de58ad69ef084233609c324853b900efd7039e74d4cfe6152f5</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-01 18:16 UTC with pkgaudit v0.3.0, rules v0.3.0</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- Findings by Phase ----------------------------------------------------------</span></span>
-<span><span class="co">#&gt; phase          file_contexts code_contexts patterns</span></span>
-<span><span class="co">#&gt; at_autoconf                0             0        0</span></span>
-<span><span class="co">#&gt; at_build                   1             1        1</span></span>
-<span><span class="co">#&gt; at_check                   1             1        1</span></span>
-<span><span class="co">#&gt; at_install_src             1             1        1</span></span>
-<span><span class="co">#&gt; at_install_bin             0             0        0</span></span>
-<span><span class="co">#&gt; on_load                    0             1        1</span></span>
-<span><span class="co">#&gt; on_attach                  0             0        0</span></span>
-<span><span class="co">#&gt; on_unload                  0             0        0</span></span>
-<span><span class="co">#&gt; on_detach                  0             0        0</span></span>
-<span><span class="co">#&gt; none                       0             0        1</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- File Contexts --------------------------------------------------------------</span></span>
+<span><span class="co">#&gt; --- Contexts ----------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; file_context</span></span>
 <span><span class="co">#&gt; configure</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- Code Contexts --------------------------------------------------------------</span></span>
-<span><span class="co">#&gt; rule</span></span>
-<span><span class="co">#&gt; onload_code</span></span>
+<span><span class="co">#&gt; code_context</span></span>
+<span><span class="co">#&gt; onLoad_base</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- Patterns -------------------------------------------------------------------</span></span>
-<span><span class="co">#&gt; rule                  occurrences attck</span></span>
-<span><span class="co">#&gt; download_file_pattern           1 T1105 T1195.002</span></span>
-<span><span class="co">#&gt; system_pattern                  1 T1059.003 T1059.004 T1195.002</span></span>
+<span><span class="co">#&gt; --- Patterns ----------------------------------------------------------------</span></span>
+<span><span class="co">#&gt; phase            code_context   rule            n   attck</span></span>
+<span><span class="co">#&gt; at_build         onLoad_base    system          1   T1059.003 T1059.004</span></span>
+<span><span class="co">#&gt; at_check         onLoad_base    system          1   T1059.003 T1059.004</span></span>
+<span><span class="co">#&gt; at_install_src   onLoad_base    system          1   T1059.003 T1059.004</span></span>
+<span><span class="co">#&gt; at_load          onLoad_base    system          1   T1059.003 T1059.004</span></span>
+<span><span class="co">#&gt; none             Other          download_file   1   T1105</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- Errors ---------------------------------------------------------------------</span></span>
-<span><span class="co">#&gt; All R scripts were successfully parsed.</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- Notes ----------------------------------------------------------------------</span></span>
-<span><span class="co">#&gt; pkgaudit is intended to assist with manual review, not replace it.</span></span></code></pre></div>
+<span><span class="co">#&gt; --- Errors ------------------------------------------------------------------</span></span>
+<span><span class="co">#&gt; No exceptions were raised.</span></span></code></pre></div>
 <p>Both methods accept <code>path = FALSE</code>, which omits the local
 filesystem path from the output. This is useful when sharing results,
 since the path may reveal a username or directory layout.</p>
@@ -254,23 +240,23 @@ phase.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result</span><span class="op">$</span><span class="va">patterns</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rule"</span>, <span class="st">"file_context"</span>, <span class="st">"code_context"</span>, <span class="st">"line_number"</span>,</span>
 <span>                    <span class="st">"column_number"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt;                    rule file_context code_context line_number column_number</span></span>
-<span><span class="co">#&gt; 1 download_file_pattern    R/fetch.R        Other           2             3</span></span>
-<span><span class="co">#&gt; 2        system_pattern      R/zzz.R  onload_code           2             3</span></span></code></pre></div>
+<span><span class="co">#&gt;            rule file_context code_context line_number column_number</span></span>
+<span><span class="co">#&gt; 1 download_file    R/fetch.R        Other           2             3</span></span>
+<span><span class="co">#&gt; 2        system      R/zzz.R  onLoad_base           2             3</span></span></code></pre></div>
 <p>Each finding also records when its code runs, as one logical column
 per phase: <code>at_autoconf</code>, <code>at_build</code>,
 <code>at_check</code>, <code>at_install_src</code>,
-<code>at_install_bin</code>, <code>on_load</code>,
-<code>on_attach</code>, <code>on_unload</code>, and
-<code>on_detach</code>. A pattern inside an ordinary function is
+<code>at_install_bin</code>, <code>at_load</code>,
+<code>at_attach</code>, <code>at_unload</code>, and
+<code>at_detach</code>. A pattern inside an ordinary function is
 <code>FALSE</code> for every one of them – it runs only if something
-calls it – and is counted in the <code>none</code> row of
+calls it – and is gathered under <code>none</code> by
 <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">result</span><span class="op">$</span><span class="va">patterns</span><span class="op">[</span><span class="va">result</span><span class="op">$</span><span class="va">patterns</span><span class="op">$</span><span class="va">on_load</span>,</span>
+<code class="sourceCode R"><span><span class="va">result</span><span class="op">$</span><span class="va">patterns</span><span class="op">[</span><span class="va">result</span><span class="op">$</span><span class="va">patterns</span><span class="op">$</span><span class="va">at_load</span>,</span>
 <span>                <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rule"</span>, <span class="st">"file_context"</span>, <span class="st">"code_context"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt;             rule file_context code_context</span></span>
-<span><span class="co">#&gt; 2 system_pattern      R/zzz.R  onload_code</span></span></code></pre></div>
+<span><span class="co">#&gt;     rule file_context code_context</span></span>
+<span><span class="co">#&gt; 2 system      R/zzz.R  onLoad_base</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="auditing-a-tarball">Auditing a Tarball<a class="anchor" aria-label="anchor" href="#auditing-a-tarball"></a>
@@ -283,11 +269,11 @@ scans the result.</p>
 scanned directly:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/audit_tarball.html">audit_tarball</a></span><span class="op">(</span><span class="va">tarball</span><span class="op">)</span></span>
-<span><span class="co">#&gt; --- pkgaudit -------------------------------------------------------------------</span></span>
-<span><span class="co">#&gt; Package:        untrustedpkg v0.1.0 (source tarball)</span></span>
-<span><span class="co">#&gt; Path:           /home/runner/.cache/R/renv/library/profiles/dev/renv/pkgaudit-f1939151/linux-ubuntu-noble/R-4.6/x86_64-pc-linux-gnu/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz</span></span>
-<span><span class="co">#&gt; SHA-256:        e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386</span></span>
-<span><span class="co">#&gt; Scanned:        2026-07-31 23:20 UTC with pkgaudit 0.3.0, rules v0.3.0</span></span>
+<span><span class="co">#&gt; --- pkgaudit ----------------------------------------------------------------</span></span>
+<span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source tarball)</span></span>
+<span><span class="co">#&gt; Path:      /home/runner/.cache/R/renv/library/profiles/dev/renv/pkgaudit-f1939151/linux-ubuntu-noble/R-4.6/x86_64-pc-linux-gnu/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz</span></span>
+<span><span class="co">#&gt; SHA-256:   e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-01 18:16 UTC with pkgaudit v0.3.0, rules v0.3.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; File contexts:  1</span></span>
 <span><span class="co">#&gt; Code contexts:  1</span></span>

@@ -63,7 +63,7 @@ nrow(rules$file_contexts)
 nrow(rules$code_contexts)
 #> [1] 6
 nrow(rules$patterns)
-#> [1] 16
+#> [1] 18
 nrow(rules$phases)
 #> [1] 24
 ```
@@ -85,7 +85,7 @@ digest::digest(
   algo = "sha256",
   file = TRUE
 )
-#> [1] "f37e40d5d1b248c44ab071ca19914f4e45be101eb66353af1b2bec9fb0350850"
+#> [1] "2139a0ff1cffcd922c6e290efd329909e277c2bd28a2ca325143da3f1b7f4aa7"
 ```
 
 ## An Example Package
@@ -150,11 +150,11 @@ by category:
 ``` r
 
 print(result)
-#> --- pkgaudit -------------------------------------------------------------------
-#> Package:        untrustedpkg v0.1.0 (source directory)
-#> Path:           /tmp/RtmpMfEzYH/untrustedpkg-example/untrustedpkg
-#> SHA-256:        a78cd9f1541a5de58ad69ef084233609c324853b900efd7039e74d4cfe6152f5
-#> Scanned:        2026-07-31 23:20 UTC with pkgaudit 0.3.0, rules v0.3.0
+#> --- pkgaudit ----------------------------------------------------------------
+#> Package:   untrustedpkg v0.1.0 (source directory)
+#> Path:      /tmp/Rtmp4UxOYz/untrustedpkg-example/untrustedpkg
+#> SHA-256:   a78cd9f1541a5de58ad69ef084233609c324853b900efd7039e74d4cfe6152f5
+#> Scanned:   2026-08-01 18:16 UTC with pkgaudit v0.3.0, rules v0.3.0
 #> 
 #> File contexts:  1
 #> Code contexts:  1
@@ -163,50 +163,36 @@ print(result)
 ```
 
 [`summary()`](https://rdrr.io/r/base/summary.html) reports the findings
-themselves: how many run in each lifecycle phase, which contexts were
-found, how often each pattern matched, and the MITRE ATT&CK techniques
+themselves: which contexts were found, how often each pattern matched in
+each context and lifecycle phase, and the MITRE ATT&CK techniques
 involved.
 
 ``` r
 
 summary(result)
-#> --- pkgaudit Summary -----------------------------------------------------------
-#> Package:        untrustedpkg v0.1.0 (source directory)
-#> Path:           /tmp/RtmpMfEzYH/untrustedpkg-example/untrustedpkg
-#> SHA-256:        a78cd9f1541a5de58ad69ef084233609c324853b900efd7039e74d4cfe6152f5
-#> Scanned:        2026-07-31 23:20 UTC with pkgaudit 0.3.0, rules v0.3.0
+#> --- pkgaudit Summary --------------------------------------------------------
+#> Package:   untrustedpkg v0.1.0 (source directory)
+#> Path:      /tmp/Rtmp4UxOYz/untrustedpkg-example/untrustedpkg
+#> SHA-256:   a78cd9f1541a5de58ad69ef084233609c324853b900efd7039e74d4cfe6152f5
+#> Scanned:   2026-08-01 18:16 UTC with pkgaudit v0.3.0, rules v0.3.0
 #> 
-#> --- Findings by Phase ----------------------------------------------------------
-#> phase          file_contexts code_contexts patterns
-#> at_autoconf                0             0        0
-#> at_build                   1             1        1
-#> at_check                   1             1        1
-#> at_install_src             1             1        1
-#> at_install_bin             0             0        0
-#> on_load                    0             1        1
-#> on_attach                  0             0        0
-#> on_unload                  0             0        0
-#> on_detach                  0             0        0
-#> none                       0             0        1
-#> 
-#> --- File Contexts --------------------------------------------------------------
+#> --- Contexts ----------------------------------------------------------------
 #> file_context
 #> configure
 #> 
-#> --- Code Contexts --------------------------------------------------------------
-#> rule
-#> onload_code
+#> code_context
+#> onLoad_base
 #> 
-#> --- Patterns -------------------------------------------------------------------
-#> rule                  occurrences attck
-#> download_file_pattern           1 T1105 T1195.002
-#> system_pattern                  1 T1059.003 T1059.004 T1195.002
+#> --- Patterns ----------------------------------------------------------------
+#> phase            code_context   rule            n   attck
+#> at_build         onLoad_base    system          1   T1059.003 T1059.004
+#> at_check         onLoad_base    system          1   T1059.003 T1059.004
+#> at_install_src   onLoad_base    system          1   T1059.003 T1059.004
+#> at_load          onLoad_base    system          1   T1059.003 T1059.004
+#> none             Other          download_file   1   T1105
 #> 
-#> --- Errors ---------------------------------------------------------------------
-#> All R scripts were successfully parsed.
-#> 
-#> --- Notes ----------------------------------------------------------------------
-#> pkgaudit is intended to assist with manual review, not replace it.
+#> --- Errors ------------------------------------------------------------------
+#> No exceptions were raised.
 ```
 
 Both methods accept `path = FALSE`, which omits the local filesystem
@@ -225,24 +211,24 @@ lifecycle phase.
 
 result$patterns[, c("rule", "file_context", "code_context", "line_number",
                     "column_number")]
-#>                    rule file_context code_context line_number column_number
-#> 1 download_file_pattern    R/fetch.R        Other           2             3
-#> 2        system_pattern      R/zzz.R  onload_code           2             3
+#>            rule file_context code_context line_number column_number
+#> 1 download_file    R/fetch.R        Other           2             3
+#> 2        system      R/zzz.R  onLoad_base           2             3
 ```
 
 Each finding also records when its code runs, as one logical column per
 phase: `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
-`at_install_bin`, `on_load`, `on_attach`, `on_unload`, and `on_detach`.
+`at_install_bin`, `at_load`, `at_attach`, `at_unload`, and `at_detach`.
 A pattern inside an ordinary function is `FALSE` for every one of them –
-it runs only if something calls it – and is counted in the `none` row of
+it runs only if something calls it – and is gathered under `none` by
 [`summary()`](https://rdrr.io/r/base/summary.html).
 
 ``` r
 
-result$patterns[result$patterns$on_load,
+result$patterns[result$patterns$at_load,
                 c("rule", "file_context", "code_context")]
-#>             rule file_context code_context
-#> 2 system_pattern      R/zzz.R  onload_code
+#>     rule file_context code_context
+#> 2 system      R/zzz.R  onLoad_base
 ```
 
 ## Auditing a Tarball
@@ -258,11 +244,11 @@ This is the `untrustedpkg` tarball we extracted above, scanned directly:
 ``` r
 
 audit_tarball(tarball)
-#> --- pkgaudit -------------------------------------------------------------------
-#> Package:        untrustedpkg v0.1.0 (source tarball)
-#> Path:           /home/runner/.cache/R/renv/library/profiles/dev/renv/pkgaudit-f1939151/linux-ubuntu-noble/R-4.6/x86_64-pc-linux-gnu/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
-#> SHA-256:        e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386
-#> Scanned:        2026-07-31 23:20 UTC with pkgaudit 0.3.0, rules v0.3.0
+#> --- pkgaudit ----------------------------------------------------------------
+#> Package:   untrustedpkg v0.1.0 (source tarball)
+#> Path:      /home/runner/.cache/R/renv/library/profiles/dev/renv/pkgaudit-f1939151/linux-ubuntu-noble/R-4.6/x86_64-pc-linux-gnu/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
+#> SHA-256:   e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386
+#> Scanned:   2026-08-01 18:16 UTC with pkgaudit v0.3.0, rules v0.3.0
 #> 
 #> File contexts:  1
 #> Code contexts:  1

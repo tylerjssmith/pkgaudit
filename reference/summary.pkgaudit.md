@@ -1,10 +1,10 @@
 # Summarize a pkgaudit result
 
-`summary.pkgaudit()` rolls a scan up into the findings counted by the
-lifecycle phase they execute in, the distinct file and code contexts
-found, the frequency of each pattern with its MITRE ATT&CK techniques,
-and the errors, if any. `print.summary.pkgaudit()` writes that summary
-as a sectioned report and returns the object invisibly.
+`summary.pkgaudit()` rolls a scan up into the distinct file and code
+contexts found, the frequency of each pattern by the lifecycle phase and
+code context it executes in with its MITRE ATT&CK techniques, and the
+errors, if any. `print.summary.pkgaudit()` writes that summary as a
+sectioned report and returns the object invisibly.
 
 ## Usage
 
@@ -41,14 +41,8 @@ print(x, path = x$path, ...)
 ## Value
 
 `summary.pkgaudit()` returns a `summary.pkgaudit` object: a named list
-of four summary data frames, the errors, the scan `metadata`, and the
+of three summary data frames, the errors, the scan `metadata`, and the
 recorded `path`.
-
-- phases:
-
-  `phase`, `file_contexts`, `code_contexts`, `patterns`: how many
-  findings of each kind execute during each lifecycle phase, with a
-  trailing `none` row for findings that execute in no phase.
 
 - file_contexts:
 
@@ -56,12 +50,13 @@ recorded `path`.
 
 - code_contexts:
 
-  `rule`: each code-context rule matched, once.
+  `code_context`: each code-context rule matched, once.
 
 - patterns:
 
-  `rule`, `occurrences`, `attck`: how often each pattern rule was
-  matched and the ATT&CK techniques it carries.
+  `phase`, `code_context`, `rule`, `n`, `attck`: how often each pattern
+  rule was matched in each code context, split by the lifecycle phase
+  that context executes in, with the ATT&CK techniques the rule carries.
 
 - errors:
 
@@ -76,6 +71,11 @@ The report opens with the same metadata block as
 [`print.pkgaudit()`](https://tylerjssmith.github.io/pkgaudit/reference/format.pkgaudit.md),
 then gives one section per result. A section with nothing to report says
 so.
+
+A pattern occurrence executes in every phase its code context does, so
+it contributes one row per phase and the `n` column sums to more than
+the number of occurrences. Occurrences that execute in no phase at all
+are gathered under `none`.
 
 The `Errors` section lists every error, whatever stage produced it, and
 is followed by one note per stage stating what scan coverage was lost.
