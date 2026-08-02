@@ -7,7 +7,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/tylerjssmith/pkgaudit/blob/release_0.3.0/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/tylerjssmith/pkgaudit/blob/master/DESCRIPTION)
 
 Smith T (2026). *pkgaudit: Static Analysis Security Testing (SAST) for R
 Packages*. R package version 0.3.0,
