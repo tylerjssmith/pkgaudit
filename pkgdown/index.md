@@ -4,6 +4,8 @@
 # pkgaudit
 
 [![R-CMD-check](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml)
+[![test
+coverage](https://raw.githubusercontent.com/tylerjssmith/pkgaudit/badges/coverage.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/coverage.yaml)
 [![osv-scanner](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml)
 
 pkgaudit is a static analysis security testing (SAST) tool for R
@@ -83,7 +85,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386
-#> Scanned:   2026-08-01 18:14 UTC with pkgaudit v0.3.0, rules v0.3.0
+#> Scanned:   2026-08-02 22:19 UTC with pkgaudit v0.3.0, rules v0.3.0
 #> 
 #> --- Contexts ----------------------------------------------------------------
 #> file_context

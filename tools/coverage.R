@@ -8,7 +8,7 @@ color <- if (pct >= 90) "#4c1"    else
          if (pct >= 60) "#dfb317" else
          if (pct >= 40) "#fe7d37" else "#e05d44"
 
-label <- "coverage"
+label <- "test coverage"
 value <- sprintf("%.0f%%", pct)
 lw <- 7 * nchar(label) + 10
 vw <- 7 * nchar(value) + 10
