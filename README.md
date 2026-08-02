@@ -4,6 +4,7 @@
 # pkgaudit
 
 [![R-CMD-check](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml)
+[![coverage](https://raw.githubusercontent.com/tylerjssmith/pkgaudit/badges/coverage.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/coverage.yaml)
 [![osv-scanner](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml)
 
 pkgaudit is a static analysis security testing (SAST) tool for R
@@ -93,17 +94,14 @@ three rule categories:
   example, can execute arbitrary shell commands. `source()` can fetch
   and execute a remote payload.
 
+Every file and code context rule declares the lifecycle phases in which
+it runs – `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
+`at_install_bin`, `at_load`, `at_attach`, `at_unload`, `at_detach`.
+
 Every pattern finding is attributed to the code context that contains
 it. A `system()` call inside an ordinary function only runs if you call
 that function; the same call inside `.onLoad()` runs automatically when
 a namespace is loaded.
-
-Every file and code context also declares the lifecycle phases in which
-its code runs – `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
-`at_install_bin`, `at_load`, `at_attach`, `at_unload`, `at_detach` – and
-a pattern inherits them from the code context it sits in. Each finding
-carries one logical column per phase, so findings can be filtered by
-when they execute.
 
 The full rule set is documented in [pkgaudit Rule
 Coverage](https://tylerjssmith.github.io/pkgaudit/articles/rules.html).
@@ -161,7 +159,7 @@ print(result, path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386
-#> Scanned:   2026-08-01 18:11 UTC with pkgaudit v0.3.0, rules v0.3.0
+#> Scanned:   2026-08-02 21:18 UTC with pkgaudit v0.3.0, rules v0.3.0
 #> 
 #> File contexts:  1
 #> Code contexts:  1
@@ -178,7 +176,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386
-#> Scanned:   2026-08-01 18:11 UTC with pkgaudit v0.3.0, rules v0.3.0
+#> Scanned:   2026-08-02 21:18 UTC with pkgaudit v0.3.0, rules v0.3.0
 #> 
 #> --- Contexts ----------------------------------------------------------------
 #> file_context
