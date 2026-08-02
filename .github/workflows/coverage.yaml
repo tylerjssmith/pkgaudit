@@ -14,22 +14,23 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
-      - uses: r-lib/actions/setup-r@v2
+      - uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
         with:
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
         with:
           extra-packages: any::covr
           needs: coverage
 
       - name: Compute coverage and render badge
-        run: Rscript tools/coverage-badge.R
+        id: coverage
+        run: Rscript tools/coverage.R
 
       - name: Publish badge
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         run: |
           set -e
           cp public/coverage.svg /tmp/coverage.svg
@@ -46,3 +47,15 @@ jobs:
           git add coverage.svg
           git commit -m "Update coverage badge [skip ci]" || echo "No change"
           git push origin badges
+
+      - name: Enforce coverage threshold
+        env:
+          PCT: ${{ steps.coverage.outputs.pct }}
+        run: |
+          awk -v pct="$PCT" 'BEGIN {
+            if (pct < 80) {
+              printf "Coverage %.2f%% is below the 80%% threshold\n", pct
+              exit 1
+            }
+            printf "Coverage %.2f%% meets the 80%% threshold\n", pct
+          }'

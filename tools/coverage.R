@@ -39,5 +39,6 @@ svg <- paste0(
 dir.create("public", showWarnings = FALSE)
 writeLines(svg, "public/coverage.svg")
 
-# Fail the build if test coverage <80%
-if (pct < 80) stop(sprintf("Coverage %.2f%% is below the 80%% threshold", pct))
+# Expose the percentage to the workflow, which enforces the threshold
+out <- Sys.getenv("GITHUB_OUTPUT")
+if (nzchar(out)) cat(sprintf("pct=%.2f\n", pct), file = out, append = TRUE)
