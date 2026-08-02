@@ -58,7 +58,7 @@
   <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header"><h1 id="pkgaudit">pkgaudit<a class="anchor" aria-label="anchor" href="#pkgaudit"></a>
 </h1></div>
-<p><a href="https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a> <a href="https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml" class="external-link"><img src="https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml/badge.svg" alt="osv-scanner"></a></p>
+<p><a href="https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a> <a href="https://github.com/tylerjssmith/pkgaudit/actions/workflows/coverage.yaml" class="external-link"><img src="https://raw.githubusercontent.com/tylerjssmith/pkgaudit/badges/coverage.svg" alt="test coverage"></a> <a href="https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml" class="external-link"><img src="https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml/badge.svg" alt="osv-scanner"></a></p>
 <p>pkgaudit is a static analysis security testing (SAST) tool for R packages. It scans R source packages for files that can execute arbitrary commands during autoconf, builds, checks, and installations, and for lifecycle hooks whose bodies run automatically when a namespace is loaded, attached, unloaded, or detached. It also scans R source code for security-relevant patterns like <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> calls.</p>
 <p>R packages are the primary mechanism for sharing R code. They are also <a href="articles/r-package-security.html">potential attack vectors</a>. pkgaudit helps you identify which parts of an untrusted package deserve your attention before you install and load it.</p>
 <div class="section level2">
@@ -97,7 +97,7 @@
 <span><span class="co">#&gt; --- pkgaudit Summary --------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source tarball)</span></span>
 <span><span class="co">#&gt; SHA-256:   e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-01 18:14 UTC with pkgaudit v0.3.0, rules v0.3.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-02 22:19 UTC with pkgaudit v0.3.0, rules v0.3.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- Contexts ----------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; file_context</span></span>
