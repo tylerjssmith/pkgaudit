@@ -11,30 +11,26 @@ specific function calls inside lifecycle hooks
 
 - **File contexts** are files that R executes during build, check, or
   install.
+
 - **Code contexts** are lifecycle hooks whose bodies run automatically
   when a namespace is loaded, attached, unloaded, or detached.
+
 - **Patterns** are security-relevant function calls. Each pattern
   finding is attributed to the code context it executes in, so a
   [`system()`](https://rdrr.io/r/base/system.html) call inside `.onLoad`
   is distinguished from one inside an ordinary function (`Other`) or at
   top level (`Top-level`).
 
-### Rule names
+- A rule’s `name` does not repeat its category, which is already known
+  from where the rule lives: `configure`, `onLoad_base`, `system`. The
+  YAML file names carry the category as a `file_`, `code_`, `pattern_`,
+  or `phase_` prefix. A code context is named for the hook it matches
+  and the package that defines it, following their own capitalization
+  and separators (`onLoad_base`, `on_load_rlang`); a pattern covering
+  one package’s functions carries that package’s name (`system_callr`),
+  so a finding points at the calls behind it.
 
-- A rule’s `name` no longer repeats its category: the `_file`, `_code`,
-  and `_pattern` suffixes are gone, so `configure_file` is now
-  `configure`, `system_pattern` is `system`, and so on. The YAML file
-  names keep their `file_`, `code_`, `pattern_`, and `phase_` prefixes.
-- Code-context rules are named for the hook they match and the package
-  that defines it, following their own capitalization and separators, so
-  a finding connects to the underlying hook: `onload_code` is now
-  `onLoad_base`, `onattach_code` is `onAttach_base`, `onunload_code` is
-  `onUnload_base`, `ondetach_code` is `onDetach_base`, `lastlib_code` is
-  `LastLib_base`, and `onload_rlang_code` is `on_load_rlang`.
-- `system_other_pattern` is split into one rule per package –
-  `system_callr`, `system_processx`, and `system_sys` – so a finding
-  connects to the underlying function calls.
-- Pattern rules no longer carry the `T1195.002` ATT&CK label, which
+- Pattern rules carry no `T1195.002` ATT&CK label, which would have
   applied to every rule and so distinguished none of them. It remains on
   `options_repos`, where redirecting the package repository is the
   technique itself.
@@ -152,32 +148,31 @@ specific function calls inside lifecycle hooks
 
 ### Pattern rule coverage (rules v0.2.0)
 
-- Seven new pattern rules: `decoding_pattern` (base64 and
+- New pattern rules: `decoding` (base64 and
   [`memDecompress()`](https://rdrr.io/r/base/memCompress.html)),
-  `deserialization_pattern`
-  ([`readRDS()`](https://rdrr.io/r/base/readRDS.html),
+  `deserialization` ([`readRDS()`](https://rdrr.io/r/base/readRDS.html),
   [`load()`](https://rdrr.io/r/base/load.html),
   [`unserialize()`](https://rdrr.io/r/base/serialize.html),
-  [`dget()`](https://rdrr.io/r/base/dput.html)), `dynload_pattern`
+  [`dget()`](https://rdrr.io/r/base/dput.html)), `dynload`
   ([`dyn.load()`](https://rdrr.io/r/base/dynload.html),
   [`library.dynam()`](https://rdrr.io/r/base/library.dynam.html)),
-  `indirection_pattern` (resolving a function from a string literal at
-  runtime), `install_pattern` (installing from a specified or remote
-  source), `socket_pattern` (raw network sockets), and
-  `system_other_pattern` (callr, processx, and sys process execution).
-- `system_pattern` also matches
+  `indirection` (resolving a function from a string literal at runtime),
+  `install` (installing from a specified or remote source), `socket`
+  (raw network sockets), and `system_callr`, `system_processx`, and
+  `system_sys` (callr, processx, and sys process execution).
+- `system` also matches
   [`pipe()`](https://rdrr.io/r/base/connections.html), and now carries
   T1059.003 alongside T1059.004 because it covers the Windows `shell()`.
-- `eval_parse_pattern` also matches
+- `eval_parse` also matches
   [`evalq()`](https://rdrr.io/r/base/eval.html),
   [`str2lang()`](https://rdrr.io/r/base/parse.html), and
   [`str2expression()`](https://rdrr.io/r/base/parse.html), and now fires
   only when the evaluated code is produced by a decoding or
   decompression call.
-- `download_file_pattern` also matches
+- `download_file` also matches
   [`url()`](https://rdrr.io/r/base/connections.html).
-- `curl_pattern` also matches `curl()`, `curl_fetch_multi()`,
-  `curl_upload()`, `multi_download()`, and `send_mail()`.
+- `curl` also matches `curl()`, `curl_fetch_multi()`, `curl_upload()`,
+  `multi_download()`, and `send_mail()`.
 
 ### Provenance and integrity
 

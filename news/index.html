@@ -44,20 +44,11 @@
 <p>This is a major redesign of pkgaudit. The previous model matched specific function calls inside lifecycle hooks (e.g. <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> in <code>.onLoad()</code>); 0.3.0 replaces it with three independent rule categories.</p>
 <div class="section level3">
 <h3 id="rule-model-0-3-0">Rule model<a class="anchor" aria-label="anchor" href="#rule-model-0-3-0"></a></h3>
-<ul><li>
-<strong>File contexts</strong> are files that R executes during build, check, or install.</li>
-<li>
-<strong>Code contexts</strong> are lifecycle hooks whose bodies run automatically when a namespace is loaded, attached, unloaded, or detached.</li>
-<li>
-<strong>Patterns</strong> are security-relevant function calls. Each pattern finding is attributed to the code context it executes in, so a <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> call inside <code>.onLoad</code> is distinguished from one inside an ordinary function (<code>Other</code>) or at top level (<code>Top-level</code>).</li>
-</ul></div>
-<div class="section level3">
-<h3 id="rule-names-0-3-0">Rule names<a class="anchor" aria-label="anchor" href="#rule-names-0-3-0"></a></h3>
-<ul><li>A rule’s <code>name</code> no longer repeats its category: the <code>_file</code>, <code>_code</code>, and <code>_pattern</code> suffixes are gone, so <code>configure_file</code> is now <code>configure</code>, <code>system_pattern</code> is <code>system</code>, and so on. The YAML file names keep their <code>file_</code>, <code>code_</code>, <code>pattern_</code>, and <code>phase_</code> prefixes.</li>
-<li>Code-context rules are named for the hook they match and the package that defines it, following their own capitalization and separators, so a finding connects to the underlying hook: <code>onload_code</code> is now <code>onLoad_base</code>, <code>onattach_code</code> is <code>onAttach_base</code>, <code>onunload_code</code> is <code>onUnload_base</code>, <code>ondetach_code</code> is <code>onDetach_base</code>, <code>lastlib_code</code> is <code>LastLib_base</code>, and <code>onload_rlang_code</code> is <code>on_load_rlang</code>.</li>
-<li>
-<code>system_other_pattern</code> is split into one rule per package – <code>system_callr</code>, <code>system_processx</code>, and <code>system_sys</code> – so a finding connects to the underlying function calls.</li>
-<li>Pattern rules no longer carry the <code>T1195.002</code> ATT&amp;CK label, which applied to every rule and so distinguished none of them. It remains on <code>options_repos</code>, where redirecting the package repository is the technique itself.</li>
+<ul><li><p><strong>File contexts</strong> are files that R executes during build, check, or install.</p></li>
+<li><p><strong>Code contexts</strong> are lifecycle hooks whose bodies run automatically when a namespace is loaded, attached, unloaded, or detached.</p></li>
+<li><p><strong>Patterns</strong> are security-relevant function calls. Each pattern finding is attributed to the code context it executes in, so a <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> call inside <code>.onLoad</code> is distinguished from one inside an ordinary function (<code>Other</code>) or at top level (<code>Top-level</code>).</p></li>
+<li><p>A rule’s <code>name</code> does not repeat its category, which is already known from where the rule lives: <code>configure</code>, <code>onLoad_base</code>, <code>system</code>. The YAML file names carry the category as a <code>file_</code>, <code>code_</code>, <code>pattern_</code>, or <code>phase_</code> prefix. A code context is named for the hook it matches and the package that defines it, following their own capitalization and separators (<code>onLoad_base</code>, <code>on_load_rlang</code>); a pattern covering one package’s functions carries that package’s name (<code>system_callr</code>), so a finding points at the calls behind it.</p></li>
+<li><p>Pattern rules carry no <code>T1195.002</code> ATT&amp;CK label, which would have applied to every rule and so distinguished none of them. It remains on <code>options_repos</code>, where redirecting the package repository is the technique itself.</p></li>
 </ul></div>
 <div class="section level3">
 <h3 id="results-and-metadata-0-3-0">Results and metadata<a class="anchor" aria-label="anchor" href="#results-and-metadata-0-3-0"></a></h3>
@@ -91,15 +82,15 @@
 </ul></div>
 <div class="section level3">
 <h3 id="pattern-rule-coverage-rules-v020-0-3-0">Pattern rule coverage (rules v0.2.0)<a class="anchor" aria-label="anchor" href="#pattern-rule-coverage-rules-v020-0-3-0"></a></h3>
-<ul><li>Seven new pattern rules: <code>decoding_pattern</code> (base64 and <code><a href="https://rdrr.io/r/base/memCompress.html" class="external-link">memDecompress()</a></code>), <code>deserialization_pattern</code> (<code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS()</a></code>, <code><a href="https://rdrr.io/r/base/load.html" class="external-link">load()</a></code>, <code><a href="https://rdrr.io/r/base/serialize.html" class="external-link">unserialize()</a></code>, <code><a href="https://rdrr.io/r/base/dput.html" class="external-link">dget()</a></code>), <code>dynload_pattern</code> (<code><a href="https://rdrr.io/r/base/dynload.html" class="external-link">dyn.load()</a></code>, <code><a href="https://rdrr.io/r/base/library.dynam.html" class="external-link">library.dynam()</a></code>), <code>indirection_pattern</code> (resolving a function from a string literal at runtime), <code>install_pattern</code> (installing from a specified or remote source), <code>socket_pattern</code> (raw network sockets), and <code>system_other_pattern</code> (callr, processx, and sys process execution).</li>
+<ul><li>New pattern rules: <code>decoding</code> (base64 and <code><a href="https://rdrr.io/r/base/memCompress.html" class="external-link">memDecompress()</a></code>), <code>deserialization</code> (<code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS()</a></code>, <code><a href="https://rdrr.io/r/base/load.html" class="external-link">load()</a></code>, <code><a href="https://rdrr.io/r/base/serialize.html" class="external-link">unserialize()</a></code>, <code><a href="https://rdrr.io/r/base/dput.html" class="external-link">dget()</a></code>), <code>dynload</code> (<code><a href="https://rdrr.io/r/base/dynload.html" class="external-link">dyn.load()</a></code>, <code><a href="https://rdrr.io/r/base/library.dynam.html" class="external-link">library.dynam()</a></code>), <code>indirection</code> (resolving a function from a string literal at runtime), <code>install</code> (installing from a specified or remote source), <code>socket</code> (raw network sockets), and <code>system_callr</code>, <code>system_processx</code>, and <code>system_sys</code> (callr, processx, and sys process execution).</li>
 <li>
-<code>system_pattern</code> also matches <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">pipe()</a></code>, and now carries T1059.003 alongside T1059.004 because it covers the Windows <code>shell()</code>.</li>
+<code>system</code> also matches <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">pipe()</a></code>, and now carries T1059.003 alongside T1059.004 because it covers the Windows <code>shell()</code>.</li>
 <li>
-<code>eval_parse_pattern</code> also matches <code><a href="https://rdrr.io/r/base/eval.html" class="external-link">evalq()</a></code>, <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">str2lang()</a></code>, and <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">str2expression()</a></code>, and now fires only when the evaluated code is produced by a decoding or decompression call.</li>
+<code>eval_parse</code> also matches <code><a href="https://rdrr.io/r/base/eval.html" class="external-link">evalq()</a></code>, <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">str2lang()</a></code>, and <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">str2expression()</a></code>, and now fires only when the evaluated code is produced by a decoding or decompression call.</li>
 <li>
-<code>download_file_pattern</code> also matches <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">url()</a></code>.</li>
+<code>download_file</code> also matches <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">url()</a></code>.</li>
 <li>
-<code>curl_pattern</code> also matches <code>curl()</code>, <code>curl_fetch_multi()</code>, <code>curl_upload()</code>, <code>multi_download()</code>, and <code>send_mail()</code>.</li>
+<code>curl</code> also matches <code>curl()</code>, <code>curl_fetch_multi()</code>, <code>curl_upload()</code>, <code>multi_download()</code>, and <code>send_mail()</code>.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="provenance-and-integrity-0-3-0">Provenance and integrity<a class="anchor" aria-label="anchor" href="#provenance-and-integrity-0-3-0"></a></h3>
