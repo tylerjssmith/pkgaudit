@@ -1,13 +1,17 @@
 # .github/workflows/dependency-review.yaml
-# This workflow only covers GitHub Actions vulnerabilities.
-# See osv-scanner.yaml for workflow targeting R vulnerabilities.
+# This workflow targets GitHub Actions vulnerabilities. See osv-scanner.yaml for
+# workflow targeting R vulnerabilities.
+
+# Note: dependency-review-action only works for actions with semantic
+# versioning. In general, this repo aims to use SHA pinning, but this action is
+# included as belt and suspenders.
+name: Dependency Review
+
 on:
   pull_request:
 
 permissions:
   contents: read
-
-name: dependency-review.yaml
 
 jobs:
   dependency-review:

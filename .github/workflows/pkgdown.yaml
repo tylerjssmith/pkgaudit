@@ -1,5 +1,8 @@
-# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
-# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
+# .github/workflows/pkgdown.yaml
+# This workflow creates the pkgdown website available at:
+# https://tylerjssmith.github.io/pkgaudit/
+name: Create pkgdown Website
+
 on:
   push:
     branches: [main, master]
@@ -7,8 +10,6 @@ on:
   release:
     types: [published]
   workflow_dispatch:
-
-name: pkgdown.yaml
 
 permissions: read-all
 

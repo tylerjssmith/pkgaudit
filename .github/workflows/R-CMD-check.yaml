@@ -1,19 +1,24 @@
 # .github/workflows/R-CMD-check.yaml
+# This workflow runs R CMD check, the standard check for R packages, across
+# Windows, macOS, and Ubuntu, covering the current release of R, the previous
+# release of R, and the development version of R.
+
+# Note: R CMD check runs the full test suite. Any test failure produces an
+# error, which will fail the workflow.
+name: R CMD check
+
 on:
   push:
     branches: [main, master]
   pull_request:
 
-name: R-CMD-check.yaml
-
-# Least privilege: the check only reads the repository.
 permissions:
   contents: read
 
 jobs:
   R-CMD-check:
-    runs-on: ${{ matrix.config.os }}
     name: ${{ matrix.config.os }} (R ${{ matrix.config.r }})
+    runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
       matrix:

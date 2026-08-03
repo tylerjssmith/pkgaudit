@@ -22,3 +22,8 @@ infrequently and use `pause` > 0 (default is 0.5) to rate-limit the downloads.
 For more frequent downloads, use `rsync` to host a mirror as described by 
 [CRAN](https://cran.r-project.org/mirror-howto.html).
 
+[`test_coverage.R`](test_coverage.R) is used by the GitHub Actions workflow
+`test-coverage.yaml` to report test coverage and generate a CI badge without
+relying on an external service.
+
+

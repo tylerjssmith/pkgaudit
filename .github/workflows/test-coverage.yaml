@@ -1,15 +1,19 @@
+# .github/workflows/coverage.yaml
+# This workflow implements a test coverage measure without relying on an
+# external service like Codecov. It depends on tools/test_coverage.R, which runs
+# covr::package_coverage() and generates the SVG badge.
+name: Test Coverage
+
 on:
   push:
     branches: [main, master]
   pull_request:
 
-name: coverage
-
 permissions:
   contents: write
 
 jobs:
-  coverage:
+  test-coverage:
     runs-on: ubuntu-latest
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -27,7 +31,7 @@ jobs:
 
       - name: Compute coverage and render badge
         id: coverage
-        run: Rscript tools/coverage.R
+        run: Rscript tools/test_coverage.R
 
       - name: Publish badge
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
