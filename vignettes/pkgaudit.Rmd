@@ -15,11 +15,10 @@ knitr::opts_chunk$set(
 ```
 
 pkgaudit scans R source packages for files that can execute arbitrary commands
-during autoconf, builds, checks, and installations, and for lifecycle hooks
-whose bodies run automatically when a namespace is loaded, attached, unloaded,
-or detached.
-It also scans R source code for security-relevant patterns like `system()`
-calls.
+during autoconf, builds, checks, and installations, and for hooks whose bodies
+run automatically when a namespace is loaded, attached, unloaded, or detached.
+It scans R source code for security-relevant patterns like `system()` calls, and
+shell scripts and Make-like files for expressions like `curl`.
 
 A finding is not an accusation. In many cases, flagged files and code will be
 legitimate: files that can execute shell commands are needed for
@@ -33,7 +32,7 @@ library(pkgaudit)
 
 ## pkgaudit Rules
 
-pkgaudit separates *when* code executes from *what* code does using three rule
+pkgaudit separates *when* code executes from *what* code does using four rule
 categories:
 
 - **File contexts** are files that can execute arbitrary commands during
@@ -46,10 +45,19 @@ namespace is loaded, attached, unloaded, or detached, such as `.onLoad()` and
 - **Patterns** are security-relevant function calls. `system()`, for example,
 can execute arbitrary shell commands. `source()` can fetch and execute a remote
 payload.
+- **Expressions** are regular-expression matches in the shell scripts and
+Make-like files found as file contexts. `curl` and `wget`, for example, can
+fetch a remote payload or send data to a remote host while a package is being
+built or installed.
 
 Every pattern finding is attributed to the code context that contains it. A
 `system()` call inside an ordinary function only runs if you call that function;
 the same call inside `.onLoad()` runs automatically when a namespace is loaded.
+
+Every expression finding is attributed to the file context that contains it, and
+so carries that file's phases. Matching text is less precise than matching R's
+parse tree: an expression in a comment or a quoted string is reported the same
+as one in a live command.
 
 The full rule set is documented in [pkgaudit Rule Coverage](rules.html).
 
@@ -65,6 +73,7 @@ rules <- load_rules()
 nrow(rules$file_contexts)
 nrow(rules$code_contexts)
 nrow(rules$patterns)
+nrow(rules$regex)
 nrow(rules$phases)
 ```
 
@@ -105,7 +114,8 @@ list.files(pkg, recursive = TRUE)
 ```
 
 Three of those files are worth reading before we scan them. A `configure` script
-runs during installations from source, before any R source code is loaded:
+runs during installations from source, before any R source code is loaded. This
+one fetches a remote script and pipes it straight into a shell:
 
 ```{r example-configure, echo = FALSE, comment = ""}
 cat(readLines(file.path(pkg, "configure")), sep = "\n")
@@ -142,9 +152,11 @@ category:
 print(result)
 ```
 
-`summary()` reports the findings themselves: which contexts were found, how
-often each pattern matched in each context and lifecycle phase, and the MITRE
-ATT&CK techniques involved.
+`summary()` reports the findings themselves: how often each R pattern and shell
+or Make-like expression occurs by phase and code or file context, and the MITRE
+ATT&CK techniques involved. Phases can overlap (e.g., building a package with
+vignettes installs and loads it), so a finding may be counted under more than
+one phase.
 
 ```{r summary}
 summary(result)
@@ -163,6 +175,14 @@ techniques in `attck`, and one logical column per lifecycle phase.
 ```{r patterns-columns}
 result$patterns[, c("rule", "file_context", "code_context", "line_number",
                     "column_number")]
+```
+
+`expressions` mirrors `patterns`, but carries no `code_context`: a shell script
+or Make-like file has no R parse tree to sit in, so an expression is located by
+file alone.
+
+```{r expressions-columns}
+result$expressions[, c("rule", "file_context", "line_number", "column_number")]
 ```
 
 Each finding also records when its code runs, as one logical column per phase:
@@ -203,9 +223,11 @@ str(validate_tar(tarball))
 ## Interpreting a Scan
 
 A clean scan is weak evidence of safety: pkgaudit reasons about syntax, so
-sufficiently indirect code can evade any pattern rule. A scan with findings is
-better understood as a reading list than a verdict. In review, the questions
-worth asking are roughly:
+sufficiently indirect code can evade any pattern rule. Expressions are weaker
+still, being matched against text rather than a parse tree, so they both miss
+more and flag more: a `curl` inside a comment is reported, and one assembled
+from shell variables is not. A scan with findings is better understood as a
+reading list than a verdict. In review, the questions worth asking are roughly:
 
 - Does the package need this capability at all, given what it claims to do?
 - Does it run without being asked, at install or load time, rather than when a

@@ -11,9 +11,10 @@ coverage](https://raw.githubusercontent.com/tylerjssmith/pkgaudit/badges/coverag
 pkgaudit is a static analysis security testing (SAST) tool for R
 packages. It scans R source packages for files that can execute
 arbitrary commands during autoconf, builds, checks, and installations,
-and for lifecycle hooks whose bodies run automatically when a namespace
-is loaded, attached, unloaded, or detached. It also scans R source code
-for security-relevant patterns like `system()` calls.
+and for hooks whose bodies run automatically when a namespace is loaded,
+attached, unloaded, or detached. It scans R source code for
+security-relevant patterns like `system()` calls, and shell scripts and
+Make-like files for expressions like `curl`.
 
 R packages are the primary mechanism for sharing R code. They are also
 [potential attack vectors](articles/r-package-security.html). pkgaudit
@@ -42,7 +43,7 @@ digest::digest(
 ```
 
 Expected SHA-256:
-`2139a0ff1cffcd922c6e290efd329909e277c2bd28a2ca325143da3f1b7f4aa7`
+`ed20dfecfffc642d3cb3731cfb5d8d5efe574badefdfc3bfef42d00de93d7609`
 
 ## Usage
 
@@ -64,43 +65,40 @@ rules  <- load_rules()
 result <- audit_tarball(tarball, rules = rules)
 ```
 
-`summary.pkgaudit()` reports the file and code contexts found in
-untrustedpkg, and counts the patterns found in each of them by the R
-package lifecycle phase in which the code may execute (e.g., build,
-installation from source, installation from binary, load). These phases
-can overlap (e.g., builds test that a package can be installed from
-source and loaded), so a pattern may be counted under more than one
-phase.
+`summary()` reports how often each R pattern and shell or Make-like
+expression occurs by phase and code or file context, and the MITRE
+ATT&CK techniques involved. Phases can overlap (e.g., building a package
+with vignettes installs and loads it), so a finding may be counted under
+more than one phase.
 
-Below, we see that untrustedpkg includes a `configure` script, which is
-used for system-dependent configuration but can execute arbitrary shell
-commands. It also calls `system()` inside `.onLoad()`, which runs on
-`library(untrustedpkg)`, and `download.file()` inside an ordinary
-function, which runs only if a user calls the parent function and so
-belongs to no phase. Code that runs without being asked deserves closer
-attention.
+Below, untrustedpkg has an `.onLoad()` hook with a `system()` call that
+runs during builds, checks, installations from source, and loads; an
+ordinary function with a `download.file()` call that runs only if a user
+calls the enclosing function and so belongs to no phase; and a
+`configure` script with a `curl` expression that could run during
+builds, checks, and installations from source. Code that runs without
+being asked deserves closer attention.
 
 ``` r
 summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
-#> SHA-256:   e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386
-#> Scanned:   2026-08-02 22:19 UTC with pkgaudit v0.3.0, rules v0.3.0
+#> SHA-256:   ff3f1d20618ff4be01e852dacb6b93047d46bf435f4e4fcf2685294c858a8bf7
+#> Scanned:   2026-08-03 19:13 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
-#> --- Contexts ----------------------------------------------------------------
-#> file_context
-#> configure
-#> 
-#> code_context
-#> onLoad_base
-#> 
-#> --- Patterns ----------------------------------------------------------------
+#> --- R Patterns --------------------------------------------------------------
 #> phase            code_context   rule            n   attck
 #> at_build         onLoad_base    system          1   T1059.003 T1059.004
 #> at_check         onLoad_base    system          1   T1059.003 T1059.004
 #> at_install_src   onLoad_base    system          1   T1059.003 T1059.004
 #> at_load          onLoad_base    system          1   T1059.003 T1059.004
 #> none             Other          download_file   1   T1105
+#> 
+#> --- Shell / Make Expressions ------------------------------------------------
+#> phase            file_context   rule   n   attck
+#> at_build         configure      curl   1   T1041 T1105
+#> at_check         configure      curl   1   T1041 T1105
+#> at_install_src   configure      curl   1   T1041 T1105
 #> 
 #> --- Errors ------------------------------------------------------------------
 #> No exceptions were raised.

@@ -31,6 +31,9 @@ repo <- "https://github.com/tylerjssmith/pkgaudit/blob/master/"
 # Map each rule name to the YAML file that defines it, as a path relative to
 # inst/rules/. The database records a rule's name but not where it came from,
 # so the rule sources are read for it.
+#
+# Keyed by category as well as name: a rule name is unique only within its
+# category, and `curl` names both a pattern rule and a regex rule.
 rule_files <- local({
   root  <- system.file("rules", package = "pkgaudit")
   paths <- list.files(root, pattern = "\\.yaml$", recursive = TRUE)
@@ -40,12 +43,13 @@ rule_files <- local({
   }, character(1L))
   # Files under inst/rules/phases/ define a computed context, not a rule, and
   # carry no name field.
-  stats::setNames(paths[!is.na(named)], named[!is.na(named)])
+  keep <- !is.na(named)
+  split(stats::setNames(paths[keep], named[keep]), dirname(paths[keep]))
 })
 
-# A rule name, linked to its YAML.
-rule_link <- function(name) {
-  sprintf("[%s](%sinst/rules/%s)", name, repo, rule_files[name])
+# A rule name, linked to the YAML that defines it in the given category.
+rule_link <- function(name, category) {
+  sprintf("[%s](%sinst/rules/%s)", name, repo, rule_files[[category]][name])
 }
 
 # The phases a context runs in, named as the columns a caller would filter on.
@@ -181,8 +185,10 @@ computed_contexts <- data.frame(
 # Every rule and computed context must be described above, and every file
 # context's derived file name must be matched by the pattern it came from.
 stopifnot(
-  all(c(rules$file_contexts$name, rules$code_contexts$name,
-        rules$patterns$name) %in% names(rule_files)),
+  all(rules$file_contexts$name %in% names(rule_files$file_contexts)),
+  all(rules$code_contexts$name %in% names(rule_files$code_contexts)),
+  all(rules$patterns$name      %in% names(rule_files$patterns)),
+  all(rules$regex$name         %in% names(rule_files$regex)),
   setequal(names(code_labels), rules$code_contexts$name),
   setequal(names(pattern_labels), rules$patterns$name),
   setequal(computed_contexts$context,
@@ -197,8 +203,8 @@ stopifnot(
 ```
 
 pkgaudit v`r utils::packageVersion("pkgaudit")` separates *when* code executes
-from *what* code does using three categories of rules: file contexts, code
-contexts, and patterns. Each rule is defined in a YAML file under
+from *what* code does using four categories of rules: file contexts, code
+contexts, patterns, and expressions. Each rule is defined in a YAML file under
 [inst/rules/](https://github.com/tylerjssmith/pkgaudit/tree/master/inst/rules)
 and compiled into the SQLite database at `inst/db/rules.db`. The Rule columns
 below link to the defining YAML files.
@@ -243,12 +249,18 @@ reads `none` for code that runs at no phase at all.
 
 File contexts are files that R executes at build-, check-, or install-time.
 
+The Type column gives the language of the file. It determines how the file is
+read: those typed `shell` or `make` are also scanned for the expressions listed
+under [Expressions](#expressions), while those typed `R` are parsed and scanned
+for patterns like any other R script.
+
 ```{r file-contexts}
 fc <- rules$file_contexts
 emit_table(
-  c("Rule", "File Context", "Phases", "Description"),
-  rule_link(fc$name),
+  c("Rule", "File Context", "Type", "Phases", "Description"),
+  rule_link(fc$name, "file_contexts"),
   paste0("`", file_label(fc$path, fc$pattern), "`"),
+  paste0("`", fc$type, "`"),
   vapply(fc$name, phase_cell, character(1L)),
   fc$message
 )
@@ -263,7 +275,7 @@ namespace is loaded, attached, unloaded, or detached.
 cc <- rules$code_contexts
 emit_table(
   c("Rule", "Code Context", "Phases", "Description"),
-  rule_link(cc$name),
+  rule_link(cc$name, "code_contexts"),
   code_labels[cc$name],
   vapply(cc$name, phase_cell, character(1L)),
   cc$message
@@ -302,8 +314,50 @@ code context it sits in, listed in the two tables above.
 pat <- rules$patterns
 emit_table(
   c("Rule", "Pattern", "Description"),
-  rule_link(pat$name),
+  rule_link(pat$name, "patterns"),
   pattern_labels[pat$name],
   pat$message
+)
+```
+
+## Expressions
+
+Expressions are regular-expression matches in the shell scripts and Make-like
+files among the file contexts above -- those whose Type is `shell` or `make`.
+A file context typed `R` is parsed and scanned for patterns instead, and no
+other file in the package is scanned for expressions at all. Expression rules
+carry [MITRE ATT&CK](https://attack.mitre.org/) technique labels.
+
+Like a pattern rule, an expression rule declares no phases of its own: an
+expression inherits them from the file context it was found in, listed in the
+File Contexts table above. Where a file matches more than one file-context rule,
+it takes the phases of every rule that matched it.
+
+Matching text is less precise than matching a parse tree. An expression has no
+syntax behind it, so a match inside a comment, a quoted string, or a branch that
+never runs is reported the same as one in a live command. Expression findings
+are candidates for review rather than confirmed behavior, and warrant reading
+the file itself more than a pattern finding does.
+
+```{r expressions}
+rx <- rules$regex
+emit_table(
+  c("Rule", "Description"),
+  rule_link(rx$name, "regex"),
+  rx$message
+)
+```
+
+The expressions themselves are matched with `perl = TRUE` and are
+case-sensitive:
+
+```{r expressions-regex, results = "markup", comment = ""}
+# Shown as a verbatim block rather than a table column: an alternation `|` in a
+# regular expression would be read as a column separator, and escaping it
+# leaves the escape visible in the rendered cell.
+cat(
+  sprintf("%s  %s", formatC(rx$name, width = max(nchar(rx$name)), flag = "-"),
+          rx$regex),
+  sep = "\n"
 )
 ```

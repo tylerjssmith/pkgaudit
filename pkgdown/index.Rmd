@@ -35,10 +35,10 @@ db_hash_md  <- paste0(backtick, db_hash, backtick)
 
 pkgaudit is a static analysis security testing (SAST) tool for R packages. It
 scans R source packages for files that can execute arbitrary commands during
-autoconf, builds, checks, and installations, and for lifecycle hooks whose
-bodies run automatically when a namespace is loaded, attached, unloaded, or
-detached. It also scans R source code for security-relevant patterns like
-`system()` calls.
+autoconf, builds, checks, and installations, and for hooks whose bodies run
+automatically when a namespace is loaded, attached, unloaded, or detached. It
+scans R source code for security-relevant patterns like `system()` calls, and
+shell scripts and Make-like files for expressions like `curl`.
 
 R packages are the primary mechanism for sharing R code. They are also
 [potential attack vectors](articles/r-package-security.html). pkgaudit helps you
@@ -88,19 +88,17 @@ rules  <- load_rules()
 result <- audit_tarball(tarball, rules = rules)
 ```
 
-`summary.pkgaudit()` reports the file and code contexts found in untrustedpkg,
-and counts the patterns found in each of them by the R package lifecycle phase
-in which the code may execute (e.g., build, installation from source,
-installation from binary, load). These phases can overlap (e.g., builds test
-that a package can be installed from source and loaded), so a pattern may be
-counted under more than one phase.
+`summary()` reports how often each R pattern and shell or Make-like expression
+occurs by phase and code or file context, and the MITRE ATT&CK techniques
+involved. Phases can overlap (e.g., building a package with vignettes installs
+and loads it), so a finding may be counted under more than one phase.
 
-Below, we see that untrustedpkg includes a `configure` script, which is used
-for system-dependent configuration but can execute arbitrary shell commands. It
-also calls `system()` inside `.onLoad()`, which runs on `library(untrustedpkg)`,
-and `download.file()` inside an ordinary function, which runs only if a user
-calls the parent function and so belongs to no phase. Code that runs without
-being asked deserves closer attention.
+Below, untrustedpkg has an `.onLoad()` hook with a `system()` call that runs
+during builds, checks, installations from source, and loads; an ordinary
+function with a `download.file()` call that runs only if a user calls the
+enclosing function and so belongs to no phase; and a `configure` script with a
+`curl` expression that could run during builds, checks, and installations from
+source. Code that runs without being asked deserves closer attention.
 
 ```{r usage-summary}
 summary(result, path = FALSE)

