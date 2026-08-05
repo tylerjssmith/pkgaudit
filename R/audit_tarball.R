@@ -1,7 +1,7 @@
 #' Audit an R source package tarball
 #'
-#' Finds security-relevant file and code contexts and code patterns for review
-#' before an R source package tarball is trusted.
+#' Finds security-relevant file and code contexts, code patterns, and shell and
+#' make expressions for review before an R source package tarball is trusted.
 #'
 #' @param path Path to a gzip-compressed or uncompressed R source package
 #'   tarball (`.tar.gz`, `.tgz`, or `.tar`). bzip2/xz archives are not
@@ -14,7 +14,7 @@
 #' @inheritParams validate_tar
 #'
 #' @return The same `pkgaudit` object as [audit_package()]: a named list with
-#' class `pkgaudit` containing four data frames and a `metadata` list.
+#' class `pkgaudit` containing five data frames and a `metadata` list.
 #'
 #' @details
 #' Extracts a source package tarball to a temporary directory, applies
@@ -57,7 +57,7 @@ audit_tarball <- function(
   stopifnot(is.character(path), length(path) == 1L, file.exists(path))
   stopifnot(
     is.list(rules),
-    all(c("file_contexts", "code_contexts", "patterns", "phases") %in%
+    all(c("file_contexts", "code_contexts", "patterns", "regex", "phases") %in%
           names(rules))
   )
   stopifnot(is.character(temp_dir), length(temp_dir) == 1L)

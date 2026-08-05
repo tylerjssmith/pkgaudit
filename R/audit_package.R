@@ -1,7 +1,7 @@
 #' Audit an R source package
 #'
-#' Finds security-relevant file and code contexts and code patterns for review
-#' before an R source package is trusted.
+#' Finds security-relevant file and code contexts, code patterns, and shell and
+#' make expressions for review before an R source package is trusted.
 #'
 #' @param path Path to an R source package root directory. Defaults to the
 #'   current directory.
@@ -11,7 +11,7 @@
 #'   provenance. Leave `NULL` for a directory scan.
 #'
 #' @return A [new_pkgaudit()] object: a named list with class `pkgaudit`
-#'   containing four data frames and a `metadata` list.
+#'   containing five data frames and a `metadata` list.
 #'   \describe{
 #'     \item{file_contexts}{`rule`, `file_context`, `message`, and the phase
 #'       columns.}
@@ -22,6 +22,10 @@
 #'       `column_number`, `message`, `attck`, `code_context`, and the phase
 #'       columns. Join to the other tables on `file_context`, and to
 #'       `code_contexts$rule` on `code_context`.}
+#'     \item{expressions}{`rule`, `file_context`, `line_number`,
+#'       `column_number`, `message`, `attck`, and the phase columns. Regular
+#'       expressions matched in the shell scripts and Make-like files among the
+#'       file contexts. Join to the other tables on `file_context`.}
 #'     \item{errors}{`stage`, `file_context`, `rule`, `message`.}
 #'     \item{metadata}{List of `pkg_name`, `pkg_version`, `pkg_path`,
 #'       `pkg_is_tarball`, `pkg_sha256`, `pkgaudit_version`,
@@ -41,10 +45,16 @@
 #' `at_install_bin`, `at_load`, `at_attach`, `at_unload`, and `at_detach` --
 #' which is `TRUE` when that finding's code runs during the phase, so findings
 #' can be filtered by when they execute. A file or code context takes its phases
-#' from the rule that matched; a pattern inherits them from its `code_context`.
-#' A pattern in an ordinary function is `FALSE` for every phase: it runs only if
-#' something calls it. A finding can belong to several phases, so the phase
-#' columns do not partition the rows.
+#' from the rule that matched; a pattern inherits them from its `code_context`;
+#' an expression inherits them from the file context it was found in. A pattern
+#' in an ordinary function is `FALSE` for every phase: it runs only if something
+#' calls it. A finding can belong to several phases, so the phase columns do not
+#' partition the rows.
+#'
+#' Patterns are matched against R's parse tree, expressions against the text of
+#' a shell script or Make-like file. Text matching has no syntax behind it, so
+#' an expression reported inside a comment or a quoted string cannot be told
+#' apart from one in a live command; see [find_regex()].
 #'
 #' When called by [audit_tarball()], `.origin` is a list with `path`, `sha256`,
 #' and `is_tarball`, which are used for the `metadata` list. When calling
@@ -65,7 +75,7 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
   stopifnot(is.character(path), length(path) == 1L, dir.exists(path))
   stopifnot(
     is.list(rules),
-    all(c("file_contexts", "code_contexts", "patterns", "phases") %in%
+    all(c("file_contexts", "code_contexts", "patterns", "regex", "phases") %in%
           names(rules))
   )
 
@@ -74,10 +84,19 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
   errors        <- .empty_errors()
   code_contexts <- .empty_code_contexts(with_phases = FALSE)
   patterns      <- .empty_patterns(with_phases = FALSE)
+  expressions   <- .empty_expressions(with_phases = FALSE)
 
   fc            <- find_file_contexts(path, rules$file_contexts)
   file_contexts <- fc$file_contexts
   errors        <- rbind(errors, fc$errors)
+
+  for (file_context in .shell_and_make_contexts(file_contexts,
+                                                rules$file_contexts)) {
+    fr          <- find_regex(file.path(path, file_context), rules$regex,
+                              file_context)
+    expressions <- rbind(expressions, fr$expressions)
+    errors      <- rbind(errors, fr$errors)
+  }
 
   scripts <- find_scripts(path)
 
@@ -119,6 +138,7 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
   file_contexts <- .attach_phases(file_contexts, rules$phases)
   code_contexts <- .attach_phases(code_contexts, rules$phases)
   patterns      <- .resolve_pattern_phases(patterns, rules$phases)
+  expressions   <- .resolve_expression_phases(expressions, file_contexts)
 
   # provenance: hash the tarball as received when scanning one (via
   # audit_tarball), otherwise hash a manifest of the directory.
@@ -139,9 +159,29 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
     file_contexts = file_contexts,
     code_contexts = code_contexts,
     patterns      = patterns,
+    expressions   = expressions,
     errors        = errors,
     metadata      = metadata
   )
+}
+
+# --- Expression scanning ------------------------------------------------------
+
+# The file contexts found in a package that are executed through a shell or
+# through make, and so are scanned for expressions. The type is a property of
+# the rule that matched, which the found file contexts do not carry, so it is
+# looked up in the rules that produced them.
+#
+# Paths are returned once each even when several rules matched the same file, so
+# a file is read and scanned once; .resolve_expression_phases() unions the
+# phases of every rule that matched it.
+.shell_and_make_contexts <- function(file_contexts, file_context_rules) {
+  if (nrow(file_contexts) == 0L) return(character(0L))
+
+  type <- file_context_rules$type[match(file_contexts$rule,
+                                        file_context_rules$name)]
+  unique(file_contexts$file_context[!is.na(type) &
+                                      type %in% c("shell", "make")])
 }
 
 # --- Metadata construction ----------------------------------------------------

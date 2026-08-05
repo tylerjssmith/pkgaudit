@@ -4,9 +4,10 @@
 # generated from the YAML files in inst/rules/. pkgaudit itself should be run
 # against the database bundled with the package.
 # ------------------------------------------------------------------------------
-# Reads the file-context, code-context, and pattern rule YAML files, validates
-# them, writes them to a fresh SQLite database, records a SHA-256 sidecar, and
-# regenerates the test fixtures from the positive/negative examples.
+# Reads the file-context, code-context, pattern, and regex rule YAML files,
+# validates them, writes them to a fresh SQLite database, records a SHA-256
+# sidecar, and regenerates the test fixtures from the positive/negative
+# examples.
 #
 # Run from the package root with:  Rscript inst/scripts/build_db.R
 #
@@ -19,6 +20,11 @@
 .file_context_scalars <- c("name", "version", "type", "message", "path", "pattern")
 .code_context_scalars <- c("name", "version", "type", "message", "xpath")
 .pattern_scalars      <- c("name", "version", "type", "message", "xpath")
+
+# A regex rule declares no type. The other three classes name the language of
+# what they match; a regex rule is applied to every file context whose type is
+# shell or make, so its own type would only restate that.
+.regex_scalars        <- c("name", "version", "message", "regex")
 
 .example_fields <- c("positive_examples", "negative_examples")
 
@@ -48,7 +54,8 @@
 
 # --- Validation ---------------------------------------------------------------
 
-# Shared checks: name safety, scalar non-emptiness, type, and examples.
+# Shared checks: name safety, scalar non-emptiness, type, and examples. A class
+# with no entry in .valid_types declares no type and is not checked for one.
 .validate_common <- function(rule, path, scalars, class) {
   if (!grepl("^[a-zA-Z][a-zA-Z0-9_]{0,63}$", rule$name %||% "")) {
     stop(
@@ -66,7 +73,7 @@
     }
   }
 
-  if (!rule$type %in% .valid_types[[class]]) {
+  if (class %in% names(.valid_types) && !rule$type %in% .valid_types[[class]]) {
     stop(
       "Field 'type' must be one of: ",
       paste(.valid_types[[class]], collapse = ", "), " in: ", path
@@ -121,10 +128,28 @@
   invisible(ok)
 }
 
+# Validate a regex rule's expression under the engine find_regex() uses. A
+# regex is also refused if it matches the empty string: such an expression
+# matches at every position of every line, so one rule would bury a scan in
+# findings.
+.validate_regex_expression <- function(regex, path) {
+  ok <- tryCatch(
+    regexpr(regex, "", perl = TRUE, useBytes = FALSE),
+    warning = function(w) stop("Invalid regex in: ", path, "\n  ",
+                               conditionMessage(w)),
+    error   = function(e) stop("Invalid regex in: ", path, "\n  ",
+                               conditionMessage(e))
+  )
+  if (as.integer(ok) > 0L) {
+    stop("Field 'regex' must not match the empty string in: ", path)
+  }
+  invisible(TRUE)
+}
+
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
 
-# read_file_context_yaml() / read_code_context_yaml() / read_pattern_yaml() ----
+# read_*_yaml() ---------------------------------------------------------------
 # Each reads one YAML file, validates it, and returns a normalized rule list.
 
 read_file_context_yaml <- function(path) {
@@ -174,6 +199,26 @@ read_pattern_yaml <- function(path) {
   .check_fields(rule, expected, path)
   .validate_common(rule, path, .pattern_scalars, "pattern")
   .validate_xpath(rule$xpath, path)
+
+  attck <- trimws(unlist(rule$attck))
+  if (length(attck) == 0L || any(nchar(attck) == 0L)) {
+    stop("Field 'attck' must be a non-empty sequence of labels in: ", path)
+  }
+  rule$attck <- paste(attck, collapse = " ")
+
+  rule$positive_examples <- unlist(rule$positive_examples)
+  rule$negative_examples <- unlist(rule$negative_examples)
+  rule
+}
+
+read_regex_yaml <- function(path) {
+  stopifnot(file.exists(path))
+  rule <- yaml::read_yaml(path)
+
+  expected <- c(.regex_scalars, "attck", .example_fields)
+  .check_fields(rule, expected, path)
+  .validate_common(rule, path, .regex_scalars, "regex")
+  .validate_regex_expression(rule$regex, path)
 
   attck <- trimws(unlist(rule$attck))
   if (length(attck) == 0L || any(nchar(attck) == 0L)) {
@@ -240,7 +285,8 @@ init_db <- function(
   versions = list(
     c("0.1.0", "Initial release"),
     c("0.2.0", "Expanded pattern rule coverage"),
-    c("0.3.0", "Phase metadata and corrected context messages")
+    c("0.3.0", "Phase metadata and corrected context messages"),
+    c("0.4.0", "Regex rules for shell scripts and Make-like files")
   )
 ) {
   db_dir <- dirname(db_path)
@@ -286,6 +332,17 @@ init_db <- function(
       message TEXT NOT NULL,
       attck   TEXT NOT NULL,
       xpath   TEXT NOT NULL
+    )")
+
+  # Regex rules carry no type: they are applied to every file context whose
+  # type is shell or make, and to no other file.
+  DBI::dbExecute(con, "
+    CREATE TABLE regex (
+      name    TEXT PRIMARY KEY,
+      version TEXT NOT NULL REFERENCES rule_versions(version),
+      message TEXT NOT NULL,
+      attck   TEXT NOT NULL,
+      regex   TEXT NOT NULL
     )")
 
   # One row per context that code can execute in: every file- and code-context
@@ -374,11 +431,26 @@ load_pattern <- function(rule, con, path) {
   invisible(rule$name)
 }
 
+# The regex is stored verbatim. Unlike an XPath, leading and trailing
+# whitespace in a regular expression is significant, so trimming it here could
+# silently change what a rule matches.
+load_regex <- function(rule, con, path) {
+  .assert_version(con, rule$version, path)
+  DBI::dbExecute(
+    con,
+    "INSERT INTO regex (name, version, message, attck, regex)
+     VALUES (?, ?, ?, ?, ?)",
+    params = list(rule$name, rule$version, trimws(rule$message), rule$attck,
+                  rule$regex)
+  )
+  invisible(rule$name)
+}
+
 
 # build_rules_db() -------------------------------------------------------------
 # Validate and load every YAML file under rules_root/{file_contexts,
-# code_contexts,patterns} into db_path, then write the SHA-256 sidecar. All
-# writes run in one transaction: any validation failure rolls back the DB.
+# code_contexts,patterns,regex} into db_path, then write the SHA-256 sidecar.
+# All writes run in one transaction: any validation failure rolls back the DB.
 build_rules_db <- function(
   rules_root = file.path("inst", "rules"),
   db_path    = file.path("inst", "db", "rules.db")
@@ -389,7 +461,9 @@ build_rules_db <- function(
     code_contexts = list(reader = read_code_context_yaml,
                          loader = load_code_context, has_phases = TRUE),
     patterns      = list(reader = read_pattern_yaml,
-                         loader = load_pattern,      has_phases = FALSE)
+                         loader = load_pattern,      has_phases = FALSE),
+    regex         = list(reader = read_regex_yaml,
+                         loader = load_regex,        has_phases = FALSE)
   )
 
   con <- DBI::dbConnect(RSQLite::SQLite(), db_path)
@@ -448,7 +522,9 @@ build_rules_db <- function(
 # build_fixtures() -------------------------------------------------------------
 # Regenerate one fixture file per positive/negative example so the fixtures
 # stay in sync with the YAML source. File-context examples are path strings
-# (written as .txt); code-context and pattern examples are R code (.R).
+# (written as .txt); code-context and pattern examples are R code (.R); regex
+# examples are lines of shell or make, which are neither, and are written as
+# .txt too.
 build_fixtures <- function(
   rules_root   = file.path("inst", "rules"),
   fixtures_dir = file.path("tests", "testthat", "fixtures")
@@ -456,7 +532,8 @@ build_fixtures <- function(
   classes <- list(
     file_contexts = list(reader = read_file_context_yaml, ext = "txt"),
     code_contexts = list(reader = read_code_context_yaml, ext = "R"),
-    patterns      = list(reader = read_pattern_yaml,      ext = "R")
+    patterns      = list(reader = read_pattern_yaml,      ext = "R"),
+    regex         = list(reader = read_regex_yaml,        ext = "txt")
   )
 
   for (cls in names(classes)) {

@@ -1,7 +1,8 @@
 # load_rules() -----------------------------------------------------------------
-test_that("load_rules() returns four rule data frames with expected columns", {
+test_that("load_rules() returns five rule data frames with expected columns", {
   rules <- load_rules()
-  expect_named(rules, c("file_contexts", "code_contexts", "patterns", "phases"))
+  expect_named(rules, c("file_contexts", "code_contexts", "patterns", "regex",
+                        "phases"))
 
   expect_named(rules$file_contexts,
                c("name", "version", "type", "message", "path", "recursive", "pattern"))
@@ -9,12 +10,26 @@ test_that("load_rules() returns four rule data frames with expected columns", {
                c("name", "version", "type", "message", "xpath"))
   expect_named(rules$patterns,
                c("name", "version", "type", "message", "attck", "xpath"))
+  # A regex rule declares no type: it applies to every shell or Make-like file
+  # context, so a type of its own would only restate that.
+  expect_named(rules$regex,
+               c("name", "version", "message", "attck", "regex"))
   expect_named(rules$phases, c("context", "version", .phase_columns))
 
   expect_type(rules$file_contexts$recursive, "logical")
   expect_gt(nrow(rules$file_contexts), 0L)
   expect_gt(nrow(rules$code_contexts), 0L)
   expect_gt(nrow(rules$patterns), 0L)
+  expect_gt(nrow(rules$regex), 0L)
+})
+
+test_that("load_rules() returns regex rules that compile under PCRE", {
+  rules <- load_rules()
+  for (i in seq_len(nrow(rules$regex))) {
+    expect_no_error(
+      regexpr(rules$regex$regex[[i]], "x", perl = TRUE, useBytes = FALSE)
+    )
+  }
 })
 
 test_that("load_rules() returns phases as logicals for every context", {

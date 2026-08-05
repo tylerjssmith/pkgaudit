@@ -23,7 +23,7 @@ local filesystem location scanned. Set \code{FALSE} to omit local paths.
 }
 \value{
 \code{summary.pkgaudit()} returns a \code{summary.pkgaudit} object: a named list
-of three summary data frames, the errors, the scan \code{metadata}, and the
+of four summary data frames, the errors, the scan \code{metadata}, and the
 recorded \code{path}.
 \describe{
 \item{file_contexts}{\code{file_context}: each file context found, once.}
@@ -33,26 +33,34 @@ once.}
 each pattern rule was matched in each code context, split by the
 lifecycle phase that context executes in, with the ATT&CK techniques
 the rule carries.}
+\item{expressions}{\code{phase}, \code{file_context}, \code{rule}, \code{n}, \code{attck}: how
+often each regex rule was matched in each shell script or Make-like
+file, split by the lifecycle phase that file executes in.}
 \item{errors}{\code{stage}, \code{script}, \code{rule}, \code{error}: the rows of the object's
 \code{errors} data frame, renamed for display.}
 }
 \code{print.summary.pkgaudit()} returns \code{x} invisibly.
 }
 \description{
-\code{summary.pkgaudit()} rolls a scan up into the distinct file and code contexts
-found, the frequency of each pattern by the lifecycle phase and code context
-it executes in with its MITRE ATT&CK techniques, and the errors, if any.
+\code{summary.pkgaudit()} rolls a scan up into the frequency of each R pattern by
+the lifecycle phase and code context it executes in, the frequency of each
+shell or make expression by the phase and file context it executes in, both
+with their MITRE ATT&CK techniques, and the errors, if any. It also collects
+the distinct file and code contexts found, which the report does not show.
 \code{print.summary.pkgaudit()} writes that summary as a sectioned report and
 returns the object invisibly.
 }
 \details{
 The report opens with the same metadata block as \code{\link[=print.pkgaudit]{print.pkgaudit()}}, then
-gives one section per result. A section with nothing to report says so.
+gives the \verb{R Patterns}, \verb{Shell / Make Expressions}, and \code{Errors} sections. A
+section with nothing to report says so. The \code{file_contexts} and
+\code{code_contexts} summaries are returned for programmatic use but are not part
+of the report.
 
-A pattern occurrence executes in every phase its code context does, so it
-contributes one row per phase and the \code{n} column sums to more than the number
-of occurrences. Occurrences that execute in no phase at all are gathered
-under \code{none}.
+A pattern occurrence executes in every phase its code context does, and an
+expression in every phase its file context does, so each contributes one row
+per phase and the \code{n} column sums to more than the number of occurrences.
+Occurrences that execute in no phase at all are gathered under \code{none}.
 
 The \code{Errors} section lists every error, whatever stage produced it, and is
 followed by one note per stage stating what scan coverage was lost. An error
@@ -68,6 +76,7 @@ summary(result, path = FALSE)   # omit the local Path: line for sharing
 
 s <- summary(result)
 s$patterns                      # pattern frequencies as a data frame
+s$expressions                   # expression frequencies as a data frame
 }
 
 }

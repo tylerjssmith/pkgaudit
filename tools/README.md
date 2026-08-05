@@ -15,7 +15,10 @@ without extracting anything.
 prepended. Columns recoverable from the rules are dropped to keep the frames
 manageable at CRAN scale: `message`, `attck`, and the nine lifecycle-phase
 columns. Join `rules$phases` on `rule` for a file or code context, or on
-`code_context` for a pattern, to restore the phases.
+`code_context` for a pattern, to restore the phases. An expression takes its
+phases from the file it was found in, so restoring those takes two joins:
+`expressions` to `file_contexts` on `package`, `version`, and `file_context` to
+recover the file-context `rule`, then `rules$phases` on that.
 
 **IMPORTANT: Respect your CRAN mirror's bandwidth.** Run `download_cran()` 
 infrequently and use `pause` > 0 (default is 0.5) to rate-limit the downloads. 

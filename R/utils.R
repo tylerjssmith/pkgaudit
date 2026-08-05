@@ -52,6 +52,22 @@
   if (with_phases) cbind(df, .empty_phase_cols()) else df
 }
 
+# Expressions carry no code_context: a shell script or Make-like file has no R
+# parse tree to sit in, so an expression's phases come from the file context it
+# was found in rather than from an enclosing code context.
+.empty_expressions <- function(with_phases = TRUE) {
+  df <- data.frame(
+    rule          = character(0L),
+    file_context  = character(0L),
+    line_number   = integer(0L),
+    column_number = integer(0L),
+    message       = character(0L),
+    attck         = character(0L),
+    stringsAsFactors = FALSE
+  )
+  if (with_phases) cbind(df, .empty_phase_cols()) else df
+}
+
 .empty_errors <- function() {
   data.frame(
     stage        = character(0L),

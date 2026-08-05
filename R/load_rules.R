@@ -3,14 +3,14 @@
 
 #' Load security rules from the pkgaudit rules database
 #'
-#' Loads the file-context, code-context, and pattern rules, and the lifecycle
-#' phases of every context, from the bundled SQLite database as a named list
-#' suitable for passing to [audit_package()] or [audit_tarball()].
+#' Loads the file-context, code-context, pattern, and regex rules, and the
+#' lifecycle phases of every context, from the bundled SQLite database as a
+#' named list suitable for passing to [audit_package()] or [audit_tarball()].
 #'
 #' @param db_path Path to the rules database. Defaults to the database bundled
 #'   with the installed package.
 #'
-#' @return A named list with four data frames:
+#' @return A named list with five data frames:
 #'   \describe{
 #'     \item{file_contexts}{Data frame with columns `name`, `version`, `type`,
 #'       `message`, `path`, `recursive`, `pattern`.}
@@ -18,6 +18,9 @@
 #'       `message`, `xpath`.}
 #'     \item{patterns}{Data frame with columns `name`, `version`, `type`,
 #'       `message`, `attck`, `xpath`.}
+#'     \item{regex}{Data frame with columns `name`, `version`, `message`,
+#'       `attck`, `regex`. Regex rules declare no `type`: they are applied to
+#'       every file context whose type is `shell` or `make`.}
 #'     \item{phases}{Data frame with columns `context`, `version`, and one
 #'       logical column per lifecycle phase. One row per context code can
 #'       execute in: every file- and code-context rule, plus the computed
@@ -75,6 +78,13 @@ load_rules <- function(db_path = .db_path()) {
         ORDER BY name"
     )
 
+    regex <- DBI::dbGetQuery(
+      con,
+      "SELECT name, version, message, attck, regex
+         FROM regex
+        ORDER BY name"
+    )
+
     phases <- DBI::dbGetQuery(
       con,
       sprintf("SELECT context, version, %s
@@ -88,7 +98,8 @@ load_rules <- function(db_path = .db_path()) {
 
     if (nrow(file_contexts) == 0L &&
         nrow(code_contexts) == 0L &&
-        nrow(patterns) == 0L) {
+        nrow(patterns) == 0L &&
+        nrow(regex) == 0L) {
       stop("No rules found in rules database: ", db_path, call. = FALSE)
     }
 
@@ -102,6 +113,7 @@ load_rules <- function(db_path = .db_path()) {
         file_contexts = file_contexts,
         code_contexts = code_contexts,
         patterns      = patterns,
+        regex         = regex,
         phases        = phases
       ),
       provenance = list(

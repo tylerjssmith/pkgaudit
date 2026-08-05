@@ -41,11 +41,11 @@ of a single gzip layer.}
 }
 \value{
 The same \code{pkgaudit} object as \code{\link[=audit_package]{audit_package()}}: a named list with
-class \code{pkgaudit} containing four data frames and a \code{metadata} list.
+class \code{pkgaudit} containing five data frames and a \code{metadata} list.
 }
 \description{
-Finds security-relevant file and code contexts and code patterns for review
-before an R source package tarball is trusted.
+Finds security-relevant file and code contexts, code patterns, and shell and
+make expressions for review before an R source package tarball is trusted.
 }
 \details{
 Extracts a source package tarball to a temporary directory, applies

@@ -36,11 +36,12 @@ good_metadata <- function(...) {
 # A well-formed pkgaudit object with the given per-frame row counts. Every row
 # of a frame is identical, so this builds objects for testing counts; tests that
 # need distinct findings should build the frames themselves.
-make_obj <- function(n_file = 0L, n_code = 0L, n_pat = 0L, n_err = 0L,
-                     metadata = good_metadata()) {
+make_obj <- function(n_file = 0L, n_code = 0L, n_pat = 0L, n_expr = 0L,
+                     n_err = 0L, metadata = good_metadata()) {
   fc <- .empty_file_contexts()
   cc <- .empty_code_contexts()
   pt <- .empty_patterns()
+  ex <- .empty_expressions()
   er <- .empty_errors()
   install_phases <- phase_values("at_build", "at_check", "at_install_src")
 
@@ -56,8 +57,12 @@ make_obj <- function(n_file = 0L, n_code = 0L, n_pat = 0L, n_err = 0L,
     pt[i, ] <- c(list("system", "R/zzz.R", 1L, 1L, "m", "T1059",
                       "Top-level"), install_phases)
   }
+  for (i in seq_len(n_expr)) {
+    ex[i, ] <- c(list("curl", "configure", 1L, 1L, "m", "T1041"),
+                 install_phases)
+  }
   for (i in seq_len(n_err))  er[i, ] <- list("parse_script", "R/bad.R", NA_character_, "boom")
-  new_pkgaudit(fc, cc, pt, er, metadata)
+  new_pkgaudit(fc, cc, pt, ex, er, metadata)
 }
 
 # Create a minimal source package on disk and return its root path. Extra files

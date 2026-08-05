@@ -50,6 +50,32 @@ test_that("pattern rules match their positive fixtures and reject negatives", {
   }
 })
 
+# --- Regex fixtures -----------------------------------------------------------
+# Regex examples are lines of shell or make. find_regex() reads a file, so each
+# fixture is scanned where it sits.
+test_that("regex rules match their positive fixtures and reject negatives", {
+  base <- test_path("fixtures", "regex")
+  for (name in rules$regex$name) {
+    rule_dir <- file.path(base, name)
+    expect_true(dir.exists(rule_dir), info = name)
+    rule <- rule_row(rules$regex, name)
+
+    for (pos in list.files(rule_dir, pattern = "^positive_\\d+\\.txt$",
+                           full.names = TRUE)) {
+      res <- find_regex(pos, rule, basename(pos))
+      expect_gt(nrow(res$expressions), 0L)
+      expect_equal(nrow(res$errors), 0L)
+      expect_equal(unique(res$expressions$rule), name, info = pos)
+    }
+    for (neg in list.files(rule_dir, pattern = "^negative_\\d+\\.txt$",
+                           full.names = TRUE)) {
+      res <- find_regex(neg, rule, basename(neg))
+      expect_equal(nrow(res$expressions), 0L, info = neg)
+      expect_equal(nrow(res$errors), 0L, info = neg)
+    }
+  }
+})
+
 # --- File-context fixtures ----------------------------------------------------
 # File-context examples are path strings. For each rule, materialize all of its
 # positive and negative example paths in one throwaway package, then confirm the

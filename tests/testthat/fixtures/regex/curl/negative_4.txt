@@ -1,0 +1,1 @@
+curl_version_info_data *info;

@@ -30,20 +30,32 @@
 #'   through to [pkgaudit::audit_tarball()] / [pkgaudit::validate_tar()]. The
 #'   defaults are calibrated to CRAN; raise them for larger ecosystems.
 #'
-#' @return A named list of five data frames, with `package` and `version`
+#' @return A named list of six data frames, with `package` and `version`
 #'   prepended to the columns from [pkgaudit::audit_package()]. Columns
 #'   recoverable from the rules are dropped from the finding frames, since at
-#'   CRAN scale they repeat over millions of rows: `message` from all three,
-#'   `attck` from patterns, and the nine lifecycle-phase columns from all three
-#'   (join `rules$phases` on `rule` for a context, or on `code_context` for a
-#'   pattern, to restore them). The error frame keeps its `message`, which is
-#'   the runtime error text.
+#'   CRAN scale they repeat over millions of rows: `message` from all four,
+#'   `attck` from patterns and expressions, and the nine lifecycle-phase columns
+#'   from all four. The error frame keeps its `message`, which is the runtime
+#'   error text.
+#'
+#'   To restore phases, join `rules$phases` on `rule` for a file or code
+#'   context, or on `code_context` for a pattern. An expression takes its phases
+#'   from the file it was found in, which is a path rather than a rule name, so
+#'   restoring them takes two joins: `expressions` to `file_contexts` on
+#'   `package`, `version`, and `file_context` to recover the file-context
+#'   `rule`, then `rules$phases` on that. A file matching more than one
+#'   file-context rule yields a row per rule, and the expression runs in the
+#'   union of their phases.
 #'   \describe{
 #'     \item{file_contexts}{`package`, `version`, `rule`, `file_context`.}
 #'     \item{code_contexts}{`package`, `version`, `rule`, `file_context`,
 #'       `line_number`, `column_number`.}
 #'     \item{patterns}{`package`, `version`, `rule`, `file_context`,
 #'       `line_number`, `column_number`, `code_context`.}
+#'     \item{expressions}{`package`, `version`, `rule`, `file_context`,
+#'       `line_number`, `column_number`. Regex matches in the shell scripts and
+#'       Make-like files among the file contexts. Carries no `code_context`: a
+#'       shell script or Make-like file has no R parse tree to sit in.}
 #'     \item{errors}{`package`, `version`, `stage`, `file_context`, `rule`,
 #'       `message`. Captures per-file audit errors as well as tarball-level
 #'       failures (`stage` `"parse_filename"`, `"validate_tar"` for a refused
@@ -79,6 +91,9 @@
 #'
 #' # Patterns that execute automatically on load, across all packages.
 #' subset(result$patterns, code_context != "Other")
+#'
+#' # How often each regex rule matched, and in which files.
+#' table(result$expressions$rule, result$expressions$file_context)
 #' }
 #'
 #' @importFrom parallel mclapply detectCores
@@ -104,9 +119,11 @@ audit_cran <- function(
   if (!dir.exists(dir)) {
     stop("dir does not exist: ", dir)
   }
+  # Checked here as well as in audit_tarball() so an incomplete rules list fails
+  # once, up front, rather than as one captured error per tarball.
   stopifnot(
     is.list(rules),
-    all(c("file_contexts", "code_contexts", "patterns", "phases") %in%
+    all(c("file_contexts", "code_contexts", "patterns", "regex", "phases") %in%
           names(rules))
   )
   stopifnot(length(chunk_size) == 1L, !is.na(chunk_size), chunk_size >= 1L)
@@ -169,7 +186,8 @@ audit_cran <- function(
     message(sprintf(
       "  %s  %d/%d (%.1f%%)  %d finding(s), %d error(s) this chunk  ~%.0f min left",
       format(Sys.time(), "%H:%M:%S"), done, total, 100 * done / total,
-      nrow(chunk$patterns) + nrow(chunk$code_contexts) + nrow(chunk$file_contexts),
+      nrow(chunk$file_contexts) + nrow(chunk$code_contexts) +
+        nrow(chunk$patterns) + nrow(chunk$expressions),
       nrow(chunk$errors), eta_min
     ))
   }
@@ -177,9 +195,10 @@ audit_cran <- function(
   out <- .combine_results(per_chunk)
 
   message(sprintf(
-    "Done. Across %d package(s): %d file context(s), %d code context(s), %d pattern(s), %d error(s), %d provenance mismatch(es).",
+    "Done. Across %d package(s): %d file context(s), %d code context(s), %d pattern(s), %d expression(s), %d error(s), %d provenance mismatch(es).",
     total, nrow(out$file_contexts), nrow(out$code_contexts),
-    nrow(out$patterns), nrow(out$errors), nrow(out$provenance)
+    nrow(out$patterns), nrow(out$expressions), nrow(out$errors),
+    nrow(out$provenance)
   ))
 
   out
@@ -189,7 +208,7 @@ audit_cran <- function(
 # --- Helpers ------------------------------------------------------------------
 
 # Audit one tarball, capturing errors and warnings as data so nothing depends on
-# forked-worker stderr. Returns a four-frame result (see audit_cran()). Under
+# forked-worker stderr. Returns the frames audit_cran() documents. Under
 # on_error = "stop" a failure is re-raised instead of captured.
 #
 # Package name and version label every row from the audited DESCRIPTION
@@ -272,9 +291,10 @@ audit_cran <- function(
 
 # The lifecycle-phase columns pkgaudit attaches to every findings frame. They
 # are dropped from the survey frames: a context's phases are a property of the
-# rule that matched and a pattern's of the code context it sits in, so both are
-# recoverable by joining rules$phases, and carrying nine logicals on every row
-# is dead weight at CRAN scale.
+# rule that matched, a pattern's of the code context it sits in, and an
+# expression's of the file context it was found in, so all three are recoverable
+# by joining rules$phases, and carrying nine logicals on every row is dead
+# weight at CRAN scale.
 .cran_phase_columns <- c(
   "at_autoconf", "at_build", "at_check", "at_install_src", "at_install_bin",
   "at_load", "at_attach", "at_unload", "at_detach"
@@ -283,7 +303,7 @@ audit_cran <- function(
 
 # Prepend the resolved package name/version to each frame of an audit_tarball()
 # result, dropping the columns recoverable from the rules (message from the
-# finding frames, attck from patterns, phases from all three).
+# finding frames, attck from patterns and expressions, phases from all four).
 .prefix_audit <- function(audit, pkg_name, pkg_version) {
   drop <- c("message", .cran_phase_columns)
   list(
@@ -293,6 +313,8 @@ audit_cran <- function(
                                 pkg_name, pkg_version, .empty_cran_code_contexts),
     patterns      = .prefix_pkg(.drop_col(audit$patterns, c(drop, "attck")),
                                 pkg_name, pkg_version, .empty_cran_patterns),
+    expressions   = .prefix_pkg(.drop_col(audit$expressions, c(drop, "attck")),
+                                pkg_name, pkg_version, .empty_cran_expressions),
     errors        = .prefix_pkg(audit$errors, pkg_name, pkg_version,
                                 .empty_cran_errors),
     # Provenance rows are attached by .audit_worker() from captured mismatch
@@ -302,9 +324,9 @@ audit_cran <- function(
 }
 
 
-# rbind the same-named frame across a list of four-frame results, dropping
-# NULL/try-error entries. Zero-row frames are skipped for speed but the correct
-# empty schema is returned when a class has no rows anywhere.
+# rbind the same-named frame across a list of results, dropping NULL/try-error
+# entries. Zero-row frames are skipped for speed but the correct empty schema is
+# returned when a class has no rows anywhere.
 .combine_results <- function(results) {
   results <- Filter(function(x) is.list(x) && !inherits(x, "try-error"), results)
   key <- function(k, empty_fn) {
@@ -317,6 +339,7 @@ audit_cran <- function(
     file_contexts = key("file_contexts", .empty_cran_file_contexts),
     code_contexts = key("code_contexts", .empty_cran_code_contexts),
     patterns      = key("patterns",      .empty_cran_patterns),
+    expressions   = key("expressions",   .empty_cran_expressions),
     errors        = key("errors",        .empty_cran_errors),
     provenance    = key("provenance",    .empty_cran_provenance)
   )
@@ -354,8 +377,8 @@ audit_cran <- function(
 }
 
 
-# A four-frame result for a package that failed before or during auditing: empty
-# finding frames plus a single error row.
+# A result for a package that failed before or during auditing: empty finding
+# frames plus a single error row.
 .cran_fail <- function(pkg, version, stage, message) {
   res <- .empty_cran_result()
   res$errors <- .cran_error_row(pkg, version, stage, message)
@@ -392,7 +415,7 @@ audit_cran <- function(
 }
 
 
-# --- Empty-frame templates (mirror pkgaudit::audit_package() v0.3.0 columns) --
+# --- Empty-frame templates (mirror pkgaudit::audit_package() v0.4.0 columns) --
 .empty_cran_file_contexts <- function() {
   data.frame(
     package      = character(0L),
@@ -428,6 +451,18 @@ audit_cran <- function(
   )
 }
 
+.empty_cran_expressions <- function() {
+  data.frame(
+    package       = character(0L),
+    version       = character(0L),
+    rule          = character(0L),
+    file_context  = character(0L),
+    line_number   = integer(0L),
+    column_number = integer(0L),
+    stringsAsFactors = FALSE
+  )
+}
+
 .empty_cran_errors <- function() {
   data.frame(
     package      = character(0L),
@@ -458,6 +493,7 @@ audit_cran <- function(
     file_contexts = .empty_cran_file_contexts(),
     code_contexts = .empty_cran_code_contexts(),
     patterns      = .empty_cran_patterns(),
+    expressions   = .empty_cran_expressions(),
     errors        = .empty_cran_errors(),
     provenance    = .empty_cran_provenance()
   )

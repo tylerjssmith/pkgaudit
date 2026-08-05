@@ -5,29 +5,31 @@
 
 #' Construct a pkgaudit object
 #'
-#' Assembles the four result data frames and a metadata list into a validated
+#' Assembles the five result data frames and a metadata list into a validated
 #' `pkgaudit` S3 object. [audit_package()] calls this at the end of a scan. It
 #' is also used to construct objects directly (e.g., in tests).
 #'
-#' @param file_contexts,code_contexts,patterns,errors Data frames with the
-#'   columns documented in [audit_package()].
+#' @param file_contexts,code_contexts,patterns,expressions,errors Data frames
+#'   with the columns documented in [audit_package()].
 #' @param metadata Named list with the fields documented in [audit_package()],
 #'   each a length-one value of the expected type.
 #'
 #' @return A `pkgaudit` object: a named list of `file_contexts`,
-#'   `code_contexts`, `patterns`, `errors`, and `metadata`.
+#'   `code_contexts`, `patterns`, `expressions`, `errors`, and `metadata`.
 #'
 #' @keywords internal
 new_pkgaudit <- function(
   file_contexts,
   code_contexts,
   patterns,
+  expressions,
   errors,
   metadata
 ) {
   .validate_result_df(file_contexts, "file_contexts")
   .validate_result_df(code_contexts, "code_contexts")
   .validate_result_df(patterns,      "patterns")
+  .validate_result_df(expressions,   "expressions")
   .validate_result_df(errors,        "errors")
   .validate_metadata(metadata)
 
@@ -36,6 +38,7 @@ new_pkgaudit <- function(
       file_contexts = file_contexts,
       code_contexts = code_contexts,
       patterns      = patterns,
+      expressions   = expressions,
       errors        = errors,
       metadata      = metadata
     ),
@@ -95,6 +98,8 @@ new_pkgaudit <- function(
                     "message", .phase_columns),
   patterns      = c("rule", "file_context", "line_number", "column_number",
                     "message", "attck", "code_context", .phase_columns),
+  expressions   = c("rule", "file_context", "line_number", "column_number",
+                    "message", "attck", .phase_columns),
   errors        = c("stage", "file_context", "rule", "message")
 )
 
