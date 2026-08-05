@@ -1,3 +1,61 @@
+# pkgaudit 0.4.0
+
+pkgaudit now looks inside the shell scripts and Make-like files it flags,
+rather than only reporting that they exist.
+
+## Regex rules
+
+* A fourth rule category, **regex**, matches regular expressions against the
+  text of the file contexts whose type is `shell` or `make` (e.g. `configure`,
+  `src/Makevars`). Rules live in `inst/rules/regex/` and carry a `regex` key
+  alongside the `name`, `version`, `message`, `attck`, and example keys the
+  other categories use.
+* A regex rule declares no `type`. The other categories name the language of
+  what they match; a regex rule is applied to every shell or Make-like file
+  context and to no other file, so a type of its own would only restate that.
+* Initial rules for `curl` and `wget`, each labelled `T1041` and `T1105`.
+* Findings are called **expressions**, not patterns. Matching text is less
+  precise than matching a parse tree: an expression has no syntax behind it, so
+  a match inside a comment, a quoted string, or a branch that never runs is
+  reported the same as a live command.
+* `load_rules()` returns a fifth data frame, `regex`. The rules database gains
+  a `regex` table.
+
+## Results
+
+* `audit_package()` and `audit_tarball()` return a fifth data frame,
+  `expressions`, with `rule`, `file_context`, `line_number`, `column_number`,
+  `message`, `attck`, and the phase columns. It mirrors `patterns`, but carries
+  no `code_context`: a shell script or Make-like file has no R parse tree, so an
+  expression inherits its phases from the file context it was found in. Where a
+  file matches more than one file-context rule, its phases are the union of
+  theirs.
+* `print()` reports an `Expressions:` count alongside the others.
+* `summary()` returns a fourth summary data frame, `expressions`, counting each
+  regex rule by the phase and file context it executes in.
+
+## Reports
+
+* The `summary()` report is now three sections: `R Patterns` (formerly
+  `Patterns`), `Shell / Make Expressions`, and `Errors`. The `Contexts` section
+  has been removed; `summary()` still returns the `file_contexts` and
+  `code_contexts` summaries for programmatic use.
+* An error from the expression scan is reported like any other, with a note
+  stating what coverage was lost. A file that could not be read and a rule that
+  could not be evaluated are counted separately, so a file that was never opened
+  is not reported as a rule that failed.
+
+## Security considerations
+
+* A file above 10 MB is not read, and lines that are not valid UTF-8 are
+  excluded from matching. Both are recorded as errors so the summary reports the
+  lost coverage rather than a clean scan of a file that was never fully
+  examined. Excluding a line does not shift the line numbers reported after it.
+* `build_db.R` refuses a regex that does not compile under PCRE, and one that
+  matches the empty string: such an expression matches at every position of
+  every line, so a single rule would bury a scan in findings.
+
+
 # pkgaudit 0.3.0
 
 This is a major redesign of pkgaudit. The previous model matched specific

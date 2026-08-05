@@ -10,9 +10,10 @@
 pkgaudit is a static analysis security testing (SAST) tool for R
 packages. It scans R source packages for files that can execute
 arbitrary commands during autoconf, builds, checks, and installations,
-and for lifecycle hooks whose bodies run automatically when a namespace
-is loaded, attached, unloaded, or detached. It also scans R source code
-for security-relevant patterns like `system()` calls.
+and for hooks whose bodies run automatically when a namespace is loaded,
+attached, unloaded, or detached. It scans R source code for
+security-relevant patterns like `system()` calls, and shell scripts and
+Make-like files for expressions like `curl`.
 
 A finding is not an accusation. In many cases, flagged files and code
 will be legitimate: files that can execute shell commands are needed for
@@ -80,8 +81,8 @@ packages for manual review.
 
 ## Rule Coverage
 
-pkgaudit separates *when* code executes from *what* code does using
-three rule categories:
+pkgaudit separates *when* code executes from *what* code does using four
+rule categories:
 
 - **File contexts** are files that can execute arbitrary commands during
   autoconf, builds, checks, and installations. These are primarily files
@@ -93,6 +94,10 @@ three rule categories:
 - **Patterns** are security-relevant function calls. `system()`, for
   example, can execute arbitrary shell commands. `source()` can fetch
   and execute a remote payload.
+- **Expressions** are regular-expression matches in the shell scripts
+  and Make-like files found as file contexts. `curl` and `wget`, for
+  example, can fetch a remote payload or send data to a remote host
+  while a package is being built or installed.
 
 Every file and code context rule declares the lifecycle phases in which
 it runs – `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
@@ -102,6 +107,11 @@ Every pattern finding is attributed to the code context that contains
 it. A `system()` call inside an ordinary function only runs if you call
 that function; the same call inside `.onLoad()` runs automatically when
 a namespace is loaded.
+
+Every expression finding is attributed to the file context that contains
+it, and so carries that file’s phases. Matching text is less precise
+than matching R’s parse tree: an expression in a comment or a quoted
+string is reported the same as one in a live command.
 
 The full rule set is documented in [pkgaudit Rule
 Coverage](https://tylerjssmith.github.io/pkgaudit/articles/rules.html).
@@ -131,7 +141,7 @@ digest::digest(
 ```
 
 Expected SHA-256:
-`2139a0ff1cffcd922c6e290efd329909e277c2bd28a2ca325143da3f1b7f4aa7`
+`ed20dfecfffc642d3cb3731cfb5d8d5efe574badefdfc3bfef42d00de93d7609`
 
 The hash is regenerated automatically by `inst/scripts/build_db.R`
 whenever the database is rebuilt and should match the value above
@@ -158,40 +168,50 @@ result <- audit_tarball(tarball, rules = rules)
 print(result, path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
-#> SHA-256:   e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386
-#> Scanned:   2026-08-02 21:18 UTC with pkgaudit v0.3.0, rules v0.3.0
+#> SHA-256:   ff3f1d20618ff4be01e852dacb6b93047d46bf435f4e4fcf2685294c858a8bf7
+#> Scanned:   2026-08-03 19:13 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Code contexts:  1
 #> Patterns:       2
+#> Expressions:    1
 #> Errors:         0
 ```
 
-`summary()` reports the findings themselves: the contexts found, how
-often each pattern matched in each context and lifecycle phase, and the
-MITRE ATT&CK techniques involved.
+`summary()` reports how often each R pattern and shell or Make-like
+expression occurs by phase and code or file context, and the MITRE
+ATT&CK techniques involved. Phases can overlap (e.g., building a package
+with vignettes installs and loads it), so a finding may be counted under
+more than one phase.
+
+Below, untrustedpkg has an `.onLoad()` hook with a `system()` call that
+runs during builds, checks, installations from source, and loads; an
+ordinary function with a `download.file()` call that runs only if a user
+calls the enclosing function and so belongs to no phase; and a
+`configure` script with a `curl` expression that could run during
+builds, checks, and installations from source. Code that runs without
+being asked deserves closer attention.
 
 ``` r
 summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
-#> SHA-256:   e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386
-#> Scanned:   2026-08-02 21:18 UTC with pkgaudit v0.3.0, rules v0.3.0
+#> SHA-256:   ff3f1d20618ff4be01e852dacb6b93047d46bf435f4e4fcf2685294c858a8bf7
+#> Scanned:   2026-08-03 19:13 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
-#> --- Contexts ----------------------------------------------------------------
-#> file_context
-#> configure
-#> 
-#> code_context
-#> onLoad_base
-#> 
-#> --- Patterns ----------------------------------------------------------------
+#> --- R Patterns --------------------------------------------------------------
 #> phase            code_context   rule            n   attck
 #> at_build         onLoad_base    system          1   T1059.003 T1059.004
 #> at_check         onLoad_base    system          1   T1059.003 T1059.004
 #> at_install_src   onLoad_base    system          1   T1059.003 T1059.004
 #> at_load          onLoad_base    system          1   T1059.003 T1059.004
 #> none             Other          download_file   1   T1105
+#> 
+#> --- Shell / Make Expressions ------------------------------------------------
+#> phase            file_context   rule   n   attck
+#> at_build         configure      curl   1   T1041 T1105
+#> at_check         configure      curl   1   T1041 T1105
+#> at_install_src   configure      curl   1   T1041 T1105
 #> 
 #> --- Errors ------------------------------------------------------------------
 #> No exceptions were raised.
@@ -205,10 +225,11 @@ of data frames and a list of metadata.
 result$file_contexts  # security-relevant files
 result$code_contexts  # lifecycle hooks (.onLoad(), .onAttach())
 result$patterns       # security-relevant calls, each with its code_context
+result$expressions    # regex matches, each with its file_context
 result$errors         # any files or rules that could not be processed
 result$metadata       # package name/version, SHA-256, rules version, scan time
 ```
 
-Each of the three findings frames also carries the nine phase columns,
-so `subset(result$patterns, at_install_src)` is the set of calls that
-run on installation from source.
+Each of the four findings frames also carries the nine phase columns, so
+`subset(result$patterns, at_install_src)` is the set of calls that run
+on installation from source.
