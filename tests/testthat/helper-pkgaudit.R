@@ -2,8 +2,18 @@
 
 # Parse a fixture .R file into an xml parse tree, failing the test on error.
 tree_from_file <- function(path) {
-  parsed <- parse_script(path)
+  read <- read_code(path)
+  testthat::expect_null(read$error, info = path)
+  parsed <- parse_code(read$lines)
   testthat::expect_null(parsed$error, info = path)
+  parsed$tree
+}
+
+# Parse R source given as a character vector of lines, for tests that build
+# code inline rather than from a fixture file.
+tree_from_lines <- function(lines) {
+  parsed <- parse_code(lines)
+  testthat::expect_null(parsed$error)
   parsed$tree
 }
 
@@ -61,7 +71,7 @@ make_obj <- function(n_file = 0L, n_code = 0L, n_pat = 0L, n_expr = 0L,
     ex[i, ] <- c(list("curl", "configure", 1L, 1L, "m", "T1041"),
                  install_phases)
   }
-  for (i in seq_len(n_err))  er[i, ] <- list("parse_script", "R/bad.R", NA_character_, "boom")
+  for (i in seq_len(n_err))  er[i, ] <- list("parse_code", "R/bad.R", NA_character_, "boom")
   new_pkgaudit(fc, cc, pt, ex, er, metadata)
 }
 

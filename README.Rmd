@@ -35,8 +35,9 @@ pkgaudit is a static analysis security testing (SAST) tool for R packages. It
 scans R source packages for files that can execute arbitrary commands during
 autoconf, builds, checks, and installations, and for hooks whose bodies run
 automatically when a namespace is loaded, attached, unloaded, or detached. It
-scans R source code for security-relevant patterns like `system()` calls, and
-shell scripts and Make-like files for expressions like `curl`.
+scans R source code -- in `R/` and in the examples and `\Sexpr{}` macros of help
+files -- for security-relevant patterns like `system()` calls, and shell scripts
+and Make-like files for expressions like `curl`.
 
 A finding is not an accusation. In many cases, flagged files and code will be
 legitimate: files that can execute shell commands are needed for

@@ -47,6 +47,19 @@ Finds security-relevant file and code contexts, code patterns, and shell and
 make expressions for review before an R source package is trusted.
 }
 \details{
+Every file the scan looks at is found by a file-context rule, and that rule's
+\code{type} decides how the file is read: an \code{R} script is parsed as it stands, an
+\code{Rd} help file has its \verb{\\examples\{\}} and \verb{\\Sexpr\{\}} code extracted first, and
+a \code{shell} or \code{make} file is matched line by line against the regex rules.
+Reading a file yields one or more \emph{streams} of code, which are what the
+finders actually see; a help file yields two, because its examples and its
+\verb{\\Sexpr} macros run at different phases.
+
+A rule's \code{report} field separates being scanned from being reported. Rules
+for \verb{R/} and \verb{man/} exist to tell the scan which files to read and do not
+report, so \code{file_contexts} stays a list of security-relevant files rather
+than an inventory of the package.
+
 Recoverable failures in the orchestrated finders are collected in the
 \code{errors} data frame rather than aborting the audit. File paths in every
 returned data frame are relative to the package root.
@@ -59,8 +72,14 @@ can be filtered by when they execute. A file or code context takes its phases
 from the rule that matched; a pattern inherits them from its \code{code_context};
 an expression inherits them from the file context it was found in. A pattern
 in an ordinary function is \code{FALSE} for every phase: it runs only if something
-calls it. A finding can belong to several phases, so the phase columns do not
-partition the rows.
+calls it, and that holds for a function defined in a help-file example too. A
+finding can belong to several phases, so the phase columns do not partition
+the rows.
+
+Code from a help file is attributed to one of two computed contexts:
+\code{Rd_examples}, which \verb{R CMD check} runs, and \code{Rd_Sexpr}, which is evaluated
+whenever the page is rendered -- during \verb{R CMD build}, installation from
+source, and \verb{R CMD check}, but not on installation from a binary package.
 
 Patterns are matched against R's parse tree, expressions against the text of
 a shell script or Make-like file. Text matching has no syntax behind it, so

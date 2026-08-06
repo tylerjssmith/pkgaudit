@@ -1,0 +1,28 @@
+name: man_pages
+version: "0.1.0"
+type: Rd
+report: FALSE
+message: >-
+  Help files in man carry R code in two places: \examples{}, which R CMD check
+  runs, and \Sexpr{}, which is evaluated when the help page is rendered during
+  R CMD build and installation from source. They are scanned for patterns; the
+  files themselves are not a finding, which is why this rule does not report.
+at_autoconf: FALSE
+at_build: TRUE
+at_check: TRUE
+at_install_src: TRUE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "man"
+recursive: FALSE
+pattern: '\.[Rr]d$'
+positive_examples:
+  - man/foo.Rd
+  - man/bar.rd
+negative_examples:
+  - man/macros/mac.Rd
+  - man/unix/u.Rd
+  - man/notes.txt

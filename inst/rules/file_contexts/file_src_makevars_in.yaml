@@ -1,6 +1,7 @@
 name: src_makevars_in
 version: "0.3.0"
 type: make
+report: TRUE
 message: >-
   src/Makevars.in is a template that does not itself execute; it is processed by
   the configure script to generate src/Makevars, whose contents are then read by

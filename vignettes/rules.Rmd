@@ -62,9 +62,16 @@ phase_cell <- function(context) {
 }
 
 # A file context's file name, recovered from the rule's search path and
-# anchored pattern so the table cannot disagree with what the rule matches.
+# pattern so the table cannot disagree with what the rule matches.
+#
+# A rule anchored at both ends names one file. A rule matching a class of files
+# -- every R source in R/, say -- has no single name to show, so its pattern is
+# shown after a wildcard instead.
+anchored <- function(pattern) grepl("^\\^", pattern) & grepl("\\$$", pattern)
+
 file_label <- function(path, pattern) {
-  file <- gsub("\\\\", "", sub("\\$$", "", sub("^\\^", "", pattern)))
+  literal <- gsub("\\\\", "", sub("\\$$", "", sub("^\\^", "", pattern)))
+  file    <- ifelse(anchored(pattern), literal, paste0("*", literal))
   ifelse(path == ".", file, paste0(path, "/", file))
 }
 
@@ -165,7 +172,7 @@ pattern_labels <- c(
 # Descriptions of the two computed contexts. These are authored under
 # inst/rules/phases/, which carries phases but no message.
 computed_contexts <- data.frame(
-  context = c("Top-level", "Other"),
+  context = c("Top-level", "Other", "Rd_examples", "Rd_Sexpr"),
   description = c(
     paste(
       "Top-level code in an R script is evaluated once, when the lazy-load",
@@ -176,7 +183,19 @@ computed_contexts <- data.frame(
     paste(
       "Code inside an ordinary function definition runs at no lifecycle phase.",
       "It executes only if something calls that function, never as a",
-      "consequence of building, installing, checking, or loading the package."
+      "consequence of building, installing, checking, or loading the package.",
+      "This holds for a function defined in a help-file example too."
+    ),
+    paste(
+      "Code in an \\examples{} block of a help file is run by R CMD check, and",
+      "by a user who calls example(). Building or installing the package",
+      "renders the help page but never evaluates its examples."
+    ),
+    paste(
+      "Code in a \\Sexpr{} macro is evaluated whenever a help page is",
+      "processed: during R CMD build, during installation from source, and",
+      "during R CMD check. It does not run when a prebuilt binary package is",
+      "installed, whose help is already rendered."
     )
   ),
   stringsAsFactors = FALSE
@@ -194,11 +213,11 @@ stopifnot(
   setequal(computed_contexts$context,
            setdiff(rules$phases$context,
                    c(rules$file_contexts$name, rules$code_contexts$name))),
-  mapply(
-    grepl,
-    rules$file_contexts$pattern,
-    basename(file_label(rules$file_contexts$path, rules$file_contexts$pattern))
-  )
+  # Only a rule naming one file has a name to check against its own pattern.
+  local({
+    fc  <- rules$file_contexts[anchored(rules$file_contexts$pattern), ]
+    all(mapply(grepl, fc$pattern, basename(file_label(fc$path, fc$pattern))))
+  })
 )
 ```
 
@@ -249,18 +268,25 @@ reads `none` for code that runs at no phase at all.
 
 File contexts are files that R executes at build-, check-, or install-time.
 
-The Type column gives the language of the file. It determines how the file is
-read: those typed `shell` or `make` are also scanned for the expressions listed
-under [Expressions](#expressions), while those typed `R` are parsed and scanned
-for patterns like any other R script.
+The Type column determines how a matched file is read. Files typed `R` are
+parsed and scanned for patterns; `Rd` files have their `\examples{}` and
+`\Sexpr{}` code extracted and scanned for patterns; `shell` and `make` files are
+matched against the expressions listed under [Expressions](#expressions).
+
+The Report column separates being scanned from being reported. Every rule tells
+the scan which files to read; only a reporting rule contributes a row to the
+`file_contexts` findings frame. The rules covering `R/` and `man/` exist so that
+a package's own R sources and help files are scanned, and a package's own
+sources are not themselves a finding.
 
 ```{r file-contexts}
 fc <- rules$file_contexts
 emit_table(
-  c("Rule", "File Context", "Type", "Phases", "Description"),
+  c("Rule", "File Context", "Type", "Report", "Phases", "Description"),
   rule_link(fc$name, "file_contexts"),
   paste0("`", file_label(fc$path, fc$pattern), "`"),
   paste0("`", fc$type, "`"),
+  ifelse(fc$report, "yes", "no"),
   vapply(fc$name, phase_cell, character(1L)),
   fc$message
 )
@@ -284,9 +310,11 @@ emit_table(
 
 ## Computed Contexts
 
-Every pattern is attributed to the code context that contains it. Two of those
+Every pattern is attributed to the code context that contains it. Four of those
 contexts are computed rather than matched by a rule, and so have phases but no
-rule of their own. They are defined under
+rule of their own. `Top-level` and `Other` are computed from where a pattern
+sits in the parse tree; the two `Rd` contexts come from which part of a help
+file the code was extracted from. They are defined under
 [inst/rules/phases/](https://github.com/tylerjssmith/pkgaudit/tree/master/inst/rules/phases).
 
 ```{r computed-contexts}

@@ -62,14 +62,14 @@ test_that("regex rules match their positive fixtures and reject negatives", {
 
     for (pos in list.files(rule_dir, pattern = "^positive_\\d+\\.txt$",
                            full.names = TRUE)) {
-      res <- find_regex(pos, rule, basename(pos))
+      res <- find_regex(read_code(pos)$lines, rule, basename(pos))
       expect_gt(nrow(res$expressions), 0L)
       expect_equal(nrow(res$errors), 0L)
       expect_equal(unique(res$expressions$rule), name, info = pos)
     }
     for (neg in list.files(rule_dir, pattern = "^negative_\\d+\\.txt$",
                            full.names = TRUE)) {
-      res <- find_regex(neg, rule, basename(neg))
+      res <- find_regex(read_code(neg)$lines, rule, basename(neg))
       expect_equal(nrow(res$expressions), 0L, info = neg)
       expect_equal(nrow(res$errors), 0L, info = neg)
     }

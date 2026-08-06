@@ -8,7 +8,7 @@ determine_code_contexts(tree, patterns, rules)
 }
 \arguments{
 \item{tree}{The \code{xml_document} parse tree for one script (from
-\code{\link[=parse_script]{parse_script()}}).}
+\code{\link[=parse_code]{parse_code()}}).}
 
 \item{patterns}{Data frame from \code{\link[=find_patterns]{find_patterns()}}, carrying its matched nodes
 in the \code{"nodes"} attribute aligned to the rows.}

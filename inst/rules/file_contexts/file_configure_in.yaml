@@ -1,6 +1,7 @@
 name: configure_in
 version: "0.3.0"
 type: shell
+report: TRUE
 message: >-
   configure.in is a legacy-named Autoconf input file that does not itself
   execute; it is processed by Autoconf to generate the configure script, which

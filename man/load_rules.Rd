@@ -14,7 +14,10 @@ with the installed package.}
 A named list with five data frames:
 \describe{
 \item{file_contexts}{Data frame with columns \code{name}, \code{version}, \code{type},
-\code{message}, \code{path}, \code{recursive}, \code{pattern}.}
+\code{message}, \code{path}, \code{recursive}, \code{report}, \code{pattern}. \code{type} selects how
+a matched file is read and scanned; \code{report} is \code{TRUE} for a rule whose
+matches are findings in their own right, and \code{FALSE} for one that only
+tells the scanner which files to read.}
 \item{code_contexts}{Data frame with columns \code{name}, \code{version}, \code{type},
 \code{message}, \code{xpath}.}
 \item{patterns}{Data frame with columns \code{name}, \code{version}, \code{type},

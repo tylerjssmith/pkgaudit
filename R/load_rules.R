@@ -13,7 +13,10 @@
 #' @return A named list with five data frames:
 #'   \describe{
 #'     \item{file_contexts}{Data frame with columns `name`, `version`, `type`,
-#'       `message`, `path`, `recursive`, `pattern`.}
+#'       `message`, `path`, `recursive`, `report`, `pattern`. `type` selects how
+#'       a matched file is read and scanned; `report` is `TRUE` for a rule whose
+#'       matches are findings in their own right, and `FALSE` for one that only
+#'       tells the scanner which files to read.}
 #'     \item{code_contexts}{Data frame with columns `name`, `version`, `type`,
 #'       `message`, `xpath`.}
 #'     \item{patterns}{Data frame with columns `name`, `version`, `type`,
@@ -57,12 +60,13 @@ load_rules <- function(db_path = .db_path()) {
   .with_db(db_path, function(con, sha256) {
     file_contexts <- DBI::dbGetQuery(
       con,
-      "SELECT name, version, type, message, path, recursive, pattern
+      "SELECT name, version, type, message, path, recursive, report, pattern
          FROM file_contexts
         ORDER BY name"
     )
-    # SQLite has no native logical type; recursive is stored as 0/1.
+    # SQLite has no native logical type; both flags are stored as 0/1.
     file_contexts$recursive <- as.logical(file_contexts$recursive)
+    file_contexts$report    <- as.logical(file_contexts$report)
 
     code_contexts <- DBI::dbGetQuery(
       con,

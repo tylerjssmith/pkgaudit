@@ -8,7 +8,7 @@ find_patterns(tree, pattern_rules, file_context)
 }
 \arguments{
 \item{tree}{The \code{xml_document} parse tree for one script (from
-\code{\link[=parse_script]{parse_script()}}).}
+\code{\link[=parse_code]{parse_code()}}).}
 
 \item{pattern_rules}{Data frame of pattern rules (\code{rules$patterns} from
 \code{\link[=load_rules]{load_rules()}}), with columns \code{name}, \code{xpath}, \code{message}, and \code{attck}.}

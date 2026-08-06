@@ -37,12 +37,17 @@
   "at_load", "at_attach", "at_unload", "at_detach"
 )
 
-# A rule's type is the language of what it matches, not a severity: severity is
-# a property of a pattern together with the context it was found in, which a
-# rule is in no position to know. Code contexts and patterns are both matched
-# against R's parse tree, so "R" is the only language available to them for now.
+# A rule's type is the format of what it matches, not a severity: severity is a
+# property of a pattern together with the context it was found in, which a rule
+# is in no position to know. Code contexts and patterns are both matched against
+# R's parse tree, so "R" is the only language available to them for now.
+#
+# For a file context the type is load-bearing: it selects how the file is read.
+# "R" is read verbatim and parsed; "Rd" has its \examples and \Sexpr code
+# extracted first; "shell" and "make" are matched line by line against the regex
+# rules; "other" is reported but never read.
 .valid_types <- list(
-  file_context = c("R", "shell", "make", "other"),
+  file_context = c("R", "Rd", "shell", "make", "other"),
   code_context = c("R"),
   pattern      = c("R")
 )
@@ -156,15 +161,17 @@ read_file_context_yaml <- function(path) {
   stopifnot(file.exists(path))
   rule <- yaml::read_yaml(path)
 
-  expected <- c(.file_context_scalars, "recursive", .phase_fields,
+  expected <- c(.file_context_scalars, "recursive", "report", .phase_fields,
                 .example_fields)
   .check_fields(rule, expected, path)
   .validate_common(rule, path, .file_context_scalars, "file_context")
   .validate_phases(rule, path)
 
-  if (!is.logical(rule$recursive) || length(rule$recursive) != 1L ||
-      is.na(rule$recursive)) {
-    stop("Field 'recursive' must be TRUE or FALSE in: ", path)
+  for (field in c("recursive", "report")) {
+    value <- rule[[field]]
+    if (!is.logical(value) || length(value) != 1L || is.na(value)) {
+      stop("Field '", field, "' must be TRUE or FALSE in: ", path)
+    }
   }
   if (grepl("\\.\\.", rule$path)) {
     stop("Field 'path' must not contain '..' in: ", path)
@@ -304,6 +311,11 @@ init_db <- function(
       notes       TEXT
     )")
 
+  # `report` separates discovery from reporting. Every rule is used to find
+  # files to scan; only a rule with report = 1 contributes a row to the
+  # file_contexts findings frame. Without it, adding rules for R/ and man/ --
+  # which exist to be scanned, not flagged -- would turn that frame from a short
+  # list of security-relevant files into a full inventory of the package.
   DBI::dbExecute(con, "
     CREATE TABLE file_contexts (
       name      TEXT PRIMARY KEY,
@@ -312,6 +324,7 @@ init_db <- function(
       message   TEXT NOT NULL,
       path      TEXT NOT NULL,
       recursive INTEGER NOT NULL,
+      report    INTEGER NOT NULL,
       pattern   TEXT NOT NULL
     )")
 
@@ -383,10 +396,11 @@ load_file_context <- function(rule, con, path) {
   .assert_version(con, rule$version, path)
   DBI::dbExecute(
     con,
-    "INSERT INTO file_contexts (name, version, type, message, path, recursive, pattern)
-     VALUES (?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO file_contexts (name, version, type, message, path, recursive, report, pattern)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     params = list(rule$name, rule$version, rule$type, trimws(rule$message),
-                  trimws(rule$path), as.integer(rule$recursive), trimws(rule$pattern))
+                  trimws(rule$path), as.integer(rule$recursive),
+                  as.integer(rule$report), trimws(rule$pattern))
   )
   invisible(rule$name)
 }

@@ -1,6 +1,7 @@
 name: src_makefile
 version: "0.3.0"
 type: make
+report: TRUE
 message: >-
   src/Makefile is a makefile used to compile code in src/ when a package is
   installed from source, replacing R's default make rules; the installs

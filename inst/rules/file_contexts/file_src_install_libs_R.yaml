@@ -1,6 +1,7 @@
 name: src_install_libs_R
 version: "0.3.0"
 type: R
+report: TRUE
 message: >-
   src/install.libs.R is an R script used in some packages to install executable
   programs and other binaries during installation from source, including the

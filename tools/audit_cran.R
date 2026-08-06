@@ -47,11 +47,17 @@
 #'   file-context rule yields a row per rule, and the expression runs in the
 #'   union of their phases.
 #'   \describe{
-#'     \item{file_contexts}{`package`, `version`, `rule`, `file_context`.}
+#'     \item{file_contexts}{`package`, `version`, `rule`, `file_context`. Only
+#'       reporting file contexts appear here. The rules covering `R/` and `man/`
+#'       tell the scan which files to read but do not report, so a package's own
+#'       R scripts and help files are represented by their `patterns`, not by a
+#'       row here.}
 #'     \item{code_contexts}{`package`, `version`, `rule`, `file_context`,
 #'       `line_number`, `column_number`.}
 #'     \item{patterns}{`package`, `version`, `rule`, `file_context`,
-#'       `line_number`, `column_number`, `code_context`.}
+#'       `line_number`, `column_number`, `code_context`. `code_context` is a
+#'       code-context rule name, `Top-level`, `Other`, or -- for a pattern found
+#'       in a help file -- `Rd_examples` or `Rd_Sexpr`.}
 #'     \item{expressions}{`package`, `version`, `rule`, `file_context`,
 #'       `line_number`, `column_number`. Regex matches in the shell scripts and
 #'       Make-like files among the file contexts. Carries no `code_context`: a
@@ -81,7 +87,18 @@
 #' Work is processed in chunks so that progress and an ETA can be reported from
 #' the parent process (`parallel::mclapply()` forks workers and blocks until a
 #' whole batch returns, so per-worker messages are unreliable). Chunking also
-#' bounds peak memory and enables optional per-chunk checkpointing.
+#' enables optional per-chunk checkpointing.
+#'
+#' Each chunk's result is folded into the running total and then released, rather
+#' than every chunk being retained until the end. `mclapply()` forks its workers
+#' from this parent, and `fork()` must reserve memory for the parent's live data;
+#' on a platform without memory overcommit, a parent that accumulated every
+#' chunk's findings could grow until a later fork failed with "unable to fork,
+#' possible reason: Resource temporarily unavailable". Folding holds the parent's
+#' footprint to about one chunk plus the running total, so the cost of forking
+#' the next chunk does not climb as the run proceeds. When the process table is
+#' exhausted by something outside this function, that same error can appear;
+#' lowering `workers` and `chunk_size` reduces the demand this function places.
 #'
 #' @examples
 #' \dontrun{
@@ -89,8 +106,12 @@
 #' rules  <- pkgaudit::load_rules()
 #' result <- audit_cran("data/cran/src", checkpoint_dir = "data/cran/checkpoints")
 #'
-#' # Patterns that execute automatically on load, across all packages.
+#' # Patterns that run as a consequence of some lifecycle phase, rather than
+#' # only when a user calls the function they sit in ("Other").
 #' subset(result$patterns, code_context != "Other")
+#'
+#' # Patterns in the R code of help files, across all packages.
+#' subset(result$patterns, code_context %in% c("Rd_examples", "Rd_Sexpr"))
 #'
 #' # How often each regex rule matched, and in which files.
 #' table(result$expressions$rule, result$expressions$file_context)
@@ -147,7 +168,14 @@ audit_cran <- function(
     total, length(chunks), chunk_size, workers
   ))
 
-  per_chunk <- vector("list", length(chunks))
+  # Each chunk's result is folded into `out` and then dropped, rather than every
+  # chunk being held in a list until the end. mclapply() forks its workers from
+  # this parent process, and fork() must reserve memory for the parent's live
+  # data; on a platform without memory overcommit a parent holding every chunk's
+  # findings can grow until the next fork fails with "unable to fork, Resource
+  # temporarily unavailable". Folding keeps the parent's footprint at roughly one
+  # chunk plus the running total, so the fork cost does not climb with progress.
+  out  <- .empty_cran_result()
   done <- 0L
   t0   <- Sys.time()
 
@@ -159,7 +187,8 @@ audit_cran <- function(
       function(i) .audit_worker(tarballs[[i]], rules, temp_dir, on_error,
                                 max_entries, max_bytes, max_ratio),
       mc.cores       = workers,
-      mc.preschedule = FALSE   # better load balancing for uneven package sizes
+      mc.preschedule = FALSE   # a fresh process per package: better load
+                               # balancing, and memory reclaimed between packages
     )
 
     # Under on_error = "stop", a worker's stop() surfaces as a try-error rather
@@ -174,11 +203,18 @@ audit_cran <- function(
     }
 
     chunk <- .combine_results(raw)
-    per_chunk[[k]] <- chunk
 
     if (!is.null(checkpoint_dir)) {
       saveRDS(chunk, file.path(checkpoint_dir, sprintf("chunk_%05d.rds", k)))
     }
+
+    n_find <- nrow(chunk$file_contexts) + nrow(chunk$code_contexts) +
+      nrow(chunk$patterns) + nrow(chunk$expressions)
+    n_err  <- nrow(chunk$errors)
+
+    out <- .combine_results(list(out, chunk))
+    rm(raw, chunk)
+    gc(verbose = FALSE)
 
     done    <- done + length(idx)
     elapsed <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
@@ -186,13 +222,9 @@ audit_cran <- function(
     message(sprintf(
       "  %s  %d/%d (%.1f%%)  %d finding(s), %d error(s) this chunk  ~%.0f min left",
       format(Sys.time(), "%H:%M:%S"), done, total, 100 * done / total,
-      nrow(chunk$file_contexts) + nrow(chunk$code_contexts) +
-        nrow(chunk$patterns) + nrow(chunk$expressions),
-      nrow(chunk$errors), eta_min
+      n_find, n_err, eta_min
     ))
   }
-
-  out <- .combine_results(per_chunk)
 
   message(sprintf(
     "Done. Across %d package(s): %d file context(s), %d code context(s), %d pattern(s), %d expression(s), %d error(s), %d provenance mismatch(es).",

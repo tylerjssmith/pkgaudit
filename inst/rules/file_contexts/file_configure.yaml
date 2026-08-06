@@ -1,6 +1,7 @@
 name: configure
 version: "0.3.0"
 type: shell
+report: TRUE
 message: >-
   configure is a shell script used for system-dependent configuration when
   packages are installed from source, including the installs performed by

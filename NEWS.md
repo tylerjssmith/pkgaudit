@@ -1,7 +1,66 @@
 # pkgaudit 0.4.0
 
 pkgaudit now looks inside the shell scripts and Make-like files it flags,
-rather than only reporting that they exist.
+rather than only reporting that they exist, and scans the R code carried by
+help files.
+
+## Help files
+
+* `man/*.Rd` is scanned for patterns. A help file carries R code in two places,
+  and they run at different times, so each is a computed code context of its
+  own: **`Rd_examples`** for `\examples{}`, which `R CMD check` runs, and
+  **`Rd_Sexpr`** for `\Sexpr{}` macros, which are evaluated whenever the page is
+  rendered.
+* Those phases were established by running an instrumented package through each
+  lifecycle command. `\examples{}` runs only under `R CMD check`. `\Sexpr{}`
+  runs during `R CMD build`, installation from source, and `R CMD check`, but
+  not on installation from a binary package, whose help ships pre-rendered.
+* `\dontrun{}`, `\donttest{}`, `\dontshow{}`, and `\testonly{}` are all
+  unwrapped and scanned. Whether the code is reached is a question for the
+  reviewer; all four ship in the package.
+* A pattern inside a function definition in an example is `Other`, not
+  `Rd_examples` -- it runs only if something calls it, exactly as in a script.
+* User-defined Rd macros are expanded, so a `\Sexpr{}` reaching a page through a
+  macro is found and reported against the page that uses it. `man/macros/` is
+  not scanned directly: `tools::parse_Rd()` returns a `\newcommand` body as an
+  opaque token, so there is nothing to find there until the macro is expanded.
+
+## Uniform file discovery
+
+* Every file the scan reads is now found by a file-context rule. `find_scripts()`
+  is gone, replaced by rules for `R/`, `R/unix/`, and `R/windows/`; new rules
+  cover `man/`, `man/unix/`, and `man/windows/`.
+* File-context rules carry a **`report`** field separating discovery from
+  reporting. Rules for `R/` and `man/` exist to tell the scan what to read and do
+  not report, so `file_contexts` remains the short list of security-relevant
+  files it has always been rather than an inventory of the package.
+* A rule's `type` now selects how a matched file is read: `R` is parsed as it
+  stands, `Rd` has its code extracted first, `shell` and `make` are matched line
+  by line, and `other` is reported but never read.
+
+## Internals
+
+* `parse_script()` is now `parse_code()` and takes lines rather than a path, so
+  one parser serves R scripts and the code extracted from help files alike. The
+  corresponding `errors$stage` value is `"parse_code"`.
+* New `read_code()` is the only place the scan touches a file being audited. The
+  10 MB size limit and invalid-UTF-8 handling now apply to every file type
+  rather than only to shell and Make-like files, and `find_regex()` takes lines.
+* New `extract_Rd_code()` recovers the `\examples{}` and `\Sexpr{}` code from a
+  help file as text aligned to the lines of the `.Rd`, so a finding's
+  `line_number` points into the original file with no adjustment.
+
+## Security considerations
+
+* pkgaudit does not execute the code it scans, and a regression test now asserts
+  it end to end: a package whose every execution site would create a marker file
+  leaves no marker behind after a full scan. R's Rd machinery separates parsing
+  from rendering -- `tools::parse_Rd()` and `tools::loadPkgRdMacros()` only read,
+  while `tools::prepare_Rd()` and the `Rd2*()` family evaluate `\Sexpr{}` as a
+  matter of course. pkgaudit calls only the former.
+* The `examples` stream is not guaranteed to parse. R never syntax-checks
+  `\dontrun{}`, so packages ship blocks that are not valid R; those are recorded
+  as `parse_code` errors like any other unparseable file.
 
 ## Regex rules
 

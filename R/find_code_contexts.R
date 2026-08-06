@@ -6,7 +6,7 @@
 #' detached.
 #'
 #' @param tree The `xml_document` parse tree for one script (from
-#'   [parse_script()]).
+#'   [parse_code()]).
 #' @param code_context_rules Data frame of code-context rules
 #'   (`rules$code_contexts` from [load_rules()]), with columns `name`, `xpath`,
 #'   and `message`.

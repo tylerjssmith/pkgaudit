@@ -11,9 +11,10 @@ pkgaudit is a static analysis security testing (SAST) tool for R
 packages. It scans R source packages for files that can execute
 arbitrary commands during autoconf, builds, checks, and installations,
 and for hooks whose bodies run automatically when a namespace is loaded,
-attached, unloaded, or detached. It scans R source code for
-security-relevant patterns like `system()` calls, and shell scripts and
-Make-like files for expressions like `curl`.
+attached, unloaded, or detached. It scans R source code – in `R/` and in
+the examples and `\Sexpr{}` macros of help files – for security-relevant
+patterns like `system()` calls, and shell scripts and Make-like files
+for expressions like `curl`.
 
 A finding is not an accusation. In many cases, flagged files and code
 will be legitimate: files that can execute shell commands are needed for
@@ -141,7 +142,7 @@ digest::digest(
 ```
 
 Expected SHA-256:
-`ed20dfecfffc642d3cb3731cfb5d8d5efe574badefdfc3bfef42d00de93d7609`
+`bc54fa1fa499c194b71f62d86f37da9368934e8bc7c3d881b3631c1edb1ff6a6`
 
 The hash is regenerated automatically by `inst/scripts/build_db.R`
 whenever the database is rebuilt and should match the value above
@@ -168,12 +169,12 @@ result <- audit_tarball(tarball, rules = rules)
 print(result, path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
-#> SHA-256:   ff3f1d20618ff4be01e852dacb6b93047d46bf435f4e4fcf2685294c858a8bf7
-#> Scanned:   2026-08-03 19:13 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
+#> Scanned:   2026-08-05 22:14 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Code contexts:  1
-#> Patterns:       2
+#> Patterns:       4
 #> Expressions:    1
 #> Errors:         0
 ```
@@ -196,13 +197,17 @@ being asked deserves closer attention.
 summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
-#> SHA-256:   ff3f1d20618ff4be01e852dacb6b93047d46bf435f4e4fcf2685294c858a8bf7
-#> Scanned:   2026-08-03 19:13 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
+#> Scanned:   2026-08-05 22:14 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            code_context   rule            n   attck
+#> at_build         Rd_Sexpr       httr            1   T1041
 #> at_build         onLoad_base    system          1   T1059.003 T1059.004
+#> at_check         Rd_Sexpr       httr            1   T1041
+#> at_check         Rd_examples    download_file   1   T1105
 #> at_check         onLoad_base    system          1   T1059.003 T1059.004
+#> at_install_src   Rd_Sexpr       httr            1   T1041
 #> at_install_src   onLoad_base    system          1   T1059.003 T1059.004
 #> at_load          onLoad_base    system          1   T1059.003 T1059.004
 #> none             Other          download_file   1   T1105

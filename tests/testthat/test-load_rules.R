@@ -5,7 +5,9 @@ test_that("load_rules() returns five rule data frames with expected columns", {
                         "phases"))
 
   expect_named(rules$file_contexts,
-               c("name", "version", "type", "message", "path", "recursive", "pattern"))
+               c("name", "version", "type", "message", "path", "recursive",
+                 "report", "pattern"))
+  expect_type(rules$file_contexts$report, "logical")
   expect_named(rules$code_contexts,
                c("name", "version", "type", "message", "xpath"))
   expect_named(rules$patterns,

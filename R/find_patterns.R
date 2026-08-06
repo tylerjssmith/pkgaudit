@@ -4,7 +4,7 @@
 #' `eval(parse())`, an outbound HTTP call).
 #'
 #' @param tree The `xml_document` parse tree for one script (from
-#'   [parse_script()]).
+#'   [parse_code()]).
 #' @param pattern_rules Data frame of pattern rules (`rules$patterns` from
 #'   [load_rules()]), with columns `name`, `xpath`, `message`, and `attck`.
 #' @param file_context Package-root-relative path of the script, carried through

@@ -119,7 +119,7 @@ test_that("audit_package() reports relative-path parse errors and continues", {
 
   res <- audit_package(pkg, rules)
   expect_equal(nrow(res$errors), 1L)
-  expect_equal(res$errors$stage, "parse_script")
+  expect_equal(res$errors$stage, "parse_code")
   expect_equal(res$errors$file_context, "R/bad.R")
   # The good file was still audited despite the bad one.
   expect_true("R/good.R" %in% res$patterns$file_context)
@@ -135,6 +135,128 @@ test_that("audit_package() on a package with no scannable content is empty", {
   expect_equal(nrow(res$patterns), 0L)
   expect_equal(nrow(res$expressions), 0L)
   expect_equal(nrow(res$errors), 0L)
+})
+
+# discovery and reporting ------------------------------------------------------
+test_that("audit_package() scans R/ and man/ without reporting them", {
+  pkg <- make_pkg(files = list(
+    "configure" = "#!/bin/sh",
+    "R/zzz.R"   = "system('id')",
+    "man/f.Rd"  = c("\\name{f}", "\\title{T}", "\\examples{", "system('id')", "}")
+  ))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+
+  # Only the reporting rule contributes a finding, so the frame stays a list of
+  # security-relevant files rather than an inventory of the package.
+  expect_equal(res$file_contexts$file_context, "configure")
+  # Both non-reporting files were nevertheless scanned.
+  expect_setequal(res$patterns$file_context, c("R/zzz.R", "man/f.Rd"))
+})
+
+test_that("audit_package() scans the OS-specific R and man subdirectories", {
+  pkg <- make_pkg(files = list(
+    "R/unix/u.R"      = "system('unix')",
+    "R/windows/w.R"   = "system('windows')",
+    "man/unix/u.Rd"   = c("\\name{u}", "\\title{U}", "\\examples{", "system('mu')", "}"),
+    "man/windows/w.Rd" = c("\\name{w}", "\\title{W}", "\\examples{", "system('mw')", "}")
+  ))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  expect_setequal(res$patterns$file_context,
+                  c("R/unix/u.R", "R/windows/w.R",
+                    "man/unix/u.Rd", "man/windows/w.Rd"))
+})
+
+# help files -------------------------------------------------------------------
+test_that("audit_package() attributes help-file code to its two contexts", {
+  pkg <- make_pkg(files = list("man/f.Rd" = c(
+    "\\name{f}",                            # 1
+    "\\title{T \\Sexpr{system('uname')}}",  # 2
+    "\\description{d}",                     # 3
+    "\\examples{",                          # 4
+    "download.file('http://x', 'y')",       # 5
+    "g <- function() system('never')",      # 6
+    "}"                                     # 7
+  )))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  ctx <- stats::setNames(res$patterns$code_context, res$patterns$rule)
+
+  expect_equal(unname(ctx[["download_file"]]), "Rd_examples")
+  # A pattern inside a function definition in an example runs only if something
+  # calls it, exactly as in a script, so it is Other rather than Rd_examples.
+  expect_true("Other" %in% res$patterns$code_context)
+  expect_true("Rd_Sexpr" %in% res$patterns$code_context)
+  expect_equal(nrow(res$errors), 0L)
+})
+
+test_that("help-file findings carry the line they occupy in the .Rd", {
+  pkg <- make_pkg(files = list("man/f.Rd" = c(
+    "\\name{f}", "\\title{T \\Sexpr{system('uname')}}", "\\description{d}",
+    "\\examples{", "download.file('http://x', 'y')", "}"
+  )))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  expect_equal(res$patterns$line_number[res$patterns$rule == "system"], 2L)
+  expect_equal(res$patterns$line_number[res$patterns$rule == "download_file"], 5L)
+})
+
+test_that("help-file findings take the phases their context runs in", {
+  pkg <- make_pkg(files = list("man/f.Rd" = c(
+    "\\name{f}", "\\title{T \\Sexpr{system('uname')}}", "\\description{d}",
+    "\\examples{", "download.file('http://x', 'y')", "}"
+  )))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  ex <- res$patterns[res$patterns$code_context == "Rd_examples", ]
+  sx <- res$patterns[res$patterns$code_context == "Rd_Sexpr", ]
+
+  # Examples run under R CMD check and nowhere else.
+  expect_true(ex$at_check)
+  expect_false(ex$at_build)
+  expect_false(ex$at_install_src)
+
+  # \Sexpr is evaluated whenever the page is rendered, but not for a binary.
+  expect_true(sx$at_build)
+  expect_true(sx$at_check)
+  expect_true(sx$at_install_src)
+  expect_false(sx$at_install_bin)
+})
+
+test_that("audit_package() expands Rd macros so hidden code is still found", {
+  pkg <- make_pkg(files = list(
+    "man/macros/m.Rd" = "\\newcommand{\\bang}{\\Sexpr{system(\"id\")}}",
+    "man/f.Rd" = c("\\name{f}", "\\title{T}", "\\description{Uses \\bang{}.}")
+  ))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  # The code reaches the page through the macro, and is reported against the
+  # page that uses it. man/macros/ is not scanned directly: a \newcommand body
+  # parses as an opaque token, so there is nothing to find there.
+  expect_equal(res$patterns$rule, "system")
+  expect_equal(res$patterns$file_context, "man/f.Rd")
+  expect_equal(res$patterns$code_context, "Rd_Sexpr")
+  expect_equal(nrow(res$errors), 0L)
+})
+
+test_that("audit_package() records an unparseable help file and continues", {
+  pkg <- make_pkg(files = list(
+    "man/bad.Rd"  = c("\\name{b}", "\\title{B}", "\\examples{", ")bad syntax(", "}"),
+    "man/good.Rd" = c("\\name{g}", "\\title{G}", "\\examples{", "system('id')", "}")
+  ))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  expect_equal(res$errors$stage, "parse_code")
+  expect_equal(res$errors$file_context, "man/bad.Rd")
+  expect_true("man/good.Rd" %in% res$patterns$file_context)
 })
 
 # expressions ------------------------------------------------------------------

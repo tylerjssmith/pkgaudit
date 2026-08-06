@@ -82,11 +82,19 @@ new_pkgaudit <- function(
 )
 
 
-# The two code contexts that are computed rather than rule-matched. Both have
-# rows in the phases table, so resolving a pattern's phases stays a lookup.
-.context_top_level <- "Top-level"
-.context_other     <- "Other"
-.sentinel_contexts <- c(.context_top_level, .context_other)
+# The code contexts that are computed rather than rule-matched. Each has a row
+# in the phases table, so resolving a pattern's phases stays a lookup.
+#
+# Top-level and Other are assigned by determine_code_contexts() from a pattern's
+# position in the parse tree. The two Rd contexts are assigned from the stream a
+# pattern was extracted from: a help file has no R parse tree of its own, so
+# what distinguishes its code is which part of the file it came from.
+.context_top_level  <- "Top-level"
+.context_other      <- "Other"
+.context_rd_examples <- "Rd_examples"
+.context_rd_sexpr    <- "Rd_Sexpr"
+.sentinel_contexts  <- c(.context_top_level, .context_other,
+                         .context_rd_examples, .context_rd_sexpr)
 
 
 # Expected columns for each result data frame. `rule` names the rule that

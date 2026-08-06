@@ -1,6 +1,7 @@
 name: cleanup
 version: "0.3.0"
 type: shell
+report: TRUE
 message: >-
   cleanup is a shell script run on Unix-like systems at the end of R CMD build,
   and during installation from source only under R CMD INSTALL --clean or

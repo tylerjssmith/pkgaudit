@@ -3,7 +3,8 @@
 #' Finds expressions -- regular-expression matches in a file R executes through
 #' a shell or through make (e.g., `configure`, `src/Makevars`).
 #'
-#' @param path Absolute path to the file to scan.
+#' @param lines Character vector of the file's lines, as returned by
+#'   [read_code()].
 #' @param regex_rules Data frame of regex rules (`rules$regex` from
 #'   [load_rules()]), with columns `name`, `regex`, `message`, and `attck`.
 #' @param file_context Package-root-relative path of the file, carried through
@@ -20,8 +21,8 @@
 #'   }
 #'
 #' @details
-#' The file is read as lines, and each rule's regular expression is evaluated
-#' against all of them with `base::gregexpr()` using `perl = TRUE`,
+#' Each rule's regular expression is evaluated against every line with
+#' `base::gregexpr()` using `perl = TRUE`,
 #' `ignore.case = FALSE`, and `useBytes = FALSE`. Every match is an expression
 #' found, reported at the line it occurs on and the character position it starts
 #' at; a line matched more than once yields one row per match. A failing regular
@@ -33,17 +34,12 @@
 #' a quoted string, or a branch that never runs is reported the same as a live
 #' command. Findings are candidates for review, not confirmed behavior.
 #'
-#' @section Security considerations:
-#' A file being audited is untrusted input, so two limits are enforced before it
-#' is matched against. A file larger than 10 MB is not read at all, and lines
-#' that are not valid UTF-8 are blanked before matching. Both are recorded as
-#' errors, so the summary reports the lost coverage rather than a clean scan of
-#' a file that was never fully examined. Blanking rather than dropping a line
-#' keeps the line numbers of everything after it correct.
+#' Reading the file, and the limits that protect against hostile input, are
+#' [read_code()]'s responsibility rather than this function's.
 #'
 #' @keywords internal
-find_regex <- function(path, regex_rules, file_context) {
-  stopifnot(is.character(path), length(path) == 1L)
+find_regex <- function(lines, regex_rules, file_context) {
+  stopifnot(is.character(lines))
 
   rows   <- list()
   errors <- .empty_errors()
@@ -52,24 +48,6 @@ find_regex <- function(path, regex_rules, file_context) {
   }
 
   if (is.null(regex_rules) || nrow(regex_rules) == 0L) return(empty())
-
-  read <- .read_lines_safe(path)
-  if (inherits(read$lines, "condition")) {
-    errors <- rbind(errors, .error_row(
-      stage        = "find_regex",
-      file_context = file_context,
-      message      = conditionMessage(read$lines)
-    ))
-    return(empty())
-  }
-  if (!is.na(read$skipped)) {
-    errors <- rbind(errors, .error_row(
-      stage        = "find_regex",
-      file_context = file_context,
-      message      = read$skipped
-    ))
-  }
-  lines <- read$lines
 
   for (i in seq_len(nrow(regex_rules))) {
     rule    <- regex_rules[i, , drop = FALSE]
@@ -111,56 +89,6 @@ find_regex <- function(path, regex_rules, file_context) {
   }
 
   list(expressions = expressions, errors = errors)
-}
-
-
-# The largest file this scans. A source package is untrusted input, and reading
-# an arbitrarily large file into memory to match against would let a malformed
-# or hostile package exhaust the auditing machine. Well above any real configure
-# script, which autoconf generates at a few hundred kilobytes.
-.max_scan_bytes <- 10 * 1024^2
-
-
-# Read a file as lines for matching, refusing what cannot be scanned safely.
-#
-# Returns a list of `lines` -- the character vector, or the caught condition if
-# the file could not be read or was too large -- and `skipped`, a message naming
-# the coverage lost within a file that was read, or NA when none was.
-#
-# Lines that are not valid UTF-8 are replaced with an empty line rather than
-# dropped: gregexpr() with useBytes = FALSE would otherwise fail on the whole
-# file, and dropping them would shift every subsequent line number.
-.read_lines_safe <- function(path) {
-  size <- suppressWarnings(file.size(path))
-  if (!is.na(size) && size > .max_scan_bytes) {
-    return(list(
-      lines = simpleError(sprintf(
-        "File is %.0f MB, above the %.0f MB scanning limit, and was not read.",
-        size / 1024^2, .max_scan_bytes / 1024^2
-      )),
-      skipped = NA_character_
-    ))
-  }
-
-  lines <- tryCatch(
-    withCallingHandlers(
-      readLines(path, warn = FALSE),
-      warning = function(w) stop(conditionMessage(w))
-    ),
-    error = function(e) e
-  )
-  if (inherits(lines, "condition")) {
-    return(list(lines = lines, skipped = NA_character_))
-  }
-
-  valid <- validUTF8(lines)
-  valid[is.na(valid)] <- FALSE
-  if (all(valid)) return(list(lines = lines, skipped = NA_character_))
-
-  lines[!valid] <- ""
-  list(lines = lines, skipped = sprintf(
-    "%d line(s) are not valid UTF-8 and were not scanned.", sum(!valid)
-  ))
 }
 
 

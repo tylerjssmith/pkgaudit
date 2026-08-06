@@ -8,7 +8,7 @@ find_code_contexts(tree, code_context_rules, file_context)
 }
 \arguments{
 \item{tree}{The \code{xml_document} parse tree for one script (from
-\code{\link[=parse_script]{parse_script()}}).}
+\code{\link[=parse_code]{parse_code()}}).}
 
 \item{code_context_rules}{Data frame of code-context rules
 (\code{rules$code_contexts} from \code{\link[=load_rules]{load_rules()}}), with columns \code{name}, \code{xpath},

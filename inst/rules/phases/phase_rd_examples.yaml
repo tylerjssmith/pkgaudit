@@ -1,0 +1,22 @@
+# Phases for a code context that is computed rather than rule-matched.
+#
+# Code in an \examples{} block of a help file is run by R CMD check, and by a
+# user who calls example(). It is not run when the package is built or
+# installed: R CMD build and R CMD INSTALL render the help page but never
+# evaluate its examples.
+#
+# Established by running an instrumented package -- one whose every Rd
+# execution site writes a marker file -- through R CMD build, R CMD INSTALL
+# from both source and binary, R CMD check, loadNamespace(), and
+# library()/detach(). Only R CMD check produced the examples marker.
+context: "Rd_examples"
+version: "0.1.0"
+at_autoconf: FALSE
+at_build: FALSE
+at_check: TRUE
+at_install_src: FALSE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE

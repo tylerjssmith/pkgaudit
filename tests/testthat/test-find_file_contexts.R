@@ -26,12 +26,28 @@ test_that("find_file_contexts() finds matching files with relative paths", {
 })
 
 test_that("find_file_contexts() returns empty frame when nothing matches", {
-  pkg <- make_pkg(files = list("R/zzz.R" = "invisible(NULL)"))
+  # R/*.R is itself a file context now, so a package with nothing but an R
+  # script no longer matches nothing; a file no rule covers is used instead.
+  pkg <- make_pkg(files = list("NEWS.md" = "nothing here"))
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
 
   res <- find_file_contexts(pkg, rules$file_contexts)
   expect_equal(nrow(res$file_contexts), 0L)
   expect_equal(nrow(res$errors), 0L)
+})
+
+test_that("find_file_contexts() finds R scripts and help pages as contexts", {
+  pkg <- make_pkg(files = list("R/zzz.R" = "invisible(NULL)",
+                               "man/f.Rd" = "\\name{f}"))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- find_file_contexts(pkg, rules$file_contexts)
+  expect_true("R/zzz.R"  %in% res$file_contexts$file_context)
+  expect_true("man/f.Rd" %in% res$file_contexts$file_context)
+  # They are scanned, not reported: both rules carry report = FALSE.
+  report <- rules$file_contexts$report[
+    match(res$file_contexts$rule, rules$file_contexts$name)]
+  expect_false(any(report))
 })
 
 test_that("find_file_contexts() handles empty rule set", {

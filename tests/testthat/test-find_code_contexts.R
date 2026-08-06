@@ -4,7 +4,7 @@ tree_from_text <- function(text) {
   f <- tempfile(fileext = ".R")
   writeLines(text, f)
   on.exit(unlink(f), add = TRUE)
-  parse_script(f)$tree
+  parse_code(read_code(f)$lines)$tree
 }
 
 # happy path -------------------------------------------------------------------

@@ -25,6 +25,16 @@ infrequently and use `pause` > 0 (default is 0.5) to rate-limit the downloads.
 For more frequent downloads, use `rsync` to host a mirror as described by 
 [CRAN](https://cran.r-project.org/mirror-howto.html).
 
+**Install Rd macro packages before a full run.** pkgaudit expands user-defined
+Rd macros when it scans a help file, so a `\Sexpr{}` reaching a page through a
+macro is still found. A macro a package declares in its DESCRIPTION `RdMacros`
+field can only be expanded if the providing package is installed; otherwise
+`audit_cran()` records an `extract_Rd_code` "unknown macro" error and the
+macro's content is not scanned. Most such macros are display-only (`mathjaxr`'s
+`\mjeqn`, `Rdpack`'s `\insertRef`) and inject no code, but installing the common
+providers -- at least `mathjaxr` and `Rdpack` -- removes the noise and closes
+the blind spot for any macro that does carry a `\Sexpr`.
+
 [`test_coverage.R`](test_coverage.R) is used by the GitHub Actions workflow
 `test-coverage.yaml` to report test coverage and generate a CI badge without
 relying on an external service.

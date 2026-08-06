@@ -139,11 +139,11 @@ test_that("summary.pkgaudit() gathers expressions that run in no phase under 'no
 test_that("summary.pkgaudit() renames the errors columns and keeps all four", {
   obj <- rich_obj(errors = errors_for(
     .error_row("find_file_contexts", NA_character_, "file_configure", "bad glob"),
-    .error_row("parse_script", "R/bad.R", NA_character_, "unexpected ')'")
+    .error_row("parse_code", "R/bad.R", NA_character_, "unexpected ')'")
   ))
   s <- summary(obj)
   expect_named(s$errors, c("stage", "script", "rule", "error"))
-  expect_equal(s$errors$stage,  c("find_file_contexts", "parse_script"))
+  expect_equal(s$errors$stage,  c("find_file_contexts", "parse_code"))
   expect_equal(s$errors$script, c(NA, "R/bad.R"))
   expect_equal(s$errors$rule,   c("file_configure", NA))
   expect_equal(s$errors$error,  c("bad glob", "unexpected ')'"))
@@ -255,7 +255,7 @@ test_that("the Errors section reports the all-clear when there are no errors", {
 test_that("the Errors section lists every error row with its stage", {
   obj <- rich_obj(errors = errors_for(
     .error_row("find_file_contexts", NA_character_, "file_configure", "bad glob"),
-    .error_row("parse_script", "R/bad.R", NA_character_, "unexpected ')'"),
+    .error_row("parse_code", "R/bad.R", NA_character_, "unexpected ')'"),
     .error_row("find_patterns", "R/a.R", "system", "invalid xpath")
   ))
   lines <- capture.output(print(summary(obj)))
@@ -263,7 +263,7 @@ test_that("the Errors section lists every error row with its stage", {
   # NA renders blank: the file-context rule names no script, the parse failure
   # names no rule.
   expect_true(any(grepl("^find_file_contexts +file_configure +bad glob$", lines)))
-  expect_true(any(grepl("^parse_script +R/bad\\.R +unexpected", lines)))
+  expect_true(any(grepl("^parse_code +R/bad\\.R +unexpected", lines)))
   expect_true(any(grepl("^find_patterns +R/a\\.R +system +invalid xpath$",
                         lines)))
 })
@@ -271,17 +271,17 @@ test_that("the Errors section lists every error row with its stage", {
 test_that("the Errors section notes what each stage's failures cost the scan", {
   obj <- rich_obj(errors = errors_for(
     .error_row("find_file_contexts", NA_character_, "file_configure", "bad glob"),
-    .error_row("parse_script", "R/bad.R",   NA_character_, "unexpected ')'"),
-    .error_row("parse_script", "R/worse.R", NA_character_, "invalid multibyte"),
+    .error_row("parse_code", "R/bad.R",   NA_character_, "unexpected ')'"),
+    .error_row("parse_code", "R/worse.R", NA_character_, "invalid multibyte"),
     .error_row("find_code_contexts", "R/a.R", "onLoad_base", "invalid xpath"),
     .error_row("find_patterns",      "R/a.R", "system",      "invalid xpath")
   ))
   notes <- paste(capture.output(print(summary(obj))), collapse = " ")
   expect_match(notes, "1 file-context rule could not be evaluated\\.")
   expect_match(notes,
-    "2 R scripts could not be parsed for code contexts or patterns, and were not scanned\\.")
+    "2 files could not be parsed and were not scanned\\.")
   expect_match(notes, "1 code-context rule could not be evaluated in 1 R script\\.")
-  expect_match(notes, "1 pattern rule could not be evaluated in 1 R script\\.")
+  expect_match(notes, "1 pattern rule could not be evaluated in 1 file\\.")
 })
 
 test_that("the Errors notes count distinct scripts and rules, and agree in number", {
@@ -292,30 +292,40 @@ test_that("the Errors notes count distinct scripts and rules, and agree in numbe
   ))
   expect_match(
     paste(capture.output(print(summary(two_rules))), collapse = " "),
-    "2 pattern rules could not be evaluated in 1 R script\\. .*in that script\\."
+    "2 pattern rules could not be evaluated in 1 file\\. .*in that file\\."
   )
 
   one_script <- rich_obj(errors = errors_for(
-    .error_row("parse_script", "R/bad.R", NA_character_, "unexpected ')'")
+    .error_row("parse_code", "R/bad.R", NA_character_, "unexpected ')'")
   ))
   expect_match(
     paste(capture.output(print(summary(one_script))), collapse = " "),
-    "1 R script could not be parsed .* and was not scanned\\. .*contents of that script\\."
+    "1 file could not be parsed and was not scanned\\. .*contents of that file\\."
   )
 })
 
 test_that("the Errors notes separate an unreadable file from a failed expression rule", {
-  # find_regex records both without a rule (the file was never read) and with
-  # one (the rule could not be evaluated); each gets its own note.
+  # Reading and matching are separate stages, so a file that could not be read
+  # is never reported as a rule that failed.
   obj <- rich_obj(errors = errors_for(
-    .error_row("find_regex", "configure",    NA_character_, "too large"),
+    .error_row("read_code",  "configure",    NA_character_, "too large"),
     .error_row("find_regex", "src/Makevars", "curl",        "invalid regex")
   ))
   notes <- paste(capture.output(print(summary(obj))), collapse = " ")
   expect_match(notes,
-    "1 shell or Make-like file could not be read in full and was not completely scanned\\.")
+    "1 file could not be read in full and was not completely scanned\\.")
   expect_match(notes,
     "1 expression rule could not be evaluated in 1 shell or Make-like file\\.")
+})
+
+test_that("the Errors notes report an incompletely read help file", {
+  obj <- rich_obj(errors = errors_for(
+    .error_row("extract_Rd_code", "man/f.Rd", NA_character_, "unknown macro")
+  ))
+  expect_match(
+    paste(capture.output(print(summary(obj))), collapse = " "),
+    "1 help file could not be read in full, so the R code in it may be incomplete\\."
+  )
 })
 
 test_that("the Errors notes for expressions agree in number", {

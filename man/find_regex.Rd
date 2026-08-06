@@ -4,10 +4,11 @@
 \alias{find_regex}
 \title{Find security-relevant expressions in a shell script or Make-like file}
 \usage{
-find_regex(path, regex_rules, file_context)
+find_regex(lines, regex_rules, file_context)
 }
 \arguments{
-\item{path}{Absolute path to the file to scan.}
+\item{lines}{Character vector of the file's lines, as returned by
+\code{\link[=read_code]{read_code()}}.}
 
 \item{regex_rules}{Data frame of regex rules (\code{rules$regex} from
 \code{\link[=load_rules]{load_rules()}}), with columns \code{name}, \code{regex}, \code{message}, and \code{attck}.}
@@ -31,8 +32,8 @@ Finds expressions -- regular-expression matches in a file R executes through
 a shell or through make (e.g., \code{configure}, \code{src/Makevars}).
 }
 \details{
-The file is read as lines, and each rule's regular expression is evaluated
-against all of them with \code{base::gregexpr()} using \code{perl = TRUE},
+Each rule's regular expression is evaluated against every line with
+\code{base::gregexpr()} using \code{perl = TRUE},
 \code{ignore.case = FALSE}, and \code{useBytes = FALSE}. Every match is an expression
 found, reported at the line it occurs on and the character position it starts
 at; a line matched more than once yields one row per match. A failing regular
@@ -43,15 +44,8 @@ Matching text is inherently less precise than matching a parse tree: an
 expression has no syntactic structure behind it, so a match inside a comment,
 a quoted string, or a branch that never runs is reported the same as a live
 command. Findings are candidates for review, not confirmed behavior.
-}
-\section{Security considerations}{
 
-A file being audited is untrusted input, so two limits are enforced before it
-is matched against. A file larger than 10 MB is not read at all, and lines
-that are not valid UTF-8 are blanked before matching. Both are recorded as
-errors, so the summary reports the lost coverage rather than a clean scan of
-a file that was never fully examined. Blanking rather than dropping a line
-keeps the line numbers of everything after it correct.
+Reading the file, and the limits that protect against hostile input, are
+\code{\link[=read_code]{read_code()}}'s responsibility rather than this function's.
 }
-
 \keyword{internal}

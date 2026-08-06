@@ -17,8 +17,9 @@ knitr::opts_chunk$set(
 pkgaudit scans R source packages for files that can execute arbitrary commands
 during autoconf, builds, checks, and installations, and for hooks whose bodies
 run automatically when a namespace is loaded, attached, unloaded, or detached.
-It scans R source code for security-relevant patterns like `system()` calls, and
-shell scripts and Make-like files for expressions like `curl`.
+It scans R source code -- in `R/` and in the examples and `\Sexpr{}` macros of
+help files -- for security-relevant patterns like `system()` calls, and shell
+scripts and Make-like files for expressions like `curl`.
 
 A finding is not an accusation. In many cases, flagged files and code will be
 legitimate: files that can execute shell commands are needed for
@@ -78,7 +79,16 @@ nrow(rules$phases)
 ```
 
 `phases` holds one row per context code can execute in: every file- and
-code-context rule, plus `Top-level` and `Other`.
+code-context rule, plus the computed contexts `Top-level`, `Other`,
+`Rd_examples`, and `Rd_Sexpr`.
+
+Not every file-context rule is a finding. Rules covering `R/` and `man/` tell
+the scan which files to read; only a rule with `report = TRUE` contributes a row
+to `result$file_contexts`.
+
+```{r reporting-rules}
+table(rules$file_contexts$type, rules$file_contexts$report)
+```
 
 A modified database is one way to evade a scanner. `load_rules()` verifies the
 database against its bundled SHA-256 sidecar on every call and refuses to load
@@ -113,7 +123,7 @@ pkg <- file.path(exdir, "untrustedpkg")
 list.files(pkg, recursive = TRUE)
 ```
 
-Three of those files are worth reading before we scan them. A `configure` script
+Four of those files are worth reading before we scan them. A `configure` script
 runs during installations from source, before any R source code is loaded. This
 one fetches a remote script and pipes it straight into a shell:
 
@@ -132,6 +142,18 @@ An ordinary function only runs if the user calls it:
 
 ```{r example-fetch, echo = FALSE, comment = ""}
 cat(readLines(file.path(pkg, "R", "fetch.R")), sep = "\n")
+```
+
+A help file carries R code too, and in two places that run at different times.
+Its `\examples{}` block runs under `R CMD check`. Its `\Sexpr{}` macro runs when
+the help page is rendered, during `R CMD build` and installation from source --
+and here it is written `\Sexpr[results=hide]{...}`, which suppresses the output.
+A person reading `?fetch_data` sees the description and the example, but nothing
+of the `httr::POST()` call: it runs on their machine, invisibly, when the page
+is built. pkgaudit reads it regardless of how it renders:
+
+```{r example-rd, echo = FALSE, comment = ""}
+cat(readLines(file.path(pkg, "man", "fetch_data.Rd")), sep = "\n")
 ```
 
 The script that generates this package is in

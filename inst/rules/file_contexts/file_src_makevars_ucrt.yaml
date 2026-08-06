@@ -1,6 +1,7 @@
 name: src_makevars_ucrt
 version: "0.3.0"
 type: make
+report: TRUE
 message: >-
   src/Makevars.ucrt sets make variables used to compile code in src/ on the
   Windows UCRT toolchain when a package is installed from source, including the

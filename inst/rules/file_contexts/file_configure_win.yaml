@@ -1,6 +1,7 @@
 name: configure_win
 version: "0.3.0"
 type: shell
+report: TRUE
 message: >-
   configure.win is a shell script for system-dependent configuration on Windows,
   executed when a package is installed from source, including the installs

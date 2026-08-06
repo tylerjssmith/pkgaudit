@@ -1,6 +1,7 @@
 name: src_makevars
 version: "0.3.0"
 type: make
+report: TRUE
 message: >-
   src/Makevars sets make variables used to compile code in src/ when a package
   is installed from source, including the installs performed by R CMD check and

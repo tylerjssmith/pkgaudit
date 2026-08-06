@@ -4,7 +4,7 @@
 #' execute in.
 #'
 #' @param tree The `xml_document` parse tree for one script (from
-#'   [parse_script()]).
+#'   [parse_code()]).
 #' @param patterns Data frame from [find_patterns()], carrying its matched nodes
 #'   in the `"nodes"` attribute aligned to the rows.
 #' @param rules Loaded rules; only `rules$code_contexts` (columns `name`,

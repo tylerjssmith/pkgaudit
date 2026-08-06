@@ -310,41 +310,40 @@ print.summary.pkgaudit <- function(x, path = x$path, ...) {
       "security-relevant files."
     )
   },
-  # This stage records two unrelated failures, so it can produce two notes. A
-  # row naming no rule is a file that could not be read or held content that
-  # could not be scanned; a row naming one is a rule that could not be
-  # evaluated. Counting them together would report a file that was never opened
-  # as a rule that failed.
   find_regex = function(rows) {
-    notes  <- character(0L)
-    unread <- rows[is.na(rows$rule), , drop = FALSE]
-    failed <- rows[!is.na(rows$rule), , drop = FALSE]
-
-    if (nrow(unread) > 0L) {
-      n     <- .n_scripts(unread)
-      notes <- c(notes, paste0(
-        .count(n, "shell or Make-like file"), " could not be read in full and ",
-        if (n == 1L) "was" else "were", " not completely scanned. Findings do ",
-        "not reflect all of the contents of ", .those_files(n), "."
-      ))
-    }
-    if (nrow(failed) > 0L) {
-      n     <- .n_scripts(failed)
-      notes <- c(notes, paste0(
-        .count(.n_rules(failed), "expression rule"),
-        " could not be evaluated in ",
-        .count(n, "shell or Make-like file"),
-        ". Findings may not reflect all expressions in ", .those_files(n), "."
-      ))
-    }
-    notes
-  },
-  parse_script = function(rows) {
     n <- .n_scripts(rows)
     paste0(
-      .count(n, "R script"), " could not be parsed for code contexts or ",
-      "patterns, and ", if (n == 1L) "was" else "were", " not scanned. ",
-      "Findings do not reflect the contents of ", .those_scripts(n), "."
+      .count(.n_rules(rows), "expression rule"), " could not be evaluated in ",
+      .count(n, "shell or Make-like file"),
+      ". Findings may not reflect all expressions in ", .those_files(n), "."
+    )
+  },
+  read_code = function(rows) {
+    n <- .n_scripts(rows)
+    paste0(
+      .count(n, "file"), " could not be read in full and ",
+      if (n == 1L) "was" else "were", " not completely scanned. Findings do ",
+      "not reflect all of the contents of ", .those_files(n), "."
+    )
+  },
+  extract_Rd_code = function(rows) {
+    n <- .n_scripts(rows)
+    paste0(
+      .count(n, "help file"), " could not be read in full, so the R code in ",
+      if (n == 1L) "it" else "them", " may be incomplete. Findings may not ",
+      "reflect all of the examples or \\Sexpr code in ",
+      if (n == 1L) "that file" else "these files", "."
+    )
+  },
+  # The stage covers R scripts and the code extracted from help files alike, so
+  # the note says "file" and claims only what is true of both: a help file
+  # defines no code contexts, so a failure there costs patterns only.
+  parse_code = function(rows) {
+    n <- .n_scripts(rows)
+    paste0(
+      .count(n, "file"), " could not be parsed and ",
+      if (n == 1L) "was" else "were", " not scanned. ",
+      "Findings do not reflect the contents of ", .those_files(n), "."
     )
   },
   find_code_contexts = function(rows) {
@@ -355,12 +354,14 @@ print.summary.pkgaudit <- function(x, path = x$path, ...) {
       .those_scripts(n), "."
     )
   },
+  # Patterns are sought in R scripts and in the code extracted from help files
+  # alike, so this note says "file" where the code-context one says "R script".
   find_patterns = function(rows) {
     n <- .n_scripts(rows)
     paste0(
       .count(.n_rules(rows), "pattern rule"), " could not be evaluated in ",
-      .count(n, "R script"), ". Findings may not reflect all patterns in ",
-      .those_scripts(n), "."
+      .count(n, "file"), ". Findings may not reflect all patterns in ",
+      .those_files(n), "."
     )
   }
 )

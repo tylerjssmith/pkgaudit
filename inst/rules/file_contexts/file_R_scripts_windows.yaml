@@ -1,0 +1,27 @@
+name: R_scripts_windows
+version: "0.1.0"
+type: R
+report: FALSE
+message: >-
+  R source files in R/windows are evaluated when the package is installed from source,
+  when the lazy-load database is built. They are scanned for code contexts and
+  patterns; the files themselves are not a finding, which is why this rule does
+  not report.
+at_autoconf: FALSE
+at_build: TRUE
+at_check: TRUE
+at_install_src: TRUE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "R/windows"
+recursive: FALSE
+pattern: '\.[RrSsq]$'
+positive_examples:
+  - R/windows/os.R
+negative_examples:
+  - R/os.R
+  - R/unix/os.R
+  - R/windows/notes.txt
