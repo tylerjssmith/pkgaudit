@@ -20,11 +20,11 @@ A named list of three elements:
 \verb{\\examples\{\}}.}
 \item{sexpr}{Length-one character string: the code from every \verb{\\Sexpr\{\}}
 macro in the file, wherever it appears.}
-\item{error}{\code{NULL} when the file parsed cleanly, otherwise the parser's
-message. Both code strings are \code{""} when the file could not be parsed
-at all, and may be \emph{incomplete} when it parsed with a warning, so a
-non-\code{NULL} \code{error} means the extraction is not to be trusted as a full
-account of the file's code.}
+\item{error}{\code{NULL} when the file parsed cleanly, otherwise a character
+message. Both code strings are \code{""} when the file was not read or could
+not be parsed at all, and may be \emph{incomplete} when it parsed with a
+warning, so a non-\code{NULL} \code{error} means the extraction is not to be
+trusted as a full account of the file's code.}
 }
 }
 \description{
@@ -33,7 +33,7 @@ Recovers the two kinds of R code an \code{.Rd} file can carry -- the body of
 \code{base::parse(text = )}.
 }
 \details{
-The two streams are returned separately because they run at different times.
+The two are returned separately because they run at different times.
 \verb{\\examples\{\}} runs under \verb{R CMD check} and when a user calls \code{example()};
 \verb{\\Sexpr\{\}} runs while the help page is built or installed, which is the
 earlier and less visible of the two. Merging them would make that distinction
@@ -59,8 +59,8 @@ question for the caller; all four are R code shipped in the package.
 \item \verb{\\dots} becomes \code{...}, so a call does not silently lose an argument.
 \item Rd comments (\verb{\%} to end of line) are dropped, as they are not R code
 and would not parse.
-\item An inline \verb{\\Sexpr\{\}} goes to the \code{sexpr} stream and leaves a gap in
-the \code{examples} stream, so \verb{h(\\Sexpr\{2+2\})} yields \code{h()} there.
+\item An inline \verb{\\Sexpr\{\}} goes to the \code{sexpr} string and leaves a gap in
+the \code{examples} one, so \verb{h(\\Sexpr\{2+2\})} yields \code{h()} there.
 }
 
 User-defined Rd macros are expanded when \code{macros} is supplied, so a
@@ -79,13 +79,17 @@ only read, while the \code{tools::prepare_Rd()} and \verb{tools::Rd2*()} family
 evaluate \verb{\\Sexpr\{\}} as a matter of course. pkgaudit must never call the
 latter, and a regression test asserts that a scan of a package whose Rd code
 would write a marker file leaves no marker behind.
+
+A help file is untrusted input like any other file under audit, so one above
+the scanning limit is refused unread and reported through \code{error}, rather
+than handed to \code{tools::parse_Rd()}.
 }
 
 \section{Known limits}{
 
 \verb{\\Sexpr[results=rd]} produces Rd that is itself parsed and may contain
 further code; that second-order surface is not followed. No \code{stage} option is
-consulted, so the \code{sexpr} stream mixes build-, install-, and render-time code
+consulted, so the \code{sexpr} string mixes build-, install-, and render-time code
 together.
 
 \code{tools::parse_Rd()} recovers from some malformed input with a warning rather
@@ -93,14 +97,14 @@ than an error, returning a truncated tree. Whatever was recovered is still
 returned, since dropping it would lose real code, but the warning is reported
 in \code{error} so that a partial extraction is never mistaken for a complete one.
 
-The \code{examples} stream is not guaranteed to parse. R never syntax-checks
+The \code{examples} string is not guaranteed to parse. R never syntax-checks
 \verb{\dontrun{}}: \code{tools::Rd2ex()} comments those lines out with \verb{##D}, and
 \verb{R CMD check} therefore never sees them. Including that code, as this
 function does, exposes \verb{\dontrun{}} blocks that are not valid R -- a stray
 bracket, a sentence of prose, a mis-escaped backslash. Over a sample of 3081
-\code{.Rd} files from CRAN, 5 (0.16\%) produced an \code{examples} stream that would not
-parse, every one of them for that reason; no \code{sexpr} stream failed. Since the
-two streams are each assembled whole, one broken \verb{\dontrun{}} costs the
+\code{.Rd} files from CRAN, 5 (0.16\%) produced an \code{examples} string that would not
+parse, every one of them for that reason; no \code{sexpr} string failed. Since the
+two are each assembled whole, one broken \verb{\dontrun{}} costs the
 valid example code in the same file, which is worth weighing before this is
 wired into a scan.
 }

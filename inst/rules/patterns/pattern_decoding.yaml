@@ -1,6 +1,6 @@
 name: decoding
 version: "0.3.0"
-type: R
+language: R
 attck:
   - T1140
 message: >-

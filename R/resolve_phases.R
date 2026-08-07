@@ -1,7 +1,7 @@
 # This script attaches lifecycle phases to the findings frames. Phases are a
 # property of a context, not of an individual finding: a file context and a code
 # context each get theirs from the rule that matched, a pattern inherits them
-# from the code context it sits in, and an expression inherits them from the
+# from the code context it sits in, and a match inherits them from the
 # file context it was found in.
 
 # Look up phases for a vector of context keys, returning one row per key.
@@ -45,30 +45,30 @@
 }
 
 
-# Attach phase columns to the expressions frame.
+# Attach phase columns to the matches frame.
 #
-# An expression is found in a shell script or Make-like file, which has no code
+# An match is found in a shell script or Make-like file, which has no code
 # context, so its phases are those of the file context it sits in. That key is a
-# path rather than a rule name, and one path can match more than one
+# path rather than a rule name, and one path ca match more than one
 # file-context rule, so the phases are the union across every rule that matched
 # it: the file is executed whenever any of those rules says it is.
 #
 # file_contexts must already carry its phase columns. A path with no row there
-# resolves to no phases, which cannot arise from a scan -- expressions are only
+# resolves to no phases, which cannot arise from a scan -- matches are only
 # sought in files that are file contexts -- and is a floor for a hand-built
 # frame rather than the mechanism relied upon.
-.resolve_expression_phases <- function(expressions, file_contexts) {
-  out <- .empty_phase_cols(nrow(expressions))
-  if (nrow(expressions) == 0L || nrow(file_contexts) == 0L) {
-    return(cbind(expressions, out))
+.resolve_match_phases <- function(matches, file_contexts) {
+  out <- .empty_phase_cols(nrow(matches))
+  if (nrow(matches) == 0L || nrow(file_contexts) == 0L) {
+    return(cbind(matches, out))
   }
 
   for (phase in .phase_columns) {
     by_path      <- tapply(as.logical(file_contexts[[phase]]),
                            file_contexts$file_context, any)
-    value        <- unname(by_path[expressions$file_context])
+    value        <- unname(by_path[matches$file_context])
     value[is.na(value)] <- FALSE
     out[[phase]] <- value
   }
-  cbind(expressions, out)
+  cbind(matches, out)
 }

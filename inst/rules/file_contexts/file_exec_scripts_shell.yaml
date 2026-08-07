@@ -1,0 +1,34 @@
+name: exec_scripts_shell
+version: "0.1.0"
+type: shell
+message: >-
+  Shell scripts under exec/ ship in the installed package and are marked
+  executable. No lifecycle command runs them, but they execute arbitrary shell
+  with the user's privileges when invoked. Only sh-family extensions are
+  claimed; exec/ also holds Perl, Python, batch and other files this rule does
+  not match, and extensionless scripts whose language is known only from a
+  shebang.
+at_autoconf: FALSE
+at_build: FALSE
+at_check: FALSE
+at_install_src: FALSE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "exec"
+recursive: FALSE
+report: FALSE
+namespace_source: FALSE
+code_context: "Top-level"
+filename: '\.(sh|bash|ksh|zsh|csh)$'
+positive_examples:
+  - exec/compileAttr.sh
+  - exec/setup.bash
+negative_examples:
+  - exec/tokenize.R
+  - exec/encode.pl
+  - exec/bin_by_SNPs.py
+  - exec/runme.bat
+  - src/compileAttr.sh

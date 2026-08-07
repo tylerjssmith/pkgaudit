@@ -4,10 +4,11 @@
 #' `R CMD build`, `R CMD check`, or `R CMD INSTALL` (e.g., `configure`,
 #' `src/Makevars`, `src/install.libs.R`).
 #'
-#' @param pkg Path to the root of the package being audited.
+#' @param pkg Path to the root of the package being audited. Must exist and
+#'   be a directory.
 #' @param file_context_rules Data frame of file-context rules
 #'   (`rules$file_contexts` from [load_rules()]), with columns `name`, `path`,
-#'   `recursive`, `pattern`, and `message`.
+#'   `recursive`, `filename`, and `message`.
 #'
 #' @return A list with two data frames:
 #'   \describe{
@@ -15,13 +16,19 @@
 #'       name), `file_context` (package-root-relative path; the join key), and
 #'       `message`. The phase columns are not set here; [audit_package()]
 #'       attaches them from the rules database.}
-#'     \item{errors}{Data frame with columns `stage`, `file_context`, `rule`,
+#'     \item{errors}{Data frame with columns `step`, `file_context`, `rule`,
 #'       `message`.}
 #'   }
 #'
+#' @section Security considerations:
+#' A rule whose directory is absent contributes nothing and reports nothing --
+#' most packages have no `R/unix/`, and that is a clean result. `pkg` itself is
+#' checked so that a root that does not exist is refused rather than joining
+#' that silence as a package with nothing to scan.
+#'
 #' @keywords internal
 find_file_contexts <- function(pkg, file_context_rules) {
-  stopifnot(is.character(pkg), length(pkg) == 1L)
+  stopifnot(is.character(pkg), length(pkg) == 1L, dir.exists(pkg))
   stopifnot(is.data.frame(file_context_rules))
 
   found  <- list()
@@ -40,7 +47,7 @@ find_file_contexts <- function(pkg, file_context_rules) {
       {
         matches <- list.files(
           search_dir,
-          pattern    = rule$pattern,
+          pattern    = rule$filename,
           recursive  = rule$recursive,
           full.names = TRUE,
           all.files  = TRUE
@@ -51,7 +58,7 @@ find_file_contexts <- function(pkg, file_context_rules) {
       },
       error = function(e) {
         errors <<- rbind(errors, .error_row(
-          stage        = "find_file_contexts",
+          step         = "find_file_contexts",
           rule         = rule$name,
           message      = conditionMessage(e)
         ))

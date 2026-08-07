@@ -14,17 +14,21 @@ with the installed package.}
 A named list with five data frames:
 \describe{
 \item{file_contexts}{Data frame with columns \code{name}, \code{version}, \code{type},
-\code{message}, \code{path}, \code{recursive}, \code{report}, \code{pattern}. \code{type} selects how
-a matched file is read and scanned; \code{report} is \code{TRUE} for a rule whose
-matches are findings in their own right, and \code{FALSE} for one that only
-tells the scanner which files to read.}
-\item{code_contexts}{Data frame with columns \code{name}, \code{version}, \code{type},
-\code{message}, \code{xpath}.}
-\item{patterns}{Data frame with columns \code{name}, \code{version}, \code{type},
+\code{message}, \code{path}, \code{recursive}, \code{report}, \code{namespace_source},
+\code{filename}, \code{code_context}. \code{type} selects how a matched file is read
+and scanned;
+\code{report} is \code{TRUE} for a rule whose matches are findings in their own
+right, and \code{FALSE} for one that only tells the scanner which files to
+read; \code{namespace_source} is \code{TRUE} only where R code becomes the
+package namespace, which is where a lifecycle hook can actually run.}
+\item{code_contexts}{Data frame with columns \code{name}, \code{version},
+\code{language}, \code{message}, \code{xpath}.}
+\item{patterns}{Data frame with columns \code{name}, \code{version}, \code{language},
 \code{message}, \code{attck}, \code{xpath}.}
-\item{regex}{Data frame with columns \code{name}, \code{version}, \code{message},
-\code{attck}, \code{regex}. Regex rules declare no \code{type}: they are applied to
-every file context whose type is \code{shell} or \code{make}.}
+\item{matches}{Data frame with columns \code{name}, \code{version}, \code{language},
+\code{message}, \code{attck}, \code{regex}. A match rule is evaluated against every
+segment in its \code{language}, which is what keeps a shell rule from being
+applied to R code.}
 \item{phases}{Data frame with columns \code{context}, \code{version}, and one
 logical column per lifecycle phase. One row per context code can
 execute in: every file- and code-context rule, plus the computed
@@ -37,7 +41,7 @@ hash computed from the database during verification, not a value re-read
 from the sidecar afterwards, so it records what this call measured.
 }
 \description{
-Loads the file-context, code-context, pattern, and regex rules, and the
+Loads the file-context, code-context, pattern, and match rules, and the
 lifecycle phases of every context, from the bundled SQLite database as a
 named list suitable for passing to \code{\link[=audit_package]{audit_package()}} or \code{\link[=audit_tarball]{audit_tarball()}}.
 }

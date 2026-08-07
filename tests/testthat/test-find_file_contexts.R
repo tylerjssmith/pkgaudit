@@ -63,12 +63,12 @@ test_that("find_file_contexts() records an error for an invalid regex pattern", 
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
 
   bad <- rule_row(rules$file_contexts, "configure")
-  bad$pattern <- "("   # invalid regex -> list.files() errors
+  bad$filename <- "("   # invalid regex -> list.files() errors
 
   res <- find_file_contexts(pkg, bad)
   expect_equal(nrow(res$file_contexts), 0L)
   expect_equal(nrow(res$errors), 1L)
-  expect_equal(res$errors$stage, "find_file_contexts")
+  expect_equal(res$errors$step, "find_file_contexts")
   expect_equal(res$errors$rule, "configure")
 })
 
@@ -79,4 +79,26 @@ test_that("find_file_contexts() does not match directories", {
 
   res <- find_file_contexts(pkg, rule_row(rules$file_contexts, "configure"))
   expect_equal(nrow(res$file_contexts), 0L)
+})
+
+# A missing rule directory is a clean result -- most packages have no R/unix/ --
+# so list.files() staying silent there is deliberate. That silence would
+# otherwise hide a root that does not exist, which is the opposite conclusion.
+test_that("find_file_contexts() refuses a root that is not a directory", {
+  expect_error(find_file_contexts(file.path(tempfile(), "nope"),
+                                  rules$file_contexts), "dir.exists")
+
+  f <- tempfile(); writeLines("x", f)
+  on.exit(unlink(f), add = TRUE)
+  expect_error(find_file_contexts(f, rules$file_contexts), "dir.exists")
+})
+
+test_that("a rule whose directory is absent is still a clean result", {
+  pkg <- make_pkg(files = list("R/a.R" = "f <- function() 1"))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  # The rules cover R/unix/, man/windows/ and others this package does not have.
+  res <- find_file_contexts(pkg, rules$file_contexts)
+  expect_equal(nrow(res$errors), 0L)
+  expect_true(nrow(res$file_contexts) >= 0L)
 })

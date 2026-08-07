@@ -1,0 +1,1 @@
+exec/bin_by_SNPs.py

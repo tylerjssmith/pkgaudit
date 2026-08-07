@@ -5,13 +5,13 @@ test_that("new_pkgaudit() accepts a well-formed object", {
   obj <- make_obj()
   expect_s3_class(obj, "pkgaudit")
   expect_named(obj, c("file_contexts", "code_contexts", "patterns",
-                      "expressions", "errors", "metadata"))
+                      "matches", "errors", "metadata"))
 })
 
 test_that("new_pkgaudit() errors when a data frame is not a data frame", {
   expect_error(
     new_pkgaudit("nope", .empty_code_contexts(), .empty_patterns(),
-                 .empty_expressions(), .empty_errors(), good_metadata()),
+                 .empty_matches(), .empty_errors(), good_metadata()),
     "file_contexts.*must be a data frame"
   )
 })
@@ -20,18 +20,18 @@ test_that("new_pkgaudit() errors on wrong data-frame columns", {
   bad <- .empty_file_contexts()
   bad$message <- NULL
   expect_error(new_pkgaudit(bad, .empty_code_contexts(), .empty_patterns(),
-                            .empty_expressions(), .empty_errors(),
+                            .empty_matches(), .empty_errors(),
                             good_metadata()),
                "file_contexts.*missing: message")
 })
 
-test_that("new_pkgaudit() errors on wrong expressions columns", {
-  # An expression carries no code_context: its phases come from its file
+test_that("new_pkgaudit() errors on wrong matches columns", {
+  # An match carries no code_context: its phases come from its file
   # context, so a frame shaped like patterns is not one.
   expect_error(new_pkgaudit(.empty_file_contexts(), .empty_code_contexts(),
                             .empty_patterns(), .empty_patterns(),
                             .empty_errors(), good_metadata()),
-               "expressions.*unexpected: code_context")
+               "matches.*unexpected: code_context")
 })
 
 test_that("new_pkgaudit() errors on a missing metadata field", {
@@ -66,7 +66,7 @@ test_that("format.pkgaudit() returns a character vector with the expected lines"
   expect_true(any(grepl("^File contexts:\\s+4$", lines)))
   expect_true(any(grepl("^Code contexts:\\s+6$", lines)))
   expect_true(any(grepl("^Patterns:\\s+17$", lines)))
-  expect_true(any(grepl("^Expressions:\\s+3$", lines)))
+  expect_true(any(grepl("^Matches:\\s+3$", lines)))
   # Scanned line renders the ISO value as YYYY-MM-DD HH:MM UTC.
   expect_true(any(grepl("^Scanned:\\s+2026-07-23 14:02 UTC with pkgaudit v0.3.0, rules v0.1.0$", lines)))
 })
@@ -80,7 +80,7 @@ test_that("format.pkgaudit() counts match the data-frame row counts", {
   expect_equal(val("File contexts:"), as.character(nrow(obj$file_contexts)))
   expect_equal(val("Code contexts:"), as.character(nrow(obj$code_contexts)))
   expect_equal(val("Patterns:"),      as.character(nrow(obj$patterns)))
-  expect_equal(val("Expressions:"),   as.character(nrow(obj$expressions)))
+  expect_equal(val("Matches:"),       as.character(nrow(obj$matches)))
 })
 
 test_that("format.pkgaudit() includes Path only when path = TRUE", {

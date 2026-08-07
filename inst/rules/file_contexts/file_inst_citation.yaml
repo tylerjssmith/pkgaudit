@@ -1,0 +1,29 @@
+name: inst_citation
+version: "0.1.0"
+type: R
+message: >-
+  inst/CITATION is R code that utils::readCitationFile() evaluates. R CMD check
+  reads it, and so does any user who calls citation() on the installed package.
+  A plain .R file under inst/ is never sourced, so this is specific to the
+  CITATION filename.
+at_autoconf: FALSE
+at_build: FALSE
+at_check: TRUE
+at_install_src: FALSE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "inst"
+recursive: FALSE
+report: FALSE
+namespace_source: FALSE
+code_context: "citation_R"
+filename: '^CITATION$'
+positive_examples:
+  - inst/CITATION
+negative_examples:
+  - inst/CITATION.txt
+  - inst/other.R
+  - CITATION

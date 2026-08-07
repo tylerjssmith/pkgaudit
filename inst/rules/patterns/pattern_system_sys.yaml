@@ -1,6 +1,6 @@
 name: system_sys
 version: "0.3.0"
-type: R
+language: R
 attck:
   - T1059
 message: >-

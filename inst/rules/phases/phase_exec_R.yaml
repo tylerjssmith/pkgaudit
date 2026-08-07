@@ -1,0 +1,23 @@
+# Phases for a code context that is computed rather than rule-matched.
+#
+# R code under exec/ runs only when a user invokes the script. R CMD INSTALL
+# copies exec/ into the installed package and marks its contents executable, but
+# no lifecycle command runs them, so every phase is FALSE -- the same reading as
+# demo/ and tools/: code that runs only if something calls it.
+#
+# Established with an instrumented probe package: every execution site writes a
+# marker, and the package is run through R CMD build (with and without
+# --no-build-vignettes), R CMD INSTALL from a directory, a source tarball and a
+# binary, R CMD check, loadNamespace(), library(), detach() and unload. exec/
+# fired under none of them, and only under direct invocation.
+context: "exec_R"
+version: "0.1.0"
+at_autoconf: FALSE
+at_build: FALSE
+at_check: FALSE
+at_install_src: FALSE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE

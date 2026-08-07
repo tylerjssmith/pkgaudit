@@ -1,14 +1,17 @@
 #' Audit an R source package
 #'
 #' Finds security-relevant file and code contexts, code patterns, and shell and
-#' make expressions for review before an R source package is trusted.
+#' make matches for review before an R source package is trusted.
 #'
 #' @param path Path to an R source package root directory. Defaults to the
 #'   current directory.
 #' @param rules Named list of rules. Defaults to the rules bundled with the
 #'   package as returned by [load_rules()].
 #' @param .origin Internal. Used by [audit_tarball()] to record tarball
-#'   provenance. Leave `NULL` for a directory scan.
+#'   provenance. Leave `NULL` for a directory scan. Otherwise a list of `path`
+#'   and `sha256`, each a length-one character, and `is_tarball`, a length-one
+#'   logical that is not `NA`; these become the scan's provenance, so a
+#'   malformed one is refused before the scan rather than silently recorded.
 #'
 #' @return A [new_pkgaudit()] object: a named list with class `pkgaudit`
 #'   containing five data frames and a `metadata` list.
@@ -19,14 +22,18 @@
 #'       `column_number`, `message`, and the phase columns. Join to
 #'       `file_contexts` on `file_context`.}
 #'     \item{patterns}{`rule`, `file_context`, `line_number`,
-#'       `column_number`, `message`, `attck`, `code_context`, and the phase
-#'       columns. Join to the other tables on `file_context`, and to
+#'       `column_number`, `code_context`, `preview`, `message`, `attck`, and the
+#'       phase columns, in that order: the leading columns are the ones a reader
+#'       skims, and `message` and `attck` restate the rule rather than the
+#'       occurrence. Join to the other tables on `file_context`, and to
 #'       `code_contexts$rule` on `code_context`.}
-#'     \item{expressions}{`rule`, `file_context`, `line_number`,
-#'       `column_number`, `message`, `attck`, and the phase columns. Regular
-#'       expressions matched in the shell scripts and Make-like files among the
-#'       file contexts. Join to the other tables on `file_context`.}
-#'     \item{errors}{`stage`, `file_context`, `rule`, `message`.}
+#'     \item{matches}{`rule`, `file_context`, `line_number`,
+#'       `column_number`, `preview`, `message`, `attck`, and the phase columns,
+#'       ordered as `patterns` is, less the `code_context` a match has no
+#'       parse tree to sit in. Regular matches matched in the shell scripts
+#'       and Make-like files among the file contexts. Join to the other tables
+#'       on `file_context`.}
+#'     \item{errors}{`step`, `file_context`, `rule`, `message`.}
 #'     \item{metadata}{List of `pkg_name`, `pkg_version`, `pkg_path`,
 #'       `pkg_is_tarball`, `pkg_sha256`, `pkgaudit_version`,
 #'       `pkgaudit_rules_version`, `pkgaudit_rules_sha256`, and `scanned`. The
@@ -40,18 +47,35 @@
 #' `type` decides how the file is read: an `R` script is parsed as it stands, an
 #' `Rd` help file has its `\examples{}` and `\Sexpr{}` code extracted first, and
 #' a `shell` or `make` file is matched line by line against the regex rules.
-#' Reading a file yields one or more *streams* of code, which are what the
+#' Reading a file yields one or more *segments* of code, which are what the
 #' finders actually see; a help file yields two, because its examples and its
 #' `\Sexpr` macros run at different phases.
 #'
-#' A rule's `report` field separates being scanned from being reported. Rules
-#' for `R/` and `man/` exist to tell the scan which files to read and do not
-#' report, so `file_contexts` stays a list of security-relevant files rather
-#' than an inventory of the package.
+#' A rule's `report` field separates being scanned from being reported. Every
+#' rule tells the scan which files to read; only a reporting rule adds a row to
+#' `file_contexts`. `report` is `TRUE` where a file runs automatically *and* is
+#' matched as text rather than parsed -- the shell and Make-like files, whose
+#' contents pkgaudit cannot report on precisely, so the file itself is the
+#' finding. `src/install.libs.R` reports too: it is parsed, but its presence
+#' alone replaces R's default handling of compiled artifacts. Everything else is
+#' scanned just as thoroughly; only the row asserting the file exists is
+#' withheld.
+#'
+#' A file context is claimed by extension, so a language pkgaudit cannot read is
+#' left unscanned rather than scanned badly -- the Perl, Python and batch scripts
+#' under `exec/`, for instance. Nothing is reported for an unclaimed file, so its
+#' absence from the findings is not evidence that it is clean.
 #'
 #' Recoverable failures in the orchestrated finders are collected in the
 #' `errors` data frame rather than aborting the audit. File paths in every
 #' returned data frame are relative to the package root.
+#'
+#' `patterns` and `matches` each carry a `preview`: a display-only excerpt of the
+#' line at `line_number`, whitespace collapsed, so the frames can be skimmed
+#' without opening the files. A trailing `...` means there is more to see. A long
+#' line is windowed on the match rather than cut off at its start, so
+#' `column_number` does not index into the preview. A preview from a help file
+#' comes from the extracted code, not the `.Rd` text.
 #'
 #' Each findings data frame also carries one logical column per package
 #' lifecycle phase -- `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
@@ -59,7 +83,7 @@
 #' which is `TRUE` when that finding's code runs during the phase, so findings
 #' can be filtered by when they execute. A file or code context takes its phases
 #' from the rule that matched; a pattern inherits them from its `code_context`;
-#' an expression inherits them from the file context it was found in. A pattern
+#' a match inherits them from the file context it was found in. A pattern
 #' in an ordinary function is `FALSE` for every phase: it runs only if something
 #' calls it, and that holds for a function defined in a help-file example too. A
 #' finding can belong to several phases, so the phase columns do not partition
@@ -70,10 +94,10 @@
 #' whenever the page is rendered -- during `R CMD build`, installation from
 #' source, and `R CMD check`, but not on installation from a binary package.
 #'
-#' Patterns are matched against R's parse tree, expressions against the text of
+#' Patterns are matched against R's parse tree, matches against the text of
 #' a shell script or Make-like file. Text matching has no syntax behind it, so
-#' an expression reported inside a comment or a quoted string cannot be told
-#' apart from one in a live command; see [find_regex()].
+#' a match reported inside a comment or a quoted string cannot be told
+#' apart from one in a live command; see [find_matches()].
 #'
 #' When called by [audit_tarball()], `.origin` is a list with `path`, `sha256`,
 #' and `is_tarball`, which are used for the `metadata` list. When calling
@@ -92,26 +116,20 @@
 #' @export
 audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
   stopifnot(is.character(path), length(path) == 1L, dir.exists(path))
-  stopifnot(
-    is.list(rules),
-    all(c("file_contexts", "code_contexts", "patterns", "regex", "phases") %in%
-          names(rules))
-  )
+  stopifnot(is.list(rules), all(.rule_classes %in% names(rules)))
+  .validate_origin(.origin)
 
   # The finders build frames without phase columns; phases are attached once,
   # from rules$phases, after every file has been scanned.
-  errors        <- .empty_errors()
   code_contexts <- .empty_code_contexts(with_phases = FALSE)
   patterns      <- .empty_patterns(with_phases = FALSE)
-  expressions   <- .empty_expressions(with_phases = FALSE)
+  matches       <- .empty_matches(with_phases = FALSE)
+  errors        <- .empty_errors()
 
   found  <- find_file_contexts(path, rules$file_contexts)
   errors <- rbind(errors, found$errors)
 
-  # Every rule finds files to scan; only a reporting rule contributes a finding.
-  # Discovery and reporting are separate concerns, so that adding rules for R/
-  # and man/ -- which exist to be read, not flagged -- leaves the file_contexts
-  # frame the short list of security-relevant files it has always been.
+  # Every rule finds files to scan; only some files are reported as findings.
   file_contexts <- .reported_contexts(found$file_contexts, rules$file_contexts)
 
   # Rd macros are loaded once for the package. Without them, a \Sexpr reaching a
@@ -120,23 +138,33 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
   macros <- .load_rd_macros(path)
 
   for (target in .scan_targets(found$file_contexts, rules$file_contexts)) {
-    read   <- .read_streams(file.path(path, target$file_context), target$type,
-                            target$file_context, macros)
+    # Classed by the rule's type, which is the only thing deciding how the file
+    # is read, and the only place a new variety of file is named.
+    src    <- new_source(file.path(path, target$file_context),
+                         target$file_context, target$type, macros,
+                         namespace_source = target$namespace_source,
+                         code_context     = target$code_context)
+    read   <- extract_segments(src)
     errors <- rbind(errors, read$errors)
 
-    for (stream in read$streams) {
-      analyzed <- .analyze_stream(stream, target$file_context, rules)
-      code_contexts <- rbind(code_contexts, analyzed$code_contexts)
-      patterns      <- rbind(patterns,      analyzed$patterns)
-      expressions   <- rbind(expressions,   analyzed$expressions)
-      errors        <- rbind(errors,        analyzed$errors)
+    for (segment in read$segments) {
+      # Classed by the segment's language, which the extractor set. One file may
+      # yield several languages, so this is a separate axis from the source.
+      hits <- analyze_segment(segment, rules)
+
+      code_contexts <- rbind(code_contexts, hits$code_contexts)
+      patterns      <- rbind(patterns,      hits$patterns)
+      matches       <- rbind(matches,       hits$matches)
+      errors        <- rbind(errors,        hits$errors)
     }
   }
 
   file_contexts <- .attach_phases(file_contexts, rules$phases)
   code_contexts <- .attach_phases(code_contexts, rules$phases)
   patterns      <- .resolve_pattern_phases(patterns, rules$phases)
-  expressions   <- .resolve_expression_phases(expressions, file_contexts)
+  matches       <- .resolve_match_phases(matches,
+    .attach_phases(found$file_contexts, rules$phases)
+  )
 
   # provenance: hash the tarball as received when scanning one (via
   # audit_tarball), otherwise hash a manifest of the directory.
@@ -146,7 +174,7 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
     pkg_sha256     <- tryCatch(hash_manifest(path)$hash,
                                error = function(e) NA_character_)
   } else {
-    pkg_is_tarball <- isTRUE(.origin$is_tarball)
+    pkg_is_tarball <- .origin$is_tarball
     pkg_path       <- .origin$path
     pkg_sha256     <- .origin$sha256
   }
@@ -157,7 +185,7 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
     file_contexts = file_contexts,
     code_contexts = code_contexts,
     patterns      = patterns,
-    expressions   = expressions,
+    matches       = matches,
     errors        = errors,
     metadata      = metadata
   )
@@ -166,8 +194,7 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
 # --- Scanning -----------------------------------------------------------------
 
 # The rows of a found-contexts frame that are findings in their own right.
-# `report` is a property of the rule that matched, which the found contexts do
-# not carry, so it is looked up in the rules that produced them.
+# `report` is a property of the rule (report: TRUE).
 .reported_contexts <- function(file_contexts, file_context_rules) {
   if (nrow(file_contexts) == 0L) return(file_contexts)
 
@@ -177,38 +204,8 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
 }
 
 
-# The files to scan, as a list of list(file_context, type).
-#
-# The type comes from the rule that matched and selects how the file is read.
-# A path is returned once per type even when several rules of that type matched
-# it, so a file is read once; .resolve_expression_phases() unions the phases of
-# every rule that matched a given path.
-#
-# A path matching rules of two different types is scanned once for each, which
-# is the honest reading: the file really does hold both kinds of content.
-.scan_targets <- function(file_contexts, file_context_rules) {
-  if (nrow(file_contexts) == 0L) return(list())
-
-  type <- file_context_rules$type[match(file_contexts$rule,
-                                        file_context_rules$name)]
-  keep <- !is.na(type)
-  if (!any(keep)) return(list())
-
-  pairs <- unique(data.frame(
-    file_context = file_contexts$file_context[keep],
-    type         = type[keep],
-    stringsAsFactors = FALSE
-  ))
-  lapply(seq_len(nrow(pairs)), function(i) as.list(pairs[i, , drop = FALSE]))
-}
-
-
 # Load a package's Rd macros, or NULL if it defines none and NULL on failure.
-#
-# A macro package named in DESCRIPTION's RdMacros field may not be installed,
-# which warns; an unreadable macro file may error. Neither is a reason to abort
-# a scan, and neither executes anything: loadPkgRdMacros() reads macro
-# definitions as text.
+# loadPkgRdMacros() reads macro definitions as text; it does not execute.
 .load_rd_macros <- function(path) {
   tryCatch(
     suppressWarnings(tools::loadPkgRdMacros(path)),
@@ -217,132 +214,34 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
 }
 
 
-# Run one stream through the analyzer its language calls for, returning the
-# rows it produced for each findings frame.
+# The files to scan, as a list of list(file_context, type).
 #
-# An R stream with no code context of its own is a script: its patterns are
-# placed by determine_code_contexts(), and it can define code contexts. A
-# stream that names its context came from a help file, where the context is
-# known from which part of the file the code was in.
-.analyze_stream <- function(stream, file_context, rules) {
-  out <- list(
-    code_contexts = .empty_code_contexts(with_phases = FALSE),
-    patterns      = .empty_patterns(with_phases = FALSE),
-    expressions   = .empty_expressions(with_phases = FALSE),
-    errors        = .empty_errors()
-  )
+# The type comes from the rule that matched and selects how the file is read.
+# A path is returned once per type even when several rules of that type matched
+# it, so a file is read once; .resolve_match_phases() unions the phases of
+# every rule that matched a given path.
+#
+# A path matching rules of two different types is scanned once for each, which
+# is the honest reading: the file really does hold both kinds of content.
+.scan_targets <- function(file_contexts, file_context_rules) {
+  if (nrow(file_contexts) == 0L) return(list())
 
-  if (identical(stream$language, "shell")) {
-    fr              <- find_regex(stream$lines, rules$regex, file_context)
-    out$expressions <- fr$expressions
-    out$errors      <- fr$errors
-    return(out)
-  }
+  i    <- match(file_contexts$rule, file_context_rules$name)
+  type <- file_context_rules$type[i]
+  keep <- !is.na(type)
+  if (!any(keep)) return(list())
 
-  parsed <- parse_code(stream$lines)
-  if (!is.null(parsed$error)) {
-    out$errors <- .error_row(
-      stage        = "parse_code",
-      file_context = file_context,
-      message      = parsed$error
-    )
-    return(out)
-  }
-  tree     <- parsed$tree
-  is_script <- is.na(stream$context)
-
-  if (is_script) {
-    cc                <- find_code_contexts(tree, rules$code_contexts,
-                                            file_context)
-    out$code_contexts <- cc$code_contexts
-    out$errors        <- rbind(out$errors, cc$errors)
-  }
-
-  fp         <- find_patterns(tree, rules$patterns, file_context)
-  out$errors <- rbind(out$errors, fp$errors)
-
-  pat <- fp$patterns
-  if (nrow(pat) > 0L) {
-    # A help file defines no code contexts of its own -- a hook assigned in an
-    # example is not a hook -- so the named rules are withheld and only the
-    # Top-level/Other distinction is computed. Code at the top level of the
-    # stream takes the stream's context; code inside a function definition
-    # stays "Other", since it runs only if something calls it.
-    pat <- determine_code_contexts(
-      tree, pat,
-      if (is_script) rules else utils::modifyList(rules, list(code_contexts = NULL))
-    )
-    if (!is_script) {
-      pat$code_context[pat$code_context == .context_top_level] <- stream$context
-    }
-  } else {
-    pat$code_context <- character(0L)
-  }
-  # drop the node handle before accumulating; rbind() ignores attributes.
-  attr(pat, "nodes") <- NULL
-  out$patterns <- pat[, names(.empty_patterns(with_phases = FALSE)),
-                      drop = FALSE]
-  out
-}
-
-# --- Metadata construction ----------------------------------------------------
-
-# Build the nine-field metadata list for a scanned package. Package name and
-# version come from DESCRIPTION and are NA (never an error) when it is missing or
-# malformed. The rules version and hash describe the database the scan's rules
-# were read from, which is not necessarily the bundled one.
-.build_metadata <- function(pkg, pkg_path, pkg_is_tarball, pkg_sha256, rules) {
-  desc <- .read_description(pkg)
-  prov <- .rules_provenance(rules)
-  list(
-    pkg_name               = desc$name,
-    pkg_version            = desc$version,
-    pkg_path               = pkg_path,
-    pkg_is_tarball         = pkg_is_tarball,
-    pkg_sha256             = pkg_sha256,
-    pkgaudit_version       = .pkgaudit_version(),
-    pkgaudit_rules_version = prov$version,
-    pkgaudit_rules_sha256  = prov$sha256,
-    scanned                = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
-  )
-}
-
-# The database a scan's rules were read from. load_rules() records it on the
-# list it returns. A rules list assembled some other way carries no provenance,
-# and the honest answer is then that it is unknown: reporting the bundled
-# database's version and hash would attribute the scan to rules it did not use.
-.rules_provenance <- function(rules) {
-  prov <- attr(rules, "provenance")
-  if (is.null(prov)) {
-    list(version = NA_character_, sha256 = NA_character_)
-  } else {
-    prov
-  }
-}
-
-# Read Package and Version from a package's DESCRIPTION. Returns NA_character_
-# for either field when DESCRIPTION is missing, unparseable, or lacks it -- a
-# malformed package must not abort the scan.
-.read_description <- function(pkg) {
-  out  <- list(name = NA_character_, version = NA_character_)
-  desc <- file.path(pkg, "DESCRIPTION")
-  if (!file.exists(desc) || dir.exists(desc)) return(out)
-
-  dcf <- tryCatch(suppressWarnings(read.dcf(desc)), error = function(e) NULL)
-  if (is.null(dcf) || nrow(dcf) == 0L) return(out)
-
-  pick <- function(fieldname) {
-    if (!fieldname %in% colnames(dcf)) return(NA_character_)
-    v <- unname(dcf[1L, fieldname])
-    if (is.na(v) || !nzchar(trimws(v))) NA_character_ else trimws(v)
-  }
-  out$name    <- pick("Package")
-  out$version <- pick("Version")
-  out
-}
-
-# Installed pkgaudit version, or NA if it cannot be determined.
-.pkgaudit_version <- function() {
-  tryCatch(as.character(utils::packageVersion("pkgaudit")),
-           error = function(e) NA_character_)
+  pairs <- unique(data.frame(
+    file_context     = file_contexts$file_context[keep],
+    type             = type[keep],
+    # A rules list assembled by hand may not carry the field; treat its absence
+    # as "not a namespace source", which withholds the hook rules rather than
+    # applying them somewhere they cannot fire.
+    namespace_source = if (is.null(file_context_rules$namespace_source)) FALSE
+                       else isTRUE_vec(file_context_rules$namespace_source[i][keep]),
+    code_context     = if (is.null(file_context_rules$code_context)) .context_top_level
+                       else file_context_rules$code_context[i][keep],
+    stringsAsFactors = FALSE
+  ))
+  lapply(seq_len(nrow(pairs)), function(i) as.list(pairs[i, , drop = FALSE]))
 }

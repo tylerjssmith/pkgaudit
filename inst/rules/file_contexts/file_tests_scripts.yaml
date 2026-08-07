@@ -1,0 +1,28 @@
+name: tests_scripts
+version: "0.1.0"
+type: R
+message: >-
+  R CMD check runs every .R file directly under tests/. This is the entry point
+  of whatever testing framework the package uses, and it executes arbitrary R
+  during checking.
+at_autoconf: FALSE
+at_build: FALSE
+at_check: TRUE
+at_install_src: FALSE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "tests"
+recursive: FALSE
+report: FALSE
+namespace_source: FALSE
+code_context: "test_R"
+filename: '\.[RrSsq]$'
+positive_examples:
+  - tests/testthat.R
+  - tests/tinytest.R
+negative_examples:
+  - tests/testthat/test-a.R
+  - tests/fixtures/evil.R

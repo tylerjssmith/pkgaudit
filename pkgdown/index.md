@@ -15,7 +15,14 @@ and for hooks whose bodies run automatically when a namespace is loaded,
 attached, unloaded, or detached. It scans R source code – in `R/` and in
 the examples and `\Sexpr{}` macros of help files – for security-relevant
 patterns like `system()` calls, and shell scripts and Make-like files
-for expressions like `curl`.
+for matches like `curl`.
+
+R is scanned wherever a package carries it, not only in `R/`: help-file
+examples and `\Sexpr{}` macros, vignettes in R Markdown, Quarto, Sweave
+and R.rsp, `data/`, `demo/`, `tests/`, `tools/`, `inst/CITATION`,
+`.Rprofile`, and `src/install.libs.R`. Each is reported with the
+lifecycle phases in which it runs, so code that executes on `library()`
+is distinguishable from code that runs only when someone calls it.
 
 R packages are the primary mechanism for sharing R code. They are also
 [potential attack vectors](articles/r-package-security.html). pkgaudit
@@ -44,7 +51,7 @@ digest::digest(
 ```
 
 Expected SHA-256:
-`bc54fa1fa499c194b71f62d86f37da9368934e8bc7c3d881b3631c1edb1ff6a6`
+`32db4b4f620a7f2cdeb5fd805180955a452cb443daa0a0fe3e4fab2a6c6629f2`
 
 ## Usage
 
@@ -67,39 +74,39 @@ result <- audit_tarball(tarball, rules = rules)
 ```
 
 `summary()` reports how often each R pattern and shell or Make-like
-expression occurs by phase and code or file context, and the MITRE
-ATT&CK techniques involved. Phases can overlap (e.g., building a package
-with vignettes installs and loads it), so a finding may be counted under
-more than one phase.
+match occurs by phase and code or file context, and the MITRE ATT&CK
+techniques involved. Phases can overlap (e.g., building a package with
+vignettes installs and loads it), so a finding may be counted under more
+than one phase.
 
 Below, untrustedpkg has an `.onLoad()` hook with a `system()` call that
 runs during builds, checks, installations from source, and loads; an
 ordinary function with a `download.file()` call that runs only if a user
 calls the enclosing function and so belongs to no phase; and a
-`configure` script with a `curl` expression that could run during
-builds, checks, and installations from source. Code that runs without
-being asked deserves closer attention.
+`configure` script with a `curl` match that could run during builds,
+checks, and installations from source. Code that runs without being
+asked deserves closer attention.
 
 ``` r
 summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-05 22:14 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-07 20:45 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
-#> phase            code_context   rule            n   attck
-#> at_build         Rd_Sexpr       httr            1   T1041
-#> at_build         onLoad_base    system          1   T1059.003 T1059.004
-#> at_check         Rd_Sexpr       httr            1   T1041
-#> at_check         Rd_examples    download_file   1   T1105
-#> at_check         onLoad_base    system          1   T1059.003 T1059.004
-#> at_install_src   Rd_Sexpr       httr            1   T1041
-#> at_install_src   onLoad_base    system          1   T1059.003 T1059.004
-#> at_load          onLoad_base    system          1   T1059.003 T1059.004
-#> none             Other          download_file   1   T1105
+#> phase            code_context       rule            n   attck
+#> at_build         Rd_Sexpr_install   httr            1   T1041
+#> at_build         onLoad_base        system          1   T1059.003 T1059.004
+#> at_check         Rd_Sexpr_install   httr            1   T1041
+#> at_check         Rd_examples        download_file   1   T1105
+#> at_check         onLoad_base        system          1   T1059.003 T1059.004
+#> at_install_src   Rd_Sexpr_install   httr            1   T1041
+#> at_install_src   onLoad_base        system          1   T1059.003 T1059.004
+#> at_load          onLoad_base        system          1   T1059.003 T1059.004
+#> none             Other              download_file   1   T1105
 #> 
-#> --- Shell / Make Expressions ------------------------------------------------
+#> --- Shell / Make Matches ----------------------------------------------------
 #> phase            file_context   rule   n   attck
 #> at_build         configure      curl   1   T1041 T1105
 #> at_check         configure      curl   1   T1041 T1105

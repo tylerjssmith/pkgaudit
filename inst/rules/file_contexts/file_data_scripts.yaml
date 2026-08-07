@@ -1,0 +1,31 @@
+name: data_scripts
+version: "0.1.0"
+type: R
+message: >-
+  A .R file under data/ is R code that runs when the package's data is prepared.
+  R CMD build evaluates it to produce the .rda it ships, and installation from a
+  source directory evaluates it too, so it executes arbitrary R before the
+  package is ever loaded. It does not survive into a source tarball: build
+  replaces it with its own output.
+at_autoconf: FALSE
+at_build: TRUE
+at_check: FALSE
+at_install_src: TRUE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "data"
+recursive: FALSE
+report: FALSE
+namespace_source: FALSE
+code_context: "data_R"
+filename: '\.[RrSsq]$'
+positive_examples:
+  - data/things.R
+  - data/other.r
+negative_examples:
+  - data/things.rda
+  - data/things.csv
+  - R/things.R

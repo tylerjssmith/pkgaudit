@@ -4,7 +4,7 @@
 # generated from the YAML files in inst/rules/. pkgaudit itself should be run
 # against the database bundled with the package.
 # ------------------------------------------------------------------------------
-# Reads the file-context, code-context, pattern, and regex rule YAML files,
+# Reads the file-context, code-context, pattern, and match rule YAML files,
 # validates them, writes them to a fresh SQLite database, records a SHA-256
 # sidecar, and regenerates the test fixtures from the positive/negative
 # examples.
@@ -17,14 +17,11 @@
 # --- Rule schemas -------------------------------------------------------------
 # Scalar (single-string) fields required in each rule class, plus the example
 # fields. attck (patterns) and recursive (file contexts) are handled specially.
-.file_context_scalars <- c("name", "version", "type", "message", "path", "pattern")
-.code_context_scalars <- c("name", "version", "type", "message", "xpath")
-.pattern_scalars      <- c("name", "version", "type", "message", "xpath")
-
-# A regex rule declares no type. The other three classes name the language of
-# what they match; a regex rule is applied to every file context whose type is
-# shell or make, so its own type would only restate that.
-.regex_scalars        <- c("name", "version", "message", "regex")
+.file_context_scalars <- c("name", "version", "type", "message", "path",
+                           "filename", "code_context")
+.code_context_scalars <- c("name", "version", "language", "message", "xpath")
+.pattern_scalars      <- c("name", "version", "language", "message", "xpath")
+.match_scalars        <- c("name", "version", "language", "message", "regex")
 
 .example_fields <- c("positive_examples", "negative_examples")
 
@@ -37,19 +34,26 @@
   "at_load", "at_attach", "at_unload", "at_detach"
 )
 
-# A rule's type is the format of what it matches, not a severity: severity is a
-# property of a pattern together with the context it was found in, which a rule
-# is in no position to know. Code contexts and patterns are both matched against
-# R's parse tree, so "R" is the only language available to them for now.
+# The two axes a rule can name, and neither is a severity: severity is a property
+# of a pattern together with the context it was found in, which a rule is in no
+# position to know.
 #
-# For a file context the type is load-bearing: it selects how the file is read.
-# "R" is read verbatim and parsed; "Rd" has its \examples and \Sexpr code
-# extracted first; "shell" and "make" are matched line by line against the regex
-# rules; "other" is reported but never read.
-.valid_types <- list(
-  file_context = c("R", "Rd", "shell", "make", "other"),
-  code_context = c("R"),
-  pattern      = c("R")
+# A file context declares a `type`, the format of the file, and it is
+# load-bearing: it selects how the file is read. "R" is read verbatim and
+# parsed; "Rd" has its \examples and \Sexpr code extracted first; "Rmd", "qmd",
+# "Rnw" and "rsp" have their chunks, inline code or templated code extracted; "shell" and "make" are
+# matched line by line; "other" is reported but never read.
+#
+# Every other class declares a `language`, the language of the code it is
+# evaluated against. One file can yield code in more than one language, so this
+# is a separate axis from the file's type rather than a restatement of it.
+.valid_values <- list(
+  file_context = list(field = "type",
+                      values = c("R", "Rd", "Rmd", "qmd", "Rnw", "rsp",
+                                 "shell", "make", "other")),
+  code_context = list(field = "language", values = c("R")),
+  pattern      = list(field = "language", values = c("R")),
+  match        = list(field = "language", values = c("shell"))
 )
 
 # A generous cap. This is not a style limit -- it exists so a malicious or
@@ -59,8 +63,8 @@
 
 # --- Validation ---------------------------------------------------------------
 
-# Shared checks: name safety, scalar non-emptiness, type, and examples. A class
-# with no entry in .valid_types declares no type and is not checked for one.
+# Shared checks: name safety, scalar non-emptiness, the class's type or language
+# field, and examples.
 .validate_common <- function(rule, path, scalars, class) {
   if (!grepl("^[a-zA-Z][a-zA-Z0-9_]{0,63}$", rule$name %||% "")) {
     stop(
@@ -78,11 +82,14 @@
     }
   }
 
-  if (class %in% names(.valid_types) && !rule$type %in% .valid_types[[class]]) {
-    stop(
-      "Field 'type' must be one of: ",
-      paste(.valid_types[[class]], collapse = ", "), " in: ", path
-    )
+  if (class %in% names(.valid_values)) {
+    spec <- .valid_values[[class]]
+    if (!rule[[spec$field]] %in% spec$values) {
+      stop(
+        "Field '", spec$field, "' must be one of: ",
+        paste(spec$values, collapse = ", "), " in: ", path
+      )
+    }
   }
 
   for (field in .example_fields) {
@@ -133,7 +140,7 @@
   invisible(ok)
 }
 
-# Validate a regex rule's expression under the engine find_regex() uses. A
+# Validate a match rule's regex under the engine find_matches() uses. A
 # regex is also refused if it matches the empty string: such an expression
 # matches at every position of every line, so one rule would bury a scan in
 # findings.
@@ -161,13 +168,13 @@ read_file_context_yaml <- function(path) {
   stopifnot(file.exists(path))
   rule <- yaml::read_yaml(path)
 
-  expected <- c(.file_context_scalars, "recursive", "report", .phase_fields,
-                .example_fields)
+  expected <- c(.file_context_scalars, "recursive", "report",
+                "namespace_source", .phase_fields, .example_fields)
   .check_fields(rule, expected, path)
   .validate_common(rule, path, .file_context_scalars, "file_context")
   .validate_phases(rule, path)
 
-  for (field in c("recursive", "report")) {
+  for (field in c("recursive", "report", "namespace_source")) {
     value <- rule[[field]]
     if (!is.logical(value) || length(value) != 1L || is.na(value)) {
       stop("Field '", field, "' must be TRUE or FALSE in: ", path)
@@ -176,7 +183,7 @@ read_file_context_yaml <- function(path) {
   if (grepl("\\.\\.", rule$path)) {
     stop("Field 'path' must not contain '..' in: ", path)
   }
-  .validate_regex(rule$pattern, path)
+  .validate_regex(rule$filename, path)
 
   rule$positive_examples <- unlist(rule$positive_examples)
   rule$negative_examples <- unlist(rule$negative_examples)
@@ -218,13 +225,13 @@ read_pattern_yaml <- function(path) {
   rule
 }
 
-read_regex_yaml <- function(path) {
+read_match_yaml <- function(path) {
   stopifnot(file.exists(path))
   rule <- yaml::read_yaml(path)
 
-  expected <- c(.regex_scalars, "attck", .example_fields)
+  expected <- c(.match_scalars, "attck", .example_fields)
   .check_fields(rule, expected, path)
-  .validate_common(rule, path, .regex_scalars, "regex")
+  .validate_common(rule, path, .match_scalars, "match")
   .validate_regex_expression(rule$regex, path)
 
   attck <- trimws(unlist(rule$attck))
@@ -325,37 +332,48 @@ init_db <- function(
       path      TEXT NOT NULL,
       recursive INTEGER NOT NULL,
       report    INTEGER NOT NULL,
-      pattern   TEXT NOT NULL
+      -- TRUE only for the directories whose code becomes the package namespace.
+      -- A .onLoad defined anywhere else is never called, so the named
+      -- code-context rules must not be applied there.
+      namespace_source INTEGER NOT NULL,
+      filename  TEXT NOT NULL,
+      -- The computed code context that top-level code in this file belongs to.
+      -- Top-level means compute it from the parse tree as usual; any other
+      -- value replaces it, which is how data/, demo/ and the rest get phases of
+      -- their own instead of the ones R/ carries. Unused where a type has no R
+      -- code contexts.
+      code_context TEXT NOT NULL
     )")
 
   DBI::dbExecute(con, "
     CREATE TABLE code_contexts (
-      name    TEXT PRIMARY KEY,
-      version TEXT NOT NULL REFERENCES rule_versions(version),
-      type    TEXT NOT NULL,
+      name     TEXT PRIMARY KEY,
+      version  TEXT NOT NULL REFERENCES rule_versions(version),
+      language TEXT NOT NULL,
       message TEXT NOT NULL,
       xpath   TEXT NOT NULL
     )")
 
   DBI::dbExecute(con, "
     CREATE TABLE patterns (
-      name    TEXT PRIMARY KEY,
-      version TEXT NOT NULL REFERENCES rule_versions(version),
-      type    TEXT NOT NULL,
+      name     TEXT PRIMARY KEY,
+      version  TEXT NOT NULL REFERENCES rule_versions(version),
+      language TEXT NOT NULL,
       message TEXT NOT NULL,
       attck   TEXT NOT NULL,
       xpath   TEXT NOT NULL
     )")
 
-  # Regex rules carry no type: they are applied to every file context whose
-  # type is shell or make, and to no other file.
+  # A match rule is evaluated against every segment in its language, which is
+  # how it stays scoped: a shell rule is never applied to R code.
   DBI::dbExecute(con, "
-    CREATE TABLE regex (
-      name    TEXT PRIMARY KEY,
-      version TEXT NOT NULL REFERENCES rule_versions(version),
-      message TEXT NOT NULL,
-      attck   TEXT NOT NULL,
-      regex   TEXT NOT NULL
+    CREATE TABLE matches (
+      name     TEXT PRIMARY KEY,
+      version  TEXT NOT NULL REFERENCES rule_versions(version),
+      language TEXT NOT NULL,
+      message  TEXT NOT NULL,
+      attck    TEXT NOT NULL,
+      regex    TEXT NOT NULL
     )")
 
   # One row per context that code can execute in: every file- and code-context
@@ -396,11 +414,12 @@ load_file_context <- function(rule, con, path) {
   .assert_version(con, rule$version, path)
   DBI::dbExecute(
     con,
-    "INSERT INTO file_contexts (name, version, type, message, path, recursive, report, pattern)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO file_contexts (name, version, type, message, path, recursive, report, namespace_source, filename, code_context)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     params = list(rule$name, rule$version, rule$type, trimws(rule$message),
                   trimws(rule$path), as.integer(rule$recursive),
-                  as.integer(rule$report), trimws(rule$pattern))
+                  as.integer(rule$report), as.integer(rule$namespace_source),
+                  trimws(rule$filename), trimws(rule$code_context))
   )
   invisible(rule$name)
 }
@@ -409,9 +428,9 @@ load_code_context <- function(rule, con, path) {
   .assert_version(con, rule$version, path)
   DBI::dbExecute(
     con,
-    "INSERT INTO code_contexts (name, version, type, message, xpath)
+    "INSERT INTO code_contexts (name, version, language, message, xpath)
      VALUES (?, ?, ?, ?, ?)",
-    params = list(rule$name, rule$version, rule$type, trimws(rule$message),
+    params = list(rule$name, rule$version, rule$language, trimws(rule$message),
                   trimws(rule$xpath))
   )
   invisible(rule$name)
@@ -437,9 +456,9 @@ load_pattern <- function(rule, con, path) {
   .assert_version(con, rule$version, path)
   DBI::dbExecute(
     con,
-    "INSERT INTO patterns (name, version, type, message, attck, xpath)
+    "INSERT INTO patterns (name, version, language, message, attck, xpath)
      VALUES (?, ?, ?, ?, ?, ?)",
-    params = list(rule$name, rule$version, rule$type, trimws(rule$message),
+    params = list(rule$name, rule$version, rule$language, trimws(rule$message),
                   rule$attck, trimws(rule$xpath))
   )
   invisible(rule$name)
@@ -448,14 +467,14 @@ load_pattern <- function(rule, con, path) {
 # The regex is stored verbatim. Unlike an XPath, leading and trailing
 # whitespace in a regular expression is significant, so trimming it here could
 # silently change what a rule matches.
-load_regex <- function(rule, con, path) {
+load_match <- function(rule, con, path) {
   .assert_version(con, rule$version, path)
   DBI::dbExecute(
     con,
-    "INSERT INTO regex (name, version, message, attck, regex)
-     VALUES (?, ?, ?, ?, ?)",
-    params = list(rule$name, rule$version, trimws(rule$message), rule$attck,
-                  rule$regex)
+    "INSERT INTO matches (name, version, language, message, attck, regex)
+     VALUES (?, ?, ?, ?, ?, ?)",
+    params = list(rule$name, rule$version, rule$language, trimws(rule$message),
+                  rule$attck, rule$regex)
   )
   invisible(rule$name)
 }
@@ -463,7 +482,7 @@ load_regex <- function(rule, con, path) {
 
 # build_rules_db() -------------------------------------------------------------
 # Validate and load every YAML file under rules_root/{file_contexts,
-# code_contexts,patterns,regex} into db_path, then write the SHA-256 sidecar.
+# code_contexts,patterns,matches} into db_path, then write the SHA-256 sidecar.
 # All writes run in one transaction: any validation failure rolls back the DB.
 build_rules_db <- function(
   rules_root = file.path("inst", "rules"),
@@ -476,8 +495,8 @@ build_rules_db <- function(
                          loader = load_code_context, has_phases = TRUE),
     patterns      = list(reader = read_pattern_yaml,
                          loader = load_pattern,      has_phases = FALSE),
-    regex         = list(reader = read_regex_yaml,
-                         loader = load_regex,        has_phases = FALSE)
+    matches       = list(reader = read_match_yaml,
+                         loader = load_match,        has_phases = FALSE)
   )
 
   con <- DBI::dbConnect(RSQLite::SQLite(), db_path)
@@ -536,7 +555,7 @@ build_rules_db <- function(
 # build_fixtures() -------------------------------------------------------------
 # Regenerate one fixture file per positive/negative example so the fixtures
 # stay in sync with the YAML source. File-context examples are path strings
-# (written as .txt); code-context and pattern examples are R code (.R); regex
+# (written as .txt); code-context and pattern examples are R code (.R); match
 # examples are lines of shell or make, which are neither, and are written as
 # .txt too.
 build_fixtures <- function(
@@ -547,7 +566,7 @@ build_fixtures <- function(
     file_contexts = list(reader = read_file_context_yaml, ext = "txt"),
     code_contexts = list(reader = read_code_context_yaml, ext = "R"),
     patterns      = list(reader = read_pattern_yaml,      ext = "R"),
-    regex         = list(reader = read_regex_yaml,        ext = "txt")
+    matches       = list(reader = read_match_yaml,        ext = "txt")
   )
 
   for (cls in names(classes)) {

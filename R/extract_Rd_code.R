@@ -15,15 +15,15 @@
 #'       `\examples{}`.}
 #'     \item{sexpr}{Length-one character string: the code from every `\Sexpr{}`
 #'       macro in the file, wherever it appears.}
-#'     \item{error}{`NULL` when the file parsed cleanly, otherwise the parser's
-#'       message. Both code strings are `""` when the file could not be parsed
-#'       at all, and may be *incomplete* when it parsed with a warning, so a
-#'       non-`NULL` `error` means the extraction is not to be trusted as a full
-#'       account of the file's code.}
+#'     \item{error}{`NULL` when the file parsed cleanly, otherwise a character
+#'       message. Both code strings are `""` when the file was not read or could
+#'       not be parsed at all, and may be *incomplete* when it parsed with a
+#'       warning, so a non-`NULL` `error` means the extraction is not to be
+#'       trusted as a full account of the file's code.}
 #'   }
 #'
 #' @details
-#' The two streams are returned separately because they run at different times.
+#' The two are returned separately because they run at different times.
 #' `\examples{}` runs under `R CMD check` and when a user calls `example()`;
 #' `\Sexpr{}` runs while the help page is built or installed, which is the
 #' earlier and less visible of the two. Merging them would make that distinction
@@ -49,8 +49,8 @@
 #'   \item `\dots` becomes `...`, so a call does not silently lose an argument.
 #'   \item Rd comments (`%` to end of line) are dropped, as they are not R code
 #'     and would not parse.
-#'   \item An inline `\Sexpr{}` goes to the `sexpr` stream and leaves a gap in
-#'     the `examples` stream, so `h(\Sexpr{2+2})` yields `h()` there.
+#'   \item An inline `\Sexpr{}` goes to the `sexpr` string and leaves a gap in
+#'     the `examples` one, so `h(\Sexpr{2+2})` yields `h()` there.
 #' }
 #'
 #' User-defined Rd macros are expanded when `macros` is supplied, so a
@@ -69,10 +69,14 @@
 #' latter, and a regression test asserts that a scan of a package whose Rd code
 #' would write a marker file leaves no marker behind.
 #'
+#' A help file is untrusted input like any other file under audit, so one above
+#' the scanning limit is refused unread and reported through `error`, rather
+#' than handed to `tools::parse_Rd()`.
+#'
 #' @section Known limits:
 #' `\Sexpr[results=rd]` produces Rd that is itself parsed and may contain
 #' further code; that second-order surface is not followed. No `stage` option is
-#' consulted, so the `sexpr` stream mixes build-, install-, and render-time code
+#' consulted, so the `sexpr` string mixes build-, install-, and render-time code
 #' together.
 #'
 #' `tools::parse_Rd()` recovers from some malformed input with a warning rather
@@ -80,14 +84,14 @@
 #' returned, since dropping it would lose real code, but the warning is reported
 #' in `error` so that a partial extraction is never mistaken for a complete one.
 #'
-#' The `examples` stream is not guaranteed to parse. R never syntax-checks
+#' The `examples` string is not guaranteed to parse. R never syntax-checks
 #' `\dontrun{}`: `tools::Rd2ex()` comments those lines out with `##D`, and
 #' `R CMD check` therefore never sees them. Including that code, as this
 #' function does, exposes `\dontrun{}` blocks that are not valid R -- a stray
 #' bracket, a sentence of prose, a mis-escaped backslash. Over a sample of 3081
-#' `.Rd` files from CRAN, 5 (0.16%) produced an `examples` stream that would not
-#' parse, every one of them for that reason; no `sexpr` stream failed. Since the
-#' two streams are each assembled whole, one broken `\dontrun{}` costs the
+#' `.Rd` files from CRAN, 5 (0.16%) produced an `examples` string that would not
+#' parse, every one of them for that reason; no `sexpr` string failed. Since the
+#' two are each assembled whole, one broken `\dontrun{}` costs the
 #' valid example code in the same file, which is worth weighing before this is
 #' wired into a scan.
 #'
@@ -103,17 +107,20 @@ extract_Rd_code <- function(path, macros = NULL) {
   if (!file.exists(path) || dir.exists(path)) {
     return(.empty_Rd_code(paste0("not a readable file: ", path)))
   }
+  oversize <- .over_scan_limit(path)
+  if (!is.null(oversize)) return(.empty_Rd_code(oversize))
 
   parsed <- .parse_Rd_safe(path, macros)
   if (is.null(parsed$rd)) return(.empty_Rd_code(parsed$error))
 
   frags <- .Rd_fragments(parsed$rd)
   list(
-    # Example fragments are pieces of one continuous code stream and are joined
+    # Example fragments are pieces of one continuous run of code and are joined
     # exactly as they sit; each \Sexpr is an independent expression, so those
     # are separated when two land on one line.
     examples = .assemble_lines(frags$examples, separator = ""),
-    sexpr    = .assemble_lines(frags$sexpr,    separator = ";"),
+    guarded  = frags$guarded,
+    sexpr    = lapply(frags$sexpr, .assemble_lines, separator = ";"),
     # Non-NULL when the file parsed with a warning: the code above is whatever
     # survived, and the caller is told not to read it as the whole file.
     error    = parsed$error
@@ -127,6 +134,10 @@ extract_Rd_code <- function(path, macros = NULL) {
 # four are unwrapped: each is code that ships in the package, and which of them
 # a given run reaches is not something this function decides.
 .Rd_example_wrappers <- c("\\dontrun", "\\donttest", "\\dontshow", "\\testonly")
+
+# Of those four, the two R CMD check does not run. Code under them still ships,
+# so it is scanned and marked rather than dropped.
+.Rd_unrun_wrappers <- c("\\dontrun", "\\donttest")
 
 # Leaf tags that carry code. Inside \examples, R code is tagged RCODE, except
 # within \dontrun, which R treats as verbatim and tags VERB.
@@ -175,24 +186,33 @@ extract_Rd_code <- function(path, macros = NULL) {
 }
 
 
-# Walk an Rd parse tree and collect code fragments, split into the two streams.
+# Walk an Rd parse tree and collect code fragments, split into the kinds that
+# run at different times.
 #
 # A fragment is list(line, col, text), positioned by the srcref of the node it
-# came from. Returns list(examples = <fragments>, sexpr = <fragments>).
+# came from. Returns list(examples, guarded, sexpr), where `guarded` holds the
+# .Rd lines occupied by example code inside a wrapper R CMD check does not run,
+# and `sexpr` is one fragment list per \Sexpr stage.
 .Rd_fragments <- function(rd) {
   examples <- list()
-  sexpr    <- list()
+  guarded  <- integer(0L)
+  sexpr    <- list(build = list(), install = list(), render = list())
 
-  add <- function(stream, node, text) {
+  add <- function(kind, node, text, is_guarded = FALSE) {
     if (!nzchar(text)) return(invisible(NULL))
     src <- attr(node, "srcref")
     if (is.null(src)) return(invisible(NULL))
-    frag <- list(line = as.integer(src[[1L]]), col = as.integer(src[[2L]]),
-                 text = text)
-    if (identical(stream, "sexpr")) {
-      sexpr[[length(sexpr) + 1L]]       <<- frag
-    } else {
+    line <- as.integer(src[[1L]])
+    frag <- list(line = line, col = as.integer(src[[2L]]), text = text)
+
+    if (identical(kind, "examples")) {
       examples[[length(examples) + 1L]] <<- frag
+      if (is_guarded) {
+        span    <- line + seq_len(length(strsplit(text, "\n", fixed = TRUE)[[1L]])) - 1L
+        guarded <<- c(guarded, span)
+      }
+    } else {
+      sexpr[[kind]][[length(sexpr[[kind]]) + 1L]] <<- frag
     }
     invisible(NULL)
   }
@@ -200,44 +220,68 @@ extract_Rd_code <- function(path, macros = NULL) {
   # \Sexpr holds its code in leaf nodes; take them wherever the macro appears,
   # positioned by the inner node so the code -- not the "\Sexpr{" wrapper -- is
   # what lines up.
-  visit_sexpr <- function(node) {
+  visit_sexpr <- function(node, stage) {
     if (is.list(node)) {
-      for (child in node) visit_sexpr(child)
+      for (child in node) visit_sexpr(child, stage)
     } else if (identical(attr(node, "Rd_tag"), "RCODE")) {
-      add("sexpr", node, as.character(node))
+      add(stage, node, as.character(node))
     }
     invisible(NULL)
   }
 
-  visit <- function(node, in_examples) {
+  visit <- function(node, in_examples, is_guarded) {
     tag <- attr(node, "Rd_tag")
 
     if (identical(tag, "\\Sexpr")) {
-      visit_sexpr(node)
+      visit_sexpr(node, .Sexpr_stage(attr(node, "Rd_option")))
       return(invisible(NULL))
     }
     # A zero-length list, so tested before the general list case below.
     if (in_examples && !is.null(tag) && tag %in% .Rd_dots) {
-      add("examples", node, "...")
+      add("examples", node, "...", is_guarded)
       return(invisible(NULL))
     }
     if (is.list(node)) {
-      inside <- in_examples ||
-        identical(tag, "\\examples") ||
-        (in_examples && tag %in% .Rd_example_wrappers)
-      for (child in node) visit(child, inside)
+      inside  <- in_examples || identical(tag, "\\examples")
+      # \dontrun and \donttest are not run by R CMD check; \dontshow and
+      # \testonly are. Code under the first two is still scanned -- it ships in
+      # the package -- but flagged, so the phases it carries are read as an
+      # upper bound.
+      guarded_here <- is_guarded ||
+        (!is.null(tag) && tag %in% .Rd_unrun_wrappers)
+      for (child in node) visit(child, inside, guarded_here)
       return(invisible(NULL))
     }
     # Leaf. COMMENT is an Rd comment rather than R code and is dropped; any
     # other tag in an R-like section is markup that carries no code.
     if (in_examples && !is.null(tag) && tag %in% .Rd_code_leaves) {
-      add("examples", node, as.character(node))
+      add("examples", node, as.character(node), is_guarded)
     }
     invisible(NULL)
   }
 
-  visit(rd, in_examples = FALSE)
-  list(examples = examples, sexpr = sexpr)
+  visit(rd, in_examples = FALSE, is_guarded = FALSE)
+  list(examples = examples, guarded = unique(guarded), sexpr = sexpr)
+}
+
+
+# The stage a \Sexpr runs at, from its option string. Writing R Extensions gives
+# install as the default when no stage is named, and an instrumented probe
+# package confirms an unlabelled \Sexpr behaves identically to stage=install.
+#
+# tools::parse_Rd() rejects a stage that is not one of the three, so this is
+# never asked about an invalid one -- the file fails to parse first and the
+# error is recorded. Matching is case-insensitive because parse_Rd() lowercases
+# before it validates, so stage=BUILD is a build-stage macro. Anything this
+# still cannot read falls back to install, the broadest of the three, so an
+# option it does not understand is never under-reported.
+.Sexpr_stage <- function(option) {
+  if (is.null(option)) return("install")
+  m <- regmatches(option, regexpr("stage[[:space:]]*=[[:space:]]*[[:alnum:]]+",
+                                  as.character(option)))
+  if (length(m) == 0L) return("install")
+  stage <- tolower(sub("^stage[[:space:]]*=[[:space:]]*", "", m))
+  if (stage %in% c("build", "render")) stage else "install"
 }
 
 
@@ -247,8 +291,8 @@ extract_Rd_code <- function(path, macros = NULL) {
 #
 # Each fragment is written at its own line and column, with blank padding
 # elsewhere, so a parse of the result reports positions in the original file.
-# separator is placed between two fragments that share a line, for the stream
-# where neighbouring fragments are separate expressions rather than pieces of
+# separator is placed between two fragments that share a line, for the kind
+# where neighbouring fragments are separate matches rather than pieces of
 # one.
 .assemble_lines <- function(frags, separator = "") {
   if (length(frags) == 0L) return("")
@@ -301,5 +345,6 @@ extract_Rd_code <- function(path, macros = NULL) {
 # The result for a file with no recoverable code, carrying the reason when there
 # was one.
 .empty_Rd_code <- function(error = NULL) {
-  list(examples = "", sexpr = "", error = error)
+  list(examples = "", guarded = integer(0L),
+       sexpr = list(build = "", install = "", render = ""), error = error)
 }

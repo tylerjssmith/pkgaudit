@@ -18,7 +18,7 @@
 #'       aligned to the rows. The phase columns are not set here;
 #'       [audit_package()] attaches them from the code context each pattern is
 #'       assigned.}
-#'     \item{errors}{Data frame with columns `stage`, `file_context`, `rule`,
+#'     \item{errors}{Data frame with columns `step`, `file_context`, `rule`,
 #'       `message`.}
 #'   }
 #'
@@ -52,7 +52,7 @@ find_patterns <- function(tree, pattern_rules, file_context) {
 
     if (inherits(nodes, "condition")) {
       errors <- rbind(errors, .error_row(
-        stage        = "find_patterns",
+        step         = "find_patterns",
         file_context = file_context,
         rule         = rule$name,
         message      = conditionMessage(nodes)

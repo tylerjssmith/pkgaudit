@@ -14,7 +14,14 @@ and for hooks whose bodies run automatically when a namespace is loaded,
 attached, unloaded, or detached. It scans R source code – in `R/` and in
 the examples and `\Sexpr{}` macros of help files – for security-relevant
 patterns like `system()` calls, and shell scripts and Make-like files
-for expressions like `curl`.
+for matches like `curl`.
+
+R is scanned wherever a package carries it, not only in `R/`: help-file
+examples and `\Sexpr{}` macros, vignettes in R Markdown, Quarto, Sweave
+and R.rsp, `data/`, `demo/`, `tests/`, `tools/`, `inst/CITATION`,
+`.Rprofile`, and `src/install.libs.R`. Each is reported with the
+lifecycle phases in which it runs, so code that executes on `library()`
+is distinguishable from code that runs only when someone calls it.
 
 A finding is not an accusation. In many cases, flagged files and code
 will be legitimate: files that can execute shell commands are needed for
@@ -85,18 +92,27 @@ packages for manual review.
 pkgaudit separates *when* code executes from *what* code does using four
 rule categories:
 
-- **File contexts** are files that can execute arbitrary commands during
-  autoconf, builds, checks, and installations. These are primarily files
-  involved in compiling non-R source code, such as `configure`,
-  `src/Makevars`, and `src/Makefile`.
-- **Code contexts** are lifecycle hooks whose bodies run automatically
-  when a namespace is loaded, attached, unloaded, or detached, such as
-  `.onLoad()` and `.onAttach()`.
+- **File contexts** are the files a scan reads. Their rules are what
+  give pkgaudit its map of a package: most exist so that a file’s
+  *contents* can be reported – `R/`, `man/`, vignettes, `tests/`,
+  `data/`, and the rest. A file context is reported as a finding in its
+  own right only when it both runs automatically and can only be matched
+  as text rather than parsed. In practice that is the shell scripts and
+  Make-like files – `configure`, `src/Makevars`, `src/Makefile` – where
+  pkgaudit cannot tell you what the file does, only that it runs, so the
+  file itself is what needs reading.
+- **Code contexts** say when a piece of R code runs. Some are lifecycle
+  hooks matched by a rule – `.onLoad()`, `.onAttach()` and friends,
+  whose bodies run automatically when a namespace is loaded, attached,
+  unloaded, or detached. The rest are computed from where the code sits:
+  top-level code in a script, a help-file example, a `\Sexpr{}` macro at
+  a given stage, a vignette chunk, a test. Every pattern carries the
+  context it was found in, and takes that context’s phases.
 - **Patterns** are security-relevant function calls. `system()`, for
   example, can execute arbitrary shell commands. `source()` can fetch
   and execute a remote payload.
-- **Expressions** are regular-expression matches in the shell scripts
-  and Make-like files found as file contexts. `curl` and `wget`, for
+- **Matches** are regular-expression matches in the shell scripts and
+  Make-like files found as file contexts. `curl` and `wget`, for
   example, can fetch a remote payload or send data to a remote host
   while a package is being built or installed.
 
@@ -109,10 +125,10 @@ it. A `system()` call inside an ordinary function only runs if you call
 that function; the same call inside `.onLoad()` runs automatically when
 a namespace is loaded.
 
-Every expression finding is attributed to the file context that contains
-it, and so carries that file’s phases. Matching text is less precise
-than matching R’s parse tree: an expression in a comment or a quoted
-string is reported the same as one in a live command.
+Every match is attributed to the file context that contains it, and so
+carries that file’s phases. Matching text is less precise than matching
+R’s parse tree: a match in a comment or a quoted string is reported the
+same as one in a live command.
 
 The full rule set is documented in [pkgaudit Rule
 Coverage](https://tylerjssmith.github.io/pkgaudit/articles/rules.html).
@@ -142,7 +158,7 @@ digest::digest(
 ```
 
 Expected SHA-256:
-`bc54fa1fa499c194b71f62d86f37da9368934e8bc7c3d881b3631c1edb1ff6a6`
+`32db4b4f620a7f2cdeb5fd805180955a452cb443daa0a0fe3e4fab2a6c6629f2`
 
 The hash is regenerated automatically by `inst/scripts/build_db.R`
 whenever the database is rebuilt and should match the value above
@@ -170,49 +186,49 @@ print(result, path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-05 22:14 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-07 20:45 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Code contexts:  1
 #> Patterns:       4
-#> Expressions:    1
+#> Matches:        1
 #> Errors:         0
 ```
 
 `summary()` reports how often each R pattern and shell or Make-like
-expression occurs by phase and code or file context, and the MITRE
-ATT&CK techniques involved. Phases can overlap (e.g., building a package
-with vignettes installs and loads it), so a finding may be counted under
-more than one phase.
+match occurs by phase and code or file context, and the MITRE ATT&CK
+techniques involved. Phases can overlap (e.g., building a package with
+vignettes installs and loads it), so a finding may be counted under more
+than one phase.
 
 Below, untrustedpkg has an `.onLoad()` hook with a `system()` call that
 runs during builds, checks, installations from source, and loads; an
 ordinary function with a `download.file()` call that runs only if a user
 calls the enclosing function and so belongs to no phase; and a
-`configure` script with a `curl` expression that could run during
-builds, checks, and installations from source. Code that runs without
-being asked deserves closer attention.
+`configure` script with a `curl` match that could run during builds,
+checks, and installations from source. Code that runs without being
+asked deserves closer attention.
 
 ``` r
 summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-05 22:14 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-07 20:45 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
-#> phase            code_context   rule            n   attck
-#> at_build         Rd_Sexpr       httr            1   T1041
-#> at_build         onLoad_base    system          1   T1059.003 T1059.004
-#> at_check         Rd_Sexpr       httr            1   T1041
-#> at_check         Rd_examples    download_file   1   T1105
-#> at_check         onLoad_base    system          1   T1059.003 T1059.004
-#> at_install_src   Rd_Sexpr       httr            1   T1041
-#> at_install_src   onLoad_base    system          1   T1059.003 T1059.004
-#> at_load          onLoad_base    system          1   T1059.003 T1059.004
-#> none             Other          download_file   1   T1105
+#> phase            code_context       rule            n   attck
+#> at_build         Rd_Sexpr_install   httr            1   T1041
+#> at_build         onLoad_base        system          1   T1059.003 T1059.004
+#> at_check         Rd_Sexpr_install   httr            1   T1041
+#> at_check         Rd_examples        download_file   1   T1105
+#> at_check         onLoad_base        system          1   T1059.003 T1059.004
+#> at_install_src   Rd_Sexpr_install   httr            1   T1041
+#> at_install_src   onLoad_base        system          1   T1059.003 T1059.004
+#> at_load          onLoad_base        system          1   T1059.003 T1059.004
+#> none             Other              download_file   1   T1105
 #> 
-#> --- Shell / Make Expressions ------------------------------------------------
+#> --- Shell / Make Matches ----------------------------------------------------
 #> phase            file_context   rule   n   attck
 #> at_build         configure      curl   1   T1041 T1105
 #> at_check         configure      curl   1   T1041 T1105
@@ -230,7 +246,8 @@ of data frames and a list of metadata.
 result$file_contexts  # security-relevant files
 result$code_contexts  # lifecycle hooks (.onLoad(), .onAttach())
 result$patterns       # security-relevant calls, each with its code_context
-result$expressions    # regex matches, each with its file_context
+                      # and `guarded`, TRUE where the code ships but is not run
+result$matches        # regex matches, each with its file_context
 result$errors         # any files or rules that could not be processed
 result$metadata       # package name/version, SHA-256, rules version, scan time
 ```

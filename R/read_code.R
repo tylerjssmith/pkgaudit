@@ -1,7 +1,8 @@
-# This script reads a file context into the code streams an analyzer can work
-# on. It is the only place in the scan that touches a file being audited, so the
-# limits protecting against hostile input live here and apply to every file
-# type rather than to one of them.
+# This script reads a file being audited into lines, and holds the limits
+# protecting against hostile input. The size limit is enforced by
+# extract_segments() before it dispatches, so it holds for every file type; the
+# UTF-8 handling covers what read_code() returns, which is everything but help
+# files.
 
 #' Read a file context as lines
 #'
@@ -33,13 +34,8 @@
 read_code <- function(path) {
   stopifnot(is.character(path), length(path) == 1L)
 
-  size <- suppressWarnings(file.size(path))
-  if (!is.na(size) && size > .max_scan_bytes) {
-    return(list(lines = NULL, error = sprintf(
-      "File is %.0f MB, above the %.0f MB scanning limit, and was not read.",
-      size / 1024^2, .max_scan_bytes / 1024^2
-    )))
-  }
+  oversize <- .over_scan_limit(path)
+  if (!is.null(oversize)) return(list(lines = NULL, error = oversize))
 
   lines <- tryCatch(
     withCallingHandlers(
@@ -67,65 +63,14 @@ read_code <- function(path) {
 # autoconf-generated configure runs to a few hundred kilobytes.
 .max_scan_bytes <- 10 * 1024^2
 
-
-# --- Streams ------------------------------------------------------------------
-
-# Read one file context into the code streams it contains.
-#
-# A stream is the unit the scan actually analyzes: a run of code in one
-# language, tagged with the code context it belongs to. Most files hold exactly
-# one. A help file holds two -- its examples and its \Sexpr macros -- which run
-# at different phases and so cannot share a context.
-#
-# Returns list(streams, errors). Each stream is a list of:
-#   language  "R" or "shell"; selects the analyzer
-#   context   the code context to attribute patterns to, or NA to compute it
-#             from the parse tree
-#   lines     character vector, aligned to the lines of the source file
-#
-# Dispatch is on the file-context rule's type. A type with no reader yields no
-# streams, which is how "other" is reported but never read.
-.read_streams <- function(path, type, file_context, macros = NULL) {
-  errors <- .empty_errors()
-  none   <- function() list(streams = list(), errors = errors)
-
-  if (identical(type, "Rd")) {
-    rd <- extract_Rd_code(path, macros = macros)
-    if (!is.null(rd$error)) {
-      errors <- rbind(errors, .error_row(
-        stage = "extract_Rd_code", file_context = file_context,
-        message = rd$error
-      ))
-      # Whatever was recovered is still scanned; the error records that the
-      # account of the file is incomplete.
-    }
-    streams <- list()
-    for (part in list(list(text = rd$examples, context = .context_rd_examples),
-                      list(text = rd$sexpr,    context = .context_rd_sexpr))) {
-      if (!nzchar(trimws(part$text))) next
-      streams[[length(streams) + 1L]] <- list(
-        language = "R",
-        context  = part$context,
-        lines    = strsplit(part$text, "\n", fixed = TRUE)[[1L]]
-      )
-    }
-    return(list(streams = streams, errors = errors))
-  }
-
-  language <- switch(type, R = "R", shell = "shell", make = "shell", NULL)
-  if (is.null(language)) return(none())
-
-  read <- read_code(path)
-  if (!is.null(read$error)) {
-    errors <- rbind(errors, .error_row(
-      stage = "read_code", file_context = file_context, message = read$error
-    ))
-  }
-  if (is.null(read$lines)) return(list(streams = list(), errors = errors))
-
-  list(
-    streams = list(list(language = language, context = NA_character_,
-                        lines = read$lines)),
-    errors  = errors
+# The message for a file above that limit, or NULL for one within it. Every
+# reader of an audited file goes through this, so the limit holds whatever the
+# file's type and is refused in the same words.
+.over_scan_limit <- function(path) {
+  size <- suppressWarnings(file.size(path))
+  if (is.na(size) || size <= .max_scan_bytes) return(NULL)
+  sprintf(
+    "File is %.0f MB, above the %.0f MB scanning limit, and was not read.",
+    size / 1024^2, .max_scan_bytes / 1024^2
   )
 }

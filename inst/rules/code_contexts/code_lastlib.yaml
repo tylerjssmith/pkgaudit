@@ -1,6 +1,6 @@
 name: LastLib_base
 version: "0.3.0"
-type: R
+language: R
 message: >-
   .Last.lib() executes arbitrary code when a package is detached from the R
   search path, e.g., by calling detach(); it does not run on unloadNamespace().

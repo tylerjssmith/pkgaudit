@@ -1,35 +1,37 @@
 # load_rules() -----------------------------------------------------------------
 test_that("load_rules() returns five rule data frames with expected columns", {
   rules <- load_rules()
-  expect_named(rules, c("file_contexts", "code_contexts", "patterns", "regex",
+  expect_named(rules, c("file_contexts", "code_contexts", "patterns", "matches",
                         "phases"))
 
   expect_named(rules$file_contexts,
                c("name", "version", "type", "message", "path", "recursive",
-                 "report", "pattern"))
+                 "report", "namespace_source", "filename", "code_context"))
   expect_type(rules$file_contexts$report, "logical")
+  # A file context declares a `type`, the format of the file, which selects how
+  # it is read. Every other class declares a `language`, the language of the code
+  # it is evaluated against -- a separate axis, since one file can yield code in
+  # more than one language.
   expect_named(rules$code_contexts,
-               c("name", "version", "type", "message", "xpath"))
+               c("name", "version", "language", "message", "xpath"))
   expect_named(rules$patterns,
-               c("name", "version", "type", "message", "attck", "xpath"))
-  # A regex rule declares no type: it applies to every shell or Make-like file
-  # context, so a type of its own would only restate that.
-  expect_named(rules$regex,
-               c("name", "version", "message", "attck", "regex"))
+               c("name", "version", "language", "message", "attck", "xpath"))
+  expect_named(rules$matches,
+               c("name", "version", "language", "message", "attck", "regex"))
   expect_named(rules$phases, c("context", "version", .phase_columns))
 
   expect_type(rules$file_contexts$recursive, "logical")
   expect_gt(nrow(rules$file_contexts), 0L)
   expect_gt(nrow(rules$code_contexts), 0L)
   expect_gt(nrow(rules$patterns), 0L)
-  expect_gt(nrow(rules$regex), 0L)
+  expect_gt(nrow(rules$matches), 0L)
 })
 
 test_that("load_rules() returns regex rules that compile under PCRE", {
   rules <- load_rules()
-  for (i in seq_len(nrow(rules$regex))) {
+  for (i in seq_len(nrow(rules$matches))) {
     expect_no_error(
-      regexpr(rules$regex$regex[[i]], "x", perl = TRUE, useBytes = FALSE)
+      regexpr(rules$matches$regex[[i]], "x", perl = TRUE, useBytes = FALSE)
     )
   }
 })
@@ -43,7 +45,8 @@ test_that("load_rules() returns phases as logicals for every context", {
   # code-context rule, plus the computed contexts.
   expect_setequal(
     rules$phases$context,
-    c(rules$file_contexts$name, rules$code_contexts$name, .sentinel_contexts)
+    c(rules$file_contexts$name, rules$code_contexts$name, .sentinel_contexts,
+      rules$file_contexts$code_context)
   )
 
   # The computed contexts carry the phases established for them: top-level code
@@ -152,4 +155,48 @@ test_that("provenance sha256 is measured from the database, not read back from t
   prov <- attr(load_rules(db), "provenance")
   expect_equal(prov$sha256, computed)
   expect_false(identical(prov$sha256, toupper(computed)))
+})
+
+# `report` is derivable, so it is asserted rather than left to convention ------
+#
+# report: TRUE means "this file runs on its own, and pkgaudit can only match its
+# text -- read it yourself." Both halves are properties the rules already carry,
+# so the field can be checked instead of trusted. Getting it wrong is how
+# file_contexts stops being a short list of security-relevant files and becomes
+# an inventory of the package.
+test_that("report marks the files that run on their own and are only grepped", {
+  fc <- load_rules()$file_contexts
+  ph <- load_rules()$phases
+
+  # (a) executes automatically during at least one lifecycle phase
+  runs <- vapply(fc$name, function(n) {
+    row <- ph[ph$context == n, .phase_columns, drop = FALSE]
+    nrow(row) == 1L && any(unlist(row))
+  }, logical(1), USE.NAMES = FALSE)
+
+  # (b) matched as text rather than parsed. R, Rd and the literate formats are
+  # parsed, so a finding in them carries syntax behind it; a shell or Make-like
+  # file does not, and a match there cannot be told apart from one in a comment.
+  grepped <- fc$type %in% c("shell", "make")
+
+  # One deliberate exception. src/install.libs.R is R and therefore parsed, but
+  # its mere presence replaces R's default handling of compiled artifacts -- a
+  # structural change to installation that no pattern rule can detect, because
+  # it follows from the file existing rather than from anything written in it.
+  exceptions <- "src_install_libs_R"
+
+  expect_equal(fc$report, (runs & grepped) | fc$name %in% exceptions)
+})
+
+test_that("every reporting rule is one a reviewer has to read themselves", {
+  fc <- load_rules()$file_contexts
+  # Named explicitly, so adding a rule that reports is a deliberate edit here
+  # rather than something that slips in with a new file context.
+  expect_setequal(fc$name[fc$report], c(
+    "configure", "configure_ac", "configure_in", "configure_ucrt",
+    "configure_win", "cleanup", "cleanup_ucrt", "cleanup_win",
+    "src_makevars", "src_makevars_in", "src_makevars_ucrt", "src_makevars_win",
+    "src_makefile", "src_makefile_ucrt", "src_makefile_win",
+    "src_install_libs_R"
+  ))
 })

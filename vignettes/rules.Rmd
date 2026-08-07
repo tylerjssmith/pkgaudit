@@ -33,7 +33,7 @@ repo <- "https://github.com/tylerjssmith/pkgaudit/blob/master/"
 # so the rule sources are read for it.
 #
 # Keyed by category as well as name: a rule name is unique only within its
-# category, and `curl` names both a pattern rule and a regex rule.
+# category, and `curl` names both a pattern rule and a match rule.
 rule_files <- local({
   root  <- system.file("rules", package = "pkgaudit")
   paths <- list.files(root, pattern = "\\.yaml$", recursive = TRUE)
@@ -169,10 +169,15 @@ pattern_labels <- c(
   system = "`system()`, `system2()`, `shell()`, `pipe()`"
 )
 
-# Descriptions of the two computed contexts. These are authored under
-# inst/rules/phases/, which carries phases but no message.
+# Descriptions of the computed contexts. These are authored under
+# inst/rules/phases/, which carries phases but no message. A file-context rule
+# names the one its top-level code belongs to, which is how code outside R/
+# carries phases of its own.
 computed_contexts <- data.frame(
-  context = c("Top-level", "Other", "Rd_examples", "Rd_Sexpr"),
+  context = c("Top-level", "Other", "Rd_examples",
+              "Rd_Sexpr_build", "Rd_Sexpr_install", "Rd_Sexpr_render",
+              "data_R", "demo_R", "exec_R", "test_R", "tools_R", "citation_R",
+              "rprofile_R", "vignette"),
   description = c(
     paste(
       "Top-level code in an R script is evaluated once, when the lazy-load",
@@ -192,10 +197,62 @@ computed_contexts <- data.frame(
       "renders the help page but never evaluates its examples."
     ),
     paste(
-      "Code in a \\Sexpr{} macro is evaluated whenever a help page is",
-      "processed: during R CMD build, during installation from source, and",
-      "during R CMD check. It does not run when a prebuilt binary package is",
-      "installed, whose help is already rendered."
+      "A \\Sexpr{} macro declaring stage=build is evaluated when R CMD build",
+      "renders the help page, and when the package is installed from a source",
+      "directory or checked. It is not reached when a source tarball is",
+      "installed: build already evaluated it and froze the result into the Rd."
+    ),
+    paste(
+      "A \\Sexpr{} macro declaring stage=install, or declaring no stage at all,",
+      "which Writing R Extensions gives install as the default for. Evaluated",
+      "whenever the page is rendered from source: build, either install, and",
+      "check. Not when a prebuilt binary is installed."
+    ),
+    paste(
+      "A \\Sexpr{} macro declaring stage=render is evaluated when the page is",
+      "rendered for display: during R CMD build and R CMD check, and when a",
+      "user calls help(). It does not run at either install."
+    ),
+    paste(
+      "A .R file under data/ is evaluated when R CMD build converts data/ to a",
+      "lazy-load database, and when the package is installed from a source",
+      "directory. It does not survive into a source tarball: build replaces it",
+      "with the .rda it produced."
+    ),
+    paste(
+      "A demo runs only when a user calls demo(). No lifecycle command reaches",
+      "it, though it ships in the installed package."
+    ),
+    paste(
+      "R code under exec/ runs only when a user invokes the script. R CMD",
+      "INSTALL copies exec/ into the installed package and marks its contents",
+      "executable, but no lifecycle command runs them."
+    ),
+    paste(
+      "Test code, whether under tests/, tests/testthat/ or inst/tinytest/, is",
+      "run by R CMD check and by nothing else. All three are reached through a",
+      "runner in tests/."
+    ),
+    paste(
+      "tools/ holds helper scripts that nothing runs on its own. They are",
+      "reached only if configure or a Makevars invokes them, which is reported",
+      "where that invocation appears."
+    ),
+    paste(
+      "inst/CITATION is R code that utils::readCitationFile() evaluates. R CMD",
+      "check reads it, as does any user who calls citation(). A plain .R file",
+      "under inst/ is never sourced."
+    ),
+    paste(
+      "A .Rprofile at the package root is evaluated whenever a lifecycle",
+      "command starts an R process inside the package: R CMD build, and",
+      "installation from a source directory. It runs before any package is",
+      "loaded."
+    ),
+    paste(
+      "Vignette code runs when the vignette is rendered: during R CMD build,",
+      "and again under R CMD check, which rebuilds it. Shared by Rmd, qmd and",
+      "Rnw -- the format decides how the code is extracted, not when it runs."
     )
   ),
   stringsAsFactors = FALSE
@@ -207,23 +264,25 @@ stopifnot(
   all(rules$file_contexts$name %in% names(rule_files$file_contexts)),
   all(rules$code_contexts$name %in% names(rule_files$code_contexts)),
   all(rules$patterns$name      %in% names(rule_files$patterns)),
-  all(rules$regex$name         %in% names(rule_files$regex)),
+  all(rules$matches$name         %in% names(rule_files$matches)),
   setequal(names(code_labels), rules$code_contexts$name),
   setequal(names(pattern_labels), rules$patterns$name),
   setequal(computed_contexts$context,
            setdiff(rules$phases$context,
                    c(rules$file_contexts$name, rules$code_contexts$name))),
+  # Every context a file-context rule names must be described here too.
+  all(rules$file_contexts$code_context %in% computed_contexts$context),
   # Only a rule naming one file has a name to check against its own pattern.
   local({
-    fc  <- rules$file_contexts[anchored(rules$file_contexts$pattern), ]
-    all(mapply(grepl, fc$pattern, basename(file_label(fc$path, fc$pattern))))
+    fc  <- rules$file_contexts[anchored(rules$file_contexts$filename), ]
+    all(mapply(grepl, fc$filename, basename(file_label(fc$path, fc$filename))))
   })
 )
 ```
 
 pkgaudit v`r utils::packageVersion("pkgaudit")` separates *when* code executes
 from *what* code does using four categories of rules: file contexts, code
-contexts, patterns, and expressions. Each rule is defined in a YAML file under
+contexts, patterns, and matches. Each rule is defined in a YAML file under
 [inst/rules/](https://github.com/tylerjssmith/pkgaudit/tree/master/inst/rules)
 and compiled into the SQLite database at `inst/db/rules.db`. The Rule columns
 below link to the defining YAML files.
@@ -271,20 +330,34 @@ File contexts are files that R executes at build-, check-, or install-time.
 The Type column determines how a matched file is read. Files typed `R` are
 parsed and scanned for patterns; `Rd` files have their `\examples{}` and
 `\Sexpr{}` code extracted and scanned for patterns; `shell` and `make` files are
-matched against the expressions listed under [Expressions](#expressions).
+matched against the rules listed under [Matches](#matches).
 
 The Report column separates being scanned from being reported. Every rule tells
 the scan which files to read; only a reporting rule contributes a row to the
-`file_contexts` findings frame. The rules covering `R/` and `man/` exist so that
-a package's own R sources and help files are scanned, and a package's own
-sources are not themselves a finding.
+`file_contexts` findings frame.
+
+`report` is `TRUE` for a file that meets two conditions: it executes
+automatically during at least one lifecycle phase, and its contents are matched
+as text rather than parsed. Together those mean pkgaudit cannot tell a reviewer
+what the file does, only that it runs -- so the file itself is the finding, and
+someone has to read it. In practice that is the shell scripts and Make-like
+files: `configure`, `cleanup`, `src/Makevars` and their variants.
+
+Everything else is scanned just as thoroughly. A pattern in a vignette or a test
+file is reported with its context and phases whether or not the file itself is.
+What `report` withholds is the row asserting the file exists -- which, for a file
+whose contents are parsed, the findings already tell you.
+
+`src/install.libs.R` is the one exception: it is R, and parsed, but its presence
+replaces R's default handling of compiled artifacts, a structural change that
+follows from the file existing rather than from anything written in it.
 
 ```{r file-contexts}
 fc <- rules$file_contexts
 emit_table(
   c("Rule", "File Context", "Type", "Report", "Phases", "Description"),
   rule_link(fc$name, "file_contexts"),
-  paste0("`", file_label(fc$path, fc$pattern), "`"),
+  paste0("`", file_label(fc$path, fc$filename), "`"),
   paste0("`", fc$type, "`"),
   ifelse(fc$report, "yes", "no"),
   vapply(fc$name, phase_cell, character(1L)),
@@ -348,27 +421,27 @@ emit_table(
 )
 ```
 
-## Expressions
+## Matches
 
 Expressions are regular-expression matches in the shell scripts and Make-like
 files among the file contexts above -- those whose Type is `shell` or `make`.
 A file context typed `R` is parsed and scanned for patterns instead, and no
-other file in the package is scanned for expressions at all. Expression rules
+other file in the package is scanned for matches at all. Match rules
 carry [MITRE ATT&CK](https://attack.mitre.org/) technique labels.
 
-Like a pattern rule, an expression rule declares no phases of its own: an
-expression inherits them from the file context it was found in, listed in the
+Like a pattern rule, a match rule declares no phases of its own: a match
+inherits them from the file context it was found in, listed in the
 File Contexts table above. Where a file matches more than one file-context rule,
 it takes the phases of every rule that matched it.
 
-Matching text is less precise than matching a parse tree. An expression has no
+Matching text is less precise than matching a parse tree. A match has no
 syntax behind it, so a match inside a comment, a quoted string, or a branch that
 never runs is reported the same as one in a live command. Expression findings
 are candidates for review rather than confirmed behavior, and warrant reading
 the file itself more than a pattern finding does.
 
-```{r expressions}
-rx <- rules$regex
+```{r matches}
+rx <- rules$matches
 emit_table(
   c("Rule", "Description"),
   rule_link(rx$name, "regex"),
@@ -376,10 +449,10 @@ emit_table(
 )
 ```
 
-The expressions themselves are matched with `perl = TRUE` and are
+The regular expressions themselves are matched with `perl = TRUE` and are
 case-sensitive:
 
-```{r expressions-regex, results = "markup", comment = ""}
+```{r matches-regex, results = "markup", comment = ""}
 # Shown as a verbatim block rather than a table column: an alternation `|` in a
 # regular expression would be read as a column separator, and escaping it
 # leaves the escape visible in the rendered cell.

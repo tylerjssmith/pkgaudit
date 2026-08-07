@@ -1,0 +1,27 @@
+name: inst_tinytest
+version: "0.1.0"
+type: R
+message: >-
+  tinytest keeps its tests under inst/tinytest/, which R CMD check runs through
+  a runner in tests/. Unlike tests/, inst/ is copied into the installed package,
+  so this code also ships to the user and can be run again after installation.
+at_autoconf: FALSE
+at_build: FALSE
+at_check: TRUE
+at_install_src: FALSE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "inst/tinytest"
+recursive: FALSE
+report: FALSE
+namespace_source: FALSE
+code_context: "test_R"
+filename: '\.[RrSsq]$'
+positive_examples:
+  - inst/tinytest/test_audit.R
+negative_examples:
+  - inst/tinytest/data/fixture.R
+  - inst/extdata/thing.R

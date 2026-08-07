@@ -3,7 +3,7 @@
 
 #' Load security rules from the pkgaudit rules database
 #'
-#' Loads the file-context, code-context, pattern, and regex rules, and the
+#' Loads the file-context, code-context, pattern, and match rules, and the
 #' lifecycle phases of every context, from the bundled SQLite database as a
 #' named list suitable for passing to [audit_package()] or [audit_tarball()].
 #'
@@ -13,17 +13,21 @@
 #' @return A named list with five data frames:
 #'   \describe{
 #'     \item{file_contexts}{Data frame with columns `name`, `version`, `type`,
-#'       `message`, `path`, `recursive`, `report`, `pattern`. `type` selects how
-#'       a matched file is read and scanned; `report` is `TRUE` for a rule whose
-#'       matches are findings in their own right, and `FALSE` for one that only
-#'       tells the scanner which files to read.}
-#'     \item{code_contexts}{Data frame with columns `name`, `version`, `type`,
-#'       `message`, `xpath`.}
-#'     \item{patterns}{Data frame with columns `name`, `version`, `type`,
+#'       `message`, `path`, `recursive`, `report`, `namespace_source`,
+#'       `filename`, `code_context`. `type` selects how a matched file is read
+#'       and scanned;
+#'       `report` is `TRUE` for a rule whose matches are findings in their own
+#'       right, and `FALSE` for one that only tells the scanner which files to
+#'       read; `namespace_source` is `TRUE` only where R code becomes the
+#'       package namespace, which is where a lifecycle hook can actually run.}
+#'     \item{code_contexts}{Data frame with columns `name`, `version`,
+#'       `language`, `message`, `xpath`.}
+#'     \item{patterns}{Data frame with columns `name`, `version`, `language`,
 #'       `message`, `attck`, `xpath`.}
-#'     \item{regex}{Data frame with columns `name`, `version`, `message`,
-#'       `attck`, `regex`. Regex rules declare no `type`: they are applied to
-#'       every file context whose type is `shell` or `make`.}
+#'     \item{matches}{Data frame with columns `name`, `version`, `language`,
+#'       `message`, `attck`, `regex`. A match rule is evaluated against every
+#'       segment in its `language`, which is what keeps a shell rule from being
+#'       applied to R code.}
 #'     \item{phases}{Data frame with columns `context`, `version`, and one
 #'       logical column per lifecycle phase. One row per context code can
 #'       execute in: every file- and code-context rule, plus the computed
@@ -60,32 +64,34 @@ load_rules <- function(db_path = .db_path()) {
   .with_db(db_path, function(con, sha256) {
     file_contexts <- DBI::dbGetQuery(
       con,
-      "SELECT name, version, type, message, path, recursive, report, pattern
+      "SELECT name, version, type, message, path, recursive, report,
+              namespace_source, filename, code_context
          FROM file_contexts
         ORDER BY name"
     )
     # SQLite has no native logical type; both flags are stored as 0/1.
-    file_contexts$recursive <- as.logical(file_contexts$recursive)
-    file_contexts$report    <- as.logical(file_contexts$report)
+    file_contexts$recursive        <- as.logical(file_contexts$recursive)
+    file_contexts$report           <- as.logical(file_contexts$report)
+    file_contexts$namespace_source <- as.logical(file_contexts$namespace_source)
 
     code_contexts <- DBI::dbGetQuery(
       con,
-      "SELECT name, version, type, message, xpath
+      "SELECT name, version, language, message, xpath
          FROM code_contexts
         ORDER BY name"
     )
 
     patterns <- DBI::dbGetQuery(
       con,
-      "SELECT name, version, type, message, attck, xpath
+      "SELECT name, version, language, message, attck, xpath
          FROM patterns
         ORDER BY name"
     )
 
-    regex <- DBI::dbGetQuery(
+    matches <- DBI::dbGetQuery(
       con,
-      "SELECT name, version, message, attck, regex
-         FROM regex
+      "SELECT name, version, language, message, attck, regex
+         FROM matches
         ORDER BY name"
     )
 
@@ -103,7 +109,7 @@ load_rules <- function(db_path = .db_path()) {
     if (nrow(file_contexts) == 0L &&
         nrow(code_contexts) == 0L &&
         nrow(patterns) == 0L &&
-        nrow(regex) == 0L) {
+        nrow(matches) == 0L) {
       stop("No rules found in rules database: ", db_path, call. = FALSE)
     }
 
@@ -117,7 +123,7 @@ load_rules <- function(db_path = .db_path()) {
         file_contexts = file_contexts,
         code_contexts = code_contexts,
         patterns      = patterns,
-        regex         = regex,
+        matches       = matches,
         phases        = phases
       ),
       provenance = list(
@@ -137,7 +143,12 @@ load_rules <- function(db_path = .db_path()) {
 # condition, so it is refused here rather than papered over downstream.
 .validate_phase_coverage <- function(file_contexts, code_contexts, phases,
                                      db_path) {
-  needed  <- c(file_contexts$name, code_contexts$name, .sentinel_contexts)
+  # Every context a finding can be attributed to needs a row: each rule by name,
+  # the computed contexts, and every context a file-context rule names for its
+  # top-level code. The last is not a fixed list -- adding a rule that names a
+  # new one must fail here rather than yield findings with no phases.
+  needed  <- unique(c(file_contexts$name, code_contexts$name,
+                      .sentinel_contexts, file_contexts$code_context))
   missing <- setdiff(needed, phases$context)
   if (length(missing) > 0L) {
     stop(

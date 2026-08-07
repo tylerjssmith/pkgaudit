@@ -1,6 +1,6 @@
 name: onAttach_base
 version: "0.3.0"
-type: R
+language: R
 message: >-
   .onAttach() executes arbitrary code when a package is attached to the R search
   path by library() or require(); attach() does not trigger it. R CMD INSTALL,

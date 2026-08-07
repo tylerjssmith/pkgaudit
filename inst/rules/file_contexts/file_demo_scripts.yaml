@@ -1,0 +1,27 @@
+name: demo_scripts
+version: "0.1.0"
+type: R
+message: >-
+  A demo runs when a user calls demo(). No build, check or install command
+  reaches it, but it ships in the installed package and runs with the user's
+  privileges when invoked.
+at_autoconf: FALSE
+at_build: FALSE
+at_check: FALSE
+at_install_src: FALSE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "demo"
+recursive: FALSE
+report: FALSE
+namespace_source: FALSE
+code_context: "demo_R"
+filename: '\.[RrSsq]$'
+positive_examples:
+  - demo/intro.R
+negative_examples:
+  - demo/00Index
+  - R/intro.R

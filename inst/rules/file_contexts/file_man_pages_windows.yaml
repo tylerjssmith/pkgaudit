@@ -2,6 +2,8 @@ name: man_pages_windows
 version: "0.1.0"
 type: Rd
 report: FALSE
+namespace_source: FALSE
+code_context: "Top-level"
 message: >-
   Help files in man/windows carry R code in two places: \examples{}, which R CMD check
   runs, and \Sexpr{}, which is evaluated when the help page is rendered during
@@ -18,7 +20,7 @@ at_unload: FALSE
 at_detach: FALSE
 path: "man/windows"
 recursive: FALSE
-pattern: '\.[Rr]d$'
+filename: '\.[Rr]d$'
 positive_examples:
   - man/windows/w.Rd
 negative_examples:

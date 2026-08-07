@@ -5,7 +5,7 @@
 \alias{print.summary.pkgaudit}
 \title{Summarize a pkgaudit result}
 \usage{
-\method{summary}{pkgaudit}(object, path = TRUE, ...)
+\method{summary}{pkgaudit}(object, path = TRUE, phase = NULL, ...)
 
 \method{print}{summary.pkgaudit}(x, path = x$path, ...)
 }
@@ -16,6 +16,10 @@
 local filesystem location scanned. Set \code{FALSE} to omit local paths.
 \code{summary.pkgaudit()} records the choice in the object it returns;
 \code{print.summary.pkgaudit()} uses that recorded value unless given its own.}
+
+\item{phase}{Character vector of lifecycle phases to report, e.g.
+\code{"at_load"}, or \code{"none"} for occurrences that execute in no phase.
+\code{NULL} (default) reports every phase. An unrecognised name is an error.}
 
 \item{...}{Ignored, for S3 compatibility.}
 
@@ -33,10 +37,10 @@ once.}
 each pattern rule was matched in each code context, split by the
 lifecycle phase that context executes in, with the ATT&CK techniques
 the rule carries.}
-\item{expressions}{\code{phase}, \code{file_context}, \code{rule}, \code{n}, \code{attck}: how
+\item{matches}{\code{phase}, \code{file_context}, \code{rule}, \code{n}, \code{attck}: how
 often each regex rule was matched in each shell script or Make-like
 file, split by the lifecycle phase that file executes in.}
-\item{errors}{\code{stage}, \code{script}, \code{rule}, \code{error}: the rows of the object's
+\item{errors}{\code{step}, \code{script}, \code{rule}, \code{error}: the rows of the object's
 \code{errors} data frame, renamed for display.}
 }
 \code{print.summary.pkgaudit()} returns \code{x} invisibly.
@@ -44,7 +48,7 @@ file, split by the lifecycle phase that file executes in.}
 \description{
 \code{summary.pkgaudit()} rolls a scan up into the frequency of each R pattern by
 the lifecycle phase and code context it executes in, the frequency of each
-shell or make expression by the phase and file context it executes in, both
+shell or make match by the phase and file context it executes in, both
 with their MITRE ATT&CK techniques, and the errors, if any. It also collects
 the distinct file and code contexts found, which the report does not show.
 \code{print.summary.pkgaudit()} writes that summary as a sectioned report and
@@ -52,18 +56,23 @@ returns the object invisibly.
 }
 \details{
 The report opens with the same metadata block as \code{\link[=print.pkgaudit]{print.pkgaudit()}}, then
-gives the \verb{R Patterns}, \verb{Shell / Make Expressions}, and \code{Errors} sections. A
+gives the \verb{R Patterns}, \verb{Shell / Make Matches}, and \code{Errors} sections. A
 section with nothing to report says so. The \code{file_contexts} and
 \code{code_contexts} summaries are returned for programmatic use but are not part
 of the report.
 
-A pattern occurrence executes in every phase its code context does, and an
-expression in every phase its file context does, so each contributes one row
-per phase and the \code{n} column sums to more than the number of occurrences.
+A pattern occurrence executes in every phase its code context does, and a
+match in every phase its file context does, so each contributes one row per
+phase and the \code{n} column sums to more than the number of occurrences.
 Occurrences that execute in no phase at all are gathered under \code{none}.
 
-The \code{Errors} section lists every error, whatever stage produced it, and is
-followed by one note per stage stating what scan coverage was lost. An error
+\code{phase} restricts the report to the phases named. It is the only way to
+narrow it: the summary has already been expanded by phase, so it cannot be
+subset afterwards. The default reports every phase, and a filtered report
+names its phases in the header, so it cannot be mistaken for a full scan.
+
+The \code{Errors} section lists every error, whatever step produced it, and is
+followed by one note per step stating what scan coverage was lost. An error
 recorded against a file-context rule is not tied to a script, and one
 recorded against a script that would not parse is not tied to a rule, so both
 columns are shown and the inapplicable one is left blank.
@@ -72,11 +81,13 @@ columns are shown and the inapplicable one is left blank.
 \dontrun{
 result <- audit_package("/path/to/package")
 summary(result)
-summary(result, path = FALSE)   # omit the local Path: line for sharing
+summary(result, path = FALSE)     # omit the local Path: line for sharing
+summary(result, phase = "at_load")  # only what runs when the package loads
+summary(result, phase = "none")     # ships, but runs at no phase
 
 s <- summary(result)
 s$patterns                      # pattern frequencies as a data frame
-s$expressions                   # expression frequencies as a data frame
+s$matches                   # match frequencies as a data frame
 }
 
 }

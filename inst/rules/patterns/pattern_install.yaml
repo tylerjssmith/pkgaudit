@@ -1,6 +1,6 @@
 name: install
 version: "0.3.0"
-type: R
+language: R
 attck:
   - T1105
 message: >-

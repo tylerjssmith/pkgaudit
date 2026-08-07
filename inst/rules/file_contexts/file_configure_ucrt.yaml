@@ -2,6 +2,8 @@ name: configure_ucrt
 version: "0.3.0"
 type: shell
 report: TRUE
+namespace_source: FALSE
+code_context: "Top-level"
 message: >-
   configure.ucrt is a shell script for system-dependent configuration on the
   Windows UCRT toolchain, executed when a package is installed from source,
@@ -18,7 +20,7 @@ at_unload: FALSE
 at_detach: FALSE
 path: "."
 recursive: FALSE
-pattern: '^configure\.ucrt$'
+filename: '^configure\.ucrt$'
 positive_examples:
   - configure.ucrt
 negative_examples:

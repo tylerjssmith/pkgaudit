@@ -98,7 +98,7 @@ test_that("audit_tarball() returns the five-frame result and relative paths", {
   res <- audit_tarball(tb)
   expect_s3_class(res, "pkgaudit")
   expect_named(res, c("file_contexts", "code_contexts", "patterns",
-                      "expressions", "errors", "metadata"))
+                      "matches", "errors", "metadata"))
 
   expect_true("onLoad_base" %in% res$code_contexts$rule)
   sys <- res$patterns[res$patterns$rule == "system", ]

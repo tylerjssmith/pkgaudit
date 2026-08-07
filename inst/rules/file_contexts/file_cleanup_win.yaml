@@ -2,6 +2,8 @@ name: cleanup_win
 version: "0.3.0"
 type: shell
 report: TRUE
+namespace_source: FALSE
+code_context: "Top-level"
 message: >-
   cleanup.win is a shell script run on Windows at the end of R CMD build, and
   during installation from source only under R CMD INSTALL --clean or
@@ -17,7 +19,7 @@ at_unload: FALSE
 at_detach: FALSE
 path: "."
 recursive: FALSE
-pattern: '^cleanup\.win$'
+filename: '^cleanup\.win$'
 positive_examples:
   - cleanup.win
 negative_examples:

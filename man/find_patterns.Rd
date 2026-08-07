@@ -25,7 +25,7 @@ name), \code{file_context}, \code{line_number}, \code{column_number}, \code{mess
 aligned to the rows. The phase columns are not set here;
 \code{\link[=audit_package]{audit_package()}} attaches them from the code context each pattern is
 assigned.}
-\item{errors}{Data frame with columns \code{stage}, \code{file_context}, \code{rule},
+\item{errors}{Data frame with columns \code{step}, \code{file_context}, \code{rule},
 \code{message}.}
 }
 }

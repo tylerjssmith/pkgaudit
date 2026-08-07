@@ -25,14 +25,15 @@ probe <- c(
   "}"                                                           # 15
 )
 
-test_that("extract_Rd_code() returns two code strings and an error slot", {
+test_that("extract_Rd_code() returns the examples, one string per Sexpr stage", {
   path <- rd_file(probe)
   on.exit(unlink(dirname(path), recursive = TRUE), add = TRUE)
 
   res <- extract_Rd_code(path)
-  expect_named(res, c("examples", "sexpr", "error"))
+  expect_named(res, c("examples", "guarded", "sexpr", "error"))
   expect_type(res$examples, "character")
-  expect_type(res$sexpr, "character")
+  expect_named(res$sexpr, c("build", "install", "render"))
+  expect_true(all(vapply(res$sexpr, is.character, TRUE)))
   expect_null(res$error)
 })
 
@@ -42,7 +43,7 @@ test_that("both streams parse as R", {
 
   res <- extract_Rd_code(path)
   expect_no_error(parse(text = res$examples))
-  expect_no_error(parse(text = res$sexpr))
+  for (stage in res$sexpr) expect_no_error(parse(text = stage))
 })
 
 # Line alignment is the property that lets a finding point into the .Rd, so it
@@ -52,17 +53,19 @@ test_that("extracted code is aligned to the lines of the .Rd", {
   on.exit(unlink(dirname(path), recursive = TRUE), add = TRUE)
 
   res <- extract_Rd_code(path)
-  ex  <- strsplit(res$examples, "\n", fixed = TRUE)[[1L]]
-  sx  <- strsplit(res$sexpr,    "\n", fixed = TRUE)[[1L]]
+  ex  <- strsplit(res$examples,       "\n", fixed = TRUE)[[1L]]
+  ins <- strsplit(res$sexpr$install,  "\n", fixed = TRUE)[[1L]]
+  bld <- strsplit(res$sexpr$build,    "\n", fixed = TRUE)[[1L]]
 
   expect_match(ex[[8L]],  "^x <- 1")
   expect_match(ex[[11L]], "system")
   expect_match(ex[[14L]], "^y <- 2")
-  expect_match(sx[[3L]],  "format\\(Sys.time\\(\\)\\)")
-  expect_match(sx[[5L]],  "system")
+  # Line 3 is unlabelled, so install; line 5 declares stage=build.
+  expect_match(ins[[3L]], "format\\(Sys.time\\(\\)\\)")
+  expect_match(bld[[5L]], "system")
 })
 
-test_that("parsing the examples stream yields .Rd line numbers", {
+test_that("parsing the examples code yields .Rd line numbers", {
   path <- rd_file(probe)
   on.exit(unlink(dirname(path), recursive = TRUE), add = TRUE)
 
@@ -103,13 +106,13 @@ test_that("\\dots becomes an ellipsis rather than vanishing", {
   expect_match(code, "f(...", fixed = TRUE)
 })
 
-test_that("an inline \\Sexpr goes to the sexpr stream, not the examples one", {
+test_that("an inline \\Sexpr goes to the sexpr code, not the examples one", {
   path <- rd_file(c("\\name{f}", "\\title{T}", "\\examples{",
                     "h(\\Sexpr{2+2})", "}"))
   on.exit(unlink(dirname(path), recursive = TRUE), add = TRUE)
 
   res <- extract_Rd_code(path)
-  expect_match(res$sexpr, "2+2", fixed = TRUE)
+  expect_match(res$sexpr$install, "2+2", fixed = TRUE)
   expect_false(grepl("2+2", res$examples, fixed = TRUE))
   expect_no_error(parse(text = res$examples))
 })
@@ -120,7 +123,7 @@ test_that("a file with no code yields empty strings and no error", {
 
   res <- extract_Rd_code(path)
   expect_equal(res$examples, "")
-  expect_equal(res$sexpr, "")
+  expect_true(all(unlist(res$sexpr) == ""))
   expect_null(res$error)
 })
 
@@ -128,6 +131,22 @@ test_that("a file with no code yields empty strings and no error", {
 test_that("a missing file or a directory is reported, not signalled", {
   expect_match(extract_Rd_code(tempfile())$error, "not a readable file")
   expect_match(extract_Rd_code(tempdir())$error, "not a readable file")
+})
+
+test_that("a help file above the scanning limit is refused unread", {
+  path <- rd_file(c(
+    "\\name{f}", "\\title{T}", "\\description{d}",
+    "\\examples{", paste0("# ", strrep("x", .max_scan_bytes)),
+    "system(\"id\")", "}"
+  ))
+  on.exit(unlink(dirname(path), recursive = TRUE), add = TRUE)
+
+  res <- extract_Rd_code(path)
+  # Refused before parse_Rd() sees it, so no code is returned for a file that
+  # was never examined.
+  expect_equal(res$examples, "")
+  expect_true(all(unlist(res$sexpr) == ""))
+  expect_match(res$error, "scanning limit")
 })
 
 test_that("a file parse_Rd() only warns about keeps its code and reports why", {
@@ -153,10 +172,63 @@ test_that("macros are expanded only when supplied", {
              page)
 
   with_m <- extract_Rd_code(page, macros = tools::loadPkgRdMacros(pkg))
-  expect_match(with_m$sexpr, "system")
+  expect_match(with_m$sexpr$install, "system")
   expect_null(with_m$error)
 
   without <- extract_Rd_code(page)
-  expect_equal(without$sexpr, "")
+  expect_true(all(unlist(without$sexpr) == ""))
   expect_match(without$error, "unknown macro")
+})
+
+
+# stages and guards ------------------------------------------------------------
+test_that("each \\Sexpr goes to the stage it declares, unlabelled meaning install", {
+  path <- rd_file(c("\\name{f}", "\\title{T}", "\\description{",
+                    "\\Sexpr[stage=build,results=hide]{b <- 1}",
+                    "\\Sexpr[stage=render,results=hide]{r <- 2}",
+                    "\\Sexpr[stage=install,results=hide]{i <- 3}",
+                    "\\Sexpr{u <- 4}", "}"))
+  on.exit(unlink(dirname(path), recursive = TRUE), add = TRUE)
+
+  sx <- extract_Rd_code(path)$sexpr
+  expect_match(sx$build,  "b <- 1")
+  expect_match(sx$render, "r <- 2")
+  # An unlabelled \\Sexpr behaves identically to stage=install, so both land here.
+  expect_match(sx$install, "i <- 3")
+  expect_match(sx$install, "u <- 4")
+  expect_false(grepl("u <- 4", sx$build, fixed = TRUE))
+})
+
+test_that("an unrecognised stage is refused by R's own Rd parser", {
+  path <- rd_file(c("\\name{f}", "\\title{T}",
+                    "\\description{\\Sexpr[stage=nonsense]{x <- 1}}"))
+  on.exit(unlink(dirname(path), recursive = TRUE), add = TRUE)
+
+  # tools::parse_Rd() validates the stage itself, so an invalid one never
+  # reaches .Sexpr_stage(): the file fails to parse and the error is recorded
+  # rather than the code being silently filed under a guessed stage.
+  res <- extract_Rd_code(path)
+  expect_type(res$error, "character")
+  expect_true(all(unlist(res$sexpr) == ""))
+})
+
+test_that("a stage is read case-insensitively, as parse_Rd() reads it", {
+  path <- rd_file(c("\\name{f}", "\\title{T}",
+                    "\\description{\\Sexpr[stage=BUILD,results=hide]{x <- 1}}"))
+  on.exit(unlink(dirname(path), recursive = TRUE), add = TRUE)
+  expect_match(extract_Rd_code(path)$sexpr$build, "x <- 1")
+})
+
+test_that("only the wrappers R CMD check does not run are marked guarded", {
+  path <- rd_file(c("\\name{f}", "\\title{T}", "\\examples{",   # 1-3
+                    "plain <- 1",                                    # 4
+                    "\\dontrun{ nope <- 2 }",                      # 5
+                    "\\donttest{ also <- 3 }",                     # 6
+                    "\\dontshow{ hidden <- 4 }",                   # 7
+                    "\\testonly{ only <- 5 }",                     # 8
+                    "}"))
+  on.exit(unlink(dirname(path), recursive = TRUE), add = TRUE)
+
+  # \\dontshow and \\testonly do run under check, so they are not guarded.
+  expect_setequal(extract_Rd_code(path)$guarded, c(5L, 6L))
 })

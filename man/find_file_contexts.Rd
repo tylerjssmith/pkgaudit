@@ -7,11 +7,12 @@
 find_file_contexts(pkg, file_context_rules)
 }
 \arguments{
-\item{pkg}{Path to the root of the package being audited.}
+\item{pkg}{Path to the root of the package being audited. Must exist and
+be a directory.}
 
 \item{file_context_rules}{Data frame of file-context rules
 (\code{rules$file_contexts} from \code{\link[=load_rules]{load_rules()}}), with columns \code{name}, \code{path},
-\code{recursive}, \code{pattern}, and \code{message}.}
+\code{recursive}, \code{filename}, and \code{message}.}
 }
 \value{
 A list with two data frames:
@@ -20,7 +21,7 @@ A list with two data frames:
 name), \code{file_context} (package-root-relative path; the join key), and
 \code{message}. The phase columns are not set here; \code{\link[=audit_package]{audit_package()}}
 attaches them from the rules database.}
-\item{errors}{Data frame with columns \code{stage}, \code{file_context}, \code{rule},
+\item{errors}{Data frame with columns \code{step}, \code{file_context}, \code{rule},
 \code{message}.}
 }
 }
@@ -29,4 +30,12 @@ Finds file contexts -- files in an R package that can be executed by
 \verb{R CMD build}, \verb{R CMD check}, or \verb{R CMD INSTALL} (e.g., \code{configure},
 \code{src/Makevars}, \code{src/install.libs.R}).
 }
+\section{Security considerations}{
+
+A rule whose directory is absent contributes nothing and reports nothing --
+most packages have no \verb{R/unix/}, and that is a clean result. \code{pkg} itself is
+checked so that a root that does not exist is refused rather than joining
+that silence as a package with nothing to scan.
+}
+
 \keyword{internal}

@@ -2,6 +2,8 @@ name: configure_ac
 version: "0.3.0"
 type: shell
 report: TRUE
+namespace_source: FALSE
+code_context: "Top-level"
 message: >-
   configure.ac is an Autoconf input file that does not itself execute; it is
   processed by Autoconf to generate the configure script, which executes shell
@@ -17,7 +19,7 @@ at_unload: FALSE
 at_detach: FALSE
 path: "."
 recursive: FALSE
-pattern: '^configure\.ac$'
+filename: '^configure\.ac$'
 positive_examples:
   - configure.ac
 negative_examples:

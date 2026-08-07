@@ -19,7 +19,7 @@
 #'       name), `file_context`, `line_number`, `column_number`, `message`. The
 #'       phase columns are not set here; [audit_package()] attaches them from
 #'       the rules database.}
-#'     \item{errors}{Data frame with columns `stage`, `file_context`, `rule`,
+#'     \item{errors}{Data frame with columns `step`, `file_context`, `rule`,
 #'       `message`.}
 #'   }
 #'
@@ -46,7 +46,7 @@ find_code_contexts <- function(tree, code_context_rules, file_context) {
 
     if (inherits(nodes, "condition")) {
       errors <- rbind(errors, .error_row(
-        stage        = "find_code_contexts",
+        step         = "find_code_contexts",
         file_context = file_context,
         rule         = rule$name,
         message      = conditionMessage(nodes)

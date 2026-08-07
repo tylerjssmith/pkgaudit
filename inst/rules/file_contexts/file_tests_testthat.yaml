@@ -1,0 +1,28 @@
+name: tests_testthat
+version: "0.1.0"
+type: R
+message: >-
+  testthat sources the files directly under tests/testthat/ when R CMD check
+  runs the package's tests. Subdirectories are not sourced -- tests/testthat/
+  fixtures/ holds inert data -- so only the top level is scanned.
+at_autoconf: FALSE
+at_build: FALSE
+at_check: TRUE
+at_install_src: FALSE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "tests/testthat"
+recursive: FALSE
+report: FALSE
+namespace_source: FALSE
+code_context: "test_R"
+filename: '\.[RrSsq]$'
+positive_examples:
+  - tests/testthat/test-audit.R
+  - tests/testthat/helper-setup.R
+negative_examples:
+  - tests/testthat/fixtures/evil.R
+  - tests/testthat.R

@@ -2,6 +2,8 @@ name: R_scripts_windows
 version: "0.1.0"
 type: R
 report: FALSE
+namespace_source: TRUE
+code_context: "Top-level"
 message: >-
   R source files in R/windows are evaluated when the package is installed from source,
   when the lazy-load database is built. They are scanned for code contexts and
@@ -18,7 +20,7 @@ at_unload: FALSE
 at_detach: FALSE
 path: "R/windows"
 recursive: FALSE
-pattern: '\.[RrSsq]$'
+filename: '\.[RrSsq]$'
 positive_examples:
   - R/windows/os.R
 negative_examples:

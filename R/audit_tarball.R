@@ -1,7 +1,7 @@
 #' Audit an R source package tarball
 #'
 #' Finds security-relevant file and code contexts, code patterns, and shell and
-#' make expressions for review before an R source package tarball is trusted.
+#' make matches for review before an R source package tarball is trusted.
 #'
 #' @param path Path to a gzip-compressed or uncompressed R source package
 #'   tarball (`.tar.gz`, `.tgz`, or `.tar`). bzip2/xz archives are not
@@ -55,11 +55,7 @@ audit_tarball <- function(
   max_ratio   = 256
 ) {
   stopifnot(is.character(path), length(path) == 1L, file.exists(path))
-  stopifnot(
-    is.list(rules),
-    all(c("file_contexts", "code_contexts", "patterns", "regex", "phases") %in%
-          names(rules))
-  )
+  stopifnot(is.list(rules), all(.rule_classes %in% names(rules)))
   stopifnot(is.character(temp_dir), length(temp_dir) == 1L)
 
   # validate_tar() reads gzip/uncompressed tar only

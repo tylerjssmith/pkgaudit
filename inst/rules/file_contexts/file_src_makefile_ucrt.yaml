@@ -2,6 +2,8 @@ name: src_makefile_ucrt
 version: "0.3.0"
 type: make
 report: TRUE
+namespace_source: FALSE
+code_context: "Top-level"
 message: >-
   src/Makefile.ucrt is a makefile used to compile code in src/ on the Windows
   UCRT toolchain when a package is installed from source, replacing R's default
@@ -19,7 +21,7 @@ at_unload: FALSE
 at_detach: FALSE
 path: "src"
 recursive: FALSE
-pattern: '^Makefile\.ucrt$'
+filename: '^Makefile\.ucrt$'
 positive_examples:
   - src/Makefile.ucrt
 negative_examples:

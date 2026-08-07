@@ -14,7 +14,10 @@ current directory.}
 package as returned by \code{\link[=load_rules]{load_rules()}}.}
 
 \item{.origin}{Internal. Used by \code{\link[=audit_tarball]{audit_tarball()}} to record tarball
-provenance. Leave \code{NULL} for a directory scan.}
+provenance. Leave \code{NULL} for a directory scan. Otherwise a list of \code{path}
+and \code{sha256}, each a length-one character, and \code{is_tarball}, a length-one
+logical that is not \code{NA}; these become the scan's provenance, so a
+malformed one is refused before the scan rather than silently recorded.}
 }
 \value{
 A \code{\link[=new_pkgaudit]{new_pkgaudit()}} object: a named list with class \code{pkgaudit}
@@ -26,14 +29,18 @@ columns.}
 \code{column_number}, \code{message}, and the phase columns. Join to
 \code{file_contexts} on \code{file_context}.}
 \item{patterns}{\code{rule}, \code{file_context}, \code{line_number},
-\code{column_number}, \code{message}, \code{attck}, \code{code_context}, and the phase
-columns. Join to the other tables on \code{file_context}, and to
+\code{column_number}, \code{code_context}, \code{preview}, \code{message}, \code{attck}, and the
+phase columns, in that order: the leading columns are the ones a reader
+skims, and \code{message} and \code{attck} restate the rule rather than the
+occurrence. Join to the other tables on \code{file_context}, and to
 \code{code_contexts$rule} on \code{code_context}.}
-\item{expressions}{\code{rule}, \code{file_context}, \code{line_number},
-\code{column_number}, \code{message}, \code{attck}, and the phase columns. Regular
-expressions matched in the shell scripts and Make-like files among the
-file contexts. Join to the other tables on \code{file_context}.}
-\item{errors}{\code{stage}, \code{file_context}, \code{rule}, \code{message}.}
+\item{matches}{\code{rule}, \code{file_context}, \code{line_number},
+\code{column_number}, \code{preview}, \code{message}, \code{attck}, and the phase columns,
+ordered as \code{patterns} is, less the \code{code_context} a match has no
+parse tree to sit in. Regular matches matched in the shell scripts
+and Make-like files among the file contexts. Join to the other tables
+on \code{file_context}.}
+\item{errors}{\code{step}, \code{file_context}, \code{rule}, \code{message}.}
 \item{metadata}{List of \code{pkg_name}, \code{pkg_version}, \code{pkg_path},
 \code{pkg_is_tarball}, \code{pkg_sha256}, \code{pkgaudit_version},
 \code{pkgaudit_rules_version}, \code{pkgaudit_rules_sha256}, and \code{scanned}. The
@@ -44,25 +51,42 @@ The phase columns are the nine described under Details.
 }
 \description{
 Finds security-relevant file and code contexts, code patterns, and shell and
-make expressions for review before an R source package is trusted.
+make matches for review before an R source package is trusted.
 }
 \details{
 Every file the scan looks at is found by a file-context rule, and that rule's
 \code{type} decides how the file is read: an \code{R} script is parsed as it stands, an
 \code{Rd} help file has its \verb{\\examples\{\}} and \verb{\\Sexpr\{\}} code extracted first, and
 a \code{shell} or \code{make} file is matched line by line against the regex rules.
-Reading a file yields one or more \emph{streams} of code, which are what the
+Reading a file yields one or more \emph{segments} of code, which are what the
 finders actually see; a help file yields two, because its examples and its
 \verb{\\Sexpr} macros run at different phases.
 
-A rule's \code{report} field separates being scanned from being reported. Rules
-for \verb{R/} and \verb{man/} exist to tell the scan which files to read and do not
-report, so \code{file_contexts} stays a list of security-relevant files rather
-than an inventory of the package.
+A rule's \code{report} field separates being scanned from being reported. Every
+rule tells the scan which files to read; only a reporting rule adds a row to
+\code{file_contexts}. \code{report} is \code{TRUE} where a file runs automatically \emph{and} is
+matched as text rather than parsed -- the shell and Make-like files, whose
+contents pkgaudit cannot report on precisely, so the file itself is the
+finding. \code{src/install.libs.R} reports too: it is parsed, but its presence
+alone replaces R's default handling of compiled artifacts. Everything else is
+scanned just as thoroughly; only the row asserting the file exists is
+withheld.
+
+A file context is claimed by extension, so a language pkgaudit cannot read is
+left unscanned rather than scanned badly -- the Perl, Python and batch scripts
+under \verb{exec/}, for instance. Nothing is reported for an unclaimed file, so its
+absence from the findings is not evidence that it is clean.
 
 Recoverable failures in the orchestrated finders are collected in the
 \code{errors} data frame rather than aborting the audit. File paths in every
 returned data frame are relative to the package root.
+
+\code{patterns} and \code{matches} each carry a \code{preview}: a display-only excerpt of the
+line at \code{line_number}, whitespace collapsed, so the frames can be skimmed
+without opening the files. A trailing \code{...} means there is more to see. A long
+line is windowed on the match rather than cut off at its start, so
+\code{column_number} does not index into the preview. A preview from a help file
+comes from the extracted code, not the \code{.Rd} text.
 
 Each findings data frame also carries one logical column per package
 lifecycle phase -- \code{at_autoconf}, \code{at_build}, \code{at_check}, \code{at_install_src},
@@ -70,7 +94,7 @@ lifecycle phase -- \code{at_autoconf}, \code{at_build}, \code{at_check}, \code{a
 which is \code{TRUE} when that finding's code runs during the phase, so findings
 can be filtered by when they execute. A file or code context takes its phases
 from the rule that matched; a pattern inherits them from its \code{code_context};
-an expression inherits them from the file context it was found in. A pattern
+a match inherits them from the file context it was found in. A pattern
 in an ordinary function is \code{FALSE} for every phase: it runs only if something
 calls it, and that holds for a function defined in a help-file example too. A
 finding can belong to several phases, so the phase columns do not partition
@@ -81,10 +105,10 @@ Code from a help file is attributed to one of two computed contexts:
 whenever the page is rendered -- during \verb{R CMD build}, installation from
 source, and \verb{R CMD check}, but not on installation from a binary package.
 
-Patterns are matched against R's parse tree, expressions against the text of
+Patterns are matched against R's parse tree, matches against the text of
 a shell script or Make-like file. Text matching has no syntax behind it, so
-an expression reported inside a comment or a quoted string cannot be told
-apart from one in a live command; see \code{\link[=find_regex]{find_regex()}}.
+a match reported inside a comment or a quoted string cannot be told
+apart from one in a live command; see \code{\link[=find_matches]{find_matches()}}.
 
 When called by \code{\link[=audit_tarball]{audit_tarball()}}, \code{.origin} is a list with \code{path}, \code{sha256},
 and \code{is_tarball}, which are used for the \code{metadata} list. When calling

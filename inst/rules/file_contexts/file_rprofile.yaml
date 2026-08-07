@@ -1,0 +1,28 @@
+name: rprofile
+version: "0.1.0"
+type: R
+message: >-
+  R evaluates a .Rprofile found in the working directory when it starts, so a
+  .Rprofile at the package root runs whenever a lifecycle command starts an R
+  process inside the package. It runs before any package is loaded, earlier than
+  any other R in the package.
+at_autoconf: FALSE
+at_build: TRUE
+at_check: FALSE
+at_install_src: TRUE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "."
+recursive: FALSE
+report: FALSE
+namespace_source: FALSE
+code_context: "rprofile_R"
+filename: '^\.Rprofile$'
+positive_examples:
+  - .Rprofile
+negative_examples:
+  - .Renviron
+  - R/.Rprofile

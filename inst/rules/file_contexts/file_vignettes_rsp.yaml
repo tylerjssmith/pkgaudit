@@ -1,0 +1,30 @@
+name: vignettes_rsp
+version: "0.1.0"
+type: rsp
+message: >-
+  An R.rsp vignette is a template: everything is output except the R between <%
+  and %>. R.rsp builds it during R CMD build, and again under R CMD check, so
+  the code executes with the package loaded before anyone reads the rendered
+  document.
+at_autoconf: FALSE
+at_build: TRUE
+at_check: TRUE
+at_install_src: FALSE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "vignettes"
+recursive: FALSE
+report: FALSE
+namespace_source: FALSE
+code_context: "vignette"
+filename: '\.rsp$'
+positive_examples:
+  - vignettes/intro.md.rsp
+  - vignettes/paper.tex.rsp
+  - vignettes/notes.rsp
+negative_examples:
+  - vignettes/intro.Rmd
+  - R/intro.rsp

@@ -9,27 +9,27 @@
 #' `pkgaudit` S3 object. [audit_package()] calls this at the end of a scan. It
 #' is also used to construct objects directly (e.g., in tests).
 #'
-#' @param file_contexts,code_contexts,patterns,expressions,errors Data frames
+#' @param file_contexts,code_contexts,patterns,matches,errors Data frames
 #'   with the columns documented in [audit_package()].
 #' @param metadata Named list with the fields documented in [audit_package()],
 #'   each a length-one value of the expected type.
 #'
 #' @return A `pkgaudit` object: a named list of `file_contexts`,
-#'   `code_contexts`, `patterns`, `expressions`, `errors`, and `metadata`.
+#'   `code_contexts`, `patterns`, `matches`, `errors`, and `metadata`.
 #'
 #' @keywords internal
 new_pkgaudit <- function(
   file_contexts,
   code_contexts,
   patterns,
-  expressions,
+  matches,
   errors,
   metadata
 ) {
   .validate_result_df(file_contexts, "file_contexts")
   .validate_result_df(code_contexts, "code_contexts")
   .validate_result_df(patterns,      "patterns")
-  .validate_result_df(expressions,   "expressions")
+  .validate_result_df(matches,   "matches")
   .validate_result_df(errors,        "errors")
   .validate_metadata(metadata)
 
@@ -38,7 +38,7 @@ new_pkgaudit <- function(
       file_contexts = file_contexts,
       code_contexts = code_contexts,
       patterns      = patterns,
-      expressions   = expressions,
+      matches   = matches,
       errors        = errors,
       metadata      = metadata
     ),
@@ -86,15 +86,31 @@ new_pkgaudit <- function(
 # in the phases table, so resolving a pattern's phases stays a lookup.
 #
 # Top-level and Other are assigned by determine_code_contexts() from a pattern's
-# position in the parse tree. The two Rd contexts are assigned from the stream a
+# position in the parse tree. The two Rd contexts are assigned from the segment a
 # pattern was extracted from: a help file has no R parse tree of its own, so
 # what distinguishes its code is which part of the file it came from.
 .context_top_level  <- "Top-level"
 .context_other      <- "Other"
 .context_rd_examples <- "Rd_examples"
-.context_rd_sexpr    <- "Rd_Sexpr"
+
+# One context per \Sexpr stage. The three phase profiles are not nested --
+# stage=render does not run at either install, and stage=build does not run when
+# a tarball is installed, its result having been frozen into the Rd at build
+# time -- so they cannot share a context.
+.context_rd_sexpr <- c(build   = "Rd_Sexpr_build",
+                       install = "Rd_Sexpr_install",
+                       render  = "Rd_Sexpr_render")
+
 .sentinel_contexts  <- c(.context_top_level, .context_other,
-                         .context_rd_examples, .context_rd_sexpr)
+                         .context_rd_examples, unname(.context_rd_sexpr))
+
+
+# The rule classes load_rules() returns, and that a rules list must carry all
+# of. A scan missing one reports no findings of that kind, which is
+# indistinguishable from a package that has none -- so it is refused rather
+# than run.
+.rule_classes <- c("file_contexts", "code_contexts", "patterns", "matches",
+                   "phases")
 
 
 # Expected columns for each result data frame. `rule` names the rule that
@@ -105,10 +121,11 @@ new_pkgaudit <- function(
   code_contexts = c("rule", "file_context", "line_number", "column_number",
                     "message", .phase_columns),
   patterns      = c("rule", "file_context", "line_number", "column_number",
-                    "message", "attck", "code_context", .phase_columns),
-  expressions   = c("rule", "file_context", "line_number", "column_number",
-                    "message", "attck", .phase_columns),
-  errors        = c("stage", "file_context", "rule", "message")
+                    "code_context", "guarded", "preview", "message", "attck",
+                    .phase_columns),
+  matches   = c("rule", "file_context", "line_number", "column_number",
+                    "preview", "message", "attck", .phase_columns),
+  errors        = c("step", "file_context", "rule", "message")
 )
 
 
@@ -163,3 +180,48 @@ new_pkgaudit <- function(
   scanned                = "character"
 )
 
+
+# Validate the provenance a caller supplied for a scan
+#
+# `.origin` records the tarball as received rather than the temporary directory
+# it was extracted into, so these three fields become the scan's provenance.
+# Checked before the scan, and strictly: a metadata block that claims a directory
+# scan while carrying a tarball's path is worse than a refused one.
+.validate_origin <- function(origin) {
+  if (is.null(origin)) return(invisible(TRUE))
+
+  bad <- function(why) {
+    stop("audit_package(): '.origin' must be NULL or ", why, ".", call. = FALSE)
+  }
+  if (!is.list(origin)) bad("a list")
+
+  missing <- setdiff(names(.pkgaudit_origin_types), names(origin))
+  if (length(missing) > 0L) {
+    bad(paste0("a list with fields: ",
+               paste(names(.pkgaudit_origin_types), collapse = ", "),
+               "; missing: ", paste(missing, collapse = ", ")))
+  }
+  for (field in names(.pkgaudit_origin_types)) {
+    want <- .pkgaudit_origin_types[[field]]
+    val  <- origin[[field]]
+    ok   <- switch(want,
+      character = is.character(val),
+      logical   = is.logical(val) && !is.na(val),
+      FALSE
+    )
+    if (!ok || length(val) != 1L) {
+      bad(paste0("a list whose '", field, "' is a length-one ", want,
+                 if (identical(want, "logical")) " that is not NA"))
+    }
+  }
+  invisible(TRUE)
+}
+
+# Expected fields and scalar types for the .origin list. A path and hash may be
+# NA -- hashing can fail and the scan still records what it could -- but
+# is_tarball may not: it is a claim about what was scanned.
+.pkgaudit_origin_types <- list(
+  path       = "character",
+  sha256     = "character",
+  is_tarball = "logical"
+)

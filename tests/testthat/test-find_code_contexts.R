@@ -48,7 +48,7 @@ test_that("find_code_contexts() records an error for an invalid XPath", {
   res <- find_code_contexts(tree, bad, "R/zzz.R")
   expect_equal(nrow(res$code_contexts), 0L)
   expect_equal(nrow(res$errors), 1L)
-  expect_equal(res$errors$stage, "find_code_contexts")
+  expect_equal(res$errors$step, "find_code_contexts")
   expect_equal(res$errors$rule, "onLoad_base")
   expect_equal(res$errors$file_context, "R/zzz.R")
 })

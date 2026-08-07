@@ -24,7 +24,7 @@ A list with two data frames:
 name), \code{file_context}, \code{line_number}, \code{column_number}, \code{message}. The
 phase columns are not set here; \code{\link[=audit_package]{audit_package()}} attaches them from
 the rules database.}
-\item{errors}{Data frame with columns \code{stage}, \code{file_context}, \code{rule},
+\item{errors}{Data frame with columns \code{step}, \code{file_context}, \code{rule},
 \code{message}.}
 }
 }

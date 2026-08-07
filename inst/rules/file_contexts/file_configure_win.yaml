@@ -2,6 +2,8 @@ name: configure_win
 version: "0.3.0"
 type: shell
 report: TRUE
+namespace_source: FALSE
+code_context: "Top-level"
 message: >-
   configure.win is a shell script for system-dependent configuration on Windows,
   executed when a package is installed from source, including the installs
@@ -17,7 +19,7 @@ at_unload: FALSE
 at_detach: FALSE
 path: "."
 recursive: FALSE
-pattern: '^configure\.win$'
+filename: '^configure\.win$'
 positive_examples:
   - configure.win
 negative_examples:

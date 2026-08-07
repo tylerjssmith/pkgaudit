@@ -45,7 +45,7 @@ class \code{pkgaudit} containing five data frames and a \code{metadata} list.
 }
 \description{
 Finds security-relevant file and code contexts, code patterns, and shell and
-make expressions for review before an R source package tarball is trusted.
+make matches for review before an R source package tarball is trusted.
 }
 \details{
 Extracts a source package tarball to a temporary directory, applies

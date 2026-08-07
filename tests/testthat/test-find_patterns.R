@@ -45,6 +45,6 @@ test_that("find_patterns() records an error for an invalid XPath", {
   res <- find_patterns(tree, bad, "R/zzz.R")
   expect_equal(nrow(res$patterns), 0L)
   expect_equal(nrow(res$errors), 1L)
-  expect_equal(res$errors$stage, "find_patterns")
+  expect_equal(res$errors$step, "find_patterns")
   expect_equal(res$errors$rule, "system")
 })

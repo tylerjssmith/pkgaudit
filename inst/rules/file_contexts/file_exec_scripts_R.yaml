@@ -1,0 +1,30 @@
+name: exec_scripts_R
+version: "0.1.0"
+type: R
+message: >-
+  R scripts under exec/ ship in the installed package and are marked executable.
+  No lifecycle command runs them, but they execute with the user's privileges
+  when invoked. Over half the files CRAN packages put in exec/ are R, so they
+  are parsed rather than matched as text.
+at_autoconf: FALSE
+at_build: FALSE
+at_check: FALSE
+at_install_src: FALSE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "exec"
+recursive: FALSE
+report: FALSE
+namespace_source: FALSE
+code_context: "exec_R"
+filename: '\.[RrSsq]$'
+positive_examples:
+  - exec/tokenize.R
+  - exec/benchmark.r
+negative_examples:
+  - exec/run.sh
+  - exec/encode.pl
+  - R/tokenize.R

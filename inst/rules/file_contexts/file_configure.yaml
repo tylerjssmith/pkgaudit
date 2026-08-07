@@ -2,6 +2,8 @@ name: configure
 version: "0.3.0"
 type: shell
 report: TRUE
+namespace_source: FALSE
+code_context: "Top-level"
 message: >-
   configure is a shell script used for system-dependent configuration when
   packages are installed from source, including the installs performed by
@@ -18,7 +20,7 @@ at_unload: FALSE
 at_detach: FALSE
 path: "."
 recursive: FALSE
-pattern: '^configure$'
+filename: '^configure$'
 positive_examples:
   - configure
 negative_examples:

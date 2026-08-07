@@ -22,27 +22,31 @@ rich_obj <- function(errors = .empty_errors(), metadata = good_metadata()) {
   cc[3L, ] <- c(list("onLoad_base",   "R/aaa.R", 4L, 1L, "m"), loaded)
 
   pt <- .empty_patterns()
-  pt[1L, ] <- c(list("source", "R/zzz.R", 1L, 1L, "m",
-                     "T1059", "onLoad_base"), loaded)
-  pt[2L, ] <- c(list("rcurl",  "R/zzz.R", 2L, 1L, "m",
-                     "T1041", "onLoad_base"), loaded)
-  pt[3L, ] <- c(list("source", "R/aaa.R", 3L, 1L, "m",
-                     "T1059", "Top-level"), installed)
-  pt[4L, ] <- c(list("source", "R/aaa.R", 7L, 1L, "m",
-                     "T1059", "Other"), uncalled)
+  pt[1L, ] <- c(list("source", "R/zzz.R", 1L, 1L, "onLoad_base",
+                     FALSE, "p", "m", "T1059"), loaded)
+  pt[2L, ] <- c(list("rcurl",  "R/zzz.R", 2L, 1L, "onLoad_base",
+                     FALSE, "p", "m", "T1041"), loaded)
+  pt[3L, ] <- c(list("source", "R/aaa.R", 3L, 1L, "Top-level",
+                     FALSE, "p", "m", "T1059"), installed)
+  pt[4L, ] <- c(list("source", "R/aaa.R", 7L, 1L, "Other",
+                     FALSE, "p", "m", "T1059"), uncalled)
 
-  # An expression takes its phases from the file context it sits in, so all of
+  # An match takes its phases from the file context it sits in, so all of
   # these are the phases that install the package.
-  ex <- .empty_expressions()
-  ex[1L, ] <- c(list("curl", "configure",    3L,  1L, "m", "T1041"), installed)
-  ex[2L, ] <- c(list("curl", "configure",    3L, 20L, "m", "T1041"), installed)
-  ex[3L, ] <- c(list("wget", "configure",    5L,  1L, "m", "T1041"), installed)
-  ex[4L, ] <- c(list("curl", "src/Makevars", 2L, 11L, "m", "T1041"), installed)
+  ex <- .empty_matches()
+  ex[1L, ] <- c(list("curl", "configure", 3L,  1L, "p", "m", "T1041"),
+                installed)
+  ex[2L, ] <- c(list("curl", "configure", 3L, 20L, "p", "m", "T1041"),
+                installed)
+  ex[3L, ] <- c(list("wget", "configure", 5L,  1L, "p", "m", "T1041"),
+                installed)
+  ex[4L, ] <- c(list("curl", "src/Makevars", 2L, 11L, "p", "m", "T1041"),
+                installed)
 
   new_pkgaudit(fc, cc, pt, ex, errors, metadata)
 }
 
-# Errors for the given stages, one row each, with the fields that stage sets.
+# Errors for the given steps, one row each, with the fields that step sets.
 errors_for <- function(...) {
   rows <- list(...)
   do.call(rbind, c(list(.empty_errors()), rows))
@@ -53,7 +57,7 @@ test_that("summary.pkgaudit() returns a summary.pkgaudit object", {
   s <- summary(rich_obj())
   expect_s3_class(s, "summary.pkgaudit")
   expect_named(s, c("file_contexts", "code_contexts", "patterns",
-                    "expressions", "errors", "metadata", "path"))
+                    "matches", "errors", "metadata", "path", "phase"))
   expect_identical(s$metadata, good_metadata())
 })
 
@@ -107,12 +111,12 @@ test_that("summary.pkgaudit() orders patterns by phase, then context, then rule"
   expect_equal(at_build$rule, c("source", "rcurl", "source"))
 })
 
-# Expressions section ----------------------------------------------------------
-test_that("summary.pkgaudit() counts expressions by phase, file context, and rule", {
+# Matches section ----------------------------------------------------------
+test_that("summary.pkgaudit() counts matches by phase, file context, and rule", {
   s <- summary(rich_obj())
-  expect_named(s$expressions, c("phase", "file_context", "rule", "n", "attck"))
+  expect_named(s$matches, c("phase", "file_context", "rule", "n", "attck"))
 
-  at_build <- s$expressions[s$expressions$phase == "at_build", ]
+  at_build <- s$matches[s$matches$phase == "at_build", ]
   expect_equal(at_build$file_context, c("configure", "configure", "src/Makevars"))
   expect_equal(at_build$rule,         c("curl", "wget", "curl"))
   # Two curl matches on one line of configure are two occurrences.
@@ -120,20 +124,20 @@ test_that("summary.pkgaudit() counts expressions by phase, file context, and rul
   expect_equal(at_build$attck,        c("T1041", "T1041", "T1041"))
 })
 
-test_that("summary.pkgaudit() counts an expression once per phase its file runs in", {
+test_that("summary.pkgaudit() counts a match once per phase its file runs in", {
   s <- summary(rich_obj())
   # Four occurrences, each in the three phases that install the package.
-  expect_equal(sum(s$expressions$n), 12L)
-  expect_equal(unique(s$expressions$phase),
+  expect_equal(sum(s$matches$n), 12L)
+  expect_equal(unique(s$matches$phase),
                c("at_build", "at_check", "at_install_src"))
 })
 
-test_that("summary.pkgaudit() gathers expressions that run in no phase under 'none'", {
+test_that("summary.pkgaudit() gathers matches that run in no phase under 'none'", {
   obj <- rich_obj()
-  obj$expressions[, .phase_columns] <- FALSE
+  obj$matches[, .phase_columns] <- FALSE
   s <- summary(obj)
-  expect_equal(unique(s$expressions$phase), "none")
-  expect_equal(sum(s$expressions$n), 4L)
+  expect_equal(unique(s$matches$phase), "none")
+  expect_equal(sum(s$matches$n), 4L)
 })
 
 test_that("summary.pkgaudit() renames the errors columns and keeps all four", {
@@ -142,8 +146,8 @@ test_that("summary.pkgaudit() renames the errors columns and keeps all four", {
     .error_row("parse_code", "R/bad.R", NA_character_, "unexpected ')'")
   ))
   s <- summary(obj)
-  expect_named(s$errors, c("stage", "script", "rule", "error"))
-  expect_equal(s$errors$stage,  c("find_file_contexts", "parse_code"))
+  expect_named(s$errors, c("step", "script", "rule", "error"))
+  expect_equal(s$errors$step,  c("find_file_contexts", "parse_code"))
   expect_equal(s$errors$script, c(NA, "R/bad.R"))
   expect_equal(s$errors$rule,   c("file_configure", NA))
   expect_equal(s$errors$error,  c("bad glob", "unexpected ')'"))
@@ -154,10 +158,10 @@ test_that("summary.pkgaudit() summarizes an object with no findings", {
   expect_equal(nrow(s$file_contexts), 0L)
   expect_equal(nrow(s$code_contexts), 0L)
   expect_equal(nrow(s$patterns),      0L)
-  expect_equal(nrow(s$expressions),   0L)
+  expect_equal(nrow(s$matches),   0L)
   expect_equal(nrow(s$errors),        0L)
   expect_named(s$patterns,    c("phase", "code_context", "rule", "n", "attck"))
-  expect_named(s$expressions, c("phase", "file_context", "rule", "n", "attck"))
+  expect_named(s$matches, c("phase", "file_context", "rule", "n", "attck"))
 })
 
 test_that("summary.pkgaudit() records the path choice", {
@@ -172,7 +176,7 @@ test_that("print.summary.pkgaudit() writes every section in order", {
   expect_match(headers, "^--- .+ -+$")
   expect_equal(sub(" -+$", "", headers),
                c("--- pkgaudit Summary", "--- R Patterns",
-                 "--- Shell / Make Expressions", "--- Errors"))
+                 "--- Shell / Make Matches", "--- Errors"))
   # Three narrower than a terminal line, so a "#> " prefix still fits in 80.
   expect_true(all(nchar(headers) == 77L))
   expect_true(all(nchar(lines) <= 77L))
@@ -201,14 +205,14 @@ test_that("print.summary.pkgaudit() renders the patterns table", {
   expect_true(any(grepl("^none +Other +source +1   T1059$", lines)))
 })
 
-test_that("print.summary.pkgaudit() renders the expressions table", {
+test_that("print.summary.pkgaudit() renders the matches table", {
   lines <- capture.output(print(summary(rich_obj())))
   expect_true(any(grepl("^phase +file_context +rule +n   attck$", lines)))
   expect_true(any(grepl("^at_install_src +configure +curl +2   T1041$", lines)))
   expect_true(any(grepl("^at_build +src/Makevars +curl +1   T1041$", lines)))
 })
 
-test_that("print.summary.pkgaudit() reports patterns before expressions", {
+test_that("print.summary.pkgaudit() reports patterns before matches", {
   lines   <- capture.output(print(summary(rich_obj())))
   headers <- grep("^--- ", lines)
   expect_lt(grep("^--- R Patterns", lines), grep("^--- Shell / Make", lines))
@@ -242,7 +246,7 @@ test_that("print.summary.pkgaudit() honours the recorded path and an override", 
 test_that("print.summary.pkgaudit() reports empty sections with a message", {
   lines <- capture.output(print(summary(make_obj())))
   expect_true(any(grepl("^No patterns were found\\.$", lines)))
-  expect_true(any(grepl("^No expressions were found\\.$", lines)))
+  expect_true(any(grepl("^No matches were found\\.$", lines)))
 })
 
 # Errors section ---------------------------------------------------------------
@@ -252,14 +256,14 @@ test_that("the Errors section reports the all-clear when there are no errors", {
   expect_false(any(grepl("could not be", lines)))
 })
 
-test_that("the Errors section lists every error row with its stage", {
+test_that("the Errors section lists every error row with its step", {
   obj <- rich_obj(errors = errors_for(
     .error_row("find_file_contexts", NA_character_, "file_configure", "bad glob"),
     .error_row("parse_code", "R/bad.R", NA_character_, "unexpected ')'"),
     .error_row("find_patterns", "R/a.R", "system", "invalid xpath")
   ))
   lines <- capture.output(print(summary(obj)))
-  expect_true(any(grepl("^stage +script +rule +error$", lines)))
+  expect_true(any(grepl("^step +script +rule +error$", lines)))
   # NA renders blank: the file-context rule names no script, the parse failure
   # names no rule.
   expect_true(any(grepl("^find_file_contexts +file_configure +bad glob$", lines)))
@@ -268,7 +272,7 @@ test_that("the Errors section lists every error row with its stage", {
                         lines)))
 })
 
-test_that("the Errors section notes what each stage's failures cost the scan", {
+test_that("the Errors section notes what each step's failures cost the scan", {
   obj <- rich_obj(errors = errors_for(
     .error_row("find_file_contexts", NA_character_, "file_configure", "bad glob"),
     .error_row("parse_code", "R/bad.R",   NA_character_, "unexpected ')'"),
@@ -304,23 +308,24 @@ test_that("the Errors notes count distinct scripts and rules, and agree in numbe
   )
 })
 
-test_that("the Errors notes separate an unreadable file from a failed expression rule", {
-  # Reading and matching are separate stages, so a file that could not be read
+test_that("the Errors notes separate an unreadable file from a failed match rule", {
+  # Reading and matching are separate steps, so a file that could not be read
   # is never reported as a rule that failed.
   obj <- rich_obj(errors = errors_for(
     .error_row("read_code",  "configure",    NA_character_, "too large"),
-    .error_row("find_regex", "src/Makevars", "curl",        "invalid regex")
+    .error_row("find_matches", "src/Makevars", "curl",        "invalid regex")
   ))
   notes <- paste(capture.output(print(summary(obj))), collapse = " ")
   expect_match(notes,
     "1 file could not be read in full and was not completely scanned\\.")
   expect_match(notes,
-    "1 expression rule could not be evaluated in 1 shell or Make-like file\\.")
+    "1 match rule could not be evaluated in 1 shell or Make-like file\\.")
 })
 
 test_that("the Errors notes report an incompletely read help file", {
   obj <- rich_obj(errors = errors_for(
-    .error_row("extract_Rd_code", "man/f.Rd", NA_character_, "unknown macro")
+    .error_row("extract_Rd_code", "man/f.Rd", NA_character_,
+               "unexpected END_OF_INPUT")
   ))
   expect_match(
     paste(capture.output(print(summary(obj))), collapse = " "),
@@ -328,22 +333,119 @@ test_that("the Errors notes report an incompletely read help file", {
   )
 })
 
-test_that("the Errors notes for expressions agree in number", {
+test_that("the Errors notes for matches agree in number", {
   obj <- rich_obj(errors = errors_for(
-    .error_row("find_regex", "configure",    "curl", "invalid regex"),
-    .error_row("find_regex", "src/Makevars", "curl", "invalid regex"),
-    .error_row("find_regex", "src/Makevars", "wget", "invalid regex")
+    .error_row("find_matches", "configure",    "curl", "invalid regex"),
+    .error_row("find_matches", "src/Makevars", "curl", "invalid regex"),
+    .error_row("find_matches", "src/Makevars", "wget", "invalid regex")
   ))
   expect_match(
     paste(capture.output(print(summary(obj))), collapse = " "),
-    "2 expression rules could not be evaluated in 2 shell or Make-like files\\. .*in these files\\."
+    "2 match rules could not be evaluated in 2 shell or Make-like files\\. .*in these files\\."
   )
 })
 
-test_that("the Errors section counts an unrecognized stage rather than dropping it", {
+test_that("the Errors section counts an unrecognized step rather than dropping it", {
   obj <- rich_obj(errors = errors_for(
     .error_row("some_new_stage", "R/a.R", NA_character_, "boom")
   ))
   notes <- paste(capture.output(print(summary(obj))), collapse = " ")
   expect_match(notes, "1 error occurred during some_new_stage\\.")
+})
+
+# Rd macro guidance ------------------------------------------------------------
+# An unexpandable macro is not a file that could not be read: the file was read
+# in full, and only the code the macro produces is missing. Every provider named
+# below expands to a \Sexpr carrying a real call, so this is lost coverage
+# rather than a cosmetic warning.
+
+# .error_notes() returns wrapped lines with a blank between notes, so a note is
+# matched against the joined text and counted by the blank separators.
+notes_text <- function(errors) paste(.error_notes(errors), collapse = " ")
+macro_errors <- function(...) {
+  msgs <- c(...)
+  data.frame(step = rep("extract_Rd_code", length(msgs)),
+             script = paste0("man/", seq_along(msgs), ".Rd"),
+             rule = NA_character_, error = msgs, stringsAsFactors = FALSE)
+}
+
+test_that("an unexpandable macro is reported as lost coverage, with the fix", {
+  note <- notes_text(macro_errors("/p/a.Rd:1: unknown macro '\\insertRef'"))
+  expect_match(note, "could not be expanded")
+  expect_match(note, "installing Rdpack would recover it", fixed = TRUE)
+  # Not the wrong description: the file itself was read fine.
+  expect_false(grepl("could not be read in full", note))
+})
+
+test_that("providers from several packages are all named", {
+  note <- notes_text(macro_errors(
+    "/p/a.Rd:1: unknown macro '\\insertRef'",
+    "/p/b.Rd:2: unknown macro '\\lifecycle'",
+    "/p/c.Rd:3: unknown macro '\\mjseqn'"
+  ))
+  expect_match(note, "Rdpack, lifecycle and mathjaxr", fixed = TRUE)
+})
+
+# The macro provider is looked up by macro name against a fixed list, never
+# taken from the audited package's RdMacros field. That field is chosen by the
+# package under audit, so echoing it would let a hostile package have pkgaudit
+# tell the analyst to install something of its choosing.
+test_that("an unrecognised macro is counted but never suggested as an install", {
+  note <- notes_text(macro_errors("/p/a.Rd:1: unknown macro '\\evilPayload'"))
+  expect_match(note, "1 help file used Rd macros", fixed = TRUE)
+  expect_false(grepl("installing", note))
+  expect_false(grepl("evilPayload", note))
+})
+
+test_that("macro and parse failures are reported as the two different things", {
+  notes <- notes_text(macro_errors(
+    "/p/a.Rd:1: unknown macro '\\insertRef'",
+    "/p/b.Rd:2: unexpected END_OF_INPUT"
+  ))
+  expect_match(notes, "1 help file used Rd macros that could not be expanded")
+  expect_match(notes, "1 help file could not be read in full")
+})
+
+# phase filtering --------------------------------------------------------------
+# The summary is expanded by phase before it is returned, so it cannot be subset
+# afterwards -- filtering has to happen here or not at all.
+
+test_that("summary() reports every phase by default", {
+  s <- summary(rich_obj())
+  expect_null(s$phase)
+  expect_true(all(c("at_build", "at_load", "none") %in% s$patterns$phase))
+})
+
+test_that("phase restricts the report to the phases named", {
+  s <- summary(rich_obj(), phase = "at_load")
+  expect_equal(unique(s$patterns$phase), "at_load")
+  expect_equal(unique(s$matches$phase), character(0))
+
+  two <- summary(rich_obj(), phase = c("at_load", "at_build"))
+  expect_setequal(unique(two$patterns$phase), c("at_load", "at_build"))
+})
+
+test_that("phase accepts none, for code that ships but runs at no phase", {
+  s <- summary(rich_obj(), phase = "none")
+  expect_equal(unique(s$patterns$phase), "none")
+  expect_true(all(s$patterns$code_context == "Other"))
+})
+
+# An unknown phase matching nothing would render as a clean scan.
+test_that("an unrecognised phase is refused, not silently empty", {
+  expect_error(summary(rich_obj(), phase = "at_lod"), "unknown phase")
+  expect_error(summary(rich_obj(), phase = 1L), "character vector")
+  expect_error(summary(rich_obj(), phase = character(0)), "character vector")
+  expect_error(summary(rich_obj(), phase = NA_character_), "character vector")
+})
+
+# A filtered report that looked unfiltered could be read as a clean scan of a
+# package whose findings are simply in a phase nobody asked for.
+test_that("a filtered report names its phases in the header", {
+  filtered <- paste(capture.output(print(summary(rich_obj(), phase = "at_load"))),
+                    collapse = " ")
+  expect_match(filtered, "Phases:\\s+at_load")
+
+  full <- paste(capture.output(print(summary(rich_obj()))), collapse = " ")
+  expect_false(grepl("Phases:", full))
 })

@@ -72,7 +72,7 @@ test_that("audit_package() executes nothing in the package it scans", {
   # examples, the \Sexpr macros, and the R sources are all represented.
   expect_true(all(c("man/f.Rd", "R/zzz.R") %in% res$patterns$file_context))
   expect_true(any(res$patterns$code_context == "Rd_examples"))
-  expect_true(any(res$patterns$code_context == "Rd_Sexpr"))
+  expect_true(any(res$patterns$code_context == "Rd_Sexpr_install"))
 })
 
 test_that("extract_Rd_code() executes nothing, with or without macros", {
@@ -94,7 +94,9 @@ test_that("parsing extracted code executes nothing", {
   code <- extract_Rd_code(file.path(pkg, "man", "f.Rd"),
                           macros = tools::loadPkgRdMacros(pkg))
   parse_code(strsplit(code$examples, "\n", fixed = TRUE)[[1L]])
-  parse_code(strsplit(code$sexpr,    "\n", fixed = TRUE)[[1L]])
+  for (stage in code$sexpr) {
+    parse_code(strsplit(stage, "\n", fixed = TRUE)[[1L]])
+  }
   expect_equal(list.files(dir), character(0L))
 })
 
@@ -104,7 +106,7 @@ test_that("audit_tarball() executes nothing in the tarball it scans", {
   on.exit(unlink(c(dir, pkg), recursive = TRUE), add = TRUE)
 
   # Rename to the <name>_<version> convention audit_tarball() requires.
-  staged <- file.path(tempfile("stage"), "markerpkg")
+  staged <- file.path(tempfile("step"), "markerpkg")
   dir.create(dirname(staged), recursive = TRUE)
   file.rename(pkg, staged)
   on.exit(unlink(dirname(staged), recursive = TRUE), add = TRUE)

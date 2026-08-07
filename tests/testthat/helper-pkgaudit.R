@@ -51,7 +51,7 @@ make_obj <- function(n_file = 0L, n_code = 0L, n_pat = 0L, n_expr = 0L,
   fc <- .empty_file_contexts()
   cc <- .empty_code_contexts()
   pt <- .empty_patterns()
-  ex <- .empty_expressions()
+  ex <- .empty_matches()
   er <- .empty_errors()
   install_phases <- phase_values("at_build", "at_check", "at_install_src")
 

@@ -1,0 +1,28 @@
+name: tools_scripts
+version: "0.1.0"
+type: R
+message: >-
+  tools/ holds helper scripts that nothing runs on its own. It is reached only
+  if configure or a Makevars invokes it, in which case that invocation is
+  reported where it appears and carries that file's phases. The code is scanned
+  here so a reviewer can read what would run.
+at_autoconf: FALSE
+at_build: FALSE
+at_check: FALSE
+at_install_src: FALSE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "tools"
+recursive: FALSE
+report: FALSE
+namespace_source: FALSE
+code_context: "tools_R"
+filename: '\.[RrSsq]$'
+positive_examples:
+  - tools/setup.R
+negative_examples:
+  - R/setup.R
+  - tools/data/fixture.R

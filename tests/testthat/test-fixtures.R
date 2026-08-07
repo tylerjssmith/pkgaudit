@@ -51,26 +51,26 @@ test_that("pattern rules match their positive fixtures and reject negatives", {
 })
 
 # --- Regex fixtures -----------------------------------------------------------
-# Regex examples are lines of shell or make. find_regex() reads a file, so each
+# Regex examples are lines of shell or make. find_matches() reads a file, so each
 # fixture is scanned where it sits.
 test_that("regex rules match their positive fixtures and reject negatives", {
-  base <- test_path("fixtures", "regex")
-  for (name in rules$regex$name) {
+  base <- test_path("fixtures", "matches")
+  for (name in rules$matches$name) {
     rule_dir <- file.path(base, name)
     expect_true(dir.exists(rule_dir), info = name)
-    rule <- rule_row(rules$regex, name)
+    rule <- rule_row(rules$matches, name)
 
     for (pos in list.files(rule_dir, pattern = "^positive_\\d+\\.txt$",
                            full.names = TRUE)) {
-      res <- find_regex(read_code(pos)$lines, rule, basename(pos))
-      expect_gt(nrow(res$expressions), 0L)
+      res <- find_matches(read_code(pos)$lines, rule, basename(pos))
+      expect_gt(nrow(res$matches), 0L)
       expect_equal(nrow(res$errors), 0L)
-      expect_equal(unique(res$expressions$rule), name, info = pos)
+      expect_equal(unique(res$matches$rule), name, info = pos)
     }
     for (neg in list.files(rule_dir, pattern = "^negative_\\d+\\.txt$",
                            full.names = TRUE)) {
-      res <- find_regex(read_code(neg)$lines, rule, basename(neg))
-      expect_equal(nrow(res$expressions), 0L, info = neg)
+      res <- find_matches(read_code(neg)$lines, rule, basename(neg))
+      expect_equal(nrow(res$matches), 0L, info = neg)
       expect_equal(nrow(res$errors), 0L, info = neg)
     }
   }

@@ -4,17 +4,10 @@
 \alias{new_pkgaudit}
 \title{Construct a pkgaudit object}
 \usage{
-new_pkgaudit(
-  file_contexts,
-  code_contexts,
-  patterns,
-  expressions,
-  errors,
-  metadata
-)
+new_pkgaudit(file_contexts, code_contexts, patterns, matches, errors, metadata)
 }
 \arguments{
-\item{file_contexts, code_contexts, patterns, expressions, errors}{Data frames
+\item{file_contexts, code_contexts, patterns, matches, errors}{Data frames
 with the columns documented in \code{\link[=audit_package]{audit_package()}}.}
 
 \item{metadata}{Named list with the fields documented in \code{\link[=audit_package]{audit_package()}},
@@ -22,7 +15,7 @@ each a length-one value of the expected type.}
 }
 \value{
 A \code{pkgaudit} object: a named list of \code{file_contexts},
-\code{code_contexts}, \code{patterns}, \code{expressions}, \code{errors}, and \code{metadata}.
+\code{code_contexts}, \code{patterns}, \code{matches}, \code{errors}, and \code{metadata}.
 }
 \description{
 Assembles the five result data frames and a metadata list into a validated
