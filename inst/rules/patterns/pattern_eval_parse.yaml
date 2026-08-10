@@ -9,6 +9,8 @@ message: >-
   eval() applied to parse(), str2lang(), or str2expression() constructs and
   evaluates code at runtime. Here code is produced by decoding or decompression,
   a classic shape for executing an obfuscated payload.
+# Empty: do.call("eval", ...) loses the parse and decode calls nested inside.
+functions: []
 xpath: >-
   //expr[
     expr/SYMBOL_FUNCTION_CALL[

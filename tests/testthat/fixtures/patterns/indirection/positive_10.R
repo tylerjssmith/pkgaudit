@@ -1,1 +1,0 @@
-getFunction("system")

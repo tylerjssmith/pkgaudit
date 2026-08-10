@@ -1,0 +1,27 @@
+name: description
+version: "0.1.0"
+type: other
+message: >-
+  DESCRIPTION is not inert. Its Authors@R field is R code, which R parses
+  and evaluates when the package is built and checked. pkgaudit does not
+  read the file, so the row records that it executes and was not examined.
+at_autoconf: FALSE
+at_build: TRUE
+at_check: TRUE
+at_install_src: FALSE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "."
+recursive: FALSE
+report: FALSE
+namespace_source: FALSE
+code_context: "R"
+filename: '^DESCRIPTION$'
+positive_examples:
+  - DESCRIPTION
+negative_examples:
+  - NAMESPACE
+  - inst/DESCRIPTION

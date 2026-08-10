@@ -1,5 +1,5 @@
 name: system
-version: "0.3.0"
+version: "0.4.0"
 language: R
 attck:
   - T1059.003
@@ -7,6 +7,11 @@ attck:
 message: >-
   system(), system2(), shell() (on Windows), and pipe() execute arbitrary shell
   commands.
+functions:
+  - system
+  - system2
+  - shell
+  - pipe
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
     (text() = 'system' or text() = 'system2' or text() = 'shell'

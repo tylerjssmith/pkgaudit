@@ -1,11 +1,19 @@
 name: httr2
-version: "0.3.0"
+version: "0.4.0"
 language: R
 attck:
   - T1041
 message: >-
   An httr2 HTTP call sends an outbound request. A request may be used to
   exfiltrate credentials or other data.
+functions:
+  - req_perform
+  - req_perform_iterative
+  - req_perform_parallel
+  - req_perform_sequential
+  - req_perform_stream
+  - req_perform_connection
+  - req_perform_promise
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
     (

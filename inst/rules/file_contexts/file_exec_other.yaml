@@ -1,0 +1,29 @@
+name: exec_other
+version: "0.1.0"
+type: other
+message: >-
+  A script under exec/ in a language pkgaudit does not read. R installs
+  exec/ verbatim and marks its contents executable, so this ships as a
+  runnable program, but nothing runs it during a lifecycle phase.
+at_autoconf: FALSE
+at_build: FALSE
+at_check: FALSE
+at_install_src: FALSE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "exec"
+recursive: FALSE
+report: FALSE
+namespace_source: FALSE
+code_context: "R"
+filename: '\.(py|pl|rb|bat|ps1|tcl|lua)$'
+positive_examples:
+  - exec/build.py
+  - exec/tool.pl
+  - exec/run.bat
+negative_examples:
+  - exec/script.R
+  - exec/script.sh

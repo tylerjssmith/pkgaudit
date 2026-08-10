@@ -1,10 +1,12 @@
 name: source
-version: "0.3.0"
+version: "0.4.0"
 language: R
 attck:
   - T1059
 message: >-
   source() can fetch and execute local and remote R scripts.
+functions:
+  - source
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
     text() = 'source'

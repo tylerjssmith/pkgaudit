@@ -1,11 +1,16 @@
 name: deserialization
-version: "0.3.0"
+version: "0.4.0"
 language: R
 attck:
   - T1059
 message: >-
   readRDS(), load(), unserialize(), and dget() deserialize R objects or code,
   which can enable arbitrary code execution (CVE-2024-27322 for RDS).
+functions:
+  - readRDS
+  - load
+  - unserialize
+  - dget
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
     (

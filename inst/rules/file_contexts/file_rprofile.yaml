@@ -19,7 +19,7 @@ path: "."
 recursive: FALSE
 report: FALSE
 namespace_source: FALSE
-code_context: "rprofile_R"
+code_context: "Rprofile"
 filename: '^\.Rprofile$'
 positive_examples:
   - .Rprofile

@@ -1,0 +1,1 @@
+/usr/lib/R/bin/Rscript.exe configure.R

@@ -18,7 +18,7 @@ path: "inst/tinytest"
 recursive: FALSE
 report: FALSE
 namespace_source: FALSE
-code_context: "test_R"
+code_context: "tests"
 filename: '\.[RrSsq]$'
 positive_examples:
   - inst/tinytest/test_audit.R

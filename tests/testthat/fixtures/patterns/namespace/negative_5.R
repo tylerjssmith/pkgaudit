@@ -1,0 +1,1 @@
+asNamespace("somepkg")

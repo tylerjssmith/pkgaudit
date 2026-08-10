@@ -1,0 +1,31 @@
+name: src_compiled
+version: "0.1.0"
+type: other
+message: >-
+  Compiled source under src/ is built into the package's shared object by
+  R CMD INSTALL and loaded with the namespace. pkgaudit does not read it;
+  the row exists so the file is accounted for, and export_unscanned() can
+  hand it to a tool that does.
+at_autoconf: FALSE
+at_build: FALSE
+at_check: TRUE
+at_install_src: TRUE
+at_install_bin: FALSE
+at_load: TRUE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "src"
+recursive: TRUE
+report: FALSE
+namespace_source: FALSE
+code_context: "R"
+filename: '.'
+positive_examples:
+  - src/rcpp_hello.cpp
+  - src/init.c
+  - src/vendor/zlib/gz.c
+  - src/lib.rs
+negative_examples:
+  - R/zzz.R
+  - inst/extdata/x.c

@@ -3,7 +3,7 @@ version: "0.1.0"
 type: R
 report: FALSE
 namespace_source: TRUE
-code_context: "Top-level"
+code_context: "R"
 message: >-
   R source files in R/unix are evaluated when the package is installed from source,
   when the lazy-load database is built. They are scanned for code contexts and

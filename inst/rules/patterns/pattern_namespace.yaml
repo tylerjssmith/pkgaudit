@@ -1,0 +1,66 @@
+name: namespace
+version: "0.1.0"
+language: R
+attck:
+  - T1027
+  - T1574
+message: >-
+  These functions reach past a package namespace. getFromNamespace(),
+  getExportedValue() and getAnywhere() read objects a package does not export;
+  assignInNamespace(), assignInMyNamespace() and unlockBinding() replace or
+  unseal bindings in a namespace already loaded, so an ordinary call made later
+  can run something else. The ::: operator is not matched here, since R CMD
+  check already reports it.
+functions:
+  - getFromNamespace
+  - getExportedValue
+  - getAnywhere
+  - assignInNamespace
+  - assignInMyNamespace
+  - unlockBinding
+xpath: >-
+  //SYMBOL_FUNCTION_CALL[
+    (
+      text() = 'getFromNamespace' or text() = 'getExportedValue'
+      or text() = 'getAnywhere' or text() = 'assignInNamespace'
+      or text() = 'assignInMyNamespace' or text() = 'unlockBinding'
+    )
+    and not(preceding-sibling::OP-DOLLAR)
+    and not(preceding-sibling::OP-AT)
+  ]
+positive_examples:
+  - |
+    getFromNamespace("evil", "somepkg")
+  - |
+    utils::getFromNamespace(x = "evil", ns = "somepkg")
+  - |
+    getExportedValue("base", "system")
+  - |
+    getAnywhere("evil")
+  - |
+    assignInNamespace("read.csv", function(...) NULL, "utils")
+  - |
+    assignInMyNamespace("check_license", function(...) TRUE)
+  - |
+    unlockBinding("read.csv", asNamespace("utils"))
+  - |
+    getFromNamespace(fname, pkgname)
+  - |
+    getAnywhere(nm)
+negative_examples:
+  - |
+    foo$getFromNamespace("evil", "somepkg")
+  - |
+    foo@getAnywhere("evil")
+  - |
+    get("evil")
+  - |
+    getNamespace("somepkg")
+  - |
+    asNamespace("somepkg")
+  - |
+    loadNamespace("somepkg")
+  - |
+    lockBinding("evil", env)
+  - |
+    somepkg:::evil

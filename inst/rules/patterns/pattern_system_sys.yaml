@@ -1,5 +1,5 @@
 name: system_sys
-version: "0.3.0"
+version: "0.4.0"
 language: R
 attck:
   - T1059
@@ -7,6 +7,15 @@ message: >-
   These sys functions run an external process or fork the R session, which may
   be used to execute arbitrary shell commands or a second R session outside the
   visible R source.
+functions:
+  - exec_wait
+  - exec_background
+  - exec_internal
+  - eval_safe
+  - eval_fork
+  - r_background
+  - r_internal
+  - r_wait
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
     (

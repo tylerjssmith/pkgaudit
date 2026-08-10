@@ -1,5 +1,5 @@
 name: system_callr
-version: "0.3.0"
+version: "0.4.0"
 language: R
 attck:
   - T1059
@@ -7,6 +7,15 @@ message: >-
   These callr functions start a separate R session or run an R CMD command,
   which may be used to execute arbitrary R code or shell commands outside the
   visible R source.
+functions:
+  - r_bg
+  - r_safe
+  - r_copycat
+  - r_vanilla
+  - rscript
+  - rcmd_bg
+  - rcmd_safe
+  - rcmd_copycat
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
     (

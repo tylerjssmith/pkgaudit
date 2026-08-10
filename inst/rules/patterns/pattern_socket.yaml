@@ -1,5 +1,5 @@
 name: socket
-version: "0.3.0"
+version: "0.4.0"
 language: R
 attck:
   - T1041
@@ -7,6 +7,11 @@ attck:
 message: >-
   These functions open a raw network socket, which may be used to exfiltrate
   data or receive a remote payload outside the usual HTTP clients.
+functions:
+  - socketConnection
+  - make.socket
+  - serverSocket
+  - socketAccept
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
     (

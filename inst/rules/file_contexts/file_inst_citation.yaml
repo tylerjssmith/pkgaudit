@@ -19,7 +19,7 @@ path: "inst"
 recursive: FALSE
 report: FALSE
 namespace_source: FALSE
-code_context: "citation_R"
+code_context: "citation"
 filename: '^CITATION$'
 positive_examples:
   - inst/CITATION

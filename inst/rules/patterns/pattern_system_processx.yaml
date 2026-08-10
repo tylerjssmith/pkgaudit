@@ -6,6 +6,8 @@ attck:
 message: >-
   These processx functions run an external process, which may be used to
   execute arbitrary shell commands outside the visible R source.
+# Empty: do.call("run", ...) loses the processx:: qualifier this rule matches on.
+functions: []
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
     (

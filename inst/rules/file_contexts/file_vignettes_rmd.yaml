@@ -18,7 +18,7 @@ path: "vignettes"
 recursive: FALSE
 report: FALSE
 namespace_source: FALSE
-code_context: "vignette"
+code_context: "vignettes"
 filename: '\.[Rr]md$'
 positive_examples:
   - vignettes/intro.Rmd

@@ -19,7 +19,7 @@ path: "exec"
 recursive: FALSE
 report: FALSE
 namespace_source: FALSE
-code_context: "exec_R"
+code_context: "exec"
 filename: '\.[RrSsq]$'
 positive_examples:
   - exec/tokenize.R

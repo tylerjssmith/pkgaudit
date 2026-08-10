@@ -1,11 +1,27 @@
 name: install
-version: "0.3.0"
+version: "0.4.0"
 language: R
 attck:
   - T1105
 message: >-
   These functions install packages, optionally from a specified or remote
   source. A non-default source can introduce attacker-controlled code.
+functions:
+  - install.packages
+  - install_github
+  - install_gitlab
+  - install_bitbucket
+  - install_git
+  - install_url
+  - install_version
+  - install_local
+  - install_bioc
+  - install_dev
+  - install_cran
+  - pak
+  - pkg_install
+  - local_install
+  - lockfile_install
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
     (

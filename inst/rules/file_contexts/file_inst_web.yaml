@@ -1,0 +1,30 @@
+name: inst_web
+version: "0.1.0"
+type: other
+message: >-
+  JavaScript shipped under inst/ runs in a browser when a user renders the
+  widget or app it belongs to, not at any package lifecycle phase. It is
+  still code the package ships and pkgaudit does not read, so it is
+  recorded and can be exported.
+at_autoconf: FALSE
+at_build: FALSE
+at_check: FALSE
+at_install_src: FALSE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "inst"
+recursive: TRUE
+report: FALSE
+namespace_source: FALSE
+code_context: "R"
+filename: '\.(js|mjs|ts)$'
+positive_examples:
+  - inst/htmlwidgets/w.js
+  - inst/www/app.js
+  - inst/app/server.mjs
+negative_examples:
+  - inst/CITATION
+  - src/init.c

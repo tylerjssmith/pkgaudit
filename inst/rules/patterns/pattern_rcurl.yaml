@@ -1,11 +1,17 @@
 name: rcurl
-version: "0.3.0"
+version: "0.4.0"
 language: R
 attck:
   - T1041
 message: >-
   An RCurl network call sends an outbound HTTP request. A request may be used to
   exfiltrate credentials or other data, or to fetch a remote payload.
+functions:
+  - getURL
+  - getURI
+  - getForm
+  - postForm
+  - curlPerform
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
     (

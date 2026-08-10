@@ -21,7 +21,7 @@ path: "exec"
 recursive: FALSE
 report: FALSE
 namespace_source: FALSE
-code_context: "Top-level"
+code_context: "R"
 filename: '\.(sh|bash|ksh|zsh|csh)$'
 positive_examples:
   - exec/compileAttr.sh

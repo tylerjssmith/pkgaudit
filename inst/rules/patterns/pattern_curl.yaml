@@ -1,5 +1,5 @@
 name: curl
-version: "0.3.0"
+version: "0.4.0"
 language: R
 attck:
   - T1041
@@ -7,6 +7,17 @@ message: >-
   A curl network call sends an outbound HTTP request or opens a connection to a
   remote host. A request may be used to exfiltrate credentials or other data, or
   to fetch a remote payload.
+functions:
+  - curl
+  - curl_fetch_memory
+  - curl_fetch_disk
+  - curl_fetch_stream
+  - curl_fetch_multi
+  - curl_download
+  - curl_upload
+  - multi_download
+  - multi_run
+  - send_mail
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
     (

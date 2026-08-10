@@ -18,7 +18,7 @@ path: "tests/testthat"
 recursive: FALSE
 report: FALSE
 namespace_source: FALSE
-code_context: "test_R"
+code_context: "tests"
 filename: '\.[RrSsq]$'
 positive_examples:
   - tests/testthat/test-audit.R

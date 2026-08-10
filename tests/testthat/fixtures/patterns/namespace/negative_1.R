@@ -1,0 +1,1 @@
+foo$getFromNamespace("evil", "somepkg")

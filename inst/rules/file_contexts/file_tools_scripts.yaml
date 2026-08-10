@@ -19,7 +19,7 @@ path: "tools"
 recursive: FALSE
 report: FALSE
 namespace_source: FALSE
-code_context: "tools_R"
+code_context: "tools"
 filename: '\.[RrSsq]$'
 positive_examples:
   - tools/setup.R

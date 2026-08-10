@@ -1,5 +1,5 @@
 name: download_file
-version: "0.3.0"
+version: "0.4.0"
 language: R
 attck:
   - T1105
@@ -7,6 +7,9 @@ message: >-
   download.file() and url() retrieve or open a connection to a remote resource.
   This can stage a payload for execution via source() or system() in a two-stage
   attack.
+functions:
+  - download.file
+  - url
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
     (text() = 'download.file' or text() = 'url')

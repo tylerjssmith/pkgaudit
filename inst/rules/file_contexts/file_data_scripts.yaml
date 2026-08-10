@@ -20,7 +20,7 @@ path: "data"
 recursive: FALSE
 report: FALSE
 namespace_source: FALSE
-code_context: "data_R"
+code_context: "data"
 filename: '\.[RrSsq]$'
 positive_examples:
   - data/things.R

@@ -1,0 +1,27 @@
+name: inst_tests
+version: "0.1.0"
+type: R
+message: >-
+  Older versions of testthat kept tests under inst/tests/, which R CMD check runs
+  through a runner in tests/. Unlike tests/, inst/ is copied into the installed
+  package, so this code also ships to the user.
+at_autoconf: FALSE
+at_build: FALSE
+at_check: TRUE
+at_install_src: FALSE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "inst/tests"
+recursive: FALSE
+report: FALSE
+namespace_source: FALSE
+code_context: "tests"
+filename: '\.[RrSsq]$'
+positive_examples:
+  - inst/tests/test-audit.R
+negative_examples:
+  - inst/tests/helpers/setup.R
+  - tests/test-audit.R

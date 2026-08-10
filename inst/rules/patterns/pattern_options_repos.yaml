@@ -7,6 +7,8 @@ message: >-
   options(repos = ...) replaces the CRAN mirror for the R session. Subsequent
   install.packages() calls will fetch packages from the configured repository.
   If set to an attacker-controlled server, this poisons the installation source.
+# Empty: do.call("options", ...) loses the repos argument this rule matches on.
+functions: []
 xpath: >-
   //expr[
     expr/SYMBOL_FUNCTION_CALL[text() = 'options']

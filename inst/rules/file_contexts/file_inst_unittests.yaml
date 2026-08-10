@@ -1,0 +1,27 @@
+name: inst_unittests
+version: "0.1.0"
+type: R
+message: >-
+  RUnit keeps its tests under inst/unitTests/, which R CMD check runs through a
+  runner in tests/. Unlike tests/, inst/ is copied into the installed package,
+  so this code also ships to the user.
+at_autoconf: FALSE
+at_build: FALSE
+at_check: TRUE
+at_install_src: FALSE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "inst/unitTests"
+recursive: FALSE
+report: FALSE
+namespace_source: FALSE
+code_context: "tests"
+filename: '\.[RrSsq]$'
+positive_examples:
+  - inst/unitTests/runit.audit.R
+negative_examples:
+  - inst/unitTests/data/fixture.R
+  - tests/runit.audit.R

@@ -1,1 +1,0 @@
-foo$getFromNamespace("system", "base")

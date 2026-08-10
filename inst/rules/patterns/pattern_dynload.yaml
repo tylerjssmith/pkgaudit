@@ -1,11 +1,14 @@
 name: dynload
-version: "0.3.0"
+version: "0.4.0"
 language: R
 attck:
   - T1129
 message: >-
   dyn.load() and library.dynam() load compiled code from a shared object, which
   executes outside the visible R source.
+functions:
+  - dyn.load
+  - library.dynam
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
     (text() = 'dyn.load' or text() = 'library.dynam')

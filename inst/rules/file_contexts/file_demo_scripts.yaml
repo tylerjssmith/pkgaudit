@@ -18,7 +18,7 @@ path: "demo"
 recursive: FALSE
 report: FALSE
 namespace_source: FALSE
-code_context: "demo_R"
+code_context: "demo"
 filename: '\.[RrSsq]$'
 positive_examples:
   - demo/intro.R

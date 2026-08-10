@@ -1,11 +1,16 @@
 name: decoding
-version: "0.3.0"
+version: "0.4.0"
 language: R
 attck:
   - T1140
 message: >-
   These functions decode or decompress data. Payloads may be encoded (e.g., as
   base64) to evade static detection and decoded at runtime.
+functions:
+  - base64decode
+  - base64_dec
+  - base64_decode
+  - memDecompress
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
     (
