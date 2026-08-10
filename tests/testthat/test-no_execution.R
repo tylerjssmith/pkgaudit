@@ -120,3 +120,15 @@ test_that("audit_tarball() executes nothing in the tarball it scans", {
   audit_tarball(tarball)
   expect_equal(list.files(dir), character(0L))
 })
+
+test_that("exporting the unreadable parts executes nothing either", {
+  # export_unscanned() is the only function that writes, and it reads files the
+  # scan deliberately did not. The invariant has to hold over that path too.
+  dir <- tempfile("markers"); dir.create(dir)
+  pkg <- make_marker_pkg(dir)
+  out <- tempfile("out")
+  on.exit(unlink(c(dir, pkg, out), recursive = TRUE), add = TRUE)
+
+  export_unscanned(audit_package(pkg, load_rules()), out, source = pkg)
+  expect_length(list.files(dir, recursive = TRUE), 0L)
+})

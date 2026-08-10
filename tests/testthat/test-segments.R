@@ -111,17 +111,23 @@ test_that("analyze_segment() finds patterns in an R segment", {
                      "R/zzz.R", named_contexts = TRUE)
   found <- analyze_segment(seg, rules)
   expect_true("system" %in% found$patterns$rule)
-  expect_true("onLoad_base" %in% found$code_contexts$rule)
+  expect_equal(found$patterns$code_context, "onLoad_base")
 })
 
 test_that("analyze_segment() withholds named contexts when the segment says so", {
   lines <- ".onLoad <- function(l, p) system('id')"
-  expect_equal(nrow(analyze_segment(
+
+  # A hook assigned in a help-page example is not a hook. With the named rules
+  # withheld the call is just code inside a function definition, so it lands in
+  # Other and carries no phases -- it runs only if something calls it.
+  rd <- analyze_segment(
     new_segment("R", lines, "man/f.Rd", context = .context_rd_examples,
-                named_contexts = FALSE), rules)$code_contexts), 0L)
-  expect_gt(nrow(analyze_segment(
-    new_segment("R", lines, "R/zzz.R", named_contexts = TRUE),
-    rules)$code_contexts), 0L)
+                named_contexts = FALSE), rules)
+  expect_equal(rd$patterns$code_context, .context_other)
+
+  r <- analyze_segment(
+    new_segment("R", lines, "R/zzz.R", named_contexts = TRUE), rules)
+  expect_equal(r$patterns$code_context, "onLoad_base")
 })
 
 test_that("analyze_segment() finds matches in a shell segment", {
@@ -144,7 +150,6 @@ test_that("analyze_segment() fails closed for a language with no method", {
 
 test_that("analyze_segment() returns frames with the canonical columns", {
   found <- analyze_segment(new_segment("shell", "curl x", "configure"), rules)
-  expect_named(found$code_contexts, names(.empty_code_contexts(FALSE)))
   expect_named(found$patterns,      names(.empty_patterns(FALSE)))
   expect_named(found$matches,       names(.empty_matches(FALSE)))
 })

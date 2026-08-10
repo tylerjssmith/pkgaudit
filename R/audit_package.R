@@ -18,21 +18,26 @@
 #'   \describe{
 #'     \item{file_contexts}{`rule`, `file_context`, `message`, and the phase
 #'       columns.}
-#'     \item{code_contexts}{`rule`, `file_context`, `line_number`,
-#'       `column_number`, `message`, and the phase columns. Join to
-#'       `file_contexts` on `file_context`.}
 #'     \item{patterns}{`rule`, `file_context`, `line_number`,
-#'       `column_number`, `code_context`, `preview`, `message`, `attck`, and the
-#'       phase columns, in that order: the leading columns are the ones a reader
-#'       skims, and `message` and `attck` restate the rule rather than the
-#'       occurrence. Join to the other tables on `file_context`, and to
-#'       `code_contexts$rule` on `code_context`.}
+#'       `column_number`, `code_context`, `guarded`, `indirect`, `preview`,
+#'       `message`, `attck`, and the phase columns, in that order: the leading
+#'       columns are the ones a reader skims, and `message` and `attck` restate
+#'       the rule rather than the occurrence. `guarded` and `indirect` say how
+#'       the code is reached rather than what it is, and are described under
+#'       Details. `code_context` is where the code sits -- the directory or
+#'       file it is in, or the lifecycle hook enclosing it -- and is what its
+#'       phases are looked up from. Join to the other tables on `file_context`.}
 #'     \item{matches}{`rule`, `file_context`, `line_number`,
 #'       `column_number`, `preview`, `message`, `attck`, and the phase columns,
 #'       ordered as `patterns` is, less the `code_context` a match has no
 #'       parse tree to sit in. Regular matches matched in the shell scripts
 #'       and Make-like files among the file contexts. Join to the other tables
 #'       on `file_context`.}
+#'     \item{coverage}{`file_context`, `language`, `status`, `reason`,
+#'       `first_line`, `last_line`, `lines`, `bytes`, `rule`, and the phase
+#'       columns. One row for every file in the package -- not only the ones
+#'       scanned -- saying how well pkgaudit read it and why not better. See
+#'       Details.}
 #'     \item{errors}{`step`, `file_context`, `rule`, `message`.}
 #'     \item{metadata}{List of `pkg_name`, `pkg_version`, `pkg_path`,
 #'       `pkg_is_tarball`, `pkg_sha256`, `pkgaudit_version`,
@@ -66,6 +71,27 @@
 #' under `exec/`, for instance. Nothing is reported for an unclaimed file, so its
 #' absence from the findings is not evidence that it is clean.
 #'
+#' The `coverage` frame accounts for every file in the package, so that a clean
+#' scan can be checked rather than taken on trust. Each row's `status` is one of
+#' `parsed` (read as R), `matched` (scanned as text), `exportable` (a language
+#' pkgaudit does not read, which [export_unscanned()] can hand to a tool that
+#' does), `unexamined` (never read), or `error` (read attempted and refused --
+#' too large, unreadable, or would not parse). `reason` says what stood in the
+#' way. `unexamined` and `error` are different claims: pkgaudit never tried to
+#' read the first and could not read the second. Every `error` row has a
+#' matching row in `errors`, and only a failure at a reading step counts: a rule
+#' that fails on a file says nothing about the file.
+#'
+#' Nothing is assumed inert. A `.md` file can be read, parsed and evaluated, and
+#' deserializing an `.rda` can execute arbitrary code, so no extension is
+#' allowlisted out and coverage never reaches 100%. What the frame offers is not
+#' completeness but legibility: what was not examined, and whether it runs.
+#' Phases come from where a file sits rather than from what it is named, so a
+#' file in a directory no rule anticipates is still reported, with no phases.
+#' Version-control and IDE state (`.git/`, `.Rproj.user/`, `renv/library/`) is
+#' outside the package and excluded; `.Rbuildignore` is not consulted, since it
+#' is written by the package under audit.
+#'
 #' Recoverable failures in the orchestrated finders are collected in the
 #' `errors` data frame rather than aborting the audit. File paths in every
 #' returned data frame are relative to the package root.
@@ -94,6 +120,16 @@
 #' whenever the page is rendered -- during `R CMD build`, installation from
 #' source, and `R CMD check`, but not on installation from a binary package.
 #'
+#' `patterns` carries two logical columns describing how its code is reached
+#' rather than what the code is. `guarded` is `TRUE` for code that ships but
+#' the lifecycle does not run -- a `\dontrun{}` or `\donttest{}` block, or a
+#' vignette chunk marked `eval=FALSE`. Its phases still come from its context,
+#' so they stay an upper bound. `indirect` is `TRUE` where the call was made
+#' through the function's name rather than the function, as in
+#' `do.call("system", ...)`; such a finding is reported under the rule that owns
+#' the name, so filtering on `rule` returns every call to it however it was
+#' spelled. See [find_indirect()].
+#'
 #' Patterns are matched against R's parse tree, matches against the text of
 #' a shell script or Make-like file. Text matching has no syntax behind it, so
 #' a match reported inside a comment or a quoted string cannot be told
@@ -121,9 +157,9 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
 
   # The finders build frames without phase columns; phases are attached once,
   # from rules$phases, after every file has been scanned.
-  code_contexts <- .empty_code_contexts(with_phases = FALSE)
   patterns      <- .empty_patterns(with_phases = FALSE)
   matches       <- .empty_matches(with_phases = FALSE)
+  spans         <- .empty_coverage(with_phases = FALSE)
   errors        <- .empty_errors()
 
   found  <- find_file_contexts(path, rules$file_contexts)
@@ -137,7 +173,9 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
   # them reads macro definitions as text; it evaluates nothing.
   macros <- .load_rd_macros(path)
 
+  scanned <- character(0L)
   for (target in .scan_targets(found$file_contexts, rules$file_contexts)) {
+    scanned[[target$file_context]] <- target$type
     # Classed by the rule's type, which is the only thing deciding how the file
     # is read, and the only place a new variety of file is named.
     src    <- new_source(file.path(path, target$file_context),
@@ -152,15 +190,25 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
       # yield several languages, so this is a separate axis from the source.
       hits <- analyze_segment(segment, rules)
 
-      code_contexts <- rbind(code_contexts, hits$code_contexts)
       patterns      <- rbind(patterns,      hits$patterns)
       matches       <- rbind(matches,       hits$matches)
+      spans         <- rbind(spans,         hits$coverage)
       errors        <- rbind(errors,        hits$errors)
     }
   }
 
+  # Built from the tree rather than from the rules, so a file no rule
+  # anticipates is still accounted for. Its phases come from the rule that
+  # claimed it, which for the directory-wide coverage rules means a file
+  # inherits the phases of where it sits rather than of what it is named.
+  coverage <- .merge_coverage(
+    build_coverage(path, found$file_contexts, rules$file_contexts,
+                   scanned = scanned, errors = errors),
+    spans
+  )
+
   file_contexts <- .attach_phases(file_contexts, rules$phases)
-  code_contexts <- .attach_phases(code_contexts, rules$phases)
+  coverage      <- .attach_phases(coverage, rules$phases)
   patterns      <- .resolve_pattern_phases(patterns, rules$phases)
   matches       <- .resolve_match_phases(matches,
     .attach_phases(found$file_contexts, rules$phases)
@@ -183,9 +231,9 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
 
   new_pkgaudit(
     file_contexts = file_contexts,
-    code_contexts = code_contexts,
     patterns      = patterns,
     matches       = matches,
+    coverage      = coverage,
     errors        = errors,
     metadata      = metadata
   )
@@ -228,7 +276,11 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
 
   i    <- match(file_contexts$rule, file_context_rules$name)
   type <- file_context_rules$type[i]
-  keep <- !is.na(type)
+  # Type "other" means a file pkgaudit does not read. Such a rule exists to
+  # account for the file in `coverage` and to give it the phases of where it
+  # sits, so it is dropped here rather than dispatched to a reader that would
+  # return nothing.
+  keep <- !is.na(type) & type != "other"
   if (!any(keep)) return(list())
 
   pairs <- unique(data.frame(

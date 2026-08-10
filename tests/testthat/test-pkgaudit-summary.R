@@ -16,20 +16,15 @@ rich_obj <- function(errors = .empty_errors(), metadata = good_metadata()) {
   fc[2L, ] <- c(list("configure",    "configure",    "m"), installed)
   fc[3L, ] <- c(list("src_makevars", "src/Makevars", "m"), installed)
 
-  cc <- .empty_code_contexts()
-  cc[1L, ] <- c(list("onLoad_base",   "R/zzz.R", 1L, 1L, "m"), loaded)
-  cc[2L, ] <- c(list("onAttach_base", "R/zzz.R", 9L, 1L, "m"), attached)
-  cc[3L, ] <- c(list("onLoad_base",   "R/aaa.R", 4L, 1L, "m"), loaded)
-
   pt <- .empty_patterns()
   pt[1L, ] <- c(list("source", "R/zzz.R", 1L, 1L, "onLoad_base",
-                     FALSE, "p", "m", "T1059"), loaded)
+                     FALSE, FALSE, "p", "m", "T1059"), loaded)
   pt[2L, ] <- c(list("rcurl",  "R/zzz.R", 2L, 1L, "onLoad_base",
-                     FALSE, "p", "m", "T1041"), loaded)
-  pt[3L, ] <- c(list("source", "R/aaa.R", 3L, 1L, "Top-level",
-                     FALSE, "p", "m", "T1059"), installed)
+                     FALSE, FALSE, "p", "m", "T1041"), loaded)
+  pt[3L, ] <- c(list("source", "R/aaa.R", 3L, 1L, "R",
+                     FALSE, FALSE, "p", "m", "T1059"), installed)
   pt[4L, ] <- c(list("source", "R/aaa.R", 7L, 1L, "Other",
-                     FALSE, "p", "m", "T1059"), uncalled)
+                     FALSE, FALSE, "p", "m", "T1059"), uncalled)
 
   # An match takes its phases from the file context it sits in, so all of
   # these are the phases that install the package.
@@ -43,7 +38,7 @@ rich_obj <- function(errors = .empty_errors(), metadata = good_metadata()) {
   ex[4L, ] <- c(list("curl", "src/Makevars", 2L, 11L, "p", "m", "T1041"),
                 installed)
 
-  new_pkgaudit(fc, cc, pt, ex, errors, metadata)
+  new_pkgaudit(fc, pt, ex, .empty_coverage(), errors, metadata)
 }
 
 # Errors for the given steps, one row each, with the fields that step sets.
@@ -56,29 +51,27 @@ errors_for <- function(...) {
 test_that("summary.pkgaudit() returns a summary.pkgaudit object", {
   s <- summary(rich_obj())
   expect_s3_class(s, "summary.pkgaudit")
-  expect_named(s, c("file_contexts", "code_contexts", "patterns",
-                    "matches", "errors", "metadata", "path", "phase"))
+  expect_named(s, c("file_contexts", "patterns", "matches", "coverage",
+                    "errors", "metadata", "path", "phase"))
   expect_identical(s$metadata, good_metadata())
 })
 
-test_that("summary.pkgaudit() lists each context once, in the order first seen", {
+test_that("summary.pkgaudit() lists each file context once, in the order first seen", {
   s <- summary(rich_obj())
   expect_named(s$file_contexts, "file_context")
-  expect_named(s$code_contexts, "code_context")
   expect_equal(s$file_contexts$file_context, c("src/Makevars", "configure"))
-  expect_equal(s$code_contexts$code_context, c("onLoad_base", "onAttach_base"))
 })
 
 # Patterns section -------------------------------------------------------------
-test_that("summary.pkgaudit() counts patterns by phase, context, and rule", {
+test_that("summary.pkgaudit() counts patterns by phase and rule", {
   s <- summary(rich_obj())
-  expect_named(s$patterns, c("phase", "code_context", "rule", "n", "attck"))
+  # No code_context: it is how a finding's phases were derived, not a finding.
+  expect_named(s$patterns, c("phase", "rule", "n", "attck"))
 
   at_load <- s$patterns[s$patterns$phase == "at_load", ]
-  expect_equal(at_load$code_context, c("onLoad_base", "onLoad_base"))
-  expect_equal(at_load$rule,         c("rcurl", "source"))
-  expect_equal(at_load$n,            c(1L, 1L))
-  expect_equal(at_load$attck,        c("T1041", "T1059"))
+  expect_equal(at_load$rule,  c("rcurl", "source"))
+  expect_equal(at_load$n,     c(1L, 1L))
+  expect_equal(at_load$attck, c("T1041", "T1059"))
 })
 
 test_that("summary.pkgaudit() counts an occurrence once per phase it runs in", {
@@ -95,33 +88,34 @@ test_that("summary.pkgaudit() gathers patterns that run in no phase under 'none'
   none <- s$patterns[s$patterns$phase == "none", ]
   # The one pattern inside an ordinary function; nothing else.
   expect_equal(nrow(none), 1L)
-  expect_equal(none$code_context, "Other")
-  expect_equal(none$rule,         "source")
-  expect_equal(none$n,            1L)
+  expect_equal(none$rule, "source")
+  expect_equal(none$n,    1L)
 })
 
-test_that("summary.pkgaudit() orders patterns by phase, then context, then rule", {
+test_that("summary.pkgaudit() orders patterns by phase, then rule", {
   s <- summary(rich_obj())
   # Lifecycle order, "none" last, and phases nothing runs in are omitted.
   expect_equal(unique(s$patterns$phase),
                c("at_build", "at_check", "at_install_src", "at_load", "none"))
   at_build <- s$patterns[s$patterns$phase == "at_build", ]
-  expect_equal(at_build$code_context,
-               c("Top-level", "onLoad_base", "onLoad_base"))
-  expect_equal(at_build$rule, c("source", "rcurl", "source"))
+  expect_equal(at_build$rule, c("rcurl", "source"))
+  # Two source() occurrences in different contexts share the phase and are
+  # counted together; which contexts they sit in is in the patterns frame.
+  expect_equal(at_build$n, c(1L, 2L))
 })
 
 # Matches section ----------------------------------------------------------
-test_that("summary.pkgaudit() counts matches by phase, file context, and rule", {
+test_that("summary.pkgaudit() counts matches by phase and rule", {
   s <- summary(rich_obj())
-  expect_named(s$matches, c("phase", "file_context", "rule", "n", "attck"))
+  # Shaped as patterns is: what runs, and when. Which file is on the frame.
+  expect_named(s$matches, c("phase", "rule", "n", "attck"))
 
   at_build <- s$matches[s$matches$phase == "at_build", ]
-  expect_equal(at_build$file_context, c("configure", "configure", "src/Makevars"))
-  expect_equal(at_build$rule,         c("curl", "wget", "curl"))
-  # Two curl matches on one line of configure are two occurrences.
-  expect_equal(at_build$n,            c(2L, 1L, 1L))
-  expect_equal(at_build$attck,        c("T1041", "T1041", "T1041"))
+  expect_equal(at_build$rule,  c("curl", "wget"))
+  # Three curl matches -- two in configure, one in src/Makevars -- counted
+  # together now that the file is not part of the grouping.
+  expect_equal(at_build$n,     c(3L, 1L))
+  expect_equal(at_build$attck, c("T1041", "T1041"))
 })
 
 test_that("summary.pkgaudit() counts a match once per phase its file runs in", {
@@ -146,9 +140,9 @@ test_that("summary.pkgaudit() renames the errors columns and keeps all four", {
     .error_row("parse_code", "R/bad.R", NA_character_, "unexpected ')'")
   ))
   s <- summary(obj)
-  expect_named(s$errors, c("step", "script", "rule", "error"))
+  expect_named(s$errors, c("step", "file_context", "rule", "error"))
   expect_equal(s$errors$step,  c("find_file_contexts", "parse_code"))
-  expect_equal(s$errors$script, c(NA, "R/bad.R"))
+  expect_equal(s$errors$file_context, c(NA, "R/bad.R"))
   expect_equal(s$errors$rule,   c("file_configure", NA))
   expect_equal(s$errors$error,  c("bad glob", "unexpected ')'"))
 })
@@ -156,12 +150,11 @@ test_that("summary.pkgaudit() renames the errors columns and keeps all four", {
 test_that("summary.pkgaudit() summarizes an object with no findings", {
   s <- summary(make_obj())
   expect_equal(nrow(s$file_contexts), 0L)
-  expect_equal(nrow(s$code_contexts), 0L)
   expect_equal(nrow(s$patterns),      0L)
   expect_equal(nrow(s$matches),   0L)
   expect_equal(nrow(s$errors),        0L)
-  expect_named(s$patterns,    c("phase", "code_context", "rule", "n", "attck"))
-  expect_named(s$matches, c("phase", "file_context", "rule", "n", "attck"))
+  expect_named(s$patterns,    c("phase", "rule", "n", "attck"))
+  expect_named(s$matches, c("phase", "rule", "n", "attck"))
 })
 
 test_that("summary.pkgaudit() records the path choice", {
@@ -176,7 +169,7 @@ test_that("print.summary.pkgaudit() writes every section in order", {
   expect_match(headers, "^--- .+ -+$")
   expect_equal(sub(" -+$", "", headers),
                c("--- pkgaudit Summary", "--- R Patterns",
-                 "--- Shell / Make Matches", "--- Errors"))
+                 "--- Shell / Make Matches", "--- Coverage", "--- Errors"))
   # Three narrower than a terminal line, so a "#> " prefix still fits in 80.
   expect_true(all(nchar(headers) == 77L))
   expect_true(all(nchar(lines) <= 77L))
@@ -200,16 +193,16 @@ test_that("print.summary.pkgaudit() renders the patterns table", {
   lines <- capture.output(print(summary(rich_obj())))
   # Character columns are left-aligned, the count right-aligned under its
   # header, and columns three spaces apart.
-  expect_true(any(grepl("^phase +code_context +rule +n   attck$", lines)))
-  expect_true(any(grepl("^at_load +onLoad_base +source +1   T1059$", lines)))
-  expect_true(any(grepl("^none +Other +source +1   T1059$", lines)))
+  expect_true(any(grepl("^phase +rule +n   attck$", lines)))
+  expect_true(any(grepl("^at_load +source +1   T1059$", lines)))
+  expect_true(any(grepl("^none +source +1   T1059$", lines)))
 })
 
 test_that("print.summary.pkgaudit() renders the matches table", {
   lines <- capture.output(print(summary(rich_obj())))
-  expect_true(any(grepl("^phase +file_context +rule +n   attck$", lines)))
-  expect_true(any(grepl("^at_install_src +configure +curl +2   T1041$", lines)))
-  expect_true(any(grepl("^at_build +src/Makevars +curl +1   T1041$", lines)))
+  expect_true(any(grepl("^phase +rule +n   attck$", lines)))
+  expect_true(any(grepl("^at_install_src +curl +3   T1041$", lines)))
+  expect_true(any(grepl("^at_build +wget +1   T1041$", lines)))
 })
 
 test_that("print.summary.pkgaudit() reports patterns before matches", {
@@ -223,11 +216,9 @@ test_that("print.summary.pkgaudit() omits the contexts, which stay on the object
   lines <- capture.output(print(s))
   # The report has no Contexts section and names no context table.
   expect_false(any(grepl("^--- Contexts", lines)))
-  expect_false(any(grepl("^code_context$", lines)))
-  expect_false(any(grepl("^onAttach_base$", lines)))
-  # They remain available programmatically.
+  expect_false(any(grepl("^file_context$", lines)))
+  # It remains available programmatically.
   expect_equal(s$file_contexts$file_context, c("src/Makevars", "configure"))
-  expect_equal(s$code_contexts$code_context, c("onLoad_base", "onAttach_base"))
 })
 
 test_that("print.summary.pkgaudit() honours the recorded path and an override", {
@@ -263,13 +254,13 @@ test_that("the Errors section lists every error row with its step", {
     .error_row("find_patterns", "R/a.R", "system", "invalid xpath")
   ))
   lines <- capture.output(print(summary(obj)))
-  expect_true(any(grepl("^step +script +rule +error$", lines)))
-  # NA renders blank: the file-context rule names no script, the parse failure
-  # names no rule.
-  expect_true(any(grepl("^find_file_contexts +file_configure +bad glob$", lines)))
-  expect_true(any(grepl("^parse_code +R/bad\\.R +unexpected", lines)))
-  expect_true(any(grepl("^find_patterns +R/a\\.R +system +invalid xpath$",
-                        lines)))
+  # The table says where to look; the rule and the message stay in s$errors.
+  expect_true(any(grepl("^step +file_context$", lines)))
+  expect_false(any(grepl("invalid xpath", lines, fixed = TRUE)))
+  # NA renders blank: a file-context rule names no script.
+  expect_true(any(grepl("^find_file_contexts *$", lines)))
+  expect_true(any(grepl("^parse_code +R/bad\\.R$", lines)))
+  expect_true(any(grepl("^find_patterns +R/a\\.R$", lines)))
 })
 
 test_that("the Errors section notes what each step's failures cost the scan", {

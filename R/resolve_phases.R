@@ -34,7 +34,7 @@
 #
 # A pattern's phases are those of its code context, which is either a
 # code-context rule name or one of the sentinels determine_code_contexts()
-# assigns: "Top-level" for code with no enclosing function, "Other" for code
+# assigns: "R" for code with no enclosing function, "Other" for code
 # inside an ordinary function. Both sentinels have rows in the phases table.
 #
 # "Other" resolves to no phases at all, which is the intended reading: that code

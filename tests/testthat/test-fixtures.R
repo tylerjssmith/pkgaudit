@@ -112,3 +112,41 @@ test_that("file-context rules find their positive paths and reject negatives", {
     expect_false(any(negatives %in% found), info = name)
   }
 })
+
+# --- The functions field ------------------------------------------------------
+# `functions` is what lets find_indirect() attribute do.call("x", ...) back to a
+# rule. It is only trustworthy if it restates the rule's XPath rather than
+# asserting something new, so every declared name is checked against the rule
+# that declares it. build_db.R enforces this when the database is written; this
+# asserts it of the database that actually ships.
+test_that("every declared function name is one its own rule matches", {
+  for (name in rules$patterns$name) {
+    rule      <- rule_row(rules$patterns, name)
+    declared  <- strsplit(rule$functions, "[[:space:]]+")[[1L]]
+    declared  <- declared[nzchar(declared)]
+
+    for (fn in declared) {
+      tree <- tree_from_lines(paste0(fn, "()"))
+      res  <- find_patterns(tree, rule, "test.R")
+      expect_gt(nrow(res$patterns), 0L)
+      expect_equal(unique(res$patterns$rule), name,
+                   info = paste0(name, " declares ", fn))
+    }
+  }
+})
+
+# The three rules that can claim no name each match on something do.call() does
+# not carry: a nested call, a named argument, a package qualifier. Empty is a
+# decision, so it is asserted rather than left to be noticed.
+test_that("rules matching on more than the callee declare no functions", {
+  structural <- c("eval_parse", "options_repos", "system_processx")
+  for (name in structural) {
+    rule <- rule_row(rules$patterns, name)
+    expect_equal(trimws(rule$functions), "", info = name)
+  }
+  others <- setdiff(rules$patterns$name, structural)
+  for (name in others) {
+    rule <- rule_row(rules$patterns, name)
+    expect_true(nzchar(trimws(rule$functions)), info = name)
+  }
+})

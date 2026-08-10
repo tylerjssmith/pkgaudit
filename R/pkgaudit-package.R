@@ -2,7 +2,7 @@
 #' The main entry points are [audit_package()] and [audit_tarball()], which scan
 #' a package source directory and tarball, respectively, and return a
 #' [new_pkgaudit()] object holding four result data frames (file_contexts,
-#' code_contexts, patterns, errors) plus scan metadata. Its
+#' patterns, matches, coverage, errors) plus scan metadata. Its
 #' [format()][format.pkgaudit] and [print()][print.pkgaudit] methods render the
 #' metadata and finding counts.
 #'

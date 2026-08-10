@@ -23,7 +23,7 @@ test_that("a pattern in a named hook is labeled with that context", {
 
 test_that("a top-level pattern is labeled Top-level", {
   pat <- contexts_for("system('x')")
-  expect_equal(pat$code_context, "Top-level")
+  expect_equal(pat$code_context, "R")
 })
 
 test_that("a pattern in an ordinary function is labeled Other", {
@@ -72,5 +72,5 @@ test_that("determine_code_contexts() falls back cleanly when no code contexts ex
   tree  <- tree_from_text(c("system('top')", "g <- function() system('inner')"))
   fp    <- find_patterns(tree, rules$patterns, "R/zzz.R")
   out   <- determine_code_contexts(tree, fp$patterns, no_cc)
-  expect_setequal(out$code_context, c("Top-level", "Other"))
+  expect_setequal(out$code_context, c("R", "Other"))
 })

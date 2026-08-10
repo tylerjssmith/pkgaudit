@@ -19,11 +19,25 @@
     .section_header("Shell / Make Matches"),
     .summary_section(x$matches, "No matches were found."),
     "",
+    .section_header("Coverage"),
+    .coverage_section(x$coverage),
+    "",
     .section_header("Errors"),
     .errors_section(x$errors)
   )
 }
 
+
+# Render the Coverage section: what pkgaudit made of the package, then the
+# uncovered code that runs anyway.
+#
+# Counts with reasons, and no percentage. Nothing is assumed inert, so coverage
+# never reaches 100% and a ratio would only ever flatter -- what a reader needs
+# is which files were not examined and whether they execute.
+.coverage_section <- function(coverage) {
+  if (nrow(coverage) == 0L) return("No files were found.")
+  .format_table(coverage)
+}
 
 # Render one summary section: the table, or a message when there is nothing to
 # report.
@@ -32,11 +46,26 @@
 }
 
 
-# Render the Errors section: the table of every error followed by the notes
-# describing the coverage lost, or the all-clear when there were none.
+# Render the Errors section: every error by step and script, followed by the
+# notes describing the coverage lost, or the all-clear when there were none.
+#
+# Only two columns. The rule is already implied by the step for the rules that
+# have one, and a message runs long enough to wrap the report -- what the reader
+# needs from the table is where to look, and the notes say what it cost.
+# "file_context", not "script": an error can be recorded against a Makevars or
+# a help page, and file_context is what every frame in the object calls it.
 .errors_section <- function(errors) {
   if (nrow(errors) == 0L) return("No exceptions were raised.")
-  c(.format_table(errors), "", .error_notes(errors))
+  c(.format_table(errors[, c("step", "file_context")]), "", .error_notes(errors))
+}
+
+
+# Shorten a path from the left, keeping the tail that distinguishes it, so a
+# deep directory cannot push the report past its width. Display only; the frame
+# carries the whole path.
+.elide <- function(x, width = 40L) {
+  ifelse(nchar(x) <= width, x,
+         paste0("...", substring(x, nchar(x) - width + 4L)))
 }
 
 

@@ -9,36 +9,36 @@
 #' `pkgaudit` S3 object. [audit_package()] calls this at the end of a scan. It
 #' is also used to construct objects directly (e.g., in tests).
 #'
-#' @param file_contexts,code_contexts,patterns,matches,errors Data frames
-#'   with the columns documented in [audit_package()].
+#' @param file_contexts,patterns,matches,coverage,errors Data frames with the
+#'   columns documented in [audit_package()].
 #' @param metadata Named list with the fields documented in [audit_package()],
 #'   each a length-one value of the expected type.
 #'
-#' @return A `pkgaudit` object: a named list of `file_contexts`,
-#'   `code_contexts`, `patterns`, `matches`, `errors`, and `metadata`.
+#' @return A `pkgaudit` object: a named list of `file_contexts`, `patterns`,
+#'   `matches`, `coverage`, `errors`, and `metadata`.
 #'
 #' @keywords internal
 new_pkgaudit <- function(
   file_contexts,
-  code_contexts,
   patterns,
   matches,
+  coverage,
   errors,
   metadata
 ) {
   .validate_result_df(file_contexts, "file_contexts")
-  .validate_result_df(code_contexts, "code_contexts")
   .validate_result_df(patterns,      "patterns")
   .validate_result_df(matches,   "matches")
+  .validate_result_df(coverage,      "coverage")
   .validate_result_df(errors,        "errors")
   .validate_metadata(metadata)
 
   structure(
     list(
       file_contexts = file_contexts,
-      code_contexts = code_contexts,
       patterns      = patterns,
       matches   = matches,
+      coverage      = coverage,
       errors        = errors,
       metadata      = metadata
     ),
@@ -85,11 +85,16 @@ new_pkgaudit <- function(
 # The code contexts that are computed rather than rule-matched. Each has a row
 # in the phases table, so resolving a pattern's phases stays a lookup.
 #
-# Top-level and Other are assigned by determine_code_contexts() from a pattern's
-# position in the parse tree. The two Rd contexts are assigned from the segment a
-# pattern was extracted from: a help file has no R parse tree of its own, so
-# what distinguishes its code is which part of the file it came from.
-.context_top_level  <- "Top-level"
+# A code context is named for where the code sits: the package directory or file
+# it is in, subdivided where one place holds parts that run at different times.
+# `Other` and the named hooks are the exceptions, and are named for the construct
+# they match, because they are not places -- code inside a function is anywhere,
+# and a hook is a hook wherever in R/ it is written.
+#
+# `R` is assigned by determine_code_contexts() to top-level code, then replaced
+# by the file-context rule's own name where there is one, which is how code in
+# data/ or tests/ carries the phases of where it sits rather than of R/.
+.context_top_level  <- "R"
 .context_other      <- "Other"
 .context_rd_examples <- "Rd_examples"
 
@@ -118,15 +123,29 @@ new_pkgaudit <- function(
 # package-root-relative path and joins the frames to each other.
 .pkgaudit_columns <- list(
   file_contexts = c("rule", "file_context", "message", .phase_columns),
-  code_contexts = c("rule", "file_context", "line_number", "column_number",
-                    "message", .phase_columns),
   patterns      = c("rule", "file_context", "line_number", "column_number",
-                    "code_context", "guarded", "preview", "message", "attck",
-                    .phase_columns),
+                    "code_context", "guarded", "indirect", "preview",
+                    "message", "attck", .phase_columns),
   matches   = c("rule", "file_context", "line_number", "column_number",
                     "preview", "message", "attck", .phase_columns),
+  coverage      = c("file_context", "language", "status", "reason",
+                    "first_line", "last_line", "lines", "bytes", "rule",
+                    .phase_columns),
   errors        = c("step", "file_context", "rule", "message")
 )
+
+
+# What pkgaudit made of a file, and why it made no more of it.
+#
+# `error` and `unexamined` are not the same claim: pkgaudit tried to read a file
+# it reports as `error` and could not, and never tried to read an unexamined
+# one. Every `error` row has a matching row in the `errors` frame, and only a
+# failure at a reading step counts -- a rule that fails on a file says nothing
+# about the file. `reason` says what stood in the way, NA where nothing did.
+.coverage_statuses <- c("parsed", "matched", "exportable", "unexamined",
+                        "error")
+.coverage_reasons <- c("no_analyser", "serialized", "binary", "no_rule",
+                       "symlink", "too_large", "unreadable", "unparseable")
 
 
 # Validate that a metadata list has exactly its expected fields and that each

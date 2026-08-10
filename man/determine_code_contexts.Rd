@@ -18,7 +18,7 @@ in the \code{"nodes"} attribute aligned to the rows.}
 }
 \value{
 \code{patterns} with an added \code{code_context} column (a named context,
-\code{"Top-level"}, or \code{"Other"}; never \code{NA}). The \code{"nodes"} attribute is
+\code{"R"}, or \code{"Other"}; never \code{NA}). The \code{"nodes"} attribute is
 dropped from the result.
 }
 \description{
@@ -31,8 +31,8 @@ named context iff its node is a descendant of that context's node. When a
 pattern sits inside more than one named context, the most-specific
 (innermost) one wins.
 
-\code{"Top-level"} and \code{"Other"} are not rule-matched; they are computed here as
-fallbacks for a pattern in no named context. \code{"Top-level"} is assigned when
+\code{"R"} and \code{"Other"} are not rule-matched; they are computed here as
+fallbacks for a pattern in no named context. \code{"R"} is assigned when
 the pattern has no function-definition ancestor; \code{"Other"} when it has one.
 
 Containment is tested by exact XML path identity, never by path-prefix

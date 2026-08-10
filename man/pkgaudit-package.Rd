@@ -12,7 +12,7 @@ A static analysis security testing (SAST) tool for R packages. Flags security-re
 The main entry points are \code{\link[=audit_package]{audit_package()}} and \code{\link[=audit_tarball]{audit_tarball()}}, which scan
 a package source directory and tarball, respectively, and return a
 \code{\link[=new_pkgaudit]{new_pkgaudit()}} object holding four result data frames (file_contexts,
-code_contexts, patterns, errors) plus scan metadata. Its
+patterns, matches, coverage, errors) plus scan metadata. Its
 \link[=format.pkgaudit]{format()} and \link[=print.pkgaudit]{print()} methods render the
 metadata and finding counts.
 }

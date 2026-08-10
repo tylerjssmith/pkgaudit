@@ -4,14 +4,14 @@
 test_that("new_pkgaudit() accepts a well-formed object", {
   obj <- make_obj()
   expect_s3_class(obj, "pkgaudit")
-  expect_named(obj, c("file_contexts", "code_contexts", "patterns",
-                      "matches", "errors", "metadata"))
+  expect_named(obj, c("file_contexts", "patterns", "matches", "coverage",
+                      "errors", "metadata"))
 })
 
 test_that("new_pkgaudit() errors when a data frame is not a data frame", {
   expect_error(
-    new_pkgaudit("nope", .empty_code_contexts(), .empty_patterns(),
-                 .empty_matches(), .empty_errors(), good_metadata()),
+    new_pkgaudit("nope", .empty_patterns(), .empty_matches(),
+                 .empty_coverage(), .empty_errors(), good_metadata()),
     "file_contexts.*must be a data frame"
   )
 })
@@ -19,8 +19,8 @@ test_that("new_pkgaudit() errors when a data frame is not a data frame", {
 test_that("new_pkgaudit() errors on wrong data-frame columns", {
   bad <- .empty_file_contexts()
   bad$message <- NULL
-  expect_error(new_pkgaudit(bad, .empty_code_contexts(), .empty_patterns(),
-                            .empty_matches(), .empty_errors(),
+  expect_error(new_pkgaudit(bad, .empty_patterns(), .empty_matches(),
+                            .empty_coverage(), .empty_errors(),
                             good_metadata()),
                "file_contexts.*missing: message")
 })
@@ -28,8 +28,8 @@ test_that("new_pkgaudit() errors on wrong data-frame columns", {
 test_that("new_pkgaudit() errors on wrong matches columns", {
   # An match carries no code_context: its phases come from its file
   # context, so a frame shaped like patterns is not one.
-  expect_error(new_pkgaudit(.empty_file_contexts(), .empty_code_contexts(),
-                            .empty_patterns(), .empty_patterns(),
+  expect_error(new_pkgaudit(.empty_file_contexts(), .empty_patterns(),
+                            .empty_patterns(), .empty_coverage(),
                             .empty_errors(), good_metadata()),
                "matches.*unexpected: code_context")
 })
@@ -57,14 +57,12 @@ test_that("new_pkgaudit() errors on a wrong-typed metadata field", {
 
 # format.pkgaudit() ------------------------------------------------------------
 test_that("format.pkgaudit() returns a character vector with the expected lines", {
-  obj   <- make_obj(n_file = 4L, n_code = 6L, n_pat = 17L, n_expr = 3L,
-                    n_err = 0L)
+  obj   <- make_obj(n_file = 4L, n_pat = 17L, n_expr = 3L, n_err = 0L)
   lines <- format(obj)
   expect_type(lines, "character")
   expect_match(lines[[1L]], "^--- pkgaudit -+$")
   expect_true(any(grepl("^Package:\\s+foo v0.1.0 \\(source directory\\)$", lines)))
   expect_true(any(grepl("^File contexts:\\s+4$", lines)))
-  expect_true(any(grepl("^Code contexts:\\s+6$", lines)))
   expect_true(any(grepl("^Patterns:\\s+17$", lines)))
   expect_true(any(grepl("^Matches:\\s+3$", lines)))
   # Scanned line renders the ISO value as YYYY-MM-DD HH:MM UTC.
@@ -72,13 +70,11 @@ test_that("format.pkgaudit() returns a character vector with the expected lines"
 })
 
 test_that("format.pkgaudit() counts match the data-frame row counts", {
-  obj   <- make_obj(n_file = 2L, n_code = 3L, n_pat = 5L, n_expr = 4L,
-                    n_err = 1L)
+  obj   <- make_obj(n_file = 2L, n_pat = 5L, n_expr = 4L, n_err = 1L)
   lines <- format(obj)
   val <- function(label) sub(paste0("^", label, "\\s+"), "",
                              grep(paste0("^", label), lines, value = TRUE))
   expect_equal(val("File contexts:"), as.character(nrow(obj$file_contexts)))
-  expect_equal(val("Code contexts:"), as.character(nrow(obj$code_contexts)))
   expect_equal(val("Patterns:"),      as.character(nrow(obj$patterns)))
   expect_equal(val("Matches:"),       as.character(nrow(obj$matches)))
 })

@@ -11,7 +11,7 @@
 #'   `xpath`) is used.
 #'
 #' @return `patterns` with an added `code_context` column (a named context,
-#'   `"Top-level"`, or `"Other"`; never `NA`). The `"nodes"` attribute is
+#'   `"R"`, or `"Other"`; never `NA`). The `"nodes"` attribute is
 #'   dropped from the result.
 #'
 #' @details
@@ -20,8 +20,8 @@
 #' pattern sits inside more than one named context, the most-specific
 #' (innermost) one wins.
 #'
-#' `"Top-level"` and `"Other"` are not rule-matched; they are computed here as
-#' fallbacks for a pattern in no named context. `"Top-level"` is assigned when
+#' `"R"` and `"Other"` are not rule-matched; they are computed here as
+#' fallbacks for a pattern in no named context. `"R"` is assigned when
 #' the pattern has no function-definition ancestor; `"Other"` when it has one.
 #'
 #' Containment is tested by exact XML path identity, never by path-prefix

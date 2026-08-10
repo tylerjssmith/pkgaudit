@@ -12,22 +12,33 @@ analyze_segment.R <- function(segment, rules) {
     )))
   }
   tree   <- parsed$tree
-  ctx    <- .empty_code_contexts(with_phases = FALSE)
   errors <- .empty_errors()
 
+  # Run for its errors: determine_code_contexts() evaluates the same XPaths to
+  # place patterns but skips one that fails, so without this a broken
+  # code-context rule would quietly stop matching.
   if (isTRUE(segment$named_contexts)) {
-    cc     <- find_code_contexts(tree, rules$code_contexts,
-                                 segment$file_context)
-    ctx    <- cc$code_contexts
-    errors <- rbind(errors, cc$errors)
+    errors <- rbind(errors, find_code_contexts(tree, rules$code_contexts,
+                                               segment$file_context)$errors)
   }
 
   fp     <- find_patterns(tree, rules$patterns, segment$file_context)
   errors <- rbind(errors, fp$errors)
 
-  pat <- fp$patterns
+  # A call made through a function's name is reported under the rule that owns
+  # the name, so the two sets of findings are one frame from here on and get
+  # previews, guards and code contexts alike.
+  fi     <- find_indirect(tree, rules$patterns, segment$file_context)
+  errors <- rbind(errors, fi$errors)
+
+  fp$patterns$indirect <- rep(FALSE, nrow(fp$patterns))
+  pat   <- rbind(fp$patterns, fi$patterns)
+  # rbind() drops attributes, so the node handles are carried across by hand.
+  nodes <- c(attr(fp$patterns, "nodes"), attr(fi$patterns, "nodes"))
+  attr(pat, "nodes") <- nodes
+
   pat$preview <- .preview(segment$lines, pat$line_number, pat$column_number,
-                          continues = .node_continues(attr(pat, "nodes")))
+                          continues = .node_continues(nodes))
   # An attribute rather than a context: guarded code sits in the same place and
   # runs at the same phases when it runs at all, so the phases stay an upper
   # bound and the guard is reported alongside them.
@@ -52,7 +63,7 @@ analyze_segment.R <- function(segment, rules) {
   # Drop the node handle before accumulating; rbind() ignores attributes.
   attr(pat, "nodes") <- NULL
 
-  .findings(code_contexts = ctx, patterns = pat, errors = errors)
+  .findings(patterns = pat, errors = errors)
 }
 
 

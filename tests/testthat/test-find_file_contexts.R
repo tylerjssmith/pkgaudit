@@ -16,8 +16,11 @@ test_that("find_file_contexts() finds matching files with relative paths", {
   expect_named(res$file_contexts, c("rule", "file_context", "message"))
   expect_equal(nrow(res$errors), 0L)
 
+  # DESCRIPTION and everything under src/ are claimed too, by the rules that
+  # exist to account for a file in `coverage` rather than to read it.
   expect_setequal(res$file_contexts$file_context,
-                  c("configure", "src/Makevars", "src/install.libs.R"))
+                  c("DESCRIPTION", "configure", "src/Makevars", "src/Makevars",
+                    "src/install.libs.R", "src/install.libs.R"))
   # rule names the rule that matched, and joins to the rules database.
   expect_equal(
     res$file_contexts$rule[res$file_contexts$file_context == "configure"],
@@ -25,11 +28,13 @@ test_that("find_file_contexts() finds matching files with relative paths", {
   )
 })
 
-test_that("find_file_contexts() returns empty frame when nothing matches", {
-  # R/*.R is itself a file context now, so a package with nothing but an R
-  # script no longer matches nothing; a file no rule covers is used instead.
-  pkg <- make_pkg(files = list("NEWS.md" = "nothing here"))
+test_that("find_file_contexts() returns an empty frame when nothing matches", {
+  # Every real package matches something -- DESCRIPTION alone does -- so an
+  # empty result needs a directory no rule can reach.
+  pkg <- tempfile("bare")
+  dir.create(pkg)
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+  writeLines("nothing here", file.path(pkg, "NEWS.md"))
 
   res <- find_file_contexts(pkg, rules$file_contexts)
   expect_equal(nrow(res$file_contexts), 0L)

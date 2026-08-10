@@ -123,7 +123,7 @@
 # NA for a given step, in which case the row count is the best available
 # measure and is never reported as zero.
 .n_rules   <- function(rows) .n_distinct(rows$rule,   nrow(rows))
-.n_scripts <- function(rows) .n_distinct(rows$script, nrow(rows))
+.n_scripts <- function(rows) .n_distinct(rows$file_context, nrow(rows))
 
 .n_distinct <- function(x, fallback) {
   n <- length(unique(x[!is.na(x)]))

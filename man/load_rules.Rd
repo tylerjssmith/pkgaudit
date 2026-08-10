@@ -24,7 +24,10 @@ package namespace, which is where a lifecycle hook can actually run.}
 \item{code_contexts}{Data frame with columns \code{name}, \code{version},
 \code{language}, \code{message}, \code{xpath}.}
 \item{patterns}{Data frame with columns \code{name}, \code{version}, \code{language},
-\code{message}, \code{attck}, \code{xpath}.}
+\code{message}, \code{attck}, \code{functions}, \code{xpath}. \code{functions} is the
+space-separated names the rule matches as a bare call, which is how
+\code{\link[=find_indirect]{find_indirect()}} attributes an indirect call back to it; it is empty
+for a rule that matches on more than the callee.}
 \item{matches}{Data frame with columns \code{name}, \code{version}, \code{language},
 \code{message}, \code{attck}, \code{regex}. A match rule is evaluated against every
 segment in its \code{language}, which is what keeps a shell rule from being
@@ -32,7 +35,7 @@ applied to R code.}
 \item{phases}{Data frame with columns \code{context}, \code{version}, and one
 logical column per lifecycle phase. One row per context code can
 execute in: every file- and code-context rule, plus the computed
-contexts \code{"Top-level"} and \code{"Other"}.}
+contexts \code{"R"} and \code{"Other"}.}
 }
 The list carries a \code{"provenance"} attribute recording the database the
 rules were read from -- a list of \code{db_path}, \code{version}, and \code{sha256} --

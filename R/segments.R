@@ -14,7 +14,7 @@
 # say, data/ ships as an ordinary object and is never called, so attributing it
 # to onLoad_base would be a false reading rather than a cautious one.
 # code_context names the computed context that top-level code in this file
-# belongs to. "Top-level" means compute it from the parse tree as usual; any
+# belongs to. "R" means compute it from the parse tree as usual; any
 # other value replaces it, which is how data/, demo/ and the rest carry phases
 # of their own rather than the ones R/ carries.
 new_source <- function(path, file_context, type, macros = NULL,
@@ -110,7 +110,7 @@ extract_segments.default <- function(source) {
 #' @param segment A `pkgaudit_segment` from `new_segment()`.
 #' @param rules Named list of rules as returned by [load_rules()].
 #'
-#' @return A list of `code_contexts`, `patterns`, `matches` and `errors` data
+#' @return A list of `patterns`, `matches`, `coverage` and `errors` data
 #'   frames, each with the columns [audit_package()] documents, less the phase
 #'   columns.
 #'
@@ -122,24 +122,52 @@ extract_segments.default <- function(source) {
 #' @keywords internal
 analyze_segment <- function(segment, rules) UseMethod("analyze_segment")
 
-# A language with no analyser yields no findings and no error. An unhandled
-# chunk engine is a segment nothing matches, not a forgotten branch.
+# A language with no analyser yields no findings and no error -- but it does
+# yield a coverage row, so a {python} chunk in a vignette is accounted for
+# rather than silently absent. An unhandled engine is a segment nothing
+# matches, not a forgotten branch.
 #' @export
-analyze_segment.default <- function(segment, rules) .findings()
+analyze_segment.default <- function(segment, rules) {
+  .findings(coverage = .segment_coverage(segment))
+}
+
+
+# The coverage row for a segment no analyser read: the span it occupies in its
+# source file, in the language it is written in.
+#
+# Segments are blank-padded to the length of the file they came from, so the
+# lines carrying code are the span. A segment with nothing in it is not a gap.
+.segment_coverage <- function(segment) {
+  at <- which(nzchar(trimws(segment$lines)))
+  if (length(at) == 0L) return(.empty_coverage(with_phases = FALSE))
+
+  data.frame(
+    file_context = segment$file_context,
+    language     = class(segment)[[1L]],
+    status       = "exportable",
+    reason       = "no_analyser",
+    first_line   = min(at),
+    last_line    = max(at),
+    lines        = length(at),
+    bytes        = NA_integer_,
+    rule         = NA_character_,
+    stringsAsFactors = FALSE
+  )
+}
 
 
 # The return value of an analyser: each frame reduced to its canonical columns,
 # an omitted one empty. rbind() accepts a stray column silently, so conforming
 # here is what keeps a malformed frame out of the result.
-.findings <- function(code_contexts = NULL, patterns = NULL, matches = NULL,
+.findings <- function(patterns = NULL, matches = NULL, coverage = NULL,
                       errors = .empty_errors()) {
   conform <- function(df, template) {
     if (is.null(df)) template else df[, names(template), drop = FALSE]
   }
   list(
-    code_contexts = conform(code_contexts, .empty_code_contexts(FALSE)),
     patterns      = conform(patterns,      .empty_patterns(FALSE)),
     matches       = conform(matches,       .empty_matches(FALSE)),
+    coverage      = conform(coverage,      .empty_coverage(FALSE)),
     errors        = errors
   )
 }

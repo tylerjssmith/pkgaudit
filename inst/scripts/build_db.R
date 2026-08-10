@@ -119,6 +119,43 @@
   invisible(TRUE)
 }
 
+# Validate a pattern rule's `functions`: the names it matches as a bare call.
+#
+# Each name is accepted only if calling it bare would have matched this rule's
+# own XPath. That makes the field a checked restatement of the XPath rather than
+# a second source of truth, so find_indirect() can never attribute
+# do.call("x", ...) to a rule that would not have matched a direct call to x.
+#
+# The list may be empty, and for three rules it must be: do.call() carries the
+# callee's name and nothing else, so a rule matching on argument structure or a
+# package qualifier has no name it can claim. Empty is written out rather than
+# left off, so a deliberate omission is distinguishable from a forgotten one.
+.validate_functions <- function(rule, path) {
+  names_declared <- trimws(unlist(rule$functions))
+  if (length(names_declared) == 0L) return(character(0L))
+  if (any(nchar(names_declared) == 0L)) {
+    stop("Field 'functions' must not contain empty names in: ", path)
+  }
+
+  for (name in names_declared) {
+    tree <- tryCatch(
+      xml2::read_xml(xmlparsedata::xml_parse_data(
+        parse(text = paste0(name, "()"), keep.source = TRUE)
+      )),
+      error = function(e) e
+    )
+    if (inherits(tree, "condition")) {
+      stop("Field 'functions' has a name that is not a valid call, '", name,
+           "', in: ", path)
+    }
+    if (length(xml2::xml_find_all(tree, trimws(rule$xpath))) == 0L) {
+      stop("Field 'functions' names '", name, "', which this rule's own XPath ",
+           "does not match as a bare call, in: ", path)
+    }
+  }
+  names_declared
+}
+
 # Validate that every phase field is present as TRUE or FALSE.
 .validate_phases <- function(rule, path) {
   for (field in .phase_fields) {
@@ -209,7 +246,7 @@ read_pattern_yaml <- function(path) {
   stopifnot(file.exists(path))
   rule <- yaml::read_yaml(path)
 
-  expected <- c(.pattern_scalars, "attck", .example_fields)
+  expected <- c(.pattern_scalars, "attck", "functions", .example_fields)
   .check_fields(rule, expected, path)
   .validate_common(rule, path, .pattern_scalars, "pattern")
   .validate_xpath(rule$xpath, path)
@@ -219,6 +256,8 @@ read_pattern_yaml <- function(path) {
     stop("Field 'attck' must be a non-empty sequence of labels in: ", path)
   }
   rule$attck <- paste(attck, collapse = " ")
+
+  rule$functions <- paste(.validate_functions(rule, path), collapse = " ")
 
   rule$positive_examples <- unlist(rule$positive_examples)
   rule$negative_examples <- unlist(rule$negative_examples)
@@ -361,6 +400,11 @@ init_db <- function(
       language TEXT NOT NULL,
       message TEXT NOT NULL,
       attck   TEXT NOT NULL,
+      -- Space-separated names this rule matches as a bare call, which is what
+      -- lets find_indirect() attribute do.call(\"name\", ...) back to it. May be
+      -- empty, unlike attck: a rule matching on more than the callee has no
+      -- name it can claim.
+      functions TEXT NOT NULL,
       xpath   TEXT NOT NULL
     )")
 
@@ -456,10 +500,11 @@ load_pattern <- function(rule, con, path) {
   .assert_version(con, rule$version, path)
   DBI::dbExecute(
     con,
-    "INSERT INTO patterns (name, version, language, message, attck, xpath)
-     VALUES (?, ?, ?, ?, ?, ?)",
+    "INSERT INTO patterns (name, version, language, message, attck, functions,
+                           xpath)
+     VALUES (?, ?, ?, ?, ?, ?, ?)",
     params = list(rule$name, rule$version, rule$language, trimws(rule$message),
-                  rule$attck, trimws(rule$xpath))
+                  rule$attck, rule$functions, trimws(rule$xpath))
   )
   invisible(rule$name)
 }

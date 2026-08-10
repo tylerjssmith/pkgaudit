@@ -15,7 +15,8 @@ test_that("load_rules() returns five rule data frames with expected columns", {
   expect_named(rules$code_contexts,
                c("name", "version", "language", "message", "xpath"))
   expect_named(rules$patterns,
-               c("name", "version", "language", "message", "attck", "xpath"))
+               c("name", "version", "language", "message", "attck",
+                 "functions", "xpath"))
   expect_named(rules$matches,
                c("name", "version", "language", "message", "attck", "regex"))
   expect_named(rules$phases, c("context", "version", .phase_columns))
@@ -52,7 +53,7 @@ test_that("load_rules() returns phases as logicals for every context", {
   # The computed contexts carry the phases established for them: top-level code
   # runs when the package is installed, built, or checked but not when it is
   # loaded; code in an ordinary function runs at no phase at all.
-  top <- rules$phases[rules$phases$context == "Top-level", ]
+  top <- rules$phases[rules$phases$context == "R", ]
   expect_true(top$at_install_src && top$at_build && top$at_check)
   expect_false(top$at_load)
 

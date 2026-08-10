@@ -91,16 +91,15 @@ test_that("audit_tarball() rejects unsupported compression up front", {
 })
 
 # happy path -------------------------------------------------------------------
-test_that("audit_tarball() returns the five-frame result and relative paths", {
+test_that("audit_tarball() returns the full result and relative paths", {
   tb <- make_test_tarball(".onLoad <- function(libname, pkgname) system('id')")
   on.exit(unlink(tb), add = TRUE)
 
   res <- audit_tarball(tb)
   expect_s3_class(res, "pkgaudit")
-  expect_named(res, c("file_contexts", "code_contexts", "patterns",
-                      "matches", "errors", "metadata"))
+  expect_named(res, c("file_contexts", "patterns", "matches", "coverage",
+                      "errors", "metadata"))
 
-  expect_true("onLoad_base" %in% res$code_contexts$rule)
   sys <- res$patterns[res$patterns$rule == "system", ]
   expect_equal(nrow(sys), 1L)
   expect_equal(sys$code_context, "onLoad_base")

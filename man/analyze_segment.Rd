@@ -12,7 +12,7 @@ analyze_segment(segment, rules)
 \item{rules}{Named list of rules as returned by \code{\link[=load_rules]{load_rules()}}.}
 }
 \value{
-A list of \code{code_contexts}, \code{patterns}, \code{matches} and \code{errors} data
+A list of \code{patterns}, \code{matches}, \code{coverage} and \code{errors} data
 frames, each with the columns \code{\link[=audit_package]{audit_package()}} documents, less the phase
 columns.
 }

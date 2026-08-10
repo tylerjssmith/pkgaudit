@@ -31,8 +31,6 @@ of four summary data frames, the errors, the scan \code{metadata}, and the
 recorded \code{path}.
 \describe{
 \item{file_contexts}{\code{file_context}: each file context found, once.}
-\item{code_contexts}{\code{code_context}: each code-context rule matched,
-once.}
 \item{patterns}{\code{phase}, \code{code_context}, \code{rule}, \code{n}, \code{attck}: how often
 each pattern rule was matched in each code context, split by the
 lifecycle phase that context executes in, with the ATT&CK techniques
@@ -40,8 +38,13 @@ the rule carries.}
 \item{matches}{\code{phase}, \code{file_context}, \code{rule}, \code{n}, \code{attck}: how
 often each regex rule was matched in each shell script or Make-like
 file, split by the lifecycle phase that file executes in.}
-\item{errors}{\code{step}, \code{script}, \code{rule}, \code{error}: the rows of the object's
-\code{errors} data frame, renamed for display.}
+\item{coverage}{\code{status}, \code{top_level}, \code{type}, \code{files}, \code{lines}: how much
+of the package pkgaudit read, grouped by where the files sit and what
+kind they are. \code{type} is what a file was read as where a rule read it,
+and its extension otherwise.}
+\item{errors}{\code{step}, \code{file_context}, \code{rule}, \code{error}: the rows of the
+object's \code{errors} data frame, renamed for display. The report shows
+only \code{step} and \code{file_context}; the notes are built from the other two.}
 }
 \code{print.summary.pkgaudit()} returns \code{x} invisibly.
 }
@@ -50,16 +53,21 @@ file, split by the lifecycle phase that file executes in.}
 the lifecycle phase and code context it executes in, the frequency of each
 shell or make match by the phase and file context it executes in, both
 with their MITRE ATT&CK techniques, and the errors, if any. It also collects
-the distinct file and code contexts found, which the report does not show.
+the distinct file contexts found, which the report does not show.
 \code{print.summary.pkgaudit()} writes that summary as a sectioned report and
 returns the object invisibly.
 }
 \details{
 The report opens with the same metadata block as \code{\link[=print.pkgaudit]{print.pkgaudit()}}, then
-gives the \verb{R Patterns}, \verb{Shell / Make Matches}, and \code{Errors} sections. A
-section with nothing to report says so. The \code{file_contexts} and
-\code{code_contexts} summaries are returned for programmatic use but are not part
-of the report.
+gives the \verb{R Patterns}, \verb{Shell / Make Matches}, \code{Coverage}, and \code{Errors}
+sections. A section with nothing to report says so. The \code{file_contexts}
+summary is returned for programmatic use but is not part of the report.
+
+\code{Coverage} is counts with reasons, and deliberately no percentage. Nothing in
+a package is assumed inert, so coverage never reaches 100\% and a ratio would
+only ever flatter; what a reader needs is which files went unexamined and
+whether they execute. Which files those are is in the object's own
+\code{coverage} frame; the report gives the shape of the package, not the list.
 
 A pattern occurrence executes in every phase its code context does, and a
 match in every phase its file context does, so each contributes one row per
@@ -71,11 +79,11 @@ narrow it: the summary has already been expanded by phase, so it cannot be
 subset afterwards. The default reports every phase, and a filtered report
 names its phases in the header, so it cannot be mistaken for a full scan.
 
-The \code{Errors} section lists every error, whatever step produced it, and is
-followed by one note per step stating what scan coverage was lost. An error
-recorded against a file-context rule is not tied to a script, and one
-recorded against a script that would not parse is not tied to a rule, so both
-columns are shown and the inapplicable one is left blank.
+The \code{Errors} section lists every error by step and file context, and is
+followed by
+one note per step stating what scan coverage was lost. The rule and the
+message are left out of the table -- a message is often long enough to wrap
+the report on its own -- and are in \code{s$errors} for a caller who wants them.
 }
 \examples{
 \dontrun{

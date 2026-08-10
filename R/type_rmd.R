@@ -78,12 +78,18 @@ extract_segments.Rmd <- function(source) {
 # eval option computed at render time is not resolved -- doing so would mean
 # evaluating the document's code, which pkgaudit never does -- so it is left
 # unguarded, which reports more rather than less.
+#
+# A first word beginning with "." or "#" is a Pandoc class or id, not an engine:
+# ```{.r} marks a block to be syntax-highlighted in the rendered page, and its
+# contents are printed rather than run. Such a block has no language, so it
+# yields no segment.
 .rmd_header <- function(line) {
   inside <- sub("^[[:space:]]*```+[[:space:]]*\\{", "", line)
   inside <- sub("\\}[[:space:]]*$", "", inside)
 
   engine <- tolower(trimws(sub("[,[:space:]].*$", "", inside)))
-  language <- if (nzchar(engine)) .chunk_language(engine) else NULL
+  language <- if (nzchar(engine) && !startsWith(engine, ".") &&
+                  !startsWith(engine, "#")) .chunk_language(engine) else NULL
 
   eval <- !grepl("(^|,)[[:space:]]*eval[[:space:]]*=[[:space:]]*F(ALSE)?[[:space:]]*(,|$)",
                  inside)

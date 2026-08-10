@@ -49,6 +49,7 @@
     column_number = integer(0L),
     code_context  = character(0L),
     guarded       = logical(0L),
+    indirect      = logical(0L),
     preview       = character(0L),
     message       = character(0L),
     attck         = character(0L),
@@ -70,6 +71,26 @@
     preview       = character(0L),
     message       = character(0L),
     attck         = character(0L),
+    stringsAsFactors = FALSE
+  )
+  if (with_phases) cbind(df, .empty_phase_cols()) else df
+}
+
+
+# One row per file in the package, and per code span where a file yields
+# several. Ordered skim-first, as the findings frames are: the path, what
+# pkgaudit made of it, and why -- then its extent, then the rule that claimed it.
+.empty_coverage <- function(with_phases = TRUE) {
+  df <- data.frame(
+    file_context = character(0L),
+    language     = character(0L),
+    status       = character(0L),
+    reason       = character(0L),
+    first_line   = integer(0L),
+    last_line    = integer(0L),
+    lines        = integer(0L),
+    bytes        = integer(0L),
+    rule         = character(0L),
     stringsAsFactors = FALSE
   )
   if (with_phases) cbind(df, .empty_phase_cols()) else df

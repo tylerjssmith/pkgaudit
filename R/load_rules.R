@@ -23,7 +23,10 @@
 #'     \item{code_contexts}{Data frame with columns `name`, `version`,
 #'       `language`, `message`, `xpath`.}
 #'     \item{patterns}{Data frame with columns `name`, `version`, `language`,
-#'       `message`, `attck`, `xpath`.}
+#'       `message`, `attck`, `functions`, `xpath`. `functions` is the
+#'       space-separated names the rule matches as a bare call, which is how
+#'       [find_indirect()] attributes an indirect call back to it; it is empty
+#'       for a rule that matches on more than the callee.}
 #'     \item{matches}{Data frame with columns `name`, `version`, `language`,
 #'       `message`, `attck`, `regex`. A match rule is evaluated against every
 #'       segment in its `language`, which is what keeps a shell rule from being
@@ -31,7 +34,7 @@
 #'     \item{phases}{Data frame with columns `context`, `version`, and one
 #'       logical column per lifecycle phase. One row per context code can
 #'       execute in: every file- and code-context rule, plus the computed
-#'       contexts `"Top-level"` and `"Other"`.}
+#'       contexts `"R"` and `"Other"`.}
 #'   }
 #'   The list carries a `"provenance"` attribute recording the database the
 #'   rules were read from -- a list of `db_path`, `version`, and `sha256` --
@@ -83,7 +86,7 @@ load_rules <- function(db_path = .db_path()) {
 
     patterns <- DBI::dbGetQuery(
       con,
-      "SELECT name, version, language, message, attck, xpath
+      "SELECT name, version, language, message, attck, functions, xpath
          FROM patterns
         ORDER BY name"
     )
