@@ -5,6 +5,10 @@
 
 # Render a summary object as the sectioned report lines.
 .format_summary <- function(x, path = TRUE) {
+  # The two findings tables carry the same columns and are meant to be read
+  # together, so they are laid out to one set of widths rather than each to its
+  # own content.
+  findings <- .shared_widths(x$patterns, x$matches)
   c(
     .section_header("pkgaudit Summary"),
     .metadata_lines(x$metadata, path = path),
@@ -14,10 +18,10 @@
       .field("Phases:", paste(x$phase, collapse = ", ")),
     "",
     .section_header("R Patterns"),
-    .summary_section(x$patterns, "No patterns were found."),
+    .summary_section(x$patterns, "No patterns were found.", findings),
     "",
     .section_header("Shell / Make Matches"),
-    .summary_section(x$matches, "No matches were found."),
+    .summary_section(x$matches, "No matches were found.", findings),
     "",
     .section_header("Coverage"),
     .coverage_section(x$coverage),
@@ -41,8 +45,8 @@
 
 # Render one summary section: the table, or a message when there is nothing to
 # report.
-.summary_section <- function(df, empty_message) {
-  if (nrow(df) == 0L) empty_message else .format_table(df)
+.summary_section <- function(df, empty_message, widths = NULL) {
+  if (nrow(df) == 0L) empty_message else .format_table(df, widths)
 }
 
 
@@ -125,17 +129,42 @@
 # left-aligned and numeric columns right-aligned, and NA renders blank.
 # print.data.frame() cannot be used here: it right-aligns character columns and
 # reserves a leading gutter for row names.
-.format_table <- function(df) {
+.format_table <- function(df, widths = NULL) {
   columns <- lapply(names(df), function(column) {
     values <- df[[column]]
     text   <- ifelse(is.na(values), "", as.character(values))
     formatC(
       c(column, text),
-      width = max(nchar(c(column, text))),
+      width = max(.column_width(column, values), widths[[column]], 0L),
       flag  = if (is.numeric(values)) "" else "-"
     )
   })
+  # Trailing padding is stripped, so the last column carries none; the widths
+  # that matter for reading two tables side by side are the ones before it.
   trimws(do.call(paste, c(columns, sep = "   ")), which = "right")
+}
+
+
+# The widths two or more tables of the same shape should share, so that columns
+# meant to be compared land in the same place on the page.
+.shared_widths <- function(...) {
+  frames <- Filter(function(d) !is.null(d) && nrow(d) > 0L, list(...))
+  if (length(frames) == 0L) return(NULL)
+
+  columns <- unique(unlist(lapply(frames, names)))
+  widths  <- vapply(columns, function(column) {
+    max(vapply(frames, function(d) .column_width(column, d[[column]]),
+               integer(1L)))
+  }, integer(1L))
+  as.list(widths)
+}
+
+
+# How wide a column has to be to hold its header and every value in it. A column
+# a frame does not have needs nothing.
+.column_width <- function(column, values) {
+  if (is.null(values)) return(0L)
+  max(nchar(c(column, ifelse(is.na(values), "", as.character(values)))))
 }
 
 

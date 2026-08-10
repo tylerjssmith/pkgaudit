@@ -31,13 +31,16 @@ of four summary data frames, the errors, the scan \code{metadata}, and the
 recorded \code{path}.
 \describe{
 \item{file_contexts}{\code{file_context}: each file context found, once.}
-\item{patterns}{\code{phase}, \code{code_context}, \code{rule}, \code{n}, \code{attck}: how often
-each pattern rule was matched in each code context, split by the
-lifecycle phase that context executes in, with the ATT&CK techniques
-the rule carries.}
-\item{matches}{\code{phase}, \code{file_context}, \code{rule}, \code{n}, \code{attck}: how
-often each regex rule was matched in each shell script or Make-like
-file, split by the lifecycle phase that file executes in.}
+\item{patterns}{\code{phase}, \code{rule}, \code{n}, \code{attck}: how often each pattern
+rule was matched, split by the lifecycle phase its code executes in,
+with the ATT&CK techniques the rule carries. The code context a finding
+sits in is how its phases were derived rather than a finding of its
+own, so it stays on the object's \code{patterns} frame and out of the
+report.}
+\item{matches}{\code{phase}, \code{rule}, \code{n}, \code{attck}: how often each match rule
+was matched across the shell scripts and Make-like files, split by the
+lifecycle phase those files execute in. Shaped as \code{patterns} is; which
+file each match sits in is on the object's \code{matches} frame.}
 \item{coverage}{\code{status}, \code{top_level}, \code{type}, \code{files}, \code{lines}: how much
 of the package pkgaudit read, grouped by where the files sit and what
 kind they are. \code{type} is what a file was read as where a rule read it,
@@ -49,11 +52,11 @@ only \code{step} and \code{file_context}; the notes are built from the other two
 \code{print.summary.pkgaudit()} returns \code{x} invisibly.
 }
 \description{
-\code{summary.pkgaudit()} rolls a scan up into the frequency of each R pattern by
-the lifecycle phase and code context it executes in, the frequency of each
-shell or make match by the phase and file context it executes in, both
-with their MITRE ATT&CK techniques, and the errors, if any. It also collects
-the distinct file contexts found, which the report does not show.
+\code{summary.pkgaudit()} rolls a scan up into the frequency of each R pattern and
+each shell or make match by the lifecycle phase it executes in, with their
+MITRE ATT&CK techniques; how much of the package was read; and the errors, if
+any. It also collects the distinct file contexts found, which the report does
+not show.
 \code{print.summary.pkgaudit()} writes that summary as a sectioned report and
 returns the object invisibly.
 }
@@ -73,6 +76,10 @@ A pattern occurrence executes in every phase its code context does, and a
 match in every phase its file context does, so each contributes one row per
 phase and the \code{n} column sums to more than the number of occurrences.
 Occurrences that execute in no phase at all are gathered under \code{none}.
+
+Both findings tables are grouped by phase and rule alone. Where a finding
+sits -- the code context of a pattern, the file of a match -- is on the
+object's own frames; the report answers what runs, and when.
 
 \code{phase} restricts the report to the phases named. It is the only way to
 narrow it: the summary has already been expanded by phase, so it cannot be

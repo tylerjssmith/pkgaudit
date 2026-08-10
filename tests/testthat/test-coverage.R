@@ -161,6 +161,16 @@ test_that("summary() tallies coverage by status, location and kind", {
   c_row <- s$coverage[s$coverage$top_level == "src/", ]
   expect_equal(c_row$type, "c")
   expect_equal(c_row$files, 1L)
+
+  # Sorted by status, then location, then kind, so following a directory down
+  # the table shows all of it together.
+  by_status <- match(s$coverage$status, .coverage_statuses)
+  expect_false(is.unsorted(by_status))
+  for (st in unique(s$coverage$status)) {
+    rows <- s$coverage[s$coverage$status == st, ]
+    expect_false(is.unsorted(order(rows$top_level, rows$type,
+                                   method = "radix")), info = st)
+  }
 })
 
 test_that("the report stays inside its width on a package of many files", {

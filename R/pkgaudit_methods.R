@@ -234,10 +234,12 @@ print.summary.pkgaudit <- function(x, path = x$path, ...) {
     )
   })
   out <- do.call(rbind, rows)
-  # Statuses in the order they represent, best-read first; within a status the
-  # biggest group leads, since that is what a reader wants to see accounted for.
-  out[order(match(out$status, .coverage_statuses), -out$files,
-            out$top_level), , drop = FALSE]
+  # Statuses in the order they represent, best-read first, then by location and
+  # by kind of file within it -- so a reader following a directory down the
+  # table sees all of it together. Radix sort is C-locale, so the same package
+  # reports in the same order wherever it is scanned.
+  out[order(match(out$status, .coverage_statuses), out$top_level, out$type,
+            method = "radix"), , drop = FALSE]
 }
 
 

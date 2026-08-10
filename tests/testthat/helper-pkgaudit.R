@@ -70,6 +70,54 @@ make_obj <- function(n_file = 0L, n_pat = 0L, n_expr = 0L,
   new_pkgaudit(fc, pt, ex, cv, er, metadata)
 }
 
+# A pkgaudit object with repeated and out-of-order findings, so the summary has
+# something to de-duplicate, count, and sort.
+rich_obj <- function(errors = .empty_errors(), metadata = good_metadata()) {
+  # The phases each finding would carry after resolution: the file and code
+  # contexts from their rules, the patterns from the code context they sit in.
+  installed <- phase_values("at_build", "at_check", "at_install_src")
+  loaded    <- phase_values("at_build", "at_check", "at_install_src", "at_load")
+  attached  <- phase_values("at_build", "at_check", "at_install_src",
+                            "at_attach")
+  uncalled  <- phase_values()
+
+  fc <- .empty_file_contexts()
+  fc[1L, ] <- c(list("src_makevars", "src/Makevars", "m"), installed)
+  fc[2L, ] <- c(list("configure",    "configure",    "m"), installed)
+  fc[3L, ] <- c(list("src_makevars", "src/Makevars", "m"), installed)
+
+  pt <- .empty_patterns()
+  pt[1L, ] <- c(list("source", "R/zzz.R", 1L, 1L, "onLoad_base",
+                     FALSE, FALSE, "p", "m", "T1059"), loaded)
+  pt[2L, ] <- c(list("rcurl",  "R/zzz.R", 2L, 1L, "onLoad_base",
+                     FALSE, FALSE, "p", "m", "T1041"), loaded)
+  pt[3L, ] <- c(list("source", "R/aaa.R", 3L, 1L, "R",
+                     FALSE, FALSE, "p", "m", "T1059"), installed)
+  pt[4L, ] <- c(list("source", "R/aaa.R", 7L, 1L, "Other",
+                     FALSE, FALSE, "p", "m", "T1059"), uncalled)
+
+  # An match takes its phases from the file context it sits in, so all of
+  # these are the phases that install the package.
+  ex <- .empty_matches()
+  ex[1L, ] <- c(list("curl", "configure", 3L,  1L, "p", "m", "T1041"),
+                installed)
+  ex[2L, ] <- c(list("curl", "configure", 3L, 20L, "p", "m", "T1041"),
+                installed)
+  ex[3L, ] <- c(list("wget", "configure", 5L,  1L, "p", "m", "T1041"),
+                installed)
+  ex[4L, ] <- c(list("curl", "src/Makevars", 2L, 11L, "p", "m", "T1041"),
+                installed)
+
+  new_pkgaudit(fc, pt, ex, .empty_coverage(), errors, metadata)
+}
+
+# Errors for the given steps, one row each, with the fields that step sets.
+errors_for <- function(...) {
+  rows <- list(...)
+  do.call(rbind, c(list(.empty_errors()), rows))
+}
+
+
 # Create a minimal source package on disk and return its root path. Extra files
 # are given as a named list of path = contents (paths relative to the root).
 make_pkg <- function(dir = tempfile("pkg"), files = list()) {
