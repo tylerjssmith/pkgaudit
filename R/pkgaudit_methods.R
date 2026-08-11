@@ -22,11 +22,15 @@
 #'   themselves rather than their counts.
 #'
 #' @examples
-#' \dontrun{
-#' result <- audit_package("/path/to/package")
+#' # untrustedpkg is a small package shipped with pkgaudit to be scanned.
+#' tarball <- system.file(
+#'   "extdata", "untrustedpkg", "untrustedpkg_0.1.0.tar.gz",
+#'   package = "pkgaudit"
+#' )
+#' result <- audit_tarball(tarball)
+#'
 #' print(result)
 #' print(result, path = FALSE)   # omit the local Path: line for sharing
-#' }
 #'
 #' @method format pkgaudit
 #' @export
@@ -142,17 +146,21 @@ print.pkgaudit <- function(x, path = TRUE, ...) {
 #' @seealso [print.pkgaudit()] for the finding counts alone.
 #'
 #' @examples
-#' \dontrun{
-#' result <- audit_package("/path/to/package")
+#' # untrustedpkg is a small package shipped with pkgaudit to be scanned.
+#' tarball <- system.file(
+#'   "extdata", "untrustedpkg", "untrustedpkg_0.1.0.tar.gz",
+#'   package = "pkgaudit"
+#' )
+#' result <- audit_tarball(tarball)
+#'
 #' summary(result)
-#' summary(result, path = FALSE)     # omit the local Path: line for sharing
+#' summary(result, path = FALSE)       # omit the local Path: line for sharing
 #' summary(result, phase = "at_load")  # only what runs when the package loads
 #' summary(result, phase = "none")     # ships, but runs at no phase
 #'
 #' s <- summary(result)
-#' s$patterns                      # pattern frequencies as a data frame
-#' s$matches                   # match frequencies as a data frame
-#' }
+#' s$patterns                          # pattern frequencies as a data frame
+#' s$matches                           # match frequencies as a data frame
 #'
 #' @method summary pkgaudit
 #' @export

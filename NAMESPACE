@@ -22,13 +22,17 @@ export(hash_manifest)
 export(load_rules)
 export(rules_version)
 export(validate_tar)
-importFrom(DBI,dbConnect)
-importFrom(DBI,dbDisconnect)
-importFrom(DBI,dbGetQuery)
+importFrom(DBI,
+  dbConnect,
+  dbDisconnect,
+  dbGetQuery
+)
 importFrom(RSQLite,SQLite)
 importFrom(digest,digest)
-importFrom(xml2,read_xml)
-importFrom(xml2,xml_attr)
-importFrom(xml2,xml_find_all)
-importFrom(xml2,xml_path)
+importFrom(xml2,
+  read_xml,
+  xml_attr,
+  xml_find_all,
+  xml_path
+)
 importFrom(xmlparsedata,xml_parse_data)

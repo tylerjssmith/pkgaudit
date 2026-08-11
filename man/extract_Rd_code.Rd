@@ -109,12 +109,4 @@ valid example code in the same file, which is worth weighing before this is
 wired into a scan.
 }
 
-\examples{
-\dontrun{
-res <- extract_Rd_code("man/audit_package.Rd")
-cat(res$examples)
-parse(text = res$examples, keep.source = TRUE)
-parse(text = res$sexpr)
-}
-}
 \keyword{internal}

@@ -24,8 +24,6 @@ Like \code{\link[=load_rules]{load_rules()}}, this verifies the database against
 before reading; see its Security considerations.
 }
 \examples{
-\dontrun{
 rules_version()
-}
 
 }

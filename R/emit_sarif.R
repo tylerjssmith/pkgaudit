@@ -64,11 +64,15 @@
 #' short list of imports is part of what a security team evaluates, and only
 #' this function needs a JSON writer.
 #'
-#' @examples
-#' \dontrun{
-#' result <- audit_package("/path/to/package")
-#' writeLines(emit_sarif(result), "pkgaudit.sarif")
-#' }
+#' @examplesIf requireNamespace("jsonlite", quietly = TRUE)
+#' # untrustedpkg is a small package shipped with pkgaudit to be scanned.
+#' tarball <- system.file(
+#'   "extdata", "untrustedpkg", "untrustedpkg_0.1.0.tar.gz",
+#'   package = "pkgaudit"
+#' )
+#' result <- audit_tarball(tarball)
+#'
+#' writeLines(emit_sarif(result), file.path(tempdir(), "pkgaudit.sarif"))
 #'
 #' @export
 emit_sarif <- function(object, pretty = TRUE) {

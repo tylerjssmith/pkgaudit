@@ -27,11 +27,15 @@ character vector of lines; \code{print.pkgaudit()} writes those lines and return
 the object invisibly.
 }
 \examples{
-\dontrun{
-result <- audit_package("/path/to/package")
+# untrustedpkg is a small package shipped with pkgaudit to be scanned.
+tarball <- system.file(
+  "extdata", "untrustedpkg", "untrustedpkg_0.1.0.tar.gz",
+  package = "pkgaudit"
+)
+result <- audit_tarball(tarball)
+
 print(result)
 print(result, path = FALSE)   # omit the local Path: line for sharing
-}
 
 }
 \seealso{

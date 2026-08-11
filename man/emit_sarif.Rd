@@ -51,9 +51,14 @@ short list of imports is part of what a security team evaluates, and only
 this function needs a JSON writer.
 }
 \examples{
-\dontrun{
-result <- audit_package("/path/to/package")
-writeLines(emit_sarif(result), "pkgaudit.sarif")
-}
+\dontshow{if (requireNamespace("jsonlite", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+# untrustedpkg is a small package shipped with pkgaudit to be scanned.
+tarball <- system.file(
+  "extdata", "untrustedpkg", "untrustedpkg_0.1.0.tar.gz",
+  package = "pkgaudit"
+)
+result <- audit_tarball(tarball)
 
+writeLines(emit_sarif(result), file.path(tempdir(), "pkgaudit.sarif"))
+\dontshow{\}) # examplesIf}
 }

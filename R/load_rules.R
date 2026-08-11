@@ -58,9 +58,8 @@
 #' concurrently. Load from a path only trusted writers control.
 #'
 #' @examples
-#' \dontrun{
 #' rules <- load_rules()
-#' }
+#' vapply(rules, nrow, integer(1))
 #'
 #' @export
 load_rules <- function(db_path = .db_path()) {
@@ -181,9 +180,7 @@ load_rules <- function(db_path = .db_path()) {
 #' before reading; see its Security considerations.
 #'
 #' @examples
-#' \dontrun{
 #' rules_version()
-#' }
 #'
 #' @export
 rules_version <- function(db_path = .db_path()) {

@@ -61,10 +61,20 @@
 #' Exporting still executes nothing.
 #'
 #' @examples
-#' \dontrun{
-#' result <- audit_package("/path/to/package")
-#' export_unscanned(result, file.path(tempdir(), "for-semgrep"))
-#' }
+#' # untrustedpkg is a small package shipped with pkgaudit to be scanned. It is
+#' # R and shell throughout, so there is nothing to hand on and the manifest
+#' # comes back empty; a package carrying compiled code yields one row per
+#' # exported file.
+#' tarball <- system.file(
+#'   "extdata", "untrustedpkg", "untrustedpkg_0.1.0.tar.gz",
+#'   package = "pkgaudit"
+#' )
+#' exdir <- file.path(tempdir(), "untrustedpkg-example")
+#' utils::untar(tarball, exdir = exdir)
+#'
+#' result   <- audit_package(file.path(exdir, "untrustedpkg"))
+#' manifest <- export_unscanned(result, file.path(tempdir(), "for-semgrep"))
+#' nrow(manifest)
 #'
 #' @export
 export_unscanned <- function(object, dir, source = NULL, overwrite = FALSE,

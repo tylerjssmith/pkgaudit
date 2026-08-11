@@ -21,6 +21,9 @@
 * Four vignettes, one audience each: getting started, R package security,
   rule coverage, and internals -- the last with a call graph derived from
   pkgaudit's own parse trees, so it cannot fall behind the code.
+* Every documented function's examples run, against `untrustedpkg`, the small
+  package pkgaudit ships to be scanned. Nothing is held back behind
+  `\dontrun{}`, so `R CMD check` exercises the documentation.
 * Testing follows a stated principle rather than a coverage target: every
   documented function has a happy path, every `stop()`, `warning()` and
   handler is reached by a test, and anything reading untrusted bytes or

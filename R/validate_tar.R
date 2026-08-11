@@ -34,11 +34,15 @@
 #'   `name`, `type`, `linkname`, and `size`.
 #'
 #' @examples
-#' \dontrun{
-#' # Stops with a "Refusing archive" error if the tarball is
-#' # malicious/malformed.
-#' validate_tar("path/to/package_1.0.0.tar.gz")
-#' }
+#' # Returns the archive's entries, or stops with a "Refusing archive" error if
+#' # the tarball is malicious or malformed.
+#' tarball <- system.file(
+#'   "extdata", "untrustedpkg", "untrustedpkg_0.1.0.tar.gz",
+#'   package = "pkgaudit"
+#' )
+#'
+#' entries <- validate_tar(tarball)
+#' entries
 #'
 #' @export
 validate_tar <- function(tarfile,

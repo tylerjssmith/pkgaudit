@@ -66,8 +66,7 @@ concurrently. Load from a path only trusted writers control.
 }
 
 \examples{
-\dontrun{
 rules <- load_rules()
-}
+vapply(rules, nrow, integer(1))
 
 }

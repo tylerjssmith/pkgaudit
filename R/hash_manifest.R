@@ -37,9 +37,15 @@
 #' For vetting untrusted code, prefer hashing the tarball.
 #'
 #' @examples
-#' \dontrun{
-#' hash_manifest("/path/to/package")$hash
-#' }
+#' # untrustedpkg is a small package shipped with pkgaudit to be scanned.
+#' tarball <- system.file(
+#'   "extdata", "untrustedpkg", "untrustedpkg_0.1.0.tar.gz",
+#'   package = "pkgaudit"
+#' )
+#' exdir <- file.path(tempdir(), "untrustedpkg-example")
+#' utils::untar(tarball, exdir = exdir)
+#'
+#' hash_manifest(file.path(exdir, "untrustedpkg"))$hash
 #'
 #' @export
 hash_manifest <- function(path, exclude = c("^\\.git/", "^\\.Rproj\\.user/")) {

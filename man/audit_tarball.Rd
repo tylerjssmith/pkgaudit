@@ -71,9 +71,13 @@ issued. The \code{DESCRIPTION} values are authoritative and are what the returne
 object reports.
 }
 \examples{
-\dontrun{
-result <- audit_tarball("path/to/foo_0.1.0.tar.gz")
+# untrustedpkg is a small package shipped with pkgaudit to be scanned.
+tarball <- system.file(
+  "extdata", "untrustedpkg", "untrustedpkg_0.1.0.tar.gz",
+  package = "pkgaudit"
+)
+
+result <- audit_tarball(tarball)
 print(result)
-}
 
 }

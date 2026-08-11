@@ -160,12 +160,18 @@ and \code{is_tarball}, which are used for the \code{metadata} list. When calling
 case the directory is hashed with \code{\link[=hash_manifest]{hash_manifest()}}.
 }
 \examples{
-\dontrun{
+# untrustedpkg is a small package shipped with pkgaudit to be scanned.
+tarball <- system.file(
+  "extdata", "untrustedpkg", "untrustedpkg_0.1.0.tar.gz",
+  package = "pkgaudit"
+)
+exdir <- file.path(tempdir(), "untrustedpkg-example")
+utils::untar(tarball, exdir = exdir)
+
 rules  <- load_rules()
-result <- audit_package("/path/to/somepackage", rules = rules)
+result <- audit_package(file.path(exdir, "untrustedpkg"), rules = rules)
 result$file_contexts
 result$patterns
 print(result)
-}
 
 }
