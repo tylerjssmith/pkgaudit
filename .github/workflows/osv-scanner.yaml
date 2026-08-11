@@ -2,9 +2,12 @@
 # This workflow targets R vulnerabilities. See dependency-review.yaml for
 # workflow targeting GitHub Actions vulnerabilities.
 
-# Note: This workflow limits OSV-Scanner to the R package dependencies in the
-# renv lock file associated with the default profile, reflecting the
-# dependencies needed to use the package.
+# Note: pkgaudit commits no lock file. Its imports carry no version bounds, so
+# the versions a user installs are whatever CRAN resolves on the day rather
+# than a snapshot pinned in this repository. The first job resolves them the
+# same way a user's install would and writes a lock file describing the result;
+# the second scans it. A scheduled run therefore reports both when an advisory
+# is published and when a dependency moves under it.
 name: OSV-Scanner
 
 on:
@@ -14,19 +17,51 @@ on:
     branches: [main, master]
 
 permissions:
-  # Required to upload SARIF file to CodeQL.
-  actions: read
-  # Required for writing security events to upload SARIF file to security tab
-  security-events: write
-  # Only need to read contents
   contents: read
 
 jobs:
+  resolve:
+    name: Resolve dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
+        with:
+          # Hard dependencies only: Suggests are needed to develop and check the
+          # package, not to use it. jsonlite writes the lock file and is not
+          # itself scanned, being a suggested dependency.
+          dependencies: '"hard"'
+          extra-packages: any::jsonlite
+          # Resolve afresh every run. A warm cache would restore the same
+          # versions each Monday, and a dependency moving is half of what this
+          # workflow is here to notice.
+          cache: false
+      - name: Write lock file from the resolved dependencies
+        run: Rscript tools/osv_lockfile.R
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: osv-lockfile
+          # OSV-Scanner picks its parser by file name, so this has to stay
+          # renv.lock.
+          path: renv.lock
+          retention-days: 1
+
   osv-scanner:
+    name: Scan
+    needs: resolve
+    permissions:
+      # Required to upload SARIF file to CodeQL.
+      actions: read
+      # Required for writing security events to upload SARIF file to security tab
+      security-events: write
+      # Only need to read contents
+      contents: read
     uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
     with:
-      # Scan only the default profile's lockfile. Overrides the action default
-      # ("-r ./"), which would also walk the repo and pick up
-      # renv/profiles/dev/renv.lock.
+      # Downloaded into the workspace root, alongside the checkout.
+      download-artifact: osv-lockfile
       scan-args: |-
         --lockfile=renv.lock
