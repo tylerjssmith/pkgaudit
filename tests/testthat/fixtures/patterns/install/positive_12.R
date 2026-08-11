@@ -1,1 +1,1 @@
-remotes::install_dev("foo")
+remotes::install_local("pkg.tar.gz")

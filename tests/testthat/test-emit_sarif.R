@@ -223,3 +223,28 @@ test_that("the document has the shape a consumer is promised", {
   shape <- sort(sarif_shape(sarif_of(audit_package(pkg, rules))))
   expect_snapshot(cat(shape, sep = "\n"))
 })
+
+test_that("emit_sarif() says what to install when jsonlite is absent", {
+  local_mocked_bindings(.have_jsonlite = function() FALSE)
+  expect_error(emit_sarif(make_obj()), "needs the jsonlite package")
+})
+
+test_that("a scan with nothing in it yields no fingerprints, artifacts or notes", {
+  expect_equal(.sarif_fingerprints(.empty_patterns()), character(0L))
+  expect_equal(.sarif_artifacts(.empty_coverage()), list())
+  expect_equal(.sarif_artifacts(NULL), list())
+  expect_equal(.sarif_notifications(.empty_errors()), list())
+  expect_equal(.sarif_notifications(NULL), list())
+})
+
+test_that("an error naming a rule carries it onto the notification", {
+  errors <- .empty_errors()
+  errors[1L, ] <- list("find_patterns", "R/f.R", "system", "boom")
+
+  note <- .sarif_notifications(errors)[[1L]]
+  expect_equal(note$associatedRule$id, "system")
+  expect_equal(note$descriptor$id, "find_patterns")
+  expect_equal(
+    note$locations[[1L]]$physicalLocation$artifactLocation$uri, "R/f.R"
+  )
+})

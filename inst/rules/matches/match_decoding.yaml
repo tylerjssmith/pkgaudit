@@ -1,0 +1,32 @@
+name: decoding
+version: "0.1.0"
+language: shell
+attck:
+  - T1140
+  - T1027
+message: >-
+  A decoding command turns bytes that are not readable as text back into
+  something that is. In a build script it is most often seen immediately
+  before the result is run or written to disk, which is how a payload is
+  carried past a reader who only skims the source.
+regex: '(?<=^|[^[:alnum:]_-])(base64[^|;&\n]{0,40}(--decode|-[dD])|openssl[[:space:]]+enc[^|;&\n]{0,60}-d|xxd[^|;&\n]{0,20}-r|uudecode)'
+positive_examples:
+  - |
+    echo ZXZpbAo= | base64 --decode | sh
+  - |
+    base64 -d payload.b64 > /tmp/evil
+  - |
+    openssl enc -d -aes-256-cbc -in payload.enc -out /tmp/evil
+  - |
+    xxd -r -p payload.hex > /tmp/evil
+  - |
+    uudecode payload.uu
+negative_examples:
+  - |
+    echo hello | base64 > encoded.txt
+  - |
+    openssl enc -aes-256-cbc -in plain -out cipher
+  - |
+    xxd input.bin > hex.txt
+  - |
+    # base64 is used to encode the logo below

@@ -74,3 +74,8 @@ test_that("determine_code_contexts() falls back cleanly when no code contexts ex
   out   <- determine_code_contexts(tree, fp$patterns, no_cc)
   expect_setequal(out$code_context, c("R", "Other"))
 })
+
+test_that(".deepest_context() returns NA for a node with no ancestors", {
+  tree <- tree_from_text("system('id')")
+  expect_true(is.na(.deepest_context(tree, character(0L), character(0L))))
+})

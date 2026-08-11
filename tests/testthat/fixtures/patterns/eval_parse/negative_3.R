@@ -1,1 +1,1 @@
-eval(parse(text = readLines("payload.R")))
+x <- readLines(con)

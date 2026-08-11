@@ -1,0 +1,1 @@
+writeLines(x, "~/.Renviron")

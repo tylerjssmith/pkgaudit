@@ -62,7 +62,7 @@ make matches for review before an R source package is trusted.
 Every file the scan looks at is found by a file-context rule, and that rule's
 \code{type} decides how the file is read: an \code{R} script is parsed as it stands, an
 \code{Rd} help file has its \verb{\\examples\{\}} and \verb{\\Sexpr\{\}} code extracted first, and
-a \code{shell} or \code{make} file is matched line by line against the regex rules.
+a \code{shell} or \code{make} file is matched line by line against the match rules.
 Reading a file yields one or more \emph{segments} of code, which are what the
 finders actually see; a help file yields two, because its examples and its
 \verb{\\Sexpr} macros run at different phases.
@@ -82,7 +82,7 @@ left unscanned rather than scanned badly -- the Perl, Python and batch scripts
 under \verb{exec/}, for instance. Nothing is reported for an unclaimed file, so its
 absence from the findings is not evidence that it is clean.
 
-The \code{coverage} frame accounts for every file in the package, so that a clean
+The \code{coverage} frame accounts for the code in a package, so that a clean
 scan can be checked rather than taken on trust. Each row's \code{status} is one of
 \code{parsed} (read as R), \code{matched} (scanned as text), \code{exportable} (a language
 pkgaudit does not read, which \code{\link[=export_unscanned]{export_unscanned()}} can hand to a tool that
@@ -93,12 +93,20 @@ read the first and could not read the second. Every \code{error} row has a
 matching row in \code{errors}, and only a failure at a reading step counts: a rule
 that fails on a file says nothing about the file.
 
-Nothing is assumed inert. A \code{.md} file can be read, parsed and evaluated, and
-deserializing an \code{.rda} can execute arbitrary code, so no extension is
-allowlisted out and coverage never reaches 100\%. What the frame offers is not
-completeness but legibility: what was not examined, and whether it runs.
-Phases come from where a file sits rather than from what it is named, so a
-file in a directory no rule anticipates is still reported, with no phases.
+The frame accounts for a file when a rule claimed it, or when its name
+says what kind of file it is -- an \code{.R} under \verb{misc/}, an \code{.rds} under
+\verb{inst/extdata/} -- wherever it sits. A name that says nothing, such as
+\code{NAMESPACE} or \code{MD5}, is left out, since a frame that lists everything is
+harder to read than one that lists the code. That allowlist is derived from
+the rules rather than written down, so a rule for a new kind of file starts
+accounting for it everywhere.
+
+Coverage therefore never reaches 100\%, and is not meant to. What the frame
+offers is not completeness but legibility: what was not examined, and whether
+it runs. Deserializing an \code{.rda} can execute arbitrary code, so serialized
+objects are reported as executable surface rather than as data. Phases come
+from where a file sits rather than from what it is named, so a file in a
+directory no rule anticipates is still reported, with no phases.
 Version-control and IDE state (\verb{.git/}, \verb{.Rproj.user/}, \verb{renv/library/}) is
 outside the package and excluded; \code{.Rbuildignore} is not consulted, since it
 is written by the package under audit.

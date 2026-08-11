@@ -3,19 +3,30 @@ template:
   bootstrap: 5
 
 reference:
-- title: "Entry points"
+- title: "Scanning a package"
+  desc: >
+    The entry points. Both return a pkgaudit object: what was found, and what
+    the scan made of every file it could identify as code.
   contents:
   - audit_package
   - audit_tarball
-- title: "Rules"
-  contents:
-  - load_rules
-  - rules_version
-- title: "Methods"
+- title: "Reading a result"
   contents:
   - print.pkgaudit
   - summary.pkgaudit
-- title: "Utilities"
+- title: "Carrying a result to another tool"
+  desc: >
+    R is parsed and shell is matched as text; everything else is handed on.
+  contents:
+  - emit_sarif
+  - export_unscanned
+- title: "Rules"
+  desc: >
+    The rules are data, not code, and ship in a hash-verified database.
+  contents:
+  - load_rules
+  - rules_version
+- title: "Provenance"
   contents:
   - hash_manifest
   - validate_tar
@@ -24,8 +35,7 @@ articles:
 - title: "Articles"
   navbar: ~
   contents:
+  - pkgaudit
   - r-package-security
-  - how-it-works
   - rules
-
-
+  - internals

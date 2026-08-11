@@ -1,1 +1,1 @@
-remotes::install_cran("foo")
+remotes::install_bioc("evil/pkg")

@@ -45,7 +45,7 @@ analyze_segment.R <- function(segment, rules) {
   pat$guarded <- pat$line_number %in% segment$guarded_lines
 
   if (nrow(pat) > 0L) {
-    # Where the named rules are withheld, only the Top-level/Other distinction
+    # Where the named rules are withheld, only the R/Other distinction
     # is computed: code at the top level of the segment takes the segment's own
     # context, and code inside a function definition stays "Other", since it
     # runs only if something calls it.

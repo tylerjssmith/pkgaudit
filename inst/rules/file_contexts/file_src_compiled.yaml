@@ -2,10 +2,12 @@ name: src_compiled
 version: "0.1.0"
 type: other
 message: >-
-  Compiled source under src/ is built into the package's shared object by
-  R CMD INSTALL and loaded with the namespace. pkgaudit does not read it;
-  the row exists so the file is accounted for, and export_unscanned() can
-  hand it to a tool that does.
+  Compiled source is built into a package's shared object by R CMD INSTALL and
+  loaded with the namespace. pkgaudit does not read it; the row exists so the
+  file is accounted for, and export_unscanned() can hand it to a tool that does.
+  The extensions are listed rather than left to the directory, so that compiled
+  source shipped anywhere else -- a header library under inst/include/, say --
+  is accounted for too.
 at_autoconf: FALSE
 at_build: FALSE
 at_check: TRUE
@@ -20,7 +22,7 @@ recursive: TRUE
 report: FALSE
 namespace_source: FALSE
 code_context: "R"
-filename: '.'
+filename: '\.(c|cc|cpp|cxx|C|h|hpp|hxx|ipp|f|f90|f95|f03|f77|for|m|mm|rs|java)$'
 positive_examples:
   - src/rcpp_hello.cpp
   - src/init.c
@@ -28,4 +30,5 @@ positive_examples:
   - src/lib.rs
 negative_examples:
   - R/zzz.R
-  - inst/extdata/x.c
+  - src/Makevars
+  - src/README

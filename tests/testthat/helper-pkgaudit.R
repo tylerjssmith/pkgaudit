@@ -118,6 +118,12 @@ errors_for <- function(...) {
 }
 
 
+# A package carrying one vignette, for the .Rmd / .qmd / .Rnw / .rsp extractors.
+vignette_pkg <- function(name, lines) {
+  make_pkg(files = stats::setNames(list(lines), file.path("vignettes", name)))
+}
+
+
 # Create a minimal source package on disk and return its root path. Extra files
 # are given as a named list of path = contents (paths relative to the root).
 make_pkg <- function(dir = tempfile("pkg"), files = list()) {

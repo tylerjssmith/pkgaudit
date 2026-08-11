@@ -1,0 +1,29 @@
+name: src_other
+version: "0.1.0"
+type: other
+message: >-
+  A file under src/ in no language pkgaudit recognises. Everything in src/ is
+  handed to the compiler, so an extension nobody listed is still part of what
+  gets built; the row exists so it is accounted for rather than passed over.
+at_autoconf: FALSE
+at_build: FALSE
+at_check: TRUE
+at_install_src: TRUE
+at_install_bin: FALSE
+at_load: TRUE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+path: "src"
+recursive: TRUE
+report: FALSE
+namespace_source: FALSE
+code_context: "R"
+filename: '.'
+positive_examples:
+  - src/vendor/odd.zz
+  - src/build.ninja
+  - src/init.c
+negative_examples:
+  - R/zzz.R
+  - inst/include/Rcpp/Vector.h

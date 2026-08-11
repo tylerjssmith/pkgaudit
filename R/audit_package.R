@@ -51,7 +51,7 @@
 #' Every file the scan looks at is found by a file-context rule, and that rule's
 #' `type` decides how the file is read: an `R` script is parsed as it stands, an
 #' `Rd` help file has its `\examples{}` and `\Sexpr{}` code extracted first, and
-#' a `shell` or `make` file is matched line by line against the regex rules.
+#' a `shell` or `make` file is matched line by line against the match rules.
 #' Reading a file yields one or more *segments* of code, which are what the
 #' finders actually see; a help file yields two, because its examples and its
 #' `\Sexpr` macros run at different phases.
@@ -71,7 +71,7 @@
 #' under `exec/`, for instance. Nothing is reported for an unclaimed file, so its
 #' absence from the findings is not evidence that it is clean.
 #'
-#' The `coverage` frame accounts for every file in the package, so that a clean
+#' The `coverage` frame accounts for the code in a package, so that a clean
 #' scan can be checked rather than taken on trust. Each row's `status` is one of
 #' `parsed` (read as R), `matched` (scanned as text), `exportable` (a language
 #' pkgaudit does not read, which [export_unscanned()] can hand to a tool that
@@ -82,12 +82,20 @@
 #' matching row in `errors`, and only a failure at a reading step counts: a rule
 #' that fails on a file says nothing about the file.
 #'
-#' Nothing is assumed inert. A `.md` file can be read, parsed and evaluated, and
-#' deserializing an `.rda` can execute arbitrary code, so no extension is
-#' allowlisted out and coverage never reaches 100%. What the frame offers is not
-#' completeness but legibility: what was not examined, and whether it runs.
-#' Phases come from where a file sits rather than from what it is named, so a
-#' file in a directory no rule anticipates is still reported, with no phases.
+#' The frame accounts for a file when a rule claimed it, or when its name
+#' says what kind of file it is -- an `.R` under `misc/`, an `.rds` under
+#' `inst/extdata/` -- wherever it sits. A name that says nothing, such as
+#' `NAMESPACE` or `MD5`, is left out, since a frame that lists everything is
+#' harder to read than one that lists the code. That allowlist is derived from
+#' the rules rather than written down, so a rule for a new kind of file starts
+#' accounting for it everywhere.
+#'
+#' Coverage therefore never reaches 100%, and is not meant to. What the frame
+#' offers is not completeness but legibility: what was not examined, and whether
+#' it runs. Deserializing an `.rda` can execute arbitrary code, so serialized
+#' objects are reported as executable surface rather than as data. Phases come
+#' from where a file sits rather than from what it is named, so a file in a
+#' directory no rule anticipates is still reported, with no phases.
 #' Version-control and IDE state (`.git/`, `.Rproj.user/`, `renv/library/`) is
 #' outside the package and excluded; `.Rbuildignore` is not consulted, since it
 #' is written by the package under audit.

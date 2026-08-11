@@ -117,3 +117,4 @@ parse(text = res$examples, keep.source = TRUE)
 parse(text = res$sexpr)
 }
 }
+\keyword{internal}

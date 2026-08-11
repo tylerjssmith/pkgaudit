@@ -1,0 +1,1 @@
+f <- path.expand("~/.zshrc")

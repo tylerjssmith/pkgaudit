@@ -42,3 +42,9 @@ test_that("parse_code() on a file's lines matches parsing the same code inline",
   inline    <- parse_code(code)
   expect_equal(as.character(from_file$tree), as.character(inline$tree))
 })
+
+test_that("parse_code() of an empty file is an empty program, not an error", {
+  res <- parse_code(character(0L))
+  expect_null(res$error)
+  expect_s3_class(res$tree, "xml_document")
+})

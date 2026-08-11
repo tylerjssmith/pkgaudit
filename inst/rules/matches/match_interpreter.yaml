@@ -1,0 +1,34 @@
+name: interpreter
+version: "0.1.0"
+language: shell
+attck:
+  - T1059
+message: >-
+  A build script that calls another language's interpreter runs code pkgaudit
+  does not read. The script it runs may live in the package, be written by an
+  earlier step, or be fetched; either way its contents are not part of this
+  scan.
+regex: '(?<=^|[^[:alnum:]_-])(python[23]?|perl|ruby|node|osascript|powershell|pwsh)(?=[^[:alnum:]_./-]|$)'
+positive_examples:
+  - |
+    AC_PATH_PROG([PYTHON], [python3])
+  - |
+    python setup.py build
+  - |
+    python3 -c 'import os; os.system("id")'
+  - |
+    perl -e 'system("id")'
+  - |
+      node build/prepare.js
+  - |
+    SCRIPT := $(shell ruby tools/gen.rb)
+negative_examples:
+  - |
+    PKG_LIBS=-lpython3.11
+  - |
+    # see https://www.python.org/ for details
+  - |
+  - |
+    /usr/include/node/node.h
+  - |
+    nodelist=1

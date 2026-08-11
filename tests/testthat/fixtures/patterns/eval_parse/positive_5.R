@@ -1,1 +1,1 @@
-eval(parse(text = memDecompress(blob, type = "gzip")))
+eval(parse(text = httr::content(httr::GET(u), "text")))

@@ -1,1 +1,1 @@
-BiocManager::install("evil")
+pak::local_install("pkg")

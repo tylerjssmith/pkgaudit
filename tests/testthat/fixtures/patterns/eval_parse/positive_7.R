@@ -1,1 +1,1 @@
-eval(str2expression(rawToChar(as.raw(bytes))))
+evalq(eval(parse(text = readLines(con))))

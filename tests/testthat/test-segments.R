@@ -174,3 +174,15 @@ test_that("a shell rule is never evaluated against another language", {
   found <- analyze_segment(new_segment("shell", "curl x", "configure"), r)
   expect_equal(nrow(found$matches), 0L)
 })
+
+test_that("a segment holding nothing but blank lines is not a coverage gap", {
+  # Segments are blank-padded to the length of their source, so one whose
+  # language appears nowhere in the file is all padding and accounts for no
+  # lines at all.
+  segment <- structure(
+    list(file_context = "vignettes/intro.Rmd", lines = c("", "  ", "\t")),
+    class = c("python", "segment")
+  )
+  expect_equal(nrow(.segment_coverage(segment)), 0L)
+  expect_equal(nrow(analyze_segment(segment, load_rules())$coverage), 0L)
+})

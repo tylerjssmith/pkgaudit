@@ -48,3 +48,16 @@ test_that("find_patterns() records an error for an invalid XPath", {
   expect_equal(res$errors$step, "find_patterns")
   expect_equal(res$errors$rule, "system")
 })
+
+test_that("find_patterns() with no rules returns an empty frame of the right shape", {
+  tree <- tree_from_text("system('id')")
+
+  res <- find_patterns(tree, rules$patterns[0L, ], "R/f.R")
+  expect_equal(nrow(res$patterns), 0L)
+  # code_context is attached later, by determine_code_contexts().
+  expect_false("code_context" %in% names(res$patterns))
+  expect_equal(attr(res$patterns, "nodes"), list())
+  expect_equal(nrow(res$errors), 0L)
+
+  expect_equal(nrow(find_patterns(tree, NULL, "R/f.R")$patterns), 0L)
+})

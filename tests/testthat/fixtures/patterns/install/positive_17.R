@@ -1,1 +1,1 @@
-pak::lockfile_install("pkg.lock")
+pak::pkg_install("evil/pkg")

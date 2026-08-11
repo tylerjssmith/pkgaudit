@@ -172,3 +172,131 @@ test_that("two exports wanting the same name are both refused", {
   expect_false(any(clash$written))
   expect_true(all(grepl("collides", clash$note)))
 })
+
+test_that("a symlinked source file is refused even where coverage calls it exportable", {
+  skip_on_os("windows")
+  pkg <- export_pkg(); out <- tempfile("out")
+  outside <- tempfile("secret"); writeLines("SECRET", outside)
+  on.exit(unlink(c(pkg, out, outside), recursive = TRUE), add = TRUE)
+  file.symlink(outside, file.path(pkg, "src", "sneak.c"))
+
+  # The coverage frame refuses the link first, so overriding its verdict leaves
+  # the export's own guard as the only one left -- which is the one under test.
+  res <- audit_package(pkg, rules)
+  at  <- res$coverage$file_context == "src/sneak.c"
+  res$coverage$status[at] <- "exportable"
+  res$coverage$reason[at] <- "no_analyser"
+  res$coverage$bytes[at]  <- 6L
+
+  man   <- export_unscanned(res, out, source = pkg)
+  sneak <- man[man$file_context == "src/sneak.c", ]
+  expect_false(sneak$written)
+  expect_equal(sneak$note, "symlink")
+  expect_false(file.exists(file.path(out, "src", "sneak.c")))
+})
+
+test_that("a file named in coverage but absent from the source is recorded", {
+  pkg <- export_pkg(); out <- tempfile("out")
+  on.exit(unlink(c(pkg, out), recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  row <- res$coverage[res$coverage$file_context == "src/hi.c", ]
+  row$file_context <- "src/gone.c"
+  res$coverage <- rbind(res$coverage, row)
+
+  man  <- export_unscanned(res, out, source = pkg)
+  gone <- man[man$file_context == "src/gone.c", ]
+  expect_false(gone$written)
+  expect_equal(gone$note, "unreadable")
+  # The rest of the export still ran.
+  expect_true(file.exists(file.path(out, "src", "hi.c")))
+})
+
+test_that("a source entry that cannot be read is recorded, not written", {
+  pkg <- export_pkg(); out <- tempfile("out")
+  on.exit(unlink(c(pkg, out), recursive = TRUE), add = TRUE)
+  # A directory where a file is expected: it has a size, so the read is what
+  # fails, which is the branch after the size check.
+  dir.create(file.path(pkg, "src", "odd.c"))
+
+  res <- audit_package(pkg, rules)
+  row <- res$coverage[res$coverage$file_context == "src/hi.c", ]
+  row$file_context <- "src/odd.c"
+  res$coverage <- rbind(res$coverage, row)
+
+  man <- export_unscanned(res, out, source = pkg)
+  odd <- man[man$file_context == "src/odd.c", ]
+  expect_false(odd$written)
+  expect_equal(odd$note, "unreadable")
+})
+
+test_that("a target resolving outside the export directory is refused", {
+  skip_on_os("windows")
+  pkg <- export_pkg(); out <- tempfile("out"); outside <- tempfile("outside")
+  on.exit(unlink(c(pkg, out, outside), recursive = TRUE), add = TRUE)
+  dir.create(out); dir.create(outside)
+  # A previous export left the file in place; the directory it sits in is now a
+  # link out of the export directory, which the path string does not show. Only
+  # resolving the target catches this.
+  writeLines("ORIGINAL", file.path(outside, "hi.c"))
+  file.symlink(outside, file.path(out, "src"))
+
+  man <- export_unscanned(audit_package(pkg, rules), out, source = pkg,
+                          overwrite = TRUE)
+  hi <- man[man$file_context == "src/hi.c", ]
+  expect_false(hi$written)
+  expect_equal(hi$note, "escapes target")
+  expect_equal(readLines(file.path(outside, "hi.c")), "ORIGINAL")
+})
+
+test_that("a target that cannot be written is recorded, and nothing is removed", {
+  pkg <- export_pkg(); out <- tempfile("out")
+  on.exit(unlink(c(pkg, out), recursive = TRUE), add = TRUE)
+  # A directory sitting exactly where the export file would go.
+  dir.create(file.path(out, "src", "hi.c"), recursive = TRUE)
+
+  man <- export_unscanned(audit_package(pkg, rules), out, source = pkg,
+                          overwrite = TRUE)
+  hi <- man[man$file_context == "src/hi.c", ]
+  expect_false(hi$written)
+  expect_equal(hi$note, "could not write")
+  expect_true(dir.exists(file.path(out, "src", "hi.c")))
+})
+
+test_that("export_unscanned() errors when no source directory is recorded", {
+  res <- make_obj(metadata = good_metadata(pkg_path = NA_character_))
+  expect_error(export_unscanned(res, tempfile("out")),
+               "no source directory recorded")
+})
+
+test_that("export_unscanned() errors when the target cannot be created", {
+  pkg <- export_pkg()
+  blocked <- tempfile("blocked"); writeLines("not a directory", blocked)
+  on.exit(unlink(c(pkg, blocked), recursive = TRUE), add = TRUE)
+
+  expect_error(
+    export_unscanned(audit_package(pkg, rules), file.path(blocked, "out"),
+                     source = pkg),
+    "could not create"
+  )
+})
+
+test_that("a span in a language with no mapped extension keeps its own name", {
+  job <- data.frame(file_context = "vignettes/intro.Rmd", language = "js",
+                    whole = FALSE, stringsAsFactors = FALSE)
+  expect_equal(.export_path(job), "vignettes/intro.js.js")
+})
+
+test_that("a chunk in a language with no mapped extension is exported, not fatal", {
+  pkg <- vignette_pkg("intro.Rmd", c("---", "title: x", "---", "",
+                                     "```{js}", "eval(atob('aWQ='))", "```"))
+  out <- tempfile("out")
+  on.exit(unlink(c(pkg, out), recursive = TRUE), add = TRUE)
+
+  man <- export_unscanned(audit_package(pkg, rules), out, source = pkg)
+  js  <- man[man$language == "js", ]
+  expect_true(js$written)
+  expect_equal(js$path, "vignettes/intro.js.js")
+  expect_equal(readLines(file.path(out, "vignettes/intro.js.js"))[[6L]],
+               "eval(atob('aWQ='))")
+})

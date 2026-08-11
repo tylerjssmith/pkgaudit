@@ -33,17 +33,18 @@ A data frame with the columns \code{\link[=audit_package]{audit_package()}} docu
 \code{coverage}, without the phase columns; \code{\link[=audit_package]{audit_package()}} attaches those.
 }
 \description{
-Builds the \code{coverage} data frame: one row per file in the package tree, and
-one per code span where a file yields several, recording whether pkgaudit
-parsed it, matched it as text, could hand it to another tool, or did not
-examine it at all.
+Builds the \code{coverage} data frame: one row per file the package carries that
+is, or could be, code, and one per code span where a file yields several,
+recording whether pkgaudit parsed it, matched it as text, could hand it to
+another tool, or did not examine it at all.
 }
 \section{Security considerations}{
 
-The frame is built by walking the tree, not by consulting the rules, so a
-file in a location no rule anticipates still gets a row. That is the point:
-an unknown-unknown becomes a known-unknown, and a clean scan becomes
-falsifiable.
+The frame is built by walking the tree rather than by asking the rules what
+they matched, so a file in a location no rule anticipates still gets a row.
+That is the point: an unknown-unknown becomes a known-unknown, and a clean
+scan becomes falsifiable. What a name has to say to earn a row is
+\code{.in_scope()}.
 
 A symlink is recorded and never read. \code{list.files()} descends into symlinked
 directories and a read would follow the link out of the package, so every

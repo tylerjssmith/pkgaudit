@@ -5,7 +5,7 @@
 #'
 #' @param lines Character vector of the file's lines, as returned by
 #'   [read_code()].
-#' @param regex_rules Data frame of regex rules (`rules$matches` from
+#' @param match_rules Data frame of match rules (`rules$matches` from
 #'   [load_rules()]), with columns `name`, `regex`, `message`, and `attck`.
 #' @param file_context Package-root-relative path of the file, carried through
 #'   for joining to the file-contexts table.
@@ -38,7 +38,7 @@
 #' [read_code()]'s responsibility rather than this function's.
 #'
 #' @keywords internal
-find_matches <- function(lines, regex_rules, file_context) {
+find_matches <- function(lines, match_rules, file_context) {
   stopifnot(is.character(lines))
 
   rows   <- list()
@@ -47,10 +47,10 @@ find_matches <- function(lines, regex_rules, file_context) {
     list(matches = .empty_matches(with_phases = FALSE), errors = errors)
   }
 
-  if (is.null(regex_rules) || nrow(regex_rules) == 0L) return(empty())
+  if (is.null(match_rules) || nrow(match_rules) == 0L) return(empty())
 
-  for (i in seq_len(nrow(regex_rules))) {
-    rule    <- regex_rules[i, , drop = FALSE]
+  for (i in seq_len(nrow(match_rules))) {
+    rule    <- match_rules[i, , drop = FALSE]
     matches <- .gregexpr_safe(rule$regex, lines)
 
     if (inherits(matches, "condition")) {

@@ -1,0 +1,56 @@
+name: python
+version: "0.1.0"
+language: R
+attck:
+  - T1059.006
+  - T1027
+message: >-
+  These functions run Python from R through reticulate. pkgaudit does not read
+  Python, so what they run is outside this scan entirely -- and code passed as a
+  string is not even a file the coverage frame can account for. import_builtins()
+  is listed with them because it returns Python's own eval, exec and __import__.
+functions:
+  - py_run_string
+  - py_run_file
+  - py_eval
+  - source_python
+  - py_call
+  - import_builtins
+xpath: >-
+  //SYMBOL_FUNCTION_CALL[
+    (
+      text() = 'py_run_string' or text() = 'py_run_file'
+      or text() = 'py_eval' or text() = 'source_python'
+      or text() = 'py_call' or text() = 'import_builtins'
+    )
+    and not(preceding-sibling::OP-DOLLAR)
+    and not(preceding-sibling::OP-AT)
+  ]
+positive_examples:
+  - |
+    py_run_string("import os; os.system('id')")
+  - |
+    reticulate::py_run_string(payload)
+  - |
+    py_run_file(system.file("python", "setup.py", package = "somepkg"))
+  - |
+    x <- py_eval("__import__('os').popen('id').read()")
+  - |
+    source_python("inst/python/helper.py")
+  - |
+    reticulate::py_call(fn, args)
+  - |
+    b <- import_builtins()
+negative_examples:
+  - |
+    np <- reticulate::import("numpy")
+  - |
+    reticulate::use_virtualenv("r-env")
+  - |
+    x <- reticulate::py_to_r(obj)
+  - |
+    foo$py_eval("1 + 1")
+  - |
+    foo@py_run_string("x = 1")
+  - |
+    reticulate::py_available()

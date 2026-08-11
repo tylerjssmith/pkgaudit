@@ -106,6 +106,11 @@ code_labels <- c(
 )
 
 pattern_labels <- c(
+  credentials = paste(
+    "a path or environment variable that only holds a secret: `~/.ssh/`,",
+    "`~/.aws/`, `.netrc`, `id_rsa`, `~/.gnupg/`, and `Sys.getenv()` of a name",
+    "containing `TOKEN`, `SECRET`, `PASSWORD` or `API_KEY`"
+  ),
   curl = paste(
     "`curl()`, `curl_fetch_memory()`, `curl_fetch_disk()`,",
     "`curl_fetch_stream()`, `curl_fetch_multi()`, `curl_download()`,",
@@ -120,8 +125,10 @@ pattern_labels <- c(
   download_file = "`download.file()`, `url()`",
   dynload       = "`dyn.load()`, `library.dynam()`",
   eval_parse = paste(
-    "`eval()`/`evalq()` over `parse()`, `str2lang()`, or `str2expression()`,",
-    "when combined with a decoding call"
+    "`eval()`/`evalq()` over `parse()`, `str2lang()` or `str2expression()`,",
+    "when the text came from a fetch, a decode, a deserialization, a",
+    "subprocess or a file read -- every function the rules for those already",
+    "cover, plus `readLines()`, `scan()`, `readBin()` and `rawToChar()`"
   ),
   httr = paste(
     "`GET()`, `POST()`, `PUT()`, `PATCH()`, `DELETE()`, `HEAD()`, `VERB()`"
@@ -131,20 +138,29 @@ pattern_labels <- c(
     "`req_perform_sequential()`, `req_perform_stream()`,",
     "`req_perform_connection()`, `req_perform_promise()`"
   ),
-  indirection = paste(
-    "`do.call()`, `match.fun()`, `getFromNamespace()`, `getExportedValue()`,",
-    "`getAnywhere()`, `getFunction()`, when the first argument is a string",
-    "literal"
-  ),
   install = paste(
     "`install.packages()`, `install_github()`, `install_gitlab()`,",
     "`install_bitbucket()`, `install_git()`, `install_url()`,",
     "`install_version()`, `install_local()`, `install_bioc()`,",
     "`install_dev()`, `install_cran()`, `pak()`, `pkg_install()`,",
     "`local_install()`, `lockfile_install()`, `BiocManager::install()`,",
-    "`renv::install()`, `devtools::install()`"
+    "`renv::install()`, `devtools::install()`, `py_install()`,",
+    "`virtualenv_install()`, `conda_install()`, `virtualenv_create()`,",
+    "`conda_create()`"
+  ),
+  namespace = paste(
+    "`getFromNamespace()`, `getExportedValue()`, `getAnywhere()`,",
+    "`assignInNamespace()`, `assignInMyNamespace()`, `unlockBinding()`"
   ),
   options_repos = "`options(repos = )`",
+  python = paste(
+    "`py_run_string()`, `py_run_file()`, `py_eval()`, `source_python()`,",
+    "`py_call()`, `import_builtins()`"
+  ),
+  persistence = paste(
+    "a startup file or scheduler: `~/.bashrc`, `~/.zshrc`, `~/.profile`,",
+    "`~/.Rprofile`, `~/.Renviron`, `crontab`, `LaunchAgents`, `/etc/systemd`"
+  ),
   rcurl = paste(
     "`getURL()`, `getURI()`, `getForm()`, `postForm()`, `curlPerform()`"
   ),
@@ -174,10 +190,10 @@ pattern_labels <- c(
 # names the one its top-level code belongs to, which is how code outside R/
 # carries phases of its own.
 computed_contexts <- data.frame(
-  context = c("Top-level", "Other", "Rd_examples",
+  context = c("R", "Other", "Rd_examples",
               "Rd_Sexpr_build", "Rd_Sexpr_install", "Rd_Sexpr_render",
-              "data_R", "demo_R", "exec_R", "test_R", "tools_R", "citation_R",
-              "rprofile_R", "vignette"),
+              "data", "demo", "exec", "tests", "tools", "citation",
+              "Rprofile", "vignettes"),
   description = c(
     paste(
       "Top-level code in an R script is evaluated once, when the lazy-load",
@@ -280,15 +296,98 @@ stopifnot(
 )
 ```
 
-pkgaudit v`r utils::packageVersion("pkgaudit")` separates *when* code executes
-from *what* code does using four categories of rules: file contexts, code
-contexts, patterns, and matches. Each rule is defined in a YAML file under
+pkgaudit v`r utils::packageVersion("pkgaudit")` separates *what* code does from
+*when* it executes. **Patterns** and **matches** answer the first, and come
+first below; **file contexts** and **code contexts** answer the second. Each
+rule is defined in a YAML file under
 [inst/rules/](https://github.com/tylerjssmith/pkgaudit/tree/master/inst/rules)
 and compiled into the SQLite database at `inst/db/rules.db`. The Rule columns
 below link to the defining YAML files.
 
 This vignette is generated from that database, at rules
-v`r rules_version()`.
+v`r rules_version()`. Every rule in it must be described here, so a rule that
+ships without a description fails the build rather than appearing unexplained.
+
+## Patterns
+
+Patterns are security-relevant function calls. Each pattern finding is
+attributed to the code context it executes in, so a `system()` call inside
+`.onLoad` is distinguished from one inside an ordinary function ("Other") or at
+top level ("R"). Qualified (`pkg::fn()`) and unqualified (`fn()`) call forms are
+both detected. Pattern rules carry
+[MITRE ATT&CK](https://attack.mitre.org/) technique labels.
+
+A finding also records how the code is *reached*. `guarded` is `TRUE` for code
+that ships but the lifecycle does not run -- a `\dontrun{}` or `\donttest{}`
+block, or a vignette chunk marked `eval=FALSE`; its phases still come from its
+context, so they read as an upper bound. `indirect` is `TRUE` where the call was
+made through the function's name rather than the function.
+
+A pattern rule declares no phases of its own: a pattern inherits them from the
+code context it sits in, listed in the two tables above.
+
+A call made through a function's name rather than the function --
+`do.call("system", ...)`, `match.fun()`, `getFunction()` -- is reported under
+the rule that owns the name, with the `indirect` column set. Each rule declares
+the names it claims, and a name is only accepted if calling it bare would have
+matched that same rule, so an indirect finding can never be attributed to a
+rule that would not have reported the direct call. Three rules claim no names:
+`eval_parse`, `options_repos` and `system_processx` each match on more than the
+callee -- a nested call, a named argument, a package qualifier -- and none of
+that survives the trip through `do.call()`. A name assembled at runtime is not
+resolved either, since pkgaudit evaluates nothing.
+
+```{r patterns}
+pat <- rules$patterns
+emit_table(
+  c("Rule", "Pattern", "Description"),
+  rule_link(pat$name, "patterns"),
+  pattern_labels[pat$name],
+  pat$message
+)
+```
+
+## Matches
+
+Matches are regular-expression matches in the shell scripts and Make-like
+files among the file contexts above -- those whose Type is `shell` or `make`.
+A file context typed `R` is parsed and scanned for patterns instead, and no
+other file in the package is scanned for matches at all. Match rules
+carry [MITRE ATT&CK](https://attack.mitre.org/) technique labels.
+
+Like a pattern rule, a match rule declares no phases of its own: a match
+inherits them from the file context it was found in, listed in the
+File Contexts table above. Where a file matches more than one file-context rule,
+it takes the phases of every rule that matched it.
+
+Matching text is less precise than matching a parse tree. A match has no
+syntax behind it, so a match inside a comment, a quoted string, or a branch that
+never runs is reported the same as one in a live command. A match is a candidate
+for review rather than confirmed behaviour, and warrants reading the file itself
+more than a pattern finding does.
+
+```{r matches}
+rx <- rules$matches
+emit_table(
+  c("Rule", "Description"),
+  rule_link(rx$name, "matches"),
+  rx$message
+)
+```
+
+The regular expressions themselves are matched with `perl = TRUE` and are
+case-sensitive:
+
+```{r matches-regex, results = "markup", comment = ""}
+# Shown as a verbatim block rather than a table column: an alternation `|` in a
+# regular expression would be read as a column separator, and escaping it
+# leaves the escape visible in the rendered cell.
+cat(
+  sprintf("%s  %s", formatC(rx$name, width = max(nchar(rx$name)), flag = "-"),
+          rx$regex),
+  sep = "\n"
+)
+```
 
 ## Lifecycle Phases
 
@@ -368,7 +467,11 @@ emit_table(
 ## Code Contexts
 
 Code contexts are lifecycle hooks whose bodies run automatically when a
-namespace is loaded, attached, unloaded, or detached.
+namespace is loaded, attached, unloaded, or detached. These rules are applied
+only where a package's R code becomes its namespace -- `R/`, `R/unix/`,
+`R/windows/`. A `.onLoad` defined anywhere else ships as an ordinary object and
+is never called, so attributing it to a hook would be a false reading rather
+than a cautious one.
 
 ```{r code-contexts}
 cc <- rules$code_contexts
@@ -383,11 +486,14 @@ emit_table(
 
 ## Computed Contexts
 
-Every pattern is attributed to the code context that contains it. Four of those
+Every pattern is attributed to the code context that contains it. Most of those
 contexts are computed rather than matched by a rule, and so have phases but no
-rule of their own. `Top-level` and `Other` are computed from where a pattern
-sits in the parse tree; the two `Rd` contexts come from which part of a help
-file the code was extracted from. They are defined under
+rule of their own. `R` and `Other` are computed from where a pattern sits in the
+parse tree. The `Rd_` contexts come from which part of a help file the code was
+extracted from, one per `\Sexpr` stage, because the stages do not share a phase
+profile. The rest are named for where the file sits -- `data`, `tests`,
+`vignettes` -- because `R`'s phases are right for `R/` and wrong everywhere
+else. They are defined under
 [inst/rules/phases/](https://github.com/tylerjssmith/pkgaudit/tree/master/inst/rules/phases).
 
 ```{r computed-contexts}
@@ -396,69 +502,5 @@ emit_table(
   paste0("`", computed_contexts$context, "`"),
   vapply(computed_contexts$context, phase_cell, character(1L)),
   computed_contexts$description
-)
-```
-
-## Patterns
-
-Patterns are security-relevant function calls. Each pattern finding is
-attributed to the code context it executes in, so a `system()` call inside
-`.onLoad` is distinguished from one inside an ordinary function ("Other") or at
-top level ("Top-level"). Qualified (`pkg::fn()`) and unqualified (`fn()`) call
-forms are both detected. Pattern rules carry
-[MITRE ATT&CK](https://attack.mitre.org/) technique labels.
-
-A pattern rule declares no phases of its own: a pattern inherits them from the
-code context it sits in, listed in the two tables above.
-
-```{r patterns}
-pat <- rules$patterns
-emit_table(
-  c("Rule", "Pattern", "Description"),
-  rule_link(pat$name, "patterns"),
-  pattern_labels[pat$name],
-  pat$message
-)
-```
-
-## Matches
-
-Expressions are regular-expression matches in the shell scripts and Make-like
-files among the file contexts above -- those whose Type is `shell` or `make`.
-A file context typed `R` is parsed and scanned for patterns instead, and no
-other file in the package is scanned for matches at all. Match rules
-carry [MITRE ATT&CK](https://attack.mitre.org/) technique labels.
-
-Like a pattern rule, a match rule declares no phases of its own: a match
-inherits them from the file context it was found in, listed in the
-File Contexts table above. Where a file matches more than one file-context rule,
-it takes the phases of every rule that matched it.
-
-Matching text is less precise than matching a parse tree. A match has no
-syntax behind it, so a match inside a comment, a quoted string, or a branch that
-never runs is reported the same as one in a live command. Expression findings
-are candidates for review rather than confirmed behavior, and warrant reading
-the file itself more than a pattern finding does.
-
-```{r matches}
-rx <- rules$matches
-emit_table(
-  c("Rule", "Description"),
-  rule_link(rx$name, "regex"),
-  rx$message
-)
-```
-
-The regular expressions themselves are matched with `perl = TRUE` and are
-case-sensitive:
-
-```{r matches-regex, results = "markup", comment = ""}
-# Shown as a verbatim block rather than a table column: an alternation `|` in a
-# regular expression would be read as a column separator, and escaping it
-# leaves the escape visible in the rendered cell.
-cat(
-  sprintf("%s  %s", formatC(rx$name, width = max(nchar(rx$name)), flag = "-"),
-          rx$regex),
-  sep = "\n"
 )
 ```

@@ -48,9 +48,13 @@ parse_code <- function(lines) {
     ),
     error = function(e) e
   )
+  # nocov start
+  # No R source that parses has been found to produce a document xml2 rejects.
+  # The scan still refuses to abort on one if it ever appears.
   if (inherits(tree, "condition")) {
     return(list(tree = NULL, error = conditionMessage(tree)))
   }
+  # nocov end
 
   list(tree = tree, error = NULL)
 }

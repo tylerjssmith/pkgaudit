@@ -33,13 +33,12 @@
 #' @return A named list of six data frames, with `package` and `version`
 #'   prepended to the columns from [pkgaudit::audit_package()]. Columns
 #'   recoverable from the rules are dropped from the finding frames, since at
-#'   CRAN scale they repeat over millions of rows: `message` from all four,
-#'   `attck` from patterns and matches, and the nine lifecycle-phase columns
-#'   from all four. The error frame keeps its `message`, which is the runtime
-#'   error text.
+#'   CRAN scale they repeat over millions of rows: `message` from all three,
+#'   `attck` from patterns and matches, and the nine lifecycle-phase columns.
+#'   The error frame keeps its `message`, which is the runtime error text.
 #'
-#'   To restore phases, join `rules$phases` on `rule` for a file or code
-#'   context, or on `code_context` for a pattern. An match takes its phases
+#'   To restore phases, join `rules$phases` on `rule` for a file context, or on
+#'   `code_context` for a pattern. An match takes its phases
 #'   from the file it was found in, which is a path rather than a rule name, so
 #'   restoring them takes two joins: `matches` to `file_contexts` on
 #'   `package`, `version`, and `file_context` to recover the file-context
@@ -52,16 +51,25 @@
 #'       tell the scan which files to read but do not report, so a package's own
 #'       R scripts and help files are represented by their `patterns`, not by a
 #'       row here.}
-#'     \item{code_contexts}{`package`, `version`, `rule`, `file_context`,
-#'       `line_number`, `column_number`.}
 #'     \item{patterns}{`package`, `version`, `rule`, `file_context`,
-#'       `line_number`, `column_number`, `code_context`. `code_context` is a
-#'       code-context rule name, `Top-level`, `Other`, or -- for a pattern found
-#'       in a help file -- `Rd_examples` or `Rd_Sexpr`.}
+#'       `line_number`, `column_number`, `code_context`, `guarded`, `indirect`.
+#'       `code_context` is where the code sits: a lifecycle-hook rule name, the
+#'       directory or file it is in (`R`, `data`, `tests`, `vignettes`, ...),
+#'       `Other` for code inside an ordinary function, or -- in a help file --
+#'       `Rd_examples` or one of `Rd_Sexpr_build`, `Rd_Sexpr_install`,
+#'       `Rd_Sexpr_render`. `guarded` marks code that ships but the lifecycle
+#'       does not run; `indirect` marks a call made through the function's name
+#'       rather than the function.}
 #'     \item{matches}{`package`, `version`, `rule`, `file_context`,
 #'       `line_number`, `column_number`. Regex matches in the shell scripts and
 #'       Make-like files among the file contexts. Carries no `code_context`: a
 #'       shell script or Make-like file has no R parse tree to sit in.}
+#'     \item{coverage}{`package`, `version`, `status`, `top_level`, `type`,
+#'       `files`, `lines`: how much of each package was read, summarised rather
+#'       than carried row by row. A package has one coverage row per file, which
+#'       at CRAN scale is tens of millions of rows saying very little; the tally
+#'       keeps what a survey asks of it. `status` is `parsed`, `matched`,
+#'       `exportable`, `unexamined` or `error`.}
 #'     \item{errors}{`package`, `version`, `step`, `file_context`, `rule`,
 #'       `message`. Captures per-file audit errors as well as tarball-level
 #'       failures (`step` `"parse_filename"`, `"validate_tar"` for a refused
@@ -111,7 +119,10 @@
 #' subset(result$patterns, code_context != "Other")
 #'
 #' # Patterns in the R code of help files, across all packages.
-#' subset(result$patterns, code_context %in% c("Rd_examples", "Rd_Sexpr"))
+#' subset(result$patterns, startsWith(code_context, "Rd_"))
+#'
+#' # What went unread, by kind of file and where it sits.
+#' aggregate(files ~ status + top_level + type, result$coverage, sum)
 #'
 #' # How often each regex rule matched, and in which files.
 #' table(result$matches$rule, result$matches$file_context)
@@ -142,6 +153,10 @@ audit_cran <- function(
   }
   # Checked here as well as in audit_tarball() so an incomplete rules list fails
   # once, up front, rather than as one captured error per tarball.
+  #
+  # code_contexts is still a rule class even though the result has no frame of
+  # that name: those rules are what assign a pattern its code context, which
+  # travels on the patterns frame.
   stopifnot(
     is.list(rules),
     all(c("file_contexts", "code_contexts", "patterns", "matches", "phases") %in%
@@ -208,8 +223,8 @@ audit_cran <- function(
       saveRDS(chunk, file.path(checkpoint_dir, sprintf("chunk_%05d.rds", k)))
     }
 
-    n_find <- nrow(chunk$file_contexts) + nrow(chunk$code_contexts) +
-      nrow(chunk$patterns) + nrow(chunk$matches)
+    n_find <- nrow(chunk$file_contexts) + nrow(chunk$patterns) +
+      nrow(chunk$matches)
     n_err  <- nrow(chunk$errors)
 
     out <- .combine_results(list(out, chunk))
@@ -227,10 +242,9 @@ audit_cran <- function(
   }
 
   message(sprintf(
-    "Done. Across %d package(s): %d file context(s), %d code context(s), %d pattern(s), %d match(s), %d error(s), %d provenance mismatch(es).",
-    total, nrow(out$file_contexts), nrow(out$code_contexts),
-    nrow(out$patterns), nrow(out$matches), nrow(out$errors),
-    nrow(out$provenance)
+    "Done. Across %d package(s): %d file context(s), %d pattern(s), %d match(s), %d coverage row(s), %d error(s), %d provenance mismatch(es).",
+    total, nrow(out$file_contexts), nrow(out$patterns), nrow(out$matches),
+    nrow(out$coverage), nrow(out$errors), nrow(out$provenance)
   ))
 
   out
@@ -341,12 +355,16 @@ audit_cran <- function(
   list(
     file_contexts = .prefix_pkg(.drop_col(audit$file_contexts, drop),
                                 pkg_name, pkg_version, .empty_cran_file_contexts),
-    code_contexts = .prefix_pkg(.drop_col(audit$code_contexts, drop),
-                                pkg_name, pkg_version, .empty_cran_code_contexts),
     patterns      = .prefix_pkg(.drop_col(audit$patterns, c(drop, "attck")),
                                 pkg_name, pkg_version, .empty_cran_patterns),
     matches   = .prefix_pkg(.drop_col(audit$matches, c(drop, "attck")),
                                 pkg_name, pkg_version, .empty_cran_matches),
+    # Coverage is summarised rather than carried row by row: a package has one
+    # row per file, which at CRAN scale is tens of millions of rows saying
+    # little. The tally keeps what a survey asks of it -- how much of each kind
+    # of file, in each place, was read how well.
+    coverage      = .prefix_pkg(summary(audit)$coverage,
+                                pkg_name, pkg_version, .empty_cran_coverage),
     errors        = .prefix_pkg(audit$errors, pkg_name, pkg_version,
                                 .empty_cran_errors),
     # Provenance rows are attached by .audit_worker() from captured mismatch
@@ -369,9 +387,9 @@ audit_cran <- function(
   }
   list(
     file_contexts = key("file_contexts", .empty_cran_file_contexts),
-    code_contexts = key("code_contexts", .empty_cran_code_contexts),
     patterns      = key("patterns",      .empty_cran_patterns),
     matches   = key("matches",   .empty_cran_matches),
+    coverage      = key("coverage",      .empty_cran_coverage),
     errors        = key("errors",        .empty_cran_errors),
     provenance    = key("provenance",    .empty_cran_provenance)
   )
@@ -458,18 +476,6 @@ audit_cran <- function(
   )
 }
 
-.empty_cran_code_contexts <- function() {
-  data.frame(
-    package       = character(0L),
-    version       = character(0L),
-    rule          = character(0L),
-    file_context  = character(0L),
-    line_number   = integer(0L),
-    column_number = integer(0L),
-    stringsAsFactors = FALSE
-  )
-}
-
 .empty_cran_patterns <- function() {
   data.frame(
     package       = character(0L),
@@ -479,6 +485,21 @@ audit_cran <- function(
     line_number   = integer(0L),
     column_number = integer(0L),
     code_context  = character(0L),
+    guarded       = logical(0L),
+    indirect      = logical(0L),
+    stringsAsFactors = FALSE
+  )
+}
+
+.empty_cran_coverage <- function() {
+  data.frame(
+    package   = character(0L),
+    version   = character(0L),
+    status    = character(0L),
+    top_level = character(0L),
+    type      = character(0L),
+    files     = integer(0L),
+    lines     = integer(0L),
     stringsAsFactors = FALSE
   )
 }
@@ -523,9 +544,9 @@ audit_cran <- function(
 .empty_cran_result <- function() {
   list(
     file_contexts = .empty_cran_file_contexts(),
-    code_contexts = .empty_cran_code_contexts(),
     patterns      = .empty_cran_patterns(),
     matches   = .empty_cran_matches(),
+    coverage      = .empty_cran_coverage(),
     errors        = .empty_cran_errors(),
     provenance    = .empty_cran_provenance()
   )

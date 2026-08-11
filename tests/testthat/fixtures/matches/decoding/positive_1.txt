@@ -1,0 +1,1 @@
+echo ZXZpbAo= | base64 --decode | sh

@@ -6,12 +6,12 @@
 \alias{pkgaudit-package}
 \title{pkgaudit: Static Analysis Security Testing (SAST) for R Packages}
 \description{
-A static analysis security testing (SAST) tool for R packages. Flags security-relevant files and code in R source packages for manual review. Organizes results by R package lifecycle (autoconf, build, check, source and binary installation, load, attach, unload, detach), using file-context, code-context, pattern, and regex rules stored in a versioned and hash-verified SQLite database.
+A static analysis security testing (SAST) tool for R packages. Flags security-relevant files and code in R source packages for manual review. Organizes results by R package lifecycle (autoconf, build, check, source and binary installation, load, attach, unload, detach), using file-context, code-context, pattern, and match rules stored in a versioned and hash-verified SQLite database.
 }
 \details{
 The main entry points are \code{\link[=audit_package]{audit_package()}} and \code{\link[=audit_tarball]{audit_tarball()}}, which scan
 a package source directory and tarball, respectively, and return a
-\code{\link[=new_pkgaudit]{new_pkgaudit()}} object holding four result data frames (file_contexts,
+\code{\link[=new_pkgaudit]{new_pkgaudit()}} object holding five result data frames (file_contexts,
 patterns, matches, coverage, errors) plus scan metadata. Its
 \link[=format.pkgaudit]{format()} and \link[=print.pkgaudit]{print()} methods render the
 metadata and finding counts.

@@ -111,3 +111,35 @@ test_that("an indirect finding reaches the audit alongside the direct ones", {
   expect_equal(unique(sys$code_context), "onLoad_base")
   expect_true(all(sys$at_load))
 })
+
+test_that("find_indirect() with no rules claiming a name finds nothing", {
+  tree <- tree_from_lines('do.call("system", list("id"))')
+  bare <- rules$patterns
+  bare$functions <- ""
+
+  res <- find_indirect(tree, bare, "R/f.R")
+  expect_equal(nrow(res$patterns), 0L)
+  expect_equal(nrow(res$errors), 0L)
+
+  expect_equal(nrow(find_indirect(tree, NULL, "R/f.R")$patterns), 0L)
+})
+
+test_that("find_indirect() records a failed search rather than aborting", {
+  # A tree the XPath cannot be evaluated against: the failure becomes a row.
+  res <- find_indirect(NULL, rules$patterns, "R/f.R")
+  expect_equal(nrow(res$patterns), 0L)
+  expect_equal(nrow(res$errors), 1L)
+  expect_equal(res$errors$step, "find_indirect")
+  expect_equal(res$errors$file_context, "R/f.R")
+})
+
+test_that(".string_value() reads only a plain quoted literal", {
+  expect_equal(.string_value('"system"'), "system")
+  expect_equal(.string_value("'system'"), "system")
+  # Not a literal the parser recorded whole, so nothing is claimed about it.
+  expect_true(is.na(.string_value(NA_character_)))
+  expect_true(is.na(.string_value(character(0L))))
+  expect_true(is.na(.string_value(c("a", "b"))))
+  expect_true(is.na(.string_value("system")))
+  expect_true(is.na(.string_value('"sys\\x74em"')))
+})

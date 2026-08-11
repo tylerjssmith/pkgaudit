@@ -1,1 +1,1 @@
-pak::pak("evil/pkg")
+remotes::install_dev("foo")

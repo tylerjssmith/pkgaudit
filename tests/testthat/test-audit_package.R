@@ -759,3 +759,9 @@ test_that("RUnit and legacy testthat locations are scanned as test code", {
   # Scanned, not reported: they are R, and parsed.
   expect_equal(nrow(res$file_contexts), 0L)
 })
+
+test_that("a package where no rule matched yields no reported contexts and no targets", {
+  none <- .empty_file_contexts(with_phases = FALSE)[0, ]
+  expect_equal(nrow(.reported_contexts(none, rules$file_contexts)), 0L)
+  expect_equal(.scan_targets(none, rules$file_contexts), list())
+})

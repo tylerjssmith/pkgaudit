@@ -268,3 +268,22 @@ test_that(".validate_tarball_name() does not warn when DESCRIPTION fields are NA
                            NA_character_, NA_character_)
   )
 })
+
+test_that(".extract_tarball() errors when the extraction directory cannot be created", {
+  # A regular file where the temporary directory should be, so nothing can be
+  # created beneath it.
+  blocked <- tempfile("blocked")
+  writeLines("not a directory", blocked)
+  on.exit(unlink(blocked), add = TRUE)
+
+  expect_error(.extract_tarball(tempfile(), blocked),
+               "Failed to create temporary extraction directory")
+})
+
+test_that(".reject_extracted_symlinks() accepts a directory holding nothing", {
+  empty <- tempfile("empty")
+  dir.create(empty)
+  on.exit(unlink(empty, recursive = TRUE), add = TRUE)
+
+  expect_true(.reject_extracted_symlinks(empty))
+})

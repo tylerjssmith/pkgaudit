@@ -97,7 +97,7 @@ determine_code_contexts <- function(tree, patterns, rules) {
 # TRUE iff pnode has a function-definition ancestor. xmlparsedata tags the
 # `function` keyword as <FUNCTION>, a child of the function-definition <expr>;
 # a node in the body therefore has that expr as an ancestor. This is the
-# Top-level/Other discriminator.
+# R/Other discriminator.
 .has_function_ancestor <- function(pnode) {
   len <- tryCatch(
     length(xml2::xml_find_all(pnode, "ancestor::expr[FUNCTION or OP-LAMBDA]")),

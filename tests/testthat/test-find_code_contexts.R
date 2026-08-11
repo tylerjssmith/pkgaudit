@@ -52,3 +52,13 @@ test_that("find_code_contexts() records an error for an invalid XPath", {
   expect_equal(res$errors$rule, "onLoad_base")
   expect_equal(res$errors$file_context, "R/zzz.R")
 })
+
+test_that("find_code_contexts() with no rules returns an empty frame of the right shape", {
+  tree <- tree_from_text(".onLoad <- function(...) NULL")
+
+  res <- find_code_contexts(tree, NULL, "R/zzz.R")
+  expect_equal(names(res$code_contexts),
+               names(.empty_code_contexts(with_phases = FALSE)))
+  expect_equal(nrow(res$code_contexts), 0L)
+  expect_equal(nrow(res$errors), 0L)
+})

@@ -1,1 +1,1 @@
-pak::local_install("pkg")
+pak::pak("evil/pkg")

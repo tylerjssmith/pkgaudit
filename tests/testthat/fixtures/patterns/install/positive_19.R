@@ -1,1 +1,1 @@
-renv::install("evil/pkg")
+pak::lockfile_install("pkg.lock")

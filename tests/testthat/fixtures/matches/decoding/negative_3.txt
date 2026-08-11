@@ -1,0 +1,1 @@
+xxd input.bin > hex.txt

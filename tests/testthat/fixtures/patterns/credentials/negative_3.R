@@ -1,0 +1,1 @@
+home <- Sys.getenv("HOME")

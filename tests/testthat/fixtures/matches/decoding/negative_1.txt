@@ -1,0 +1,1 @@
+echo hello | base64 > encoded.txt

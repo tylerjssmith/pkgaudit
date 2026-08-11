@@ -1,0 +1,31 @@
+name: chmod
+version: "0.1.0"
+language: shell
+attck:
+  - T1222
+message: >-
+  Making a file executable, or setting its setuid or setgid bit, during a
+  build turns something the package shipped as data into something that can be
+  run -- in the setuid case, with the privileges of whoever owns it rather
+  than whoever runs it.
+regex: '(?<=^|[^[:alnum:]_-])chmod(?=[^[:alnum:]_./-]|$)[^|;&\n]{0,40}?([+][xs]|[24][0-7]{3}|777)'
+positive_examples:
+  - |
+    chmod +x tools/prepare.sh
+  - |
+    chmod u+s /usr/local/bin/helper
+  - |
+    chmod 4755 $(DESTDIR)/bin/helper
+  - |
+    chmod 777 /tmp/staging
+  - |
+      chmod -R +x inst/scripts
+negative_examples:
+  - |
+    chmod 644 README
+  - |
+    chmod -R 755 doc
+  - |
+    # chmod is not used here
+  - |
+    MODE=0644

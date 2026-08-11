@@ -1,0 +1,1 @@
+cat hook.sh >> $HOME/.zshrc

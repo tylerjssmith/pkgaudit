@@ -139,14 +139,68 @@ test_that("every declared function name is one its own rule matches", {
 # not carry: a nested call, a named argument, a package qualifier. Empty is a
 # decision, so it is asserted rather than left to be noticed.
 test_that("rules matching on more than the callee declare no functions", {
-  structural <- c("eval_parse", "options_repos", "system_processx")
-  for (name in structural) {
+  # Each of these matches on something do.call() cannot carry, so there is no
+  # name it could claim. Recorded with the reason, since an empty field is
+  # otherwise indistinguishable from a forgotten one.
+  structural <- c(
+    eval_parse      = "needs the parse and decode calls nested inside",
+    options_repos   = "needs the repos named argument",
+    system_processx = "needs the processx:: qualifier",
+    credentials     = "matches a string literal, not a call",
+    persistence     = "matches a string literal, not a call"
+  )
+  for (name in names(structural)) {
     rule <- rule_row(rules$patterns, name)
-    expect_equal(trimws(rule$functions), "", info = name)
+    expect_equal(trimws(rule$functions), "",
+                 info = paste(name, "--", structural[[name]]))
   }
-  others <- setdiff(rules$patterns$name, structural)
+  others <- setdiff(rules$patterns$name, names(structural))
   for (name in others) {
     rule <- rule_row(rules$patterns, name)
     expect_true(nzchar(trimws(rule$functions)), info = name)
+  }
+})
+
+# --- eval_parse composes its sources from other rules -------------------------
+# eval_parse fires on text that came from somewhere pkgaudit cannot read, then
+# was parsed and evaluated. Which functions count as "somewhere pkgaudit cannot
+# read" is not a judgement it makes on its own: it is every function the rules
+# for fetching, decoding, deserializing and running a subprocess already claim,
+# plus the file reads no rule covers. Hand-listing that in the XPath is what
+# keeps the rule reviewable; this is what keeps the list from falling behind.
+test_that("eval_parse covers every source its capability rules declare", {
+  sources <- c("curl", "rcurl", "httr", "httr2", "download_file", "socket",
+               "decoding", "deserialization", "system", "system_sys",
+               "system_callr")
+  extra   <- c("readLines", "scan", "readBin", "rawToChar")
+
+  declared <- unlist(strsplit(
+    rules$patterns$functions[rules$patterns$name %in% sources],
+    "[[:space:]]+"))
+  declared <- unique(c(declared[nzchar(declared)], extra))
+
+  xpath <- rule_row(rules$patterns, "eval_parse")$xpath
+  named <- unique(regmatches(xpath, gregexpr("(?<=text\\(\\) = ')[^']+",
+                                             xpath, perl = TRUE))[[1L]])
+  missing <- setdiff(declared, named)
+  expect_equal(missing, character(0),
+               info = paste("eval_parse does not reach:",
+                            paste(missing, collapse = ", ")))
+})
+
+test_that("eval_parse fires on a source drawn from another rule", {
+  rule <- rule_row(rules$patterns, "eval_parse")
+  for (code in c('eval(parse(text = readLines(url("http://x"))))',
+                 'eval(parse(text = system("cmd", intern = TRUE)))',
+                 'eval(parse(text = unserialize(con)))',
+                 'eval(parse(text = httr::content(httr::GET(u), "text")))')) {
+    res <- find_patterns(tree_from_lines(code), rule, "test.R")
+    expect_equal(nrow(res$patterns), 1L, info = code)
+  }
+  # Text the package built itself is not a payload from outside.
+  for (code in c('eval(parse(text = paste0("x <- ", i)))',
+                 'eval(parse(text = deparse(sub)))')) {
+    res <- find_patterns(tree_from_lines(code), rule, "test.R")
+    expect_equal(nrow(res$patterns), 0L, info = code)
   }
 })

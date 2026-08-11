@@ -4,13 +4,13 @@
 \alias{find_matches}
 \title{Find security-relevant matches in a shell script or Make-like file}
 \usage{
-find_matches(lines, regex_rules, file_context)
+find_matches(lines, match_rules, file_context)
 }
 \arguments{
 \item{lines}{Character vector of the file's lines, as returned by
 \code{\link[=read_code]{read_code()}}.}
 
-\item{regex_rules}{Data frame of regex rules (\code{rules$matches} from
+\item{match_rules}{Data frame of match rules (\code{rules$matches} from
 \code{\link[=load_rules]{load_rules()}}), with columns \code{name}, \code{regex}, \code{message}, and \code{attck}.}
 
 \item{file_context}{Package-root-relative path of the file, carried through

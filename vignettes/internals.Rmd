@@ -1,0 +1,215 @@
+---
+title: "pkgaudit Internals"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{pkgaudit Internals}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  echo     = FALSE
+)
+library(pkgaudit)
+```
+
+This vignette is for someone reading pkgaudit's source before trusting it. It
+describes how a scan works, states the invariants the design rests on, and says
+where in the source each one is enforced, so that the claims can be checked
+rather than taken on trust.
+
+For what pkgaudit reports, see
+[Getting Started](pkgaudit.html); for the rule set, see
+[Rule Coverage](rules.html). pkgaudit's own security model and its vulnerability
+reporting policy are in
+[SECURITY.md](https://github.com/tylerjssmith/pkgaudit/blob/master/.github/SECURITY.md).
+
+## A scan in four movements
+
+`audit_package()` reads top to bottom as a sequence of named concerns. It names
+no file format and no language: those are decided by dispatch.
+
+1. **Discover.** `find_file_contexts()` runs one `list.files()` per
+   file-context rule, using the rule's `path`, `filename` and `recursive`
+   fields. Every rule tells the scan which files to read; only a rule with
+   `report = TRUE` contributes a row to `file_contexts`.
+2. **Extract.** `extract_segments()` reads each file into *segments*: contiguous
+   runs of code in one language, blank-padded to the length of the source so
+   that line *n* of a segment is line *n* of the file. That padding is why a
+   finding's line and column point into the original file with no offset to
+   apply.
+3. **Analyse.** `analyze_segment()` finds code contexts, patterns and matches in
+   each segment.
+4. **Resolve.** Lifecycle phases are attached once, at the end, from
+   `rules$phases`.
+
+The findings frames are built **without** phase columns throughout and joined
+once in step 4. Nothing before it knows about phases.
+
+## Two axes of dispatch
+
+Steps 2 and 3 are both S3 generics, and they dispatch on different things.
+
+- `extract_segments()` dispatches on the file-context rule's **`type`** -- how
+  the file is read. Methods live one per file in `R/type_*.R`.
+- `analyze_segment()` dispatches on the segment's **`language`** -- how the code
+  is analysed. Methods live in `R/language_*.R`.
+
+They cannot be one axis, because one file can yield code in more than one
+language: an `.Rmd` yields an R segment for each `{r}` chunk and a shell segment
+for each `{bash}` chunk. An `.Rd` yields several segments that are all R.
+
+A type read exactly like another inherits from it rather than repeating a
+method: `make` inherits `shell`, and `qmd` inherits `Rmd`.
+
+Both defaults fail closed. A type with no reader yields no segments;
+a language with no analyser yields no findings and no error, and records a
+coverage row instead, so an unhandled chunk engine is accounted for rather than
+silently dropped.
+
+Adding a file format is one new `R/type_*.R` plus a rule. Adding a language is
+one new `R/language_*.R` plus rules carrying that language. Neither touches
+`audit_package()`, and neither touches the other.
+
+## The call graph
+
+The graph below is derived from pkgaudit's own source, by parsing it with the
+same parser the scan uses. It is not maintained by hand and cannot fall behind
+the code.
+
+```{r call-graph, comment = ""}
+# Read the package's own sources. Present both in the source tree and in a
+# built tarball, so this resolves wherever the vignette is built from.
+r_dir <- if (dir.exists("../R")) "../R" else "R"
+stopifnot(dir.exists(r_dir))
+
+# Every function the package defines, and which of them each one calls. The
+# names in function position are all.names() less all.vars(), which is the
+# standard approximation and needs no dependency.
+defined <- list()
+for (f in list.files(r_dir, pattern = "[.]R$", full.names = TRUE)) {
+  for (e in parse(f, keep.source = FALSE)) {
+    if (!is.call(e) || length(e) < 3L) next
+    if (!as.character(e[[1L]]) %in% c("<-", "=")) next
+    if (!is.call(e[[3L]]) || !identical(as.character(e[[3L]][[1L]]), "function")) next
+    nm <- as.character(e[[2L]])
+    defined[[nm]] <- setdiff(all.names(e[[3L]]), all.vars(e[[3L]]))
+  }
+}
+own <- names(defined)
+
+# S3 dispatch is invisible to a static reader: a generic calls UseMethod(), not
+# its methods. The methods are attached to their generic so the tree shows what
+# a scan actually does.
+for (g in c("extract_segments", "analyze_segment")) {
+  methods <- grep(paste0("^", g, "[.]"), own, value = TRUE)
+  defined[[g]] <- unique(c(setdiff(defined[[g]], "UseMethod"), methods))
+}
+
+render <- function(fn, prefix = "", seen = character(0), depth = 0L) {
+  callees <- intersect(defined[[fn]], own)
+  callees <- setdiff(callees, seen)
+  if (depth >= 4L) callees <- character(0)
+  out <- character(0)
+  for (i in seq_along(callees)) {
+    last <- i == length(callees)
+    out <- c(out, paste0(prefix, if (last) "└─ " else "├─ ",
+                         callees[[i]], "()"),
+             render(callees[[i]], paste0(prefix, if (last) "   " else "│  "),
+                    c(seen, callees), depth + 1L))
+  }
+  out
+}
+
+cat("audit_package()", render("audit_package", seen = "audit_package"),
+    sep = "\n")
+```
+
+A name appears once, at the first place it is reached; a function called from
+several places is not repeated. The tree is cut at four levels deep.
+
+## Invariants
+
+Each of these is a property a contributor could otherwise break, and each is
+asserted by a test rather than left to review.
+
+### Nothing that is scanned is ever executed
+
+This is not a property any single function can be inspected for. R's own help
+machinery will evaluate `\Sexpr` if asked, and `tools::prepare_Rd()`,
+`Rd2HTML()` and their kin do exactly that. It is therefore asserted end to end:
+`tests/testthat/test-no_execution.R` builds a package whose every execution site
+writes a marker file, scans it, exports it, and requires that no marker exists
+afterwards.
+
+Three calls in the read path look like execution and are not.
+`tools::parse_Rd()` parses without evaluating; `tools::loadPkgRdMacros()` reads
+macro definitions as text; and `parse(text = )` produces an unevaluated
+expression. A macro provider is looked up by macro name against a fixed list and
+never taken from the audited package's `RdMacros` field, which the package under
+audit chooses.
+
+### The size limit runs before dispatch
+
+`extract_segments()` applies the scanning limit before `UseMethod()`, so no
+reader can be written that skips it. A per-method guard is exactly what once let
+help files bypass the limit for a whole release.
+
+### Failures are contained, and counted
+
+Listing files, reading a file, parsing code, and evaluating an XPath or a
+regular expression are each wrapped: a failure becomes a row in `errors` rather
+than aborting the scan. The `Errors` section of `summary()` follows the table
+with one note per step, stating what coverage that step's failures cost.
+
+A file pkgaudit tried to read and could not is `error` in the coverage frame,
+which is a different claim from `unexamined`, where it never tried. Only a
+failure at a *reading* step counts: a rule that fails on a file says nothing
+about the file.
+
+### The rules are data, and integrity-checked
+
+Rules live in a SQLite database built from YAML by `inst/scripts/build_db.R`.
+`load_rules()` verifies the database against its SHA-256 sidecar on every call.
+The check is time-of-check to time-of-use; see "Security considerations" in
+`?load_rules`.
+
+`load_rules()` also refuses a database missing phases for any context a finding
+could be attributed to, so a rule can never ship whose findings would silently
+carry no phases.
+
+### Every rule is verified against its own examples
+
+Each rule carries positive and negative examples in its YAML. `build_db.R`
+writes them out as fixtures, and `tests/testthat/test-fixtures.R` requires every
+positive to match its rule and every negative not to. A rule is trusted because
+its documentation is executable, not because it is documented.
+
+The same file checks two contracts that would otherwise drift. A pattern rule's
+`functions` field -- the names it claims for `do.call("name", ...)` -- is
+accepted only if calling that name bare would have matched the rule's own XPath,
+so an indirect finding can never be attributed to a rule that would not have
+reported the direct call. And `eval_parse`'s source list is required to cover
+every function the capability rules it composes declare.
+
+## What pkgaudit does not do
+
+- It does not execute, install, build, or load the package under audit.
+- It does not resolve values. A path assembled at runtime, a name built by
+  `paste0()`, or a chunk option computed at render time is not followed.
+- It does not read compiled code, or any language other than R and shell.
+  `export_unscanned()` hands those to a tool that does.
+- It does not rank findings or return a verdict. There is no severity model,
+  and the `level` in SARIF output is a mapping of the phase model, not a
+  judgement.
+- It does not reach the network, and it writes only where a caller sends it.
+
+## Examples are tests
+
+Every example in the rule YAML is a fixture, and the rules vignette is generated
+from the shipped database rather than written alongside it. A rule that ships
+without a description fails the vignette build; a rule whose examples stop
+matching fails the test suite. Neither can be fixed by editing prose.

@@ -6,22 +6,31 @@ rules <- load_rules()
 
 cov_of <- function(pkg) audit_package(pkg, rules)$coverage
 
-test_that("every file in the tree gets a row, whatever it is", {
+test_that("a file is accounted for by its kind, wherever it sits", {
   pkg <- make_pkg(files = list(
-    "R/f.R"          = "f <- function() 1",
-    "README.md"      = "# demo",
-    "man/figures/x.svg" = "<svg/>",
-    "misc/notes.txt" = "nothing"
+    "R/f.R"               = "f <- function() 1",
+    "misc/helper.R"       = "g <- function() 2",
+    "inst/extdata/m.rds"  = "not really an rds",
+    "README.md"           = "# demo",
+    "man/figures/x.svg"   = "<svg/>",
+    "misc/notes.txt"      = "nothing"
   ))
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
 
   cv <- cov_of(pkg)
+  # An .R and an .rds are code and executable data wherever they are, so both
+  # are accounted for even where no rule reads them. A name that says nothing
+  # about what the file is stays out, which is what keeps the frame legible.
   expect_setequal(cv$file_context,
-                  c("DESCRIPTION", "R/f.R", "README.md", "man/figures/x.svg",
-                    "misc/notes.txt"))
-  # Nothing is assumed inert: a .md and a .txt are unread, not absent.
-  expect_equal(cv$status[cv$file_context == "README.md"], "unexamined")
-  expect_equal(cv$reason[cv$file_context == "README.md"], "no_rule")
+                  c("DESCRIPTION", "R/f.R", "misc/helper.R",
+                    "inst/extdata/m.rds"))
+
+  stray <- cv[cv$file_context == "misc/helper.R", ]
+  expect_equal(stray$status, "unexamined")
+  expect_equal(stray$reason, "no_rule")
+  expect_equal(stray$language, "R")
+
+  expect_equal(cv$reason[cv$file_context == "inst/extdata/m.rds"], "serialized")
 })
 
 test_that("a scanned file takes its language from the rule, not the extension", {
@@ -56,6 +65,34 @@ test_that("compiled sources are exportable and carry the phases of src/", {
   expect_true(odd$at_install_src && odd$at_load)
 })
 
+test_that("compiled source is accounted for wherever a package ships it", {
+  # Rcpp ships a C++ header library under inst/include/ for other packages to
+  # compile against. No rule reads it and no rule claims it, but it is still
+  # code, and export_unscanned() can hand it to a tool that reads C++.
+  pkg <- make_pkg(files = list("inst/include/demo/Vector.h" = "struct V { };"))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  row <- cov_of(pkg)
+  row <- row[row$file_context == "inst/include/demo/Vector.h", ]
+  expect_equal(row$status, "exportable")
+  expect_equal(row$language, "c")
+  # Nothing compiles it during this package's own lifecycle.
+  expect_false(any(unlist(row[, .phase_columns])))
+})
+
+test_that("an unrecognised extension under src/ is still accounted for", {
+  pkg <- make_pkg(files = list("src/vendor/odd.zz" = "who knows",
+                               "src/hi.c" = "void hi(void) { }"))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  cv  <- cov_of(pkg)
+  odd <- cv[cv$file_context == "src/vendor/odd.zz", ]
+  expect_equal(nrow(odd), 1L)
+  # Everything in src/ is handed to the compiler, so the catch-all keeps it,
+  # and it carries the phases of where it sits.
+  expect_true(odd$at_install_src && odd$at_load)
+})
+
 test_that("serialized objects are executable surface, not inert data", {
   pkg <- make_pkg()
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
@@ -82,11 +119,11 @@ test_that("DESCRIPTION is reported, since Authors@R is evaluated", {
 })
 
 test_that("a file where no rule reaches is reported with no phases", {
-  pkg <- make_pkg(files = list("odd/thing.dat" = "x"))
+  pkg <- make_pkg(files = list("odd/thing.R" = "x <- 1"))
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
 
   row <- cov_of(pkg)
-  row <- row[row$file_context == "odd/thing.dat", ]
+  row <- row[row$file_context == "odd/thing.R", ]
   expect_equal(row$reason, "no_rule")
   expect_false(any(unlist(row[, .phase_columns])))
 })
@@ -196,4 +233,51 @@ test_that("a location too long for the report keeps its distinctive tail", {
   expect_true(startsWith(short, "..."))
   expect_true(endsWith(short, "thing.c"))
   expect_equal(.elide("src/hi.c"), "src/hi.c")
+})
+
+test_that("a binary file is accounted for as unexamined, not read", {
+  pkg <- make_pkg()
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+  dir.create(file.path(pkg, "src"))
+  writeBin(as.raw(c(0L, 1L, 2L, 3L)), file.path(pkg, "src", "hi.so"))
+
+  cov <- audit_package(pkg, rules)$coverage
+  so  <- cov[cov$file_context == "src/hi.so", ]
+  expect_equal(so$status, "unexamined")
+  expect_equal(so$reason, "binary")
+  expect_true(is.na(so$lines))
+})
+
+test_that("a directory with nothing in scope yields an empty coverage frame", {
+  empty <- tempfile("empty"); dir.create(empty)
+  on.exit(unlink(empty, recursive = TRUE), add = TRUE)
+
+  bare <- .empty_file_contexts(with_phases = FALSE)
+  expect_equal(build_coverage(empty, bare[0, ], rules$file_contexts),
+               .empty_coverage(with_phases = FALSE))
+
+  # A directory holding only files no rule names is in scope for nothing.
+  writeLines("hello", file.path(empty, "NOTES"))
+  expect_equal(nrow(build_coverage(empty, bare[0, ], rules$file_contexts)), 0L)
+})
+
+test_that(".claiming_rule() claims nothing when nothing was found", {
+  files <- c("R/f.R", "src/hi.c")
+  expect_equal(.claiming_rule(files, NULL, rules$file_contexts),
+               rep(NA_character_, 2L))
+  expect_equal(.claiming_rule(files, .empty_file_contexts()[0, ],
+                              rules$file_contexts),
+               rep(NA_character_, 2L))
+})
+
+test_that(".error_reason() takes the first reading failure per file and ignores the rest", {
+  errors <- .empty_errors()
+  errors[1L, ] <- list("read_code",     "R/f.R", NA_character_, "cannot open")
+  errors[2L, ] <- list("parse_code",    "R/f.R", NA_character_, "unexpected")
+  # A rule that failed on a file says nothing about the file itself.
+  errors[3L, ] <- list("find_patterns", "R/g.R", "system",      "bad xpath")
+
+  reason <- .error_reason(c("R/f.R", "R/g.R"), errors)
+  expect_equal(reason, c("unreadable", NA_character_))
+  expect_equal(.error_reason("R/f.R", .empty_errors()), NA_character_)
 })

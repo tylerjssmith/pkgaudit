@@ -1,0 +1,34 @@
+name: install
+version: "0.1.0"
+language: shell
+attck:
+  - T1195.002
+  - T1105
+message: >-
+  Installing software during a package build reaches outside the package for
+  code and runs it. What arrives is chosen by a remote index rather than by
+  the package under audit, and is not covered by this scan or by the R
+  dependency graph.
+regex: '(?<=^|[^[:alnum:]_-])(pip[23]?|npm|yarn|apt-get|apt|yum|dnf|apk|brew|conda|gem|cargo|go)[[:space:]]+(install|add|get)(?=[^[:alnum:]_./-]|$)'
+positive_examples:
+  - |
+    pip install requests
+  - |
+    pip3 install --user cryptography
+  - |
+    npm install --production
+  - |
+    apt-get install -y libcurl4-openssl-dev
+  - |
+    brew install openssl
+  - |
+    cargo install cbindgen
+negative_examples:
+  - |
+    PKG_CPPFLAGS=-I/usr/include/pipewire
+  - |
+    PKG_CPPFLAGS=-I/usr/include/apt-pkg
+  - |
+    installdir=$(prefix)/lib
+  - |
+    npm_config_prefix=/tmp

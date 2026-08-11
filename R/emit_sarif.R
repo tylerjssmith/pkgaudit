@@ -17,6 +17,11 @@
                   matches = "match")
 
 
+# Whether the renderer is installed. A function of its own so the guard below
+# can be exercised on a machine where jsonlite is present.
+.have_jsonlite <- function() requireNamespace("jsonlite", quietly = TRUE)
+
+
 #' Render a scan as SARIF
 #'
 #' Renders a `pkgaudit` object as a SARIF 2.1.0 document, the format code
@@ -69,7 +74,7 @@
 emit_sarif <- function(object, pretty = TRUE) {
   stopifnot(inherits(object, "pkgaudit"))
   stopifnot(is.logical(pretty), length(pretty) == 1L, !is.na(pretty))
-  if (!requireNamespace("jsonlite", quietly = TRUE)) {
+  if (!.have_jsonlite()) {
     stop("emit_sarif() needs the jsonlite package.\n",
          '  install.packages("jsonlite")', call. = FALSE)
   }

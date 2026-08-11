@@ -1,0 +1,66 @@
+name: persistence
+version: "0.1.0"
+language: R
+attck:
+  - T1546.004
+  - T1053.003
+message: >-
+  A shell startup file, an R startup file, or a scheduler. Code written into
+  one of these runs again on every login or on a timer, outside the install
+  that put it there, and removing the package does not undo it. .Rprofile and
+  .Renviron are the same idea one level in: R reads them at every session. The
+  literal has to look like a path or a short command rather than a sentence,
+  since prose that merely mentions ~/.bashrc is not a package writing to it.
+# Empty: this rule matches a string literal, not a call, so it
+# names no function that do.call() could reach.
+functions: []
+xpath: >-
+  //STR_CONST[
+      (
+      contains(text(), '.bashrc')
+      or contains(text(), '.bash_profile')
+      or contains(text(), '.bash_login')
+      or contains(text(), '.bash_logout')
+      or contains(text(), '.profile')
+      or contains(text(), '.zshrc')
+      or contains(text(), '.zprofile')
+      or contains(text(), '.zshenv')
+      or contains(text(), '.cshrc')
+      or contains(text(), '.Rprofile')
+      or contains(text(), '.Renviron')
+      or contains(text(), 'crontab')
+      or contains(text(), 'LaunchAgents')
+      or contains(text(), 'LaunchDaemons')
+      or contains(text(), '/etc/cron')
+      or contains(text(), '/etc/systemd')
+      or contains(text(), 'rc.local')
+      )
+      and not(contains(text(), '`'))
+      and (not(contains(text(), ' ')) or string-length(text()) < 32)
+    ]
+positive_examples:
+  - |
+    cat(hook, file = "~/.bashrc", append = TRUE)
+  - |
+    write(line, file.path(Sys.getenv("HOME"), ".Rprofile"))
+  - |
+    writeLines(x, "~/.Renviron")
+  - |
+    system("crontab -")
+  - |
+    p <- "~/Library/LaunchAgents/com.example.plist"
+  - |
+    f <- path.expand("~/.zshrc")
+negative_examples:
+  - |
+    doc <- "code written into ~/.bashrc runs at every login"
+  - |
+    lbl <- c(persistence = "covers `~/.Rprofile` and `~/.Renviron`")
+  - |
+    x <- "profiling results"
+  - |
+    f <- "inst/extdata/cron_schedule.csv"
+  - |
+    msg <- "See the R startup documentation"
+  - |
+    d <- "man/figures/profile.png"

@@ -117,9 +117,13 @@ audit_tarball <- function(
   }
 
   rc <- utils::untar(path, exdir = extract_dir, tar = "internal")
+  # nocov start
+  # The internal extractor signals failure by raising, so this cannot be
+  # reached while `tar` is fixed above. It is kept for the day it is not.
   if (!identical(rc, 0L)) {
     stop("untar() returned non-zero exit code: ", rc, call. = FALSE)
   }
+  # nocov end
 
   ok <- TRUE
   extract_dir

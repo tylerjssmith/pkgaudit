@@ -1,1 +1,1 @@
-remotes::install_gitlab("evil/pkg")
+devtools::install_github("evil/pkg")

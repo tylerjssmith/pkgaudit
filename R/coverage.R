@@ -1,10 +1,11 @@
-# This script builds the coverage frame: one row for every file in the package,
-# saying how well pkgaudit read it and why not better.
+# This script builds the coverage frame: one row per file the package carries
+# that is, or could be, code -- saying how well pkgaudit read it and why not
+# better.
 #
-# Nothing is assumed inert. A .md file can be read, parsed and evaluated, so no
-# extension is allowlisted out; coverage therefore never reaches 100%, and is
-# not meant to. What the frame is for is making the remainder legible -- a user
-# should be able to see what was not examined and decide whether it matters.
+# Coverage never reaches 100%, and is not meant to. What the frame is for is
+# making the remainder legible: a user should be able to see what was not
+# examined and decide whether it matters. Which files it accounts for is
+# .in_scope() below.
 
 # The boundary of the package. Version-control and IDE state is not package
 # content, and enumerating .git/objects/ would bury the frame. Files listed in
@@ -53,10 +54,10 @@
 
 #' Describe how well every file in a package was read
 #'
-#' Builds the `coverage` data frame: one row per file in the package tree, and
-#' one per code span where a file yields several, recording whether pkgaudit
-#' parsed it, matched it as text, could hand it to another tool, or did not
-#' examine it at all.
+#' Builds the `coverage` data frame: one row per file the package carries that
+#' is, or could be, code, and one per code span where a file yields several,
+#' recording whether pkgaudit parsed it, matched it as text, could hand it to
+#' another tool, or did not examine it at all.
 #'
 #' @param path Path to the package root.
 #' @param found The `file_contexts` frame from [find_file_contexts()], carrying
@@ -73,10 +74,11 @@
 #'   `coverage`, without the phase columns; [audit_package()] attaches those.
 #'
 #' @section Security considerations:
-#' The frame is built by walking the tree, not by consulting the rules, so a
-#' file in a location no rule anticipates still gets a row. That is the point:
-#' an unknown-unknown becomes a known-unknown, and a clean scan becomes
-#' falsifiable.
+#' The frame is built by walking the tree rather than by asking the rules what
+#' they matched, so a file in a location no rule anticipates still gets a row.
+#' That is the point: an unknown-unknown becomes a known-unknown, and a clean
+#' scan becomes falsifiable. What a name has to say to earn a row is
+#' `.in_scope()`.
 #'
 #' A symlink is recorded and never read. `list.files()` descends into symlinked
 #' directories and a read would follow the link out of the package, so every
@@ -96,11 +98,15 @@ build_coverage <- function(path, found, file_context_rules,
   if (length(files) == 0L) return(.empty_coverage(with_phases = FALSE))
   files <- sort(files, method = "radix")
 
+  rule  <- .claiming_rule(files, found, file_context_rules)
+  keep  <- .in_scope(files, rule, file_context_rules)
+  files <- files[keep]
+  rule  <- rule[keep]
+  if (length(files) == 0L) return(.empty_coverage(with_phases = FALSE))
+
   linked <- unname(vapply(files, .under_symlink, logical(1L), root = path))
   ext    <- .file_extension(files)
   lang   <- unname(.coverage_languages[ext])
-
-  rule <- .claiming_rule(files, found, file_context_rules)
 
   bytes  <- suppressWarnings(file.size(file.path(path, files)))
   failed <- .error_reason(files, errors)
@@ -151,6 +157,27 @@ build_coverage <- function(path, found, file_context_rules,
     rule         = rule,
     stringsAsFactors = FALSE
   )
+}
+
+
+# The files the frame accounts for: those a rule claimed, and those whose name
+# says what kind of file they are, wherever they sit.
+#
+# A rule's `filename` either names a kind of file -- it is anchored on the end,
+# as every extension and every exact name is -- or it names a place, as src/'s
+# catch-all does. Only the first kind is applied across the whole tree, which is
+# what puts a stray .R under misc/, or an .rds under inst/extdata/, in the frame
+# while leaving NAMESPACE, MD5 and a README out of it.
+#
+# This is an allowlist, and it is derived rather than written: adding a rule for
+# a new kind of file starts accounting for that kind everywhere, with nothing
+# else to update. What it costs is a file whose name says nothing -- a .txt read
+# and evaluated is not in the frame, though the R that reads it is a finding in
+# its own right.
+.in_scope <- function(files, rule, file_context_rules) {
+  kinds <- file_context_rules$filename[grepl("[$]$", file_context_rules$filename)]
+  named <- Reduce(`|`, lapply(kinds, grepl, x = basename(files)), FALSE)
+  !is.na(rule) | named
 }
 
 

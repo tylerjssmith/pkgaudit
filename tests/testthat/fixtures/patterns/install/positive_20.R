@@ -1,1 +1,1 @@
-devtools::install()
+BiocManager::install("evil")

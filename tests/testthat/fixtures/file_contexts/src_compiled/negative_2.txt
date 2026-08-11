@@ -1,1 +1,1 @@
-inst/extdata/x.c
+src/Makevars

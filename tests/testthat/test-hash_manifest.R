@@ -95,3 +95,22 @@ test_that("hash_manifest() honors exclusion patterns", {
   expect_equal(all_res$n_files, 2L)
   expect_false(identical(default_res$hash, all_res$hash))
 })
+
+test_that("hash_manifest() reports a file it could not read rather than dropping it", {
+  skip_on_os("windows")
+  skip_if(identical(Sys.info()[["effective_user"]], "root"),
+          "root reads regardless of mode")
+
+  pkg <- make_pkg(files = list("R/f.R" = "f <- function() 1"))
+  on.exit({
+    Sys.chmod(file.path(pkg, "R", "f.R"), "0600")
+    unlink(pkg, recursive = TRUE)
+  }, add = TRUE)
+  Sys.chmod(file.path(pkg, "R", "f.R"), "0000")
+
+  res <- hash_manifest(pkg)
+  expect_true("R/f.R" %in% res$unreadable)
+  # The manifest is still produced, over the files that could be read.
+  expect_false(grepl("R/f.R", res$manifest, fixed = TRUE))
+  expect_type(res$hash, "character")
+})

@@ -232,3 +232,45 @@ test_that("only the wrappers R CMD check does not run are marked guarded", {
   # \\dontshow and \\testonly do run under check, so they are not guarded.
   expect_setequal(extract_Rd_code(path)$guarded, c(5L, 6L))
 })
+
+# Assembly (internal) ----------------------------------------------------------
+test_that(".assemble_lines() over nothing, or over empty fragments, is empty", {
+  expect_equal(.assemble_lines(list()), "")
+  expect_equal(.assemble_lines(list(list(line = 1L, col = 1L, text = ""))), "")
+})
+
+test_that(".assemble_lines() separates two fragments sharing a line", {
+  frags <- list(list(line = 1L, col = 1L, text = "a()"),
+                list(line = 1L, col = 9L, text = "b()"))
+  # Without a separator the second is placed at its own column.
+  expect_equal(.assemble_lines(frags), "a()     b()")
+  # With one, the separator is written in after the first fragment, which is
+  # what keeps two neighbouring matches from parsing as a single call. Column
+  # padding still applies, so the second fragment stays where it was.
+  expect_match(.assemble_lines(frags, separator = "; "), "^a\\(\\); +b\\(\\)$")
+})
+
+test_that(".Sexpr_stage() falls back to install, the broadest stage", {
+  expect_equal(.Sexpr_stage(NULL), "install")
+  # An option list carrying no stage= at all.
+  expect_equal(.Sexpr_stage("results=hide"), "install")
+  # A stage pkgaudit does not know is never under-reported.
+  expect_equal(.Sexpr_stage("stage=nonesuch"), "install")
+  expect_equal(.Sexpr_stage("stage=BUILD"), "build")
+  expect_equal(.Sexpr_stage("stage = render"), "render")
+})
+
+test_that(".Rd_fragments() drops a node carrying no text or no position", {
+  # Built by hand: a fragment with nothing in it, and one whose position the
+  # parser did not record. Neither can be placed in a line-aligned buffer, so
+  # neither may be reported at a line it was guessed into.
+  sexpr <- function(text) {
+    structure(list(structure(text, Rd_tag = "RCODE")),
+              Rd_tag = "\\Sexpr", Rd_option = "stage=install")
+  }
+  rd <- structure(list(sexpr(""), sexpr("system('id')")), Rd_tag = "Rd")
+
+  frags <- .Rd_fragments(rd)
+  expect_length(frags$sexpr$install, 0L)
+  expect_length(frags$examples, 0L)
+})

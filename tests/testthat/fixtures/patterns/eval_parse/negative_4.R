@@ -1,1 +1,1 @@
-eval(parse(text = rawToChar(x)))
+eval(quote(x + 1))

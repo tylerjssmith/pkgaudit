@@ -1,1 +1,1 @@
-remotes::install_bitbucket("evil/pkg")
+remotes::install_github("evil/pkg")

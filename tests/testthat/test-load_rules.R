@@ -201,3 +201,32 @@ test_that("every reporting rule is one a reviewer has to read themselves", {
     "src_install_libs_R"
   ))
 })
+
+test_that("load_rules() refuses a database holding no rules", {
+  db <- tempfile(fileext = ".db")
+  file.copy(pkgaudit:::.db_path(), db)
+  con <- DBI::dbConnect(RSQLite::SQLite(), db)
+  for (table in c("file_contexts", "code_contexts", "patterns", "matches")) {
+    DBI::dbExecute(con, paste("DELETE FROM", table))
+  }
+  DBI::dbDisconnect(con)
+  writeLines(digest::digest(db, algo = "sha256", file = TRUE),
+             paste0(db, ".sha256"))
+  on.exit(unlink(c(db, paste0(db, ".sha256"))), add = TRUE)
+
+  expect_error(load_rules(db), "No rules found in rules database")
+})
+
+test_that("load_rules() refuses a database recording no version", {
+  db <- tempfile(fileext = ".db")
+  file.copy(pkgaudit:::.db_path(), db)
+  con <- DBI::dbConnect(RSQLite::SQLite(), db)
+  DBI::dbExecute(con, "DELETE FROM rule_versions")
+  DBI::dbDisconnect(con)
+  writeLines(digest::digest(db, algo = "sha256", file = TRUE),
+             paste0(db, ".sha256"))
+  on.exit(unlink(c(db, paste0(db, ".sha256"))), add = TRUE)
+
+  expect_error(load_rules(db),     "No version found in rules database")
+  expect_error(rules_version(db),  "No version found in rules database")
+})
