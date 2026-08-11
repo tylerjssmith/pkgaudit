@@ -56,17 +56,19 @@ find_file_contexts <- function(pkg, file_context_rules) {
         # regular files that actually exist.
         matches[file.exists(matches) & !dir.exists(matches)]
       },
-      error = function(e) {
-        errors <<- rbind(errors, .error_row(
-          step         = "find_file_contexts",
-          rule         = rule$name,
-          message      = conditionMessage(e)
-        ))
-        NULL
-      }
+      error = function(e) e
     )
 
-    if (is.null(hits) || length(hits) == 0L) next
+    if (inherits(hits, "error")) {
+      errors <- rbind(errors, .error_row(
+        step         = "find_file_contexts",
+        rule         = rule$name,
+        message      = conditionMessage(hits)
+      ))
+      next
+    }
+
+    if (length(hits) == 0L) next
 
     rel <- .relativize(hits, pkg)
     found[[length(found) + 1L]] <- data.frame(

@@ -150,7 +150,12 @@ extract_Rd_code <- function(path, macros = NULL) {
 # otherwise yield a partial extraction indistinguishable from a complete one.
 # The tree is kept -- it holds real code -- and the warning is returned with it.
 .parse_Rd_safe <- function(path, macros = NULL) {
-  warnings <- character(0L)
+  # The handler runs in a frame of its own, so what it collects lives in an
+  # environment parented on emptyenv(): the store is named, and no binding
+  # outside this call is reachable from it.
+  seen <- new.env(parent = emptyenv())
+  seen$warnings <- character(0L)
+
   rd <- tryCatch(
     withCallingHandlers(
       if (is.null(macros)) {
@@ -159,7 +164,7 @@ extract_Rd_code <- function(path, macros = NULL) {
         tools::parse_Rd(path, macros = macros)
       },
       warning = function(w) {
-        warnings[[length(warnings) + 1L]] <<- conditionMessage(w)
+        seen$warnings <- c(seen$warnings, conditionMessage(w))
         invokeRestart("muffleWarning")
       }
     ),
@@ -171,8 +176,8 @@ extract_Rd_code <- function(path, macros = NULL) {
   }
   list(
     rd    = rd,
-    error = if (length(warnings) > 0L) {
-      paste(trimws(warnings), collapse = "; ")
+    error = if (length(seen$warnings) > 0L) {
+      paste(trimws(seen$warnings), collapse = "; ")
     } else {
       NULL
     }
@@ -188,9 +193,13 @@ extract_Rd_code <- function(path, macros = NULL) {
 # .Rd lines occupied by example code inside a wrapper R CMD check does not run,
 # and `sexpr` is one fragment list per \Sexpr stage.
 .Rd_fragments <- function(rd) {
-  examples <- list()
-  guarded  <- integer(0L)
-  sexpr    <- list(build = list(), install = list(), render = list())
+  # The walk is recursive and collects into three buckets, so the buckets live
+  # in an environment parented on emptyenv(): the store is named, and no
+  # binding outside this call is reachable from it.
+  acc <- new.env(parent = emptyenv())
+  acc$examples <- list()
+  acc$guarded  <- integer(0L)
+  acc$sexpr    <- list(build = list(), install = list(), render = list())
 
   add <- function(kind, node, text, is_guarded = FALSE) {
     if (!nzchar(text)) return(invisible(NULL))
@@ -200,13 +209,13 @@ extract_Rd_code <- function(path, macros = NULL) {
     frag <- list(line = line, col = as.integer(src[[2L]]), text = text)
 
     if (identical(kind, "examples")) {
-      examples[[length(examples) + 1L]] <<- frag
+      acc$examples[[length(acc$examples) + 1L]] <- frag
       if (is_guarded) {
-        span    <- line + seq_len(length(strsplit(text, "\n", fixed = TRUE)[[1L]])) - 1L
-        guarded <<- c(guarded, span)
+        span <- line + seq_len(length(strsplit(text, "\n", fixed = TRUE)[[1L]])) - 1L
+        acc$guarded <- c(acc$guarded, span)
       }
     } else {
-      sexpr[[kind]][[length(sexpr[[kind]]) + 1L]] <<- frag
+      acc$sexpr[[kind]][[length(acc$sexpr[[kind]]) + 1L]] <- frag
     }
     invisible(NULL)
   }
@@ -255,7 +264,7 @@ extract_Rd_code <- function(path, macros = NULL) {
   }
 
   visit(rd, in_examples = FALSE, is_guarded = FALSE)
-  list(examples = examples, guarded = unique(guarded), sexpr = sexpr)
+  list(examples = acc$examples, guarded = unique(acc$guarded), sexpr = acc$sexpr)
 }
 
 
