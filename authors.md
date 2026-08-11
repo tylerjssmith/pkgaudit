@@ -7,16 +7,16 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/tylerjssmith/pkgaudit/blob/master/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/tylerjssmith/pkgaudit/blob/main/DESCRIPTION)
 
 Smith T (2026). *pkgaudit: Static Analysis Security Testing (SAST) for R
-Packages*. R package version 0.3.0,
+Packages*. R package version 0.4.0,
 <https://github.com/tylerjssmith/pkgaudit>.
 
     @Manual{,
       title = {pkgaudit: Static Analysis Security Testing (SAST) for R Packages},
       author = {Tyler Smith},
       year = {2026},
-      note = {R package version 0.3.0},
+      note = {R package version 0.4.0},
       url = {https://github.com/tylerjssmith/pkgaudit},
     }

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pkgaudit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -20,8 +20,8 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/r-package-security.html">R Package Security</a></li>
-    <li><a class="dropdown-item" href="../articles/how-it-works.html">How pkgaudit Works</a></li>
     <li><a class="dropdown-item" href="../articles/rules.html">pkgaudit Rule Coverage</a></li>
+    <li><a class="dropdown-item" href="../articles/internals.html">pkgaudit Internals</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -39,9 +39,9 @@
     </div>
 
     <div class="section level2">
-      <h2 id="entry-points">Entry points<a class="anchor" aria-label="anchor" href="#entry-points"></a></h2>
+      <h2 id="scanning-a-package">Scanning a package<a class="anchor" aria-label="anchor" href="#scanning-a-package"></a></h2>
 
-
+      <div class="section-desc"><p>The entry points. Both return a pkgaudit object: what was found, and what the scan made of every file it could identify as code.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -62,30 +62,7 @@
         </dt>
         <dd>Audit an R source package tarball</dd>
       </dl></div><div class="section level2">
-      <h2 id="rules">Rules<a class="anchor" aria-label="anchor" href="#rules"></a></h2>
-
-
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="load_rules.html">load_rules()</a></code>
-
-        </dt>
-        <dd>Load security rules from the pkgaudit rules database</dd>
-
-        <dt>
-
-          <code><a href="rules_version.html">rules_version()</a></code>
-
-        </dt>
-        <dd>Return the current rules database version</dd>
-      </dl></div><div class="section level2">
-      <h2 id="methods">Methods<a class="anchor" aria-label="anchor" href="#methods"></a></h2>
+      <h2 id="reading-a-result">Reading a result<a class="anchor" aria-label="anchor" href="#reading-a-result"></a></h2>
 
 
 
@@ -108,7 +85,53 @@
         </dt>
         <dd>Summarize a pkgaudit result</dd>
       </dl></div><div class="section level2">
-      <h2 id="utilities">Utilities<a class="anchor" aria-label="anchor" href="#utilities"></a></h2>
+      <h2 id="carrying-a-result-to-another-tool">Carrying a result to another tool<a class="anchor" aria-label="anchor" href="#carrying-a-result-to-another-tool"></a></h2>
+
+      <div class="section-desc"><p>R is parsed and shell is matched as text; everything else is handed on.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="emit_sarif.html">emit_sarif()</a></code>
+
+        </dt>
+        <dd>Render a scan as SARIF</dd>
+
+        <dt>
+
+          <code><a href="export_unscanned.html">export_unscanned()</a></code>
+
+        </dt>
+        <dd>Export the code pkgaudit could not read</dd>
+      </dl></div><div class="section level2">
+      <h2 id="rules">Rules<a class="anchor" aria-label="anchor" href="#rules"></a></h2>
+
+      <div class="section-desc"><p>The rules are data, not code, and ship in a hash-verified database.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="load_rules.html">load_rules()</a></code>
+
+        </dt>
+        <dd>Load security rules from the pkgaudit rules database</dd>
+
+        <dt>
+
+          <code><a href="rules_version.html">rules_version()</a></code>
+
+        </dt>
+        <dd>Return the current rules database version</dd>
+      </dl></div><div class="section level2">
+      <h2 id="provenance">Provenance<a class="anchor" aria-label="anchor" href="#provenance"></a></h2>
 
 
 

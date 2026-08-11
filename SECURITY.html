@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">pkgaudit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -20,8 +20,8 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/r-package-security.html">R Package Security</a></li>
-    <li><a class="dropdown-item" href="articles/how-it-works.html">How pkgaudit Works</a></li>
     <li><a class="dropdown-item" href="articles/rules.html">pkgaudit Rule Coverage</a></li>
+    <li><a class="dropdown-item" href="articles/internals.html">pkgaudit Internals</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -36,7 +36,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Security Policy</h1>
-      <small class="dont-index">Source: <a href="https://github.com/tylerjssmith/pkgaudit/blob/master/.github/SECURITY.md" class="external-link"><code>.github/SECURITY.md</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/tylerjssmith/pkgaudit/blob/main/.github/SECURITY.md" class="external-link"><code>.github/SECURITY.md</code></a></small>
     </div>
 
 <div id="security-policy" class="section level1">
@@ -54,19 +54,25 @@
 </div>
 <div class="section level2">
 <h2 id="security-model">Security model<a class="anchor" aria-label="anchor" href="#security-model"></a></h2>
-<p>pkgaudit analyses packages without executing them, and reads from but does not write to disk with one exception: <code><a href="reference/audit_tarball.html">audit_tarball()</a></code> extracts the tarball to a temporary directory (<code>temp_dir</code>, default <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code>) and removes it when finished.</p>
+<p>pkgaudit analyses packages without executing them. The scan itself only reads. Two functions write, and both write only where the caller sends them:</p>
+<ul><li>
+<code><a href="reference/audit_tarball.html">audit_tarball()</a></code> extracts the tarball to a temporary directory (<code>temp_dir</code>, default <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code>) and removes it when finished.</li>
+<li>
+<code><a href="reference/export_unscanned.html">export_unscanned()</a></code> writes the code pkgaudit cannot read – C, C++, Fortran, Rust, Python, JavaScript, and vignette chunks in those languages – into a directory the caller names, for a scanner that reads them. It has no default directory: naming one is how the caller consents.</li>
+</ul><p>Both the content and the file names written by <code><a href="reference/export_unscanned.html">export_unscanned()</a></code> come from the package under audit, so every target path is resolved and required to lie under the named directory; a path component that is <code>.</code>, <code>..</code>, or that contains a separator or a control character is refused; symlinks are never followed, and content is read and rewritten rather than copied, so a link pointing out of the package cannot pull a file in; nothing is written executable; and nothing is deleted or replaced unless <code>overwrite = TRUE</code>. A refused file is recorded in the returned manifest rather than dropped.</p>
 <p>Untrusted tarballs are validated fail-closed <em>before</em> extraction: link entries, path traversal, absolute and drive-qualified paths, control-character and empty paths, decompression bombs (entry-count, size, and expansion-ratio caps), unparseable size fields, and archives without exactly one top-level directory are refused rather than partially extracted. After extraction the directory is re-checked for symlinks as defense in depth.</p>
 </div>
 <div class="section level2">
 <h2 id="operating-on-sensitive-data">Operating on sensitive data<a class="anchor" aria-label="anchor" href="#operating-on-sensitive-data"></a></h2>
-<p><code><a href="reference/audit_tarball.html">audit_tarball()</a></code> writes the extracted package contents to <code>temp_dir</code> in cleartext. If the package under audit may contain sensitive material, or you operate under data-at-rest controls:</p>
+<p><code><a href="reference/audit_tarball.html">audit_tarball()</a></code> writes the extracted package contents to <code>temp_dir</code> in cleartext, and <code><a href="reference/export_unscanned.html">export_unscanned()</a></code> writes package contents to the directory it is given. If the package under audit may contain sensitive material, or you operate under data-at-rest controls:</p>
 <ul><li>set <code>temp_dir</code> to an encrypted volume or a tmpfs (RAM-backed) mount;</li>
 <li>note that cleanup uses <code><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink()</a></code>, which is not a secure wipe, and that a killed process (e.g. SIGKILL) can leave the extraction directory behind.</li>
-</ul><p>Directory scans (<code><a href="reference/audit_package.html">audit_package()</a></code>) and rule loading (<code><a href="reference/load_rules.html">load_rules()</a></code>) do not write to disk.</p>
+</ul><p>Directory scans (<code><a href="reference/audit_package.html">audit_package()</a></code>), rule loading (<code><a href="reference/load_rules.html">load_rules()</a></code>) and SARIF output (<code><a href="reference/emit_sarif.html">emit_sarif()</a></code>, which returns a string) do not write to disk.</p>
 </div>
 <div class="section level2">
 <h2 id="known-limitations">Known limitations<a class="anchor" aria-label="anchor" href="#known-limitations"></a></h2>
 <ul><li>Findings are observations for human review, not a pass/fail verdict; rule coverage is not exhaustive.</li>
+<li>Coverage is not complete and is not meant to be. The <code>coverage</code> frame reports what each file was read as – parsed, matched as text, exportable to another tool, unexamined, or attempted and failed – so that a clean result can be checked rather than trusted. It accounts for a file when a rule claimed it or when its name says what kind of file it is; a file whose name says nothing is not represented.</li>
 <li>The rules database is integrity-checked against its SHA-256 sidecar, but the check is time-of-check to time-of-use — see “Security considerations” in <code><a href="reference/load_rules.html">?load_rules</a></code>. Load rules only from a path trusted writers control.</li>
 <li>A directory hash (<code><a href="reference/hash_manifest.html">hash_manifest()</a></code>) is a weaker provenance claim than a tarball hash: its scope depends on the exclusion patterns, and symlinks and empty directories are not represented. Prefer auditing the tarball when provenance matters.</li>
 </ul></div>

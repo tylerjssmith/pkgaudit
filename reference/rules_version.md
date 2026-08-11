@@ -31,7 +31,6 @@ see its Security considerations.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
 rules_version()
-} # }
+#> [1] "0.4.0"
 ```

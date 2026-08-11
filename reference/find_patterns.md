@@ -15,7 +15,7 @@ find_patterns(tree, pattern_rules, file_context)
 - tree:
 
   The `xml_document` parse tree for one script (from
-  [`parse_script()`](https://tylerjssmith.github.io/pkgaudit/reference/parse_script.md)).
+  [`parse_code()`](https://tylerjssmith.github.io/pkgaudit/reference/parse_code.md)).
 
 - pattern_rules:
 
@@ -43,7 +43,7 @@ A list with two data frames:
 
 - errors:
 
-  Data frame with columns `stage`, `file_context`, `rule`, `message`.
+  Data frame with columns `step`, `file_context`, `rule`, `message`.
 
 ## Details
 

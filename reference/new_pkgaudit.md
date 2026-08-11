@@ -1,6 +1,6 @@
 # Construct a pkgaudit object
 
-Assembles the four result data frames and a metadata list into a
+Assembles the five result data frames and a metadata list into a
 validated `pkgaudit` S3 object.
 [`audit_package()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md)
 calls this at the end of a scan. It is also used to construct objects
@@ -9,12 +9,12 @@ directly (e.g., in tests).
 ## Usage
 
 ``` r
-new_pkgaudit(file_contexts, code_contexts, patterns, errors, metadata)
+new_pkgaudit(file_contexts, patterns, matches, coverage, errors, metadata)
 ```
 
 ## Arguments
 
-- file_contexts, code_contexts, patterns, errors:
+- file_contexts, patterns, matches, coverage, errors:
 
   Data frames with the columns documented in
   [`audit_package()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md).
@@ -27,5 +27,5 @@ new_pkgaudit(file_contexts, code_contexts, patterns, errors, metadata)
 
 ## Value
 
-A `pkgaudit` object: a named list of `file_contexts`, `code_contexts`,
-`patterns`, `errors`, and `metadata`.
+A `pkgaudit` object: a named list of `file_contexts`, `patterns`,
+`matches`, `coverage`, `errors`, and `metadata`.

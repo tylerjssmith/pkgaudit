@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pkgaudit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,8 +35,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/r-package-security.html">R Package Security</a></li>
-    <li><a class="dropdown-item" href="../articles/how-it-works.html">How pkgaudit Works</a></li>
     <li><a class="dropdown-item" href="../articles/rules.html">pkgaudit Rule Coverage</a></li>
+    <li><a class="dropdown-item" href="../articles/internals.html">pkgaudit Internals</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -62,19 +62,443 @@
       <h1>pkgaudit Rule Coverage</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/tylerjssmith/pkgaudit/blob/master/vignettes/rules.Rmd" class="external-link"><code>vignettes/rules.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/tylerjssmith/pkgaudit/blob/main/vignettes/rules.Rmd" class="external-link"><code>vignettes/rules.Rmd</code></a></small>
       <div class="d-none name"><code>rules.Rmd</code></div>
     </div>
 
     
     
-<p>pkgaudit v0.3.0 separates <em>when</em> code executes from
-<em>what</em> code does using three categories of rules: file contexts,
-code contexts, and patterns. Each rule is defined in a YAML file under
-<a href="https://github.com/tylerjssmith/pkgaudit/tree/master/inst/rules" class="external-link">inst/rules/</a>
+<p>pkgaudit v0.4.0 separates <em>what</em> code does from <em>when</em>
+it executes. <strong>Patterns</strong> and <strong>matches</strong>
+answer the first, and come first below; <strong>file contexts</strong>
+and <strong>code contexts</strong> answer the second. Each rule is
+defined in a YAML file under <a href="https://github.com/tylerjssmith/pkgaudit/tree/master/inst/rules" class="external-link">inst/rules/</a>
 and compiled into the SQLite database at <code>inst/db/rules.db</code>.
 The Rule columns below link to the defining YAML files.</p>
-<p>This vignette is generated from that database, at rules v0.3.0.</p>
+<p>This vignette is generated from that database, at rules v0.4.0. Every
+rule in it must be described here, so a rule that ships without a
+description fails the build rather than appearing unexplained.</p>
+<div class="section level2">
+<h2 id="patterns">Patterns<a class="anchor" aria-label="anchor" href="#patterns"></a>
+</h2>
+<p>Patterns are security-relevant function calls. Each pattern finding
+is attributed to the code context it executes in, so a
+<code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> call inside <code>.onLoad</code> is distinguished
+from one inside an ordinary function (“Other”) or at top level (“R”).
+Qualified (<code>pkg::fn()</code>) and unqualified (<code>fn()</code>)
+call forms are both detected. Pattern rules carry <a href="https://attack.mitre.org/" class="external-link">MITRE ATT&amp;CK</a> technique
+labels.</p>
+<p>A finding also records how the code is <em>reached</em>.
+<code>guarded</code> is <code>TRUE</code> for code that ships but the
+lifecycle does not run – a <code>\dontrun{}</code> or
+<code>\donttest{}</code> block, or a vignette chunk marked
+<code>eval=FALSE</code>; its phases still come from its context, so they
+read as an upper bound. <code>indirect</code> is <code>TRUE</code> where
+the call was made through the function’s name rather than the
+function.</p>
+<p>A pattern rule declares no phases of its own: a pattern inherits them
+from the code context it sits in, listed in the two tables above.</p>
+<p>A call made through a function’s name rather than the function –
+<code>do.call("system", ...)</code>, <code><a href="https://rdrr.io/r/base/match.fun.html" class="external-link">match.fun()</a></code>,
+<code>getFunction()</code> – is reported under the rule that owns the
+name, with the <code>indirect</code> column set. Each rule declares the
+names it claims, and a name is only accepted if calling it bare would
+have matched that same rule, so an indirect finding can never be
+attributed to a rule that would not have reported the direct call. Three
+rules claim no names: <code>eval_parse</code>,
+<code>options_repos</code> and <code>system_processx</code> each match
+on more than the callee – a nested call, a named argument, a package
+qualifier – and none of that survives the trip through
+<code><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call()</a></code>. A name assembled at runtime is not resolved
+either, since pkgaudit evaluates nothing.</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Rule</th>
+<th>Pattern</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_credentials.yaml" class="external-link">credentials</a></td>
+<td>a path or environment variable that only holds a secret:
+<code>~/.ssh/</code>, <code>~/.aws/</code>, <code>.netrc</code>,
+<code>id_rsa</code>, <code>~/.gnupg/</code>, and
+<code><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv()</a></code> of a name containing <code>TOKEN</code>,
+<code>SECRET</code>, <code>PASSWORD</code> or <code>API_KEY</code>
+</td>
+<td>A path or environment variable that only exists to hold a secret.
+Nothing a package needs in order to install or load lives in these, and
+package code runs with the full privileges of whoever installed it. The
+literal has to look like a path or a short command rather than a
+sentence, since prose that merely mentions ~/.ssh is not a package
+reading it – but naming one is still not proof it is read, so read the
+line.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_curl.yaml" class="external-link">curl</a></td>
+<td>
+<code>curl()</code>, <code>curl_fetch_memory()</code>,
+<code>curl_fetch_disk()</code>, <code>curl_fetch_stream()</code>,
+<code>curl_fetch_multi()</code>, <code>curl_download()</code>,
+<code>curl_upload()</code>, <code>multi_download()</code>,
+<code>multi_run()</code>, <code>send_mail()</code>
+</td>
+<td>A curl network call sends an outbound HTTP request or opens a
+connection to a remote host. A request may be used to exfiltrate
+credentials or other data, or to fetch a remote payload.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_decoding.yaml" class="external-link">decoding</a></td>
+<td>
+<code>base64decode()</code>, <code>base64_dec()</code>,
+<code>base64_decode()</code>, <code><a href="https://rdrr.io/r/base/memCompress.html" class="external-link">memDecompress()</a></code>,
+<code>rawToChar(as.raw())</code>
+</td>
+<td>These functions decode or decompress data. Payloads may be encoded
+(e.g., as base64) to evade static detection and decoded at runtime.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_deserialization.yaml" class="external-link">deserialization</a></td>
+<td>
+<code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS()</a></code>, <code><a href="https://rdrr.io/r/base/load.html" class="external-link">load()</a></code>,
+<code><a href="https://rdrr.io/r/base/serialize.html" class="external-link">unserialize()</a></code>, <code><a href="https://rdrr.io/r/base/dput.html" class="external-link">dget()</a></code>
+</td>
+<td>readRDS(), load(), unserialize(), and dget() deserialize R objects
+or code, which can enable arbitrary code execution (CVE-2024-27322 for
+RDS).</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_download_file.yaml" class="external-link">download_file</a></td>
+<td>
+<code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file()</a></code>, <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">url()</a></code>
+</td>
+<td>download.file() and url() retrieve or open a connection to a remote
+resource. This can stage a payload for execution via source() or
+system() in a two-stage attack.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_dynload.yaml" class="external-link">dynload</a></td>
+<td>
+<code><a href="https://rdrr.io/r/base/dynload.html" class="external-link">dyn.load()</a></code>, <code><a href="https://rdrr.io/r/base/library.dynam.html" class="external-link">library.dynam()</a></code>
+</td>
+<td>dyn.load() and library.dynam() load compiled code from a shared
+object, which executes outside the visible R source.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_eval_parse.yaml" class="external-link">eval_parse</a></td>
+<td>
+<code><a href="https://rdrr.io/r/base/eval.html" class="external-link">eval()</a></code>/<code><a href="https://rdrr.io/r/base/eval.html" class="external-link">evalq()</a></code> over <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">parse()</a></code>,
+<code><a href="https://rdrr.io/r/base/parse.html" class="external-link">str2lang()</a></code> or <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">str2expression()</a></code>, when the text
+came from a fetch, a decode, a deserialization, a subprocess or a file
+read – every function the rules for those already cover, plus
+<code><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines()</a></code>, <code><a href="https://rdrr.io/r/base/scan.html" class="external-link">scan()</a></code>, <code><a href="https://rdrr.io/r/base/readBin.html" class="external-link">readBin()</a></code>
+and <code><a href="https://rdrr.io/r/base/rawConversion.html" class="external-link">rawToChar()</a></code>
+</td>
+<td>Text that came from somewhere pkgaudit cannot read, parsed and then
+evaluated. Any one of these calls is ordinary on its own; together in
+one expression they are a payload being assembled and run. The inner set
+is every function the rules for fetching, decoding, deserializing,
+running a subprocess and running Python already cover, plus the file
+reads no rule covers on its own.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_httr.yaml" class="external-link">httr</a></td>
+<td>
+<code>GET()</code>, <code>POST()</code>, <code>PUT()</code>,
+<code>PATCH()</code>, <code>DELETE()</code>, <code>HEAD()</code>,
+<code>VERB()</code>
+</td>
+<td>An httr HTTP call sends an outbound request. A request may be used
+to exfiltrate credentials or other data, or to fetch a remote
+payload.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_httr2.yaml" class="external-link">httr2</a></td>
+<td>
+<code>req_perform()</code>, <code>req_perform_iterative()</code>,
+<code>req_perform_parallel()</code>,
+<code>req_perform_sequential()</code>,
+<code>req_perform_stream()</code>,
+<code>req_perform_connection()</code>,
+<code>req_perform_promise()</code>
+</td>
+<td>An httr2 HTTP call sends an outbound request. A request may be used
+to exfiltrate credentials or other data.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_install.yaml" class="external-link">install</a></td>
+<td>
+<code><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages()</a></code>, <code>install_github()</code>,
+<code>install_gitlab()</code>, <code>install_bitbucket()</code>,
+<code>install_git()</code>, <code>install_url()</code>,
+<code>install_version()</code>, <code>install_local()</code>,
+<code>install_bioc()</code>, <code>install_dev()</code>,
+<code>install_cran()</code>, <code>pak()</code>,
+<code>pkg_install()</code>, <code>local_install()</code>,
+<code>lockfile_install()</code>, <code>BiocManager::install()</code>,
+<code>renv::install()</code>, <code>devtools::install()</code>,
+<code>py_install()</code>, <code>virtualenv_install()</code>,
+<code>conda_install()</code>, <code>virtualenv_create()</code>,
+<code>conda_create()</code>
+</td>
+<td>These functions install packages, optionally from a specified or
+remote source. A non-default source can introduce attacker-controlled
+code.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_namespace.yaml" class="external-link">namespace</a></td>
+<td>
+<code><a href="https://rdrr.io/r/utils/getFromNamespace.html" class="external-link">getFromNamespace()</a></code>, <code><a href="https://rdrr.io/r/base/ns-reflect.html" class="external-link">getExportedValue()</a></code>,
+<code><a href="https://rdrr.io/r/utils/getAnywhere.html" class="external-link">getAnywhere()</a></code>, <code><a href="https://rdrr.io/r/utils/getFromNamespace.html" class="external-link">assignInNamespace()</a></code>,
+<code><a href="https://rdrr.io/r/utils/getFromNamespace.html" class="external-link">assignInMyNamespace()</a></code>, <code><a href="https://rdrr.io/r/base/bindenv.html" class="external-link">unlockBinding()</a></code>
+</td>
+<td>These functions reach past a package namespace. getFromNamespace(),
+getExportedValue() and getAnywhere() read objects a package does not
+export; assignInNamespace(), assignInMyNamespace() and unlockBinding()
+replace or unseal bindings in a namespace already loaded, so an ordinary
+call made later can run something else. The ::: operator is not matched
+here, since R CMD check already reports it.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_options_repos.yaml" class="external-link">options_repos</a></td>
+<td><code>options(repos = )</code></td>
+<td>options(repos = …) replaces the CRAN mirror for the R session.
+Subsequent install.packages() calls will fetch packages from the
+configured repository. If set to an attacker-controlled server, this
+poisons the installation source.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_persistence.yaml" class="external-link">persistence</a></td>
+<td>a startup file or scheduler: <code>~/.bashrc</code>,
+<code>~/.zshrc</code>, <code>~/.profile</code>,
+<code>~/.Rprofile</code>, <code>~/.Renviron</code>,
+<code>crontab</code>, <code>LaunchAgents</code>,
+<code>/etc/systemd</code>
+</td>
+<td>A shell startup file, an R startup file, or a scheduler. Code
+written into one of these runs again on every login or on a timer,
+outside the install that put it there, and removing the package does not
+undo it. .Rprofile and .Renviron are the same idea one level in: R reads
+them at every session. The literal has to look like a path or a short
+command rather than a sentence, since prose that merely mentions
+~/.bashrc is not a package writing to it.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_python.yaml" class="external-link">python</a></td>
+<td>
+<code>py_run_string()</code>, <code>py_run_file()</code>,
+<code>py_eval()</code>, <code>source_python()</code>,
+<code>py_call()</code>, <code>import_builtins()</code>
+</td>
+<td>These functions run Python from R through reticulate. pkgaudit does
+not read Python, so what they run is outside this scan entirely – and
+code passed as a string is not even a file the coverage frame can
+account for. import_builtins() is listed with them because it returns
+Python’s own eval, exec and <strong>import</strong>.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_rcurl.yaml" class="external-link">rcurl</a></td>
+<td>
+<code>getURL()</code>, <code>getURI()</code>,
+<code>getForm()</code>, <code>postForm()</code>,
+<code>curlPerform()</code>
+</td>
+<td>An RCurl network call sends an outbound HTTP request. A request may
+be used to exfiltrate credentials or other data, or to fetch a remote
+payload.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_socket.yaml" class="external-link">socket</a></td>
+<td>
+<code><a href="https://rdrr.io/r/base/connections.html" class="external-link">socketConnection()</a></code>, <code><a href="https://rdrr.io/r/utils/make.socket.html" class="external-link">make.socket()</a></code>,
+<code><a href="https://rdrr.io/r/base/connections.html" class="external-link">serverSocket()</a></code>, <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">socketAccept()</a></code>
+</td>
+<td>These functions open a raw network socket, which may be used to
+exfiltrate data or receive a remote payload outside the usual HTTP
+clients.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_source.yaml" class="external-link">source</a></td>
+<td><code><a href="https://rdrr.io/r/base/source.html" class="external-link">source()</a></code></td>
+<td>source() can fetch and execute local and remote R scripts.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system.yaml" class="external-link">system</a></td>
+<td>
+<code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code>, <code><a href="https://rdrr.io/r/base/system2.html" class="external-link">system2()</a></code>, <code>shell()</code>,
+<code><a href="https://rdrr.io/r/base/connections.html" class="external-link">pipe()</a></code>
+</td>
+<td>system(), system2(), shell() (on Windows), and pipe() execute
+arbitrary shell commands.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system_callr.yaml" class="external-link">system_callr</a></td>
+<td>
+<code><a href="https://callr.r-lib.org/reference/r.html" class="external-link">callr::r()</a></code>, <code>r_bg()</code>, <code>r_safe()</code>,
+<code>r_copycat()</code>, <code>r_vanilla()</code>,
+<code><a href="https://callr.r-lib.org/reference/rcmd.html" class="external-link">callr::rcmd()</a></code>, <code>rcmd_bg()</code>,
+<code>rcmd_safe()</code>, <code>rcmd_copycat()</code>,
+<code>rscript()</code>, <code>r_session$new()</code>,
+<code>r_process$new()</code>, <code>rcmd_process$new()</code>,
+<code>rscript_process$new()</code>
+</td>
+<td>These callr functions start a separate R session or run an R CMD
+command, which may be used to execute arbitrary R code or shell commands
+outside the visible R source.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system_processx.yaml" class="external-link">system_processx</a></td>
+<td>
+<code><a href="http://processx.r-lib.org/reference/run.html" class="external-link">processx::run()</a></code>, <code><a href="http://processx.r-lib.org/reference/pipeline.html" class="external-link">processx::pipeline()</a></code>,
+<code>process$new()</code>
+</td>
+<td>These processx functions run an external process, which may be used
+to execute arbitrary shell commands outside the visible R source.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system_sys.yaml" class="external-link">system_sys</a></td>
+<td>
+<code>exec_wait()</code>, <code>exec_background()</code>,
+<code>exec_internal()</code>, <code>eval_safe()</code>,
+<code>eval_fork()</code>, <code>r_background()</code>,
+<code>r_internal()</code>, <code>r_wait()</code>
+</td>
+<td>These sys functions run an external process or fork the R session,
+which may be used to execute arbitrary shell commands or a second R
+session outside the visible R source.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level2">
+<h2 id="matches">Matches<a class="anchor" aria-label="anchor" href="#matches"></a>
+</h2>
+<p>Matches are regular-expression matches in the shell scripts and
+Make-like files among the file contexts above – those whose Type is
+<code>shell</code> or <code>make</code>. A file context typed
+<code>R</code> is parsed and scanned for patterns instead, and no other
+file in the package is scanned for matches at all. Match rules carry <a href="https://attack.mitre.org/" class="external-link">MITRE ATT&amp;CK</a> technique
+labels.</p>
+<p>Like a pattern rule, a match rule declares no phases of its own: a
+match inherits them from the file context it was found in, listed in the
+File Contexts table above. Where a file matches more than one
+file-context rule, it takes the phases of every rule that matched
+it.</p>
+<p>Matching text is less precise than matching a parse tree. A match has
+no syntax behind it, so a match inside a comment, a quoted string, or a
+branch that never runs is reported the same as one in a live command. A
+match is a candidate for review rather than confirmed behaviour, and
+warrants reading the file itself more than a pattern finding does.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Rule</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_chmod.yaml" class="external-link">chmod</a></td>
+<td>Making a file executable, or setting its setuid or setgid bit,
+during a build turns something the package shipped as data into
+something that can be run – in the setuid case, with the privileges of
+whoever owns it rather than whoever runs it.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_credentials.yaml" class="external-link">credentials</a></td>
+<td>A build script naming a credential store is reading, or preparing to
+read, something that only exists to authenticate its owner. Nothing a
+package needs in order to build lives in these files, and a build runs
+with the full privileges of whoever installs the package.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_curl.yaml" class="external-link">curl</a></td>
+<td>curl fetches a remote resource or sends data to a remote host. In a
+shell script or Make-like file it runs when the package is built,
+checked, or installed, and may be used to fetch a remote payload or to
+exfiltrate credentials or other data.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_decoding.yaml" class="external-link">decoding</a></td>
+<td>A decoding command turns bytes that are not readable as text back
+into something that is. In a build script it is most often seen
+immediately before the result is run or written to disk, which is how a
+payload is carried past a reader who only skims the source.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_install.yaml" class="external-link">install</a></td>
+<td>Installing software during a package build reaches outside the
+package for code and runs it. What arrives is chosen by a remote index
+rather than by the package under audit, and is not covered by this scan
+or by the R dependency graph.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_interpreter.yaml" class="external-link">interpreter</a></td>
+<td>A build script that calls another language’s interpreter runs code
+pkgaudit does not read. The script it runs may live in the package, be
+written by an earlier step, or be fetched; either way its contents are
+not part of this scan.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_persistence.yaml" class="external-link">persistence</a></td>
+<td>A build script touching a startup file or a scheduler is arranging
+to run again later, outside the install that put it there. Removing the
+package does not undo it. .Rprofile and .Renviron are the same idea one
+level in: R reads them at the start of every session.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_rscript.yaml" class="external-link">rscript</a></td>
+<td>Rscript runs R code from a shell script or Make-like file, either
+from a file it is given or inline with -e. That code executes when the
+package is built, checked, or installed, and pkgaudit does not parse it:
+code inside an -e string, or in a script under tools/, is reached only
+through this invocation. The invocation is reported so a reviewer can
+follow it.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_socket.yaml" class="external-link">socket</a></td>
+<td>Opening a socket from a build script moves data to or from a remote
+host without an HTTP client, which is both a way to fetch a payload and
+a way to send one out. A shell redirection to /dev/tcp does it with no
+external program at all.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_transfer.yaml" class="external-link">transfer</a></td>
+<td>A file-transfer command moves a file between the build machine and a
+remote host. Unlike an HTTP fetch it often carries credentials of its
+own, and it runs in whichever direction the script asks for, so it is a
+way to send data out as well as to bring code in.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_wget.yaml" class="external-link">wget</a></td>
+<td>wget fetches a remote resource or sends data to a remote host. In a
+shell script or Make-like file it runs when the package is built,
+checked, or installed, and may be used to fetch a remote payload or to
+exfiltrate credentials or other data.</td>
+</tr>
+</tbody>
+</table>
+<p>The regular expressions themselves are matched with
+<code>perl = TRUE</code> and are case-sensitive:</p>
+<pre><code>chmod        (?&lt;=^|[^[:alnum:]_-])chmod(?=[^[:alnum:]_./-]|$)[^|;&amp;\n]{0,40}?([+][xs]|[24][0-7]{3}|777)
+credentials  (\.ssh/|\.aws/|\.netrc|\.pgpass|\.docker/config\.json|\.config/gcloud|\.kube/config|id_rsa|id_dsa|id_ecdsa|id_ed25519|\.gnupg/|credentials\.json)|[A-Z][A-Z0-9_]*(TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|PRIVATE_KEY)
+curl         (?&lt;=^|[^[:alnum:]_-])curl(?=(\.exe)?([^[:alnum:]_./-]|$))
+decoding     (?&lt;=^|[^[:alnum:]_-])(base64[^|;&amp;\n]{0,40}(--decode|-[dD])|openssl[[:space:]]+enc[^|;&amp;\n]{0,60}-d|xxd[^|;&amp;\n]{0,20}-r|uudecode)
+install      (?&lt;=^|[^[:alnum:]_-])(pip[23]?|npm|yarn|apt-get|apt|yum|dnf|apk|brew|conda|gem|cargo|go)[[:space:]]+(install|add|get)(?=[^[:alnum:]_./-]|$)
+interpreter  (?&lt;=^|[^[:alnum:]_-])(python[23]?|perl|ruby|node|osascript|powershell|pwsh)(?=[^[:alnum:]_./-]|$)
+persistence  (\.bashrc|\.bash_profile|\.bash_login|\.bash_logout|\.profile|\.zshrc|\.zprofile|\.zshenv|\.cshrc|\.Rprofile|\.Renviron|crontab|LaunchAgents|LaunchDaemons|/etc/cron|/etc/systemd|\.config/systemd|/etc/rc\.local)
+rscript      (?&lt;=^|[^[:alnum:]_-])Rscript(?=(\.exe)?([^[:alnum:]_./-]|$))
+socket       (?&lt;=^|[^[:alnum:]_-])(nc|ncat|netcat|socat|telnet)(?=[[:space:]])|/dev/(tcp|udp)/
+transfer     (?&lt;=^|[^[:alnum:]_-])(scp|sftp|ftp|rsync|svn)(?=[^[:alnum:]_./-]|$)|(?&lt;=^|[^[:alnum:]_-])git[[:space:]]+clone(?=[^[:alnum:]_./-]|$)
+wget         (?&lt;=^|[^[:alnum:]_-])wget(?=(\.exe)?([^[:alnum:]_./-]|$))</code></pre>
+</div>
 <div class="section level2">
 <h2 id="lifecycle-phases">Lifecycle Phases<a class="anchor" aria-label="anchor" href="#lifecycle-phases"></a>
 </h2>
@@ -144,48 +568,127 @@ phase at all.</p>
 </h2>
 <p>File contexts are files that R executes at build-, check-, or
 install-time.</p>
-<table class="table">
+<p>The Type column determines how a matched file is read. Files typed
+<code>R</code> are parsed and scanned for patterns; <code>Rd</code>
+files have their <code>\examples{}</code> and <code>\Sexpr{}</code> code
+extracted and scanned for patterns; <code>shell</code> and
+<code>make</code> files are matched against the rules listed under <a href="#matches">Matches</a>.</p>
+<p>The Report column separates being scanned from being reported. Every
+rule tells the scan which files to read; only a reporting rule
+contributes a row to the <code>file_contexts</code> findings frame.</p>
+<p><code>report</code> is <code>TRUE</code> for a file that meets two
+conditions: it executes automatically during at least one lifecycle
+phase, and its contents are matched as text rather than parsed. Together
+those mean pkgaudit cannot tell a reviewer what the file does, only that
+it runs – so the file itself is the finding, and someone has to read it.
+In practice that is the shell scripts and Make-like files:
+<code>configure</code>, <code>cleanup</code>, <code>src/Makevars</code>
+and their variants.</p>
+<p>Everything else is scanned just as thoroughly. A pattern in a
+vignette or a test file is reported with its context and phases whether
+or not the file itself is. What <code>report</code> withholds is the row
+asserting the file exists – which, for a file whose contents are parsed,
+the findings already tell you.</p>
+<p><code>src/install.libs.R</code> is the one exception: it is R, and
+parsed, but its presence replaces R’s default handling of compiled
+artifacts, a structural change that follows from the file existing
+rather than from anything written in it.</p>
+<table style="width:100%;" class="table">
 <colgroup>
-<col width="25%">
-<col width="25%">
-<col width="25%">
-<col width="25%">
+<col width="16%">
+<col width="16%">
+<col width="16%">
+<col width="16%">
+<col width="16%">
+<col width="16%">
 </colgroup>
 <thead><tr class="header">
 <th>Rule</th>
 <th>File Context</th>
+<th>Type</th>
+<th>Report</th>
 <th>Phases</th>
 <th>Description</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_R_scripts.yaml" class="external-link">R_scripts</a></td>
+<td><code>R/*.[RrSsq]</code></td>
+<td><code>R</code></td>
+<td>no</td>
+<td>
+<code>at_build</code>, <code>at_check</code>,
+<code>at_install_src</code>
+</td>
+<td>R source files in R are evaluated when the package is installed from
+source, when the lazy-load database is built. They are scanned for code
+contexts and patterns; the files themselves are not a finding, which is
+why this rule does not report.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_R_scripts_unix.yaml" class="external-link">R_scripts_unix</a></td>
+<td><code>R/unix/*.[RrSsq]</code></td>
+<td><code>R</code></td>
+<td>no</td>
+<td>
+<code>at_build</code>, <code>at_check</code>,
+<code>at_install_src</code>
+</td>
+<td>R source files in R/unix are evaluated when the package is installed
+from source, when the lazy-load database is built. They are scanned for
+code contexts and patterns; the files themselves are not a finding,
+which is why this rule does not report.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_R_scripts_windows.yaml" class="external-link">R_scripts_windows</a></td>
+<td><code>R/windows/*.[RrSsq]</code></td>
+<td><code>R</code></td>
+<td>no</td>
+<td>
+<code>at_build</code>, <code>at_check</code>,
+<code>at_install_src</code>
+</td>
+<td>R source files in R/windows are evaluated when the package is
+installed from source, when the lazy-load database is built. They are
+scanned for code contexts and patterns; the files themselves are not a
+finding, which is why this rule does not report.</td>
+</tr>
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_cleanup.yaml" class="external-link">cleanup</a></td>
 <td><code>cleanup</code></td>
+<td><code>shell</code></td>
+<td>yes</td>
 <td><code>at_build</code></td>
 <td>cleanup is a shell script run on Unix-like systems at the end of R
 CMD build, and during installation from source only under R CMD INSTALL
 –clean or –preclean. It can execute arbitrary shell commands.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_cleanup_ucrt.yaml" class="external-link">cleanup_ucrt</a></td>
 <td><code>cleanup.ucrt</code></td>
+<td><code>shell</code></td>
+<td>yes</td>
 <td><code>at_build</code></td>
 <td>cleanup.ucrt is a shell script run on the Windows UCRT toolchain at
 the end of R CMD build, and during installation from source only under R
 CMD INSTALL –clean or –preclean; it takes precedence over cleanup.win
 when present. It can execute arbitrary shell commands.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_cleanup_win.yaml" class="external-link">cleanup_win</a></td>
 <td><code>cleanup.win</code></td>
+<td><code>shell</code></td>
+<td>yes</td>
 <td><code>at_build</code></td>
 <td>cleanup.win is a shell script run on Windows at the end of R CMD
 build, and during installation from source only under R CMD INSTALL
 –clean or –preclean. It can execute arbitrary shell commands.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure.yaml" class="external-link">configure</a></td>
 <td><code>configure</code></td>
+<td><code>shell</code></td>
+<td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
 <code>at_install_src</code>
@@ -195,26 +698,32 @@ when packages are installed from source, including the installs
 performed by R CMD check and by R CMD build when a package has
 vignettes. It can execute arbitrary shell commands.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure_ac.yaml" class="external-link">configure_ac</a></td>
 <td><code>configure.ac</code></td>
+<td><code>shell</code></td>
+<td>yes</td>
 <td><code>at_autoconf</code></td>
 <td>configure.ac is an Autoconf input file that does not itself execute;
 it is processed by Autoconf to generate the configure script, which
 executes shell commands when a package is installed from source.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure_in.yaml" class="external-link">configure_in</a></td>
 <td><code>configure.in</code></td>
+<td><code>shell</code></td>
+<td>yes</td>
 <td><code>at_autoconf</code></td>
 <td>configure.in is a legacy-named Autoconf input file that does not
 itself execute; it is processed by Autoconf to generate the configure
 script, which executes shell commands when a package is installed from
 source.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure_ucrt.yaml" class="external-link">configure_ucrt</a></td>
 <td><code>configure.ucrt</code></td>
+<td><code>shell</code></td>
+<td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
 <code>at_install_src</code>
@@ -225,9 +734,11 @@ source, including the installs performed by R CMD check and by R CMD
 build when a package has vignettes; it takes precedence over
 configure.win when present.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure_win.yaml" class="external-link">configure_win</a></td>
 <td><code>configure.win</code></td>
+<td><code>shell</code></td>
+<td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
 <code>at_install_src</code>
@@ -237,9 +748,236 @@ on Windows, executed when a package is installed from source, including
 the installs performed by R CMD check and by R CMD build when a package
 has vignettes.</td>
 </tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_data_scripts.yaml" class="external-link">data_scripts</a></td>
+<td><code>data/*.[RrSsq]</code></td>
+<td><code>R</code></td>
+<td>no</td>
+<td>
+<code>at_build</code>, <code>at_install_src</code>
+</td>
+<td>A .R file under data/ is R code that runs when the package’s data is
+prepared. R CMD build evaluates it to produce the .rda it ships, and
+installation from a source directory evaluates it too, so it executes
+arbitrary R before the package is ever loaded. It does not survive into
+a source tarball: build replaces it with its own output.</td>
+</tr>
 <tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_data_serialized.yaml" class="external-link">data_serialized</a></td>
+<td><code>data/*.(rda\|RData\|Rdata\|rdata\|rds\|RDS\|Rds)</code></td>
+<td><code>other</code></td>
+<td>no</td>
+<td>
+<code>at_check</code>, <code>at_install_src</code>,
+<code>at_load</code>
+</td>
+<td>A serialized R object under data/ is restored when the package’s
+data is loaded. Deserializing an .rda or .rds can execute arbitrary
+code, and pkgaudit cannot inspect one, so it is recorded rather than
+passed over as inert data.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_demo_scripts.yaml" class="external-link">demo_scripts</a></td>
+<td><code>demo/*.[RrSsq]</code></td>
+<td><code>R</code></td>
+<td>no</td>
+<td>none</td>
+<td>A demo runs when a user calls demo(). No build, check or install
+command reaches it, but it ships in the installed package and runs with
+the user’s privileges when invoked.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_description.yaml" class="external-link">description</a></td>
+<td><code>DESCRIPTION</code></td>
+<td><code>other</code></td>
+<td>no</td>
+<td>
+<code>at_build</code>, <code>at_check</code>
+</td>
+<td>DESCRIPTION is not inert. Its <a href="mailto:Authors@R" class="email">Authors@R</a> field is R code, which R parses and
+evaluates when the package is built and checked. pkgaudit does not read
+the file, so the row records that it executes and was not examined.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_exec_other.yaml" class="external-link">exec_other</a></td>
+<td><code>exec/*.(py\|pl\|rb\|bat\|ps1\|tcl\|lua)</code></td>
+<td><code>other</code></td>
+<td>no</td>
+<td>none</td>
+<td>A script under exec/ in a language pkgaudit does not read. R
+installs exec/ verbatim and marks its contents executable, so this ships
+as a runnable program, but nothing runs it during a lifecycle
+phase.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_exec_scripts_R.yaml" class="external-link">exec_scripts_R</a></td>
+<td><code>exec/*.[RrSsq]</code></td>
+<td><code>R</code></td>
+<td>no</td>
+<td>none</td>
+<td>R scripts under exec/ ship in the installed package and are marked
+executable. No lifecycle command runs them, but they execute with the
+user’s privileges when invoked. Over half the files CRAN packages put in
+exec/ are R, so they are parsed rather than matched as text.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_exec_scripts_shell.yaml" class="external-link">exec_scripts_shell</a></td>
+<td><code>exec/*.(sh\|bash\|ksh\|zsh\|csh)</code></td>
+<td><code>shell</code></td>
+<td>no</td>
+<td>none</td>
+<td>Shell scripts under exec/ ship in the installed package and are
+marked executable. No lifecycle command runs them, but they execute
+arbitrary shell with the user’s privileges when invoked. Only sh-family
+extensions are claimed; exec/ also holds Perl, Python, batch and other
+files this rule does not match, and extensionless scripts whose language
+is known only from a shebang.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_inst_citation.yaml" class="external-link">inst_citation</a></td>
+<td><code>inst/CITATION</code></td>
+<td><code>R</code></td>
+<td>no</td>
+<td><code>at_check</code></td>
+<td>inst/CITATION is R code that utils::readCitationFile() evaluates. R
+CMD check reads it, and so does any user who calls citation() on the
+installed package. A plain .R file under inst/ is never sourced, so this
+is specific to the CITATION filename.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_inst_tests.yaml" class="external-link">inst_tests</a></td>
+<td><code>inst/tests/*.[RrSsq]</code></td>
+<td><code>R</code></td>
+<td>no</td>
+<td><code>at_check</code></td>
+<td>Older versions of testthat kept tests under inst/tests/, which R CMD
+check runs through a runner in tests/. Unlike tests/, inst/ is copied
+into the installed package, so this code also ships to the user.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_inst_tinytest.yaml" class="external-link">inst_tinytest</a></td>
+<td><code>inst/tinytest/*.[RrSsq]</code></td>
+<td><code>R</code></td>
+<td>no</td>
+<td><code>at_check</code></td>
+<td>tinytest keeps its tests under inst/tinytest/, which R CMD check
+runs through a runner in tests/. Unlike tests/, inst/ is copied into the
+installed package, so this code also ships to the user and can be run
+again after installation.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_inst_unittests.yaml" class="external-link">inst_unittests</a></td>
+<td><code>inst/unitTests/*.[RrSsq]</code></td>
+<td><code>R</code></td>
+<td>no</td>
+<td><code>at_check</code></td>
+<td>RUnit keeps its tests under inst/unitTests/, which R CMD check runs
+through a runner in tests/. Unlike tests/, inst/ is copied into the
+installed package, so this code also ships to the user.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_inst_web.yaml" class="external-link">inst_web</a></td>
+<td><code>inst/*.(js\|mjs\|ts)</code></td>
+<td><code>other</code></td>
+<td>no</td>
+<td>none</td>
+<td>JavaScript shipped under inst/ runs in a browser when a user renders
+the widget or app it belongs to, not at any package lifecycle phase. It
+is still code the package ships and pkgaudit does not read, so it is
+recorded and can be exported.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_man_pages.yaml" class="external-link">man_pages</a></td>
+<td><code>man/*.[Rr]d</code></td>
+<td><code>Rd</code></td>
+<td>no</td>
+<td>
+<code>at_build</code>, <code>at_check</code>,
+<code>at_install_src</code>
+</td>
+<td>Help files in man carry R code in two places: , which R CMD check
+runs, and , which is evaluated when the help page is rendered during R
+CMD build and installation from source. They are scanned for patterns;
+the files themselves are not a finding, which is why this rule does not
+report.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_man_pages_unix.yaml" class="external-link">man_pages_unix</a></td>
+<td><code>man/unix/*.[Rr]d</code></td>
+<td><code>Rd</code></td>
+<td>no</td>
+<td>
+<code>at_build</code>, <code>at_check</code>,
+<code>at_install_src</code>
+</td>
+<td>Help files in man/unix carry R code in two places: , which R CMD
+check runs, and , which is evaluated when the help page is rendered
+during R CMD build and installation from source. They are scanned for
+patterns; the files themselves are not a finding, which is why this rule
+does not report.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_man_pages_windows.yaml" class="external-link">man_pages_windows</a></td>
+<td><code>man/windows/*.[Rr]d</code></td>
+<td><code>Rd</code></td>
+<td>no</td>
+<td>
+<code>at_build</code>, <code>at_check</code>,
+<code>at_install_src</code>
+</td>
+<td>Help files in man/windows carry R code in two places: , which R CMD
+check runs, and , which is evaluated when the help page is rendered
+during R CMD build and installation from source. They are scanned for
+patterns; the files themselves are not a finding, which is why this rule
+does not report.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_r_sysdata.yaml" class="external-link">r_sysdata</a></td>
+<td><code>R/sysdata.rda</code></td>
+<td><code>other</code></td>
+<td>no</td>
+<td>
+<code>at_check</code>, <code>at_install_src</code>,
+<code>at_load</code>
+</td>
+<td>R/sysdata.rda holds a package’s internal objects and is restored
+into the namespace when the package loads. Deserializing it can execute
+arbitrary code, and pkgaudit cannot inspect it.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_rprofile.yaml" class="external-link">rprofile</a></td>
+<td><code>.Rprofile</code></td>
+<td><code>R</code></td>
+<td>no</td>
+<td>
+<code>at_build</code>, <code>at_install_src</code>
+</td>
+<td>R evaluates a .Rprofile found in the working directory when it
+starts, so a .Rprofile at the package root runs whenever a lifecycle
+command starts an R process inside the package. It runs before any
+package is loaded, earlier than any other R in the package.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_compiled.yaml" class="external-link">src_compiled</a></td>
+<td><code>src/*.(c\|cc\|cpp\|cxx\|C\|h\|hpp\|hxx\|ipp\|f\|f90\|f95\|f03\|f77\|for\|m\|mm\|rs\|java)</code></td>
+<td><code>other</code></td>
+<td>no</td>
+<td>
+<code>at_check</code>, <code>at_install_src</code>,
+<code>at_load</code>
+</td>
+<td>Compiled source is built into a package’s shared object by R CMD
+INSTALL and loaded with the namespace. pkgaudit does not read it; the
+row exists so the file is accounted for, and export_unscanned() can hand
+it to a tool that does. The extensions are listed rather than left to
+the directory, so that compiled source shipped anywhere else – a header
+library under inst/include/, say – is accounted for too.</td>
+</tr>
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_install_libs_R.yaml" class="external-link">src_install_libs_R</a></td>
 <td><code>src/install.libs.R</code></td>
+<td><code>R</code></td>
+<td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
 <code>at_install_src</code>
@@ -249,9 +987,11 @@ executable programs and other binaries during installation from source,
 including the installs performed by R CMD check and by R CMD build when
 a package has vignettes. It can run arbitrary R code.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makefile.yaml" class="external-link">src_makefile</a></td>
 <td><code>src/Makefile</code></td>
+<td><code>make</code></td>
+<td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
 <code>at_install_src</code>
@@ -262,9 +1002,11 @@ installs performed by R CMD check and by R CMD build also use it, and R
 CMD build runs its clean target. It is read by make and its recipes
 execute arbitrary shell commands.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makefile_ucrt.yaml" class="external-link">src_makefile_ucrt</a></td>
 <td><code>src/Makefile.ucrt</code></td>
+<td><code>make</code></td>
+<td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
 <code>at_install_src</code>
@@ -276,9 +1018,11 @@ and by R CMD build also use it, and R CMD build runs its clean target.
 It is read by make and its recipes execute arbitrary shell
 commands.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makefile_win.yaml" class="external-link">src_makefile_win</a></td>
 <td><code>src/Makefile.win</code></td>
+<td><code>make</code></td>
+<td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
 <code>at_install_src</code>
@@ -289,9 +1033,11 @@ make rules; the installs performed by R CMD check and by R CMD build
 also use it, and R CMD build runs its clean target. It is read by make
 and its recipes execute arbitrary shell commands.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makevars.yaml" class="external-link">src_makevars</a></td>
 <td><code>src/Makevars</code></td>
+<td><code>make</code></td>
+<td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
 <code>at_install_src</code>
@@ -302,9 +1048,11 @@ CMD check and by R CMD build; R CMD build also reads it when cleaning
 src/. It is read by make and can execute shell via make constructs such
 as $(shell …).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makevars_in.yaml" class="external-link">src_makevars_in</a></td>
 <td><code>src/Makevars.in</code></td>
+<td><code>make</code></td>
+<td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
 <code>at_install_src</code>
@@ -315,9 +1063,11 @@ contents are then read by make to compile code in src/ when a package is
 installed from source, including the installs performed by R CMD check
 and by R CMD build.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makevars_ucrt.yaml" class="external-link">src_makevars_ucrt</a></td>
 <td><code>src/Makevars.ucrt</code></td>
+<td><code>make</code></td>
+<td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
 <code>at_install_src</code>
@@ -329,9 +1079,11 @@ takes precedence over Makevars.win, and R CMD build also reads it when
 cleaning src/. It is read by make and can execute shell via make
 constructs such as $(shell …).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makevars_win.yaml" class="external-link">src_makevars_win</a></td>
 <td><code>src/Makevars.win</code></td>
+<td><code>make</code></td>
+<td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
 <code>at_install_src</code>
@@ -342,6 +1094,106 @@ performed by R CMD check and by R CMD build; R CMD build also reads it
 when cleaning src/. It is read by make and can execute shell via make
 constructs such as $(shell …).</td>
 </tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_other.yaml" class="external-link">src_other</a></td>
+<td><code>src/*.</code></td>
+<td><code>other</code></td>
+<td>no</td>
+<td>
+<code>at_check</code>, <code>at_install_src</code>,
+<code>at_load</code>
+</td>
+<td>A file under src/ in no language pkgaudit recognises. Everything in
+src/ is handed to the compiler, so an extension nobody listed is still
+part of what gets built; the row exists so it is accounted for rather
+than passed over.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_tests_scripts.yaml" class="external-link">tests_scripts</a></td>
+<td><code>tests/*.[RrSsq]</code></td>
+<td><code>R</code></td>
+<td>no</td>
+<td><code>at_check</code></td>
+<td>R CMD check runs every .R file directly under tests/. This is the
+entry point of whatever testing framework the package uses, and it
+executes arbitrary R during checking.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_tests_testthat.yaml" class="external-link">tests_testthat</a></td>
+<td><code>tests/testthat/*.[RrSsq]</code></td>
+<td><code>R</code></td>
+<td>no</td>
+<td><code>at_check</code></td>
+<td>testthat sources the files directly under tests/testthat/ when R CMD
+check runs the package’s tests. Subdirectories are not sourced –
+tests/testthat/ fixtures/ holds inert data – so only the top level is
+scanned.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_tools_scripts.yaml" class="external-link">tools_scripts</a></td>
+<td><code>tools/*.[RrSsq]</code></td>
+<td><code>R</code></td>
+<td>no</td>
+<td>none</td>
+<td>tools/ holds helper scripts that nothing runs on its own. It is
+reached only if configure or a Makevars invokes it, in which case that
+invocation is reported where it appears and carries that file’s phases.
+The code is scanned here so a reviewer can read what would run.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_vignettes_qmd.yaml" class="external-link">vignettes_qmd</a></td>
+<td><code>vignettes/*.qmd</code></td>
+<td><code>qmd</code></td>
+<td>no</td>
+<td>
+<code>at_build</code>, <code>at_check</code>
+</td>
+<td>A Quarto vignette carries executable chunks, in the same fenced
+syntax as R Markdown. Vignette code runs when the vignette is rendered:
+during R CMD build, and again under R CMD check, which rebuilds it. It
+executes arbitrary R with the package loaded, before anyone reads the
+rendered document.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_vignettes_rmd.yaml" class="external-link">vignettes_rmd</a></td>
+<td><code>vignettes/*.[Rr]md</code></td>
+<td><code>Rmd</code></td>
+<td>no</td>
+<td>
+<code>at_build</code>, <code>at_check</code>
+</td>
+<td>An R Markdown vignette carries executable chunks. Vignette code runs
+when the vignette is rendered: during R CMD build, and again under R CMD
+check, which rebuilds it. It executes arbitrary R with the package
+loaded, before anyone reads the rendered document.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_vignettes_rnw.yaml" class="external-link">vignettes_rnw</a></td>
+<td><code>vignettes/*.[Rr]nw</code></td>
+<td><code>Rnw</code></td>
+<td>no</td>
+<td>
+<code>at_build</code>, <code>at_check</code>
+</td>
+<td>A Sweave or knitr vignette carries executable chunks between
+&lt;&lt;&gt;&gt;= and @, and inline macros. Vignette code runs when the
+vignette is rendered: during R CMD build, and again under R CMD check,
+which rebuilds it. It executes arbitrary R with the package loaded,
+before anyone reads the rendered document.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_vignettes_rsp.yaml" class="external-link">vignettes_rsp</a></td>
+<td><code>vignettes/*.rsp</code></td>
+<td><code>rsp</code></td>
+<td>no</td>
+<td>
+<code>at_build</code>, <code>at_check</code>
+</td>
+<td>An R.rsp vignette is a template: everything is output except the R
+between &lt;% and %&gt;. R.rsp builds it during R CMD build, and again
+under R CMD check, so the code executes with the package loaded before
+anyone reads the rendered document.</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -349,7 +1201,12 @@ constructs such as $(shell …).</td>
 <h2 id="code-contexts">Code Contexts<a class="anchor" aria-label="anchor" href="#code-contexts"></a>
 </h2>
 <p>Code contexts are lifecycle hooks whose bodies run automatically when
-a namespace is loaded, attached, unloaded, or detached.</p>
+a namespace is loaded, attached, unloaded, or detached. These rules are
+applied only where a package’s R code becomes its namespace –
+<code>R/</code>, <code>R/unix/</code>, <code>R/windows/</code>. A
+<code>.onLoad</code> defined anywhere else ships as an ordinary object
+and is never called, so attributing it to a hook would be a false
+reading rather than a cautious one.</p>
 <table class="table">
 <colgroup>
 <col width="25%">
@@ -448,9 +1305,16 @@ requires .onLoad() to contain rlang::run_on_load().</td>
 <div class="section level2">
 <h2 id="computed-contexts">Computed Contexts<a class="anchor" aria-label="anchor" href="#computed-contexts"></a>
 </h2>
-<p>Every pattern is attributed to the code context that contains it. Two
-of those contexts are computed rather than matched by a rule, and so
-have phases but no rule of their own. They are defined under <a href="https://github.com/tylerjssmith/pkgaudit/tree/master/inst/rules/phases" class="external-link">inst/rules/phases/</a>.</p>
+<p>Every pattern is attributed to the code context that contains it.
+Most of those contexts are computed rather than matched by a rule, and
+so have phases but no rule of their own. <code>R</code> and
+<code>Other</code> are computed from where a pattern sits in the parse
+tree. The <code>Rd_</code> contexts come from which part of a help file
+the code was extracted from, one per <code>\Sexpr</code> stage, because
+the stages do not share a phase profile. The rest are named for where
+the file sits – <code>data</code>, <code>tests</code>,
+<code>vignettes</code> – because <code>R</code>’s phases are right for
+<code>R/</code> and wrong everywhere else. They are defined under <a href="https://github.com/tylerjssmith/pkgaudit/tree/master/inst/rules/phases" class="external-link">inst/rules/phases/</a>.</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -464,7 +1328,7 @@ have phases but no rule of their own. They are defined under <a href="https://gi
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><code>Top-level</code></td>
+<td><code>R</code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
 <code>at_install_src</code>
@@ -479,228 +1343,110 @@ loaded: loading restores the values from that database.</td>
 <td>none</td>
 <td>Code inside an ordinary function definition runs at no lifecycle
 phase. It executes only if something calls that function, never as a
-consequence of building, installing, checking, or loading the
-package.</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="section level2">
-<h2 id="patterns">Patterns<a class="anchor" aria-label="anchor" href="#patterns"></a>
-</h2>
-<p>Patterns are security-relevant function calls. Each pattern finding
-is attributed to the code context it executes in, so a
-<code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> call inside <code>.onLoad</code> is distinguished
-from one inside an ordinary function (“Other”) or at top level
-(“Top-level”). Qualified (<code>pkg::fn()</code>) and unqualified
-(<code>fn()</code>) call forms are both detected. Pattern rules carry <a href="https://attack.mitre.org/" class="external-link">MITRE ATT&amp;CK</a> technique
-labels.</p>
-<p>A pattern rule declares no phases of its own: a pattern inherits them
-from the code context it sits in, listed in the two tables above.</p>
-<table class="table">
-<colgroup>
-<col width="33%">
-<col width="33%">
-<col width="33%">
-</colgroup>
-<thead><tr class="header">
-<th>Rule</th>
-<th>Pattern</th>
-<th>Description</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_curl.yaml" class="external-link">curl</a></td>
-<td>
-<code>curl()</code>, <code>curl_fetch_memory()</code>,
-<code>curl_fetch_disk()</code>, <code>curl_fetch_stream()</code>,
-<code>curl_fetch_multi()</code>, <code>curl_download()</code>,
-<code>curl_upload()</code>, <code>multi_download()</code>,
-<code>multi_run()</code>, <code>send_mail()</code>
-</td>
-<td>A curl network call sends an outbound HTTP request or opens a
-connection to a remote host. A request may be used to exfiltrate
-credentials or other data, or to fetch a remote payload.</td>
-</tr>
-<tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_decoding.yaml" class="external-link">decoding</a></td>
-<td>
-<code>base64decode()</code>, <code>base64_dec()</code>,
-<code>base64_decode()</code>, <code><a href="https://rdrr.io/r/base/memCompress.html" class="external-link">memDecompress()</a></code>,
-<code>rawToChar(as.raw())</code>
-</td>
-<td>These functions decode or decompress data. Payloads may be encoded
-(e.g., as base64) to evade static detection and decoded at runtime.</td>
+consequence of building, installing, checking, or loading the package.
+This holds for a function defined in a help-file example too.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_deserialization.yaml" class="external-link">deserialization</a></td>
-<td>
-<code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS()</a></code>, <code><a href="https://rdrr.io/r/base/load.html" class="external-link">load()</a></code>,
-<code><a href="https://rdrr.io/r/base/serialize.html" class="external-link">unserialize()</a></code>, <code><a href="https://rdrr.io/r/base/dput.html" class="external-link">dget()</a></code>
-</td>
-<td>readRDS(), load(), unserialize(), and dget() deserialize R objects
-or code, which can enable arbitrary code execution (CVE-2024-27322 for
-RDS).</td>
+<td><code>Rd_examples</code></td>
+<td><code>at_check</code></td>
+<td>Code in an block of a help file is run by R CMD check, and by a user
+who calls example(). Building or installing the package renders the help
+page but never evaluates its examples.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_download_file.yaml" class="external-link">download_file</a></td>
+<td><code>Rd_Sexpr_build</code></td>
 <td>
-<code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file()</a></code>, <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">url()</a></code>
+<code>at_build</code>, <code>at_check</code>,
+<code>at_install_src</code>
 </td>
-<td>download.file() and url() retrieve or open a connection to a remote
-resource. This can stage a payload for execution via source() or
-system() in a two-stage attack.</td>
+<td>A macro declaring stage=build is evaluated when R CMD build renders
+the help page, and when the package is installed from a source directory
+or checked. It is not reached when a source tarball is installed: build
+already evaluated it and froze the result into the Rd.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_dynload.yaml" class="external-link">dynload</a></td>
+<td><code>Rd_Sexpr_install</code></td>
 <td>
-<code><a href="https://rdrr.io/r/base/dynload.html" class="external-link">dyn.load()</a></code>, <code><a href="https://rdrr.io/r/base/library.dynam.html" class="external-link">library.dynam()</a></code>
+<code>at_build</code>, <code>at_check</code>,
+<code>at_install_src</code>
 </td>
-<td>dyn.load() and library.dynam() load compiled code from a shared
-object, which executes outside the visible R source.</td>
+<td>A macro declaring stage=install, or declaring no stage at all, which
+Writing R Extensions gives install as the default for. Evaluated
+whenever the page is rendered from source: build, either install, and
+check. Not when a prebuilt binary is installed.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_eval_parse.yaml" class="external-link">eval_parse</a></td>
+<td><code>Rd_Sexpr_render</code></td>
 <td>
-<code><a href="https://rdrr.io/r/base/eval.html" class="external-link">eval()</a></code>/<code><a href="https://rdrr.io/r/base/eval.html" class="external-link">evalq()</a></code> over <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">parse()</a></code>,
-<code><a href="https://rdrr.io/r/base/parse.html" class="external-link">str2lang()</a></code>, or <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">str2expression()</a></code>, when combined
-with a decoding call</td>
-<td>eval() applied to parse(), str2lang(), or str2expression()
-constructs and evaluates code at runtime. Here code is produced by
-decoding or decompression, a classic shape for executing an obfuscated
-payload.</td>
+<code>at_build</code>, <code>at_check</code>
+</td>
+<td>A macro declaring stage=render is evaluated when the page is
+rendered for display: during R CMD build and R CMD check, and when a
+user calls help(). It does not run at either install.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_httr.yaml" class="external-link">httr</a></td>
+<td><code>data</code></td>
 <td>
-<code>GET()</code>, <code>POST()</code>, <code>PUT()</code>,
-<code>PATCH()</code>, <code>DELETE()</code>, <code>HEAD()</code>,
-<code>VERB()</code>
+<code>at_build</code>, <code>at_install_src</code>
 </td>
-<td>An httr HTTP call sends an outbound request. A request may be used
-to exfiltrate credentials or other data, or to fetch a remote
-payload.</td>
+<td>A .R file under data/ is evaluated when R CMD build converts data/
+to a lazy-load database, and when the package is installed from a source
+directory. It does not survive into a source tarball: build replaces it
+with the .rda it produced.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_httr2.yaml" class="external-link">httr2</a></td>
-<td>
-<code>req_perform()</code>, <code>req_perform_iterative()</code>,
-<code>req_perform_parallel()</code>,
-<code>req_perform_sequential()</code>,
-<code>req_perform_stream()</code>,
-<code>req_perform_connection()</code>,
-<code>req_perform_promise()</code>
-</td>
-<td>An httr2 HTTP call sends an outbound request. A request may be used
-to exfiltrate credentials or other data.</td>
+<td><code>demo</code></td>
+<td>none</td>
+<td>A demo runs only when a user calls demo(). No lifecycle command
+reaches it, though it ships in the installed package.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_indirection.yaml" class="external-link">indirection</a></td>
-<td>
-<code><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call()</a></code>, <code><a href="https://rdrr.io/r/base/match.fun.html" class="external-link">match.fun()</a></code>,
-<code><a href="https://rdrr.io/r/utils/getFromNamespace.html" class="external-link">getFromNamespace()</a></code>, <code><a href="https://rdrr.io/r/base/ns-reflect.html" class="external-link">getExportedValue()</a></code>,
-<code><a href="https://rdrr.io/r/utils/getAnywhere.html" class="external-link">getAnywhere()</a></code>, <code>getFunction()</code>, when the first
-argument is a string literal</td>
-<td>These functions resolve a function by name at runtime. A
-string-literal target is not a call site, so it evades pattern matching,
-and the namespace accessors additionally reach functions a package does
-not export.</td>
+<td><code>exec</code></td>
+<td>none</td>
+<td>R code under exec/ runs only when a user invokes the script. R CMD
+INSTALL copies exec/ into the installed package and marks its contents
+executable, but no lifecycle command runs them.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_install.yaml" class="external-link">install</a></td>
-<td>
-<code><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages()</a></code>, <code>install_github()</code>,
-<code>install_gitlab()</code>, <code>install_bitbucket()</code>,
-<code>install_git()</code>, <code>install_url()</code>,
-<code>install_version()</code>, <code>install_local()</code>,
-<code>install_bioc()</code>, <code>install_dev()</code>,
-<code>install_cran()</code>, <code>pak()</code>,
-<code>pkg_install()</code>, <code>local_install()</code>,
-<code>lockfile_install()</code>, <code>BiocManager::install()</code>,
-<code><a href="https://rstudio.github.io/renv/reference/install.html" class="external-link">renv::install()</a></code>, <code>devtools::install()</code>
-</td>
-<td>These functions install packages, optionally from a specified or
-remote source. A non-default source can introduce attacker-controlled
-code.</td>
+<td><code>tests</code></td>
+<td><code>at_check</code></td>
+<td>Test code, whether under tests/, tests/testthat/ or inst/tinytest/,
+is run by R CMD check and by nothing else. All three are reached through
+a runner in tests/.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_options_repos.yaml" class="external-link">options_repos</a></td>
-<td><code>options(repos = )</code></td>
-<td>options(repos = …) replaces the CRAN mirror for the R session.
-Subsequent install.packages() calls will fetch packages from the
-configured repository. If set to an attacker-controlled server, this
-poisons the installation source.</td>
+<td><code>tools</code></td>
+<td>none</td>
+<td>tools/ holds helper scripts that nothing runs on its own. They are
+reached only if configure or a Makevars invokes them, which is reported
+where that invocation appears.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_rcurl.yaml" class="external-link">rcurl</a></td>
-<td>
-<code>getURL()</code>, <code>getURI()</code>,
-<code>getForm()</code>, <code>postForm()</code>,
-<code>curlPerform()</code>
-</td>
-<td>An RCurl network call sends an outbound HTTP request. A request may
-be used to exfiltrate credentials or other data, or to fetch a remote
-payload.</td>
+<td><code>citation</code></td>
+<td><code>at_check</code></td>
+<td>inst/CITATION is R code that utils::readCitationFile() evaluates. R
+CMD check reads it, as does any user who calls citation(). A plain .R
+file under inst/ is never sourced.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_socket.yaml" class="external-link">socket</a></td>
+<td><code>Rprofile</code></td>
 <td>
-<code><a href="https://rdrr.io/r/base/connections.html" class="external-link">socketConnection()</a></code>, <code><a href="https://rdrr.io/r/utils/make.socket.html" class="external-link">make.socket()</a></code>,
-<code><a href="https://rdrr.io/r/base/connections.html" class="external-link">serverSocket()</a></code>, <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">socketAccept()</a></code>
+<code>at_build</code>, <code>at_install_src</code>
 </td>
-<td>These functions open a raw network socket, which may be used to
-exfiltrate data or receive a remote payload outside the usual HTTP
-clients.</td>
+<td>A .Rprofile at the package root is evaluated whenever a lifecycle
+command starts an R process inside the package: R CMD build, and
+installation from a source directory. It runs before any package is
+loaded.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_source.yaml" class="external-link">source</a></td>
-<td><code><a href="https://rdrr.io/r/base/source.html" class="external-link">source()</a></code></td>
-<td>source() can fetch and execute local and remote R scripts.</td>
-</tr>
-<tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system.yaml" class="external-link">system</a></td>
+<td><code>vignettes</code></td>
 <td>
-<code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code>, <code><a href="https://rdrr.io/r/base/system2.html" class="external-link">system2()</a></code>, <code>shell()</code>,
-<code><a href="https://rdrr.io/r/base/connections.html" class="external-link">pipe()</a></code>
+<code>at_build</code>, <code>at_check</code>
 </td>
-<td>system(), system2(), shell() (on Windows), and pipe() execute
-arbitrary shell commands.</td>
-</tr>
-<tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system_callr.yaml" class="external-link">system_callr</a></td>
-<td>
-<code><a href="https://callr.r-lib.org/reference/r.html" class="external-link">callr::r()</a></code>, <code>r_bg()</code>, <code>r_safe()</code>,
-<code>r_copycat()</code>, <code>r_vanilla()</code>,
-<code><a href="https://callr.r-lib.org/reference/rcmd.html" class="external-link">callr::rcmd()</a></code>, <code>rcmd_bg()</code>,
-<code>rcmd_safe()</code>, <code>rcmd_copycat()</code>,
-<code>rscript()</code>, <code>r_session$new()</code>,
-<code>r_process$new()</code>, <code>rcmd_process$new()</code>,
-<code>rscript_process$new()</code>
-</td>
-<td>These callr functions start a separate R session or run an R CMD
-command, which may be used to execute arbitrary R code or shell commands
-outside the visible R source.</td>
-</tr>
-<tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system_processx.yaml" class="external-link">system_processx</a></td>
-<td>
-<code><a href="http://processx.r-lib.org/reference/run.html" class="external-link">processx::run()</a></code>, <code><a href="http://processx.r-lib.org/reference/pipeline.html" class="external-link">processx::pipeline()</a></code>,
-<code>process$new()</code>
-</td>
-<td>These processx functions run an external process, which may be used
-to execute arbitrary shell commands outside the visible R source.</td>
-</tr>
-<tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system_sys.yaml" class="external-link">system_sys</a></td>
-<td>
-<code>exec_wait()</code>, <code>exec_background()</code>,
-<code>exec_internal()</code>, <code>eval_safe()</code>,
-<code>eval_fork()</code>, <code>r_background()</code>,
-<code>r_internal()</code>, <code>r_wait()</code>
-</td>
-<td>These sys functions run an external process or fork the R session,
-which may be used to execute arbitrary shell commands or a second R
-session outside the visible R source.</td>
+<td>Vignette code runs when the vignette is rendered: during R CMD
+build, and again under R CMD check, which rebuilds it. Shared by Rmd,
+qmd and Rnw – the format decides how the code is extracted, not when it
+runs.</td>
 </tr>
 </tbody>
 </table>

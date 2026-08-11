@@ -1,7 +1,8 @@
 # Audit an R source package tarball
 
-Finds security-relevant file and code contexts and code patterns for
-review before an R source package tarball is trusted.
+Finds security-relevant file and code contexts, code patterns, and shell
+and make matches for review before an R source package tarball is
+trusted.
 
 ## Usage
 
@@ -58,7 +59,7 @@ audit_tarball(
 
 The same `pkgaudit` object as
 [`audit_package()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md):
-a named list with class `pkgaudit` containing four data frames and a
+a named list with class `pkgaudit` containing five data frames and a
 `metadata` list.
 
 ## Details
@@ -91,8 +92,22 @@ what the returned object reports.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-result <- audit_tarball("path/to/foo_0.1.0.tar.gz")
+# untrustedpkg is a small package shipped with pkgaudit to be scanned.
+tarball <- system.file(
+  "extdata", "untrustedpkg", "untrustedpkg_0.1.0.tar.gz",
+  package = "pkgaudit"
+)
+
+result <- audit_tarball(tarball)
 print(result)
-} # }
+#> --- pkgaudit ----------------------------------------------------------------
+#> Package:   untrustedpkg v0.1.0 (source tarball)
+#> Path:      /home/runner/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
+#> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
+#> Scanned:   2026-08-11 21:38 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> 
+#> File contexts:  1
+#> Patterns:       4
+#> Matches:        1
+#> Errors:         0
 ```

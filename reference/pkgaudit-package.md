@@ -4,8 +4,8 @@ A static analysis security testing (SAST) tool for R packages. Flags
 security-relevant files and code in R source packages for manual review.
 Organizes results by R package lifecycle (autoconf, build, check, source
 and binary installation, load, attach, unload, detach), using
-file-context, code-context, and pattern rules stored in a versioned and
-hash-verified SQLite database.
+file-context, code-context, pattern, and match rules stored in a
+versioned and hash-verified SQLite database.
 
 ## Details
 
@@ -16,8 +16,8 @@ and
 which scan a package source directory and tarball, respectively, and
 return a
 [`new_pkgaudit()`](https://tylerjssmith.github.io/pkgaudit/reference/new_pkgaudit.md)
-object holding four result data frames (file_contexts, code_contexts,
-patterns, errors) plus scan metadata. Its
+object holding five result data frames (file_contexts, patterns,
+matches, coverage, errors) plus scan metadata. Its
 [format()](https://tylerjssmith.github.io/pkgaudit/reference/format.pkgaudit.md)
 and
 [print()](https://tylerjssmith.github.io/pkgaudit/reference/format.pkgaudit.md)

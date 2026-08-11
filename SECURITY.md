@@ -22,12 +22,30 @@ is not a pkgaudit issue: contact that package’s maintainer, and CRAN
 
 ## Security model
 
-pkgaudit analyses packages without executing them, and reads from but
-does not write to disk with one exception:
-[`audit_tarball()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_tarball.md)
-extracts the tarball to a temporary directory (`temp_dir`, default
-[`tempdir()`](https://rdrr.io/r/base/tempfile.html)) and removes it when
-finished.
+pkgaudit analyses packages without executing them. The scan itself only
+reads. Two functions write, and both write only where the caller sends
+them:
+
+- [`audit_tarball()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_tarball.md)
+  extracts the tarball to a temporary directory (`temp_dir`, default
+  [`tempdir()`](https://rdrr.io/r/base/tempfile.html)) and removes it
+  when finished.
+- [`export_unscanned()`](https://tylerjssmith.github.io/pkgaudit/reference/export_unscanned.md)
+  writes the code pkgaudit cannot read – C, C++, Fortran, Rust, Python,
+  JavaScript, and vignette chunks in those languages – into a directory
+  the caller names, for a scanner that reads them. It has no default
+  directory: naming one is how the caller consents.
+
+Both the content and the file names written by
+[`export_unscanned()`](https://tylerjssmith.github.io/pkgaudit/reference/export_unscanned.md)
+come from the package under audit, so every target path is resolved and
+required to lie under the named directory; a path component that is `.`,
+`..`, or that contains a separator or a control character is refused;
+symlinks are never followed, and content is read and rewritten rather
+than copied, so a link pointing out of the package cannot pull a file
+in; nothing is written executable; and nothing is deleted or replaced
+unless `overwrite = TRUE`. A refused file is recorded in the returned
+manifest rather than dropped.
 
 Untrusted tarballs are validated fail-closed *before* extraction: link
 entries, path traversal, absolute and drive-qualified paths,
@@ -40,8 +58,10 @@ symlinks as defense in depth.
 ## Operating on sensitive data
 
 [`audit_tarball()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_tarball.md)
-writes the extracted package contents to `temp_dir` in cleartext. If the
-package under audit may contain sensitive material, or you operate under
+writes the extracted package contents to `temp_dir` in cleartext, and
+[`export_unscanned()`](https://tylerjssmith.github.io/pkgaudit/reference/export_unscanned.md)
+writes package contents to the directory it is given. If the package
+under audit may contain sensitive material, or you operate under
 data-at-rest controls:
 
 - set `temp_dir` to an encrypted volume or a tmpfs (RAM-backed) mount;
@@ -51,15 +71,23 @@ data-at-rest controls:
   extraction directory behind.
 
 Directory scans
-([`audit_package()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md))
-and rule loading
+([`audit_package()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md)),
+rule loading
 ([`load_rules()`](https://tylerjssmith.github.io/pkgaudit/reference/load_rules.md))
-do not write to disk.
+and SARIF output
+([`emit_sarif()`](https://tylerjssmith.github.io/pkgaudit/reference/emit_sarif.md),
+which returns a string) do not write to disk.
 
 ## Known limitations
 
 - Findings are observations for human review, not a pass/fail verdict;
   rule coverage is not exhaustive.
+- Coverage is not complete and is not meant to be. The `coverage` frame
+  reports what each file was read as – parsed, matched as text,
+  exportable to another tool, unexamined, or attempted and failed – so
+  that a clean result can be checked rather than trusted. It accounts
+  for a file when a rule claimed it or when its name says what kind of
+  file it is; a file whose name says nothing is not represented.
 - The rules database is integrity-checked against its SHA-256 sidecar,
   but the check is time-of-check to time-of-use — see “Security
   considerations” in

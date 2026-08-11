@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">pkgaudit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -20,8 +20,8 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/r-package-security.html">R Package Security</a></li>
-    <li><a class="dropdown-item" href="articles/how-it-works.html">How pkgaudit Works</a></li>
     <li><a class="dropdown-item" href="articles/rules.html">pkgaudit Rule Coverage</a></li>
+    <li><a class="dropdown-item" href="articles/internals.html">pkgaudit Internals</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -36,7 +36,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Contributing to pkgaudit</h1>
-      <small class="dont-index">Source: <a href="https://github.com/tylerjssmith/pkgaudit/blob/master/.github/CONTRIBUTING.md" class="external-link"><code>.github/CONTRIBUTING.md</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/tylerjssmith/pkgaudit/blob/main/.github/CONTRIBUTING.md" class="external-link"><code>.github/CONTRIBUTING.md</code></a></small>
     </div>
 
 <div id="contributing-to-pkgaudit" class="section level1">
@@ -82,8 +82,8 @@
 </div>
 <div class="section level2">
 <h2 id="writing-the-yaml">Writing the YAML<a class="anchor" aria-label="anchor" href="#writing-the-yaml"></a></h2>
-<p>A rule is data, not code, so contributing one means writing a YAML file rather than R. The clearest starting point is an existing rule in the same category under <a href="../inst/rules/">inst/rules/</a>. The <a href="../vignettes/how-it-works.Rmd">How pkgaudit Works</a> vignette walks through one rule of each category and explains how its fields are used.</p>
-<p><strong>Categories.</strong> A rule is a file context (a file R executes during build, check, or install), a code context (a lifecycle hook whose body runs when a namespace is loaded, attached, unloaded, or detached), or a pattern (a security-relevant function call).</p>
+<p>A rule is data, not code, so contributing one means writing a YAML file rather than R. The clearest starting point is an existing rule in the same category under <a href="../inst/rules/">inst/rules/</a>. The <a href="https://tylerjssmith.github.io/pkgaudit/articles/rules.html">Rule Coverage</a> vignette lists every shipped rule with the phases it carries, and <a href="https://tylerjssmith.github.io/pkgaudit/articles/internals.html">Internals</a> describes how a rule is used during a scan.</p>
+<p><strong>Categories.</strong> A rule is a file context (a file R reads or executes during build, check, install, or load), a code context (a lifecycle hook whose body runs when a namespace is loaded, attached, unloaded, or detached), a pattern (a security-relevant construct in R, matched against the parse tree), or a match (a regular expression matched against the text of a shell script or Make-like file).</p>
 <p><strong>Names.</strong> The YAML file name is prefixed with the rule’s category — <code>file_</code>, <code>code_</code>, or <code>pattern_</code> — but the <code>name</code> field inside it is not: the category is already known from where the rule lives, and the name is what a finding reports. A code context is named for the hook it matches and the package that defines it, joined by an underscore, following their own capitalization and separators (<code>onLoad_base</code>, <code>on_load_rlang</code>). A pattern that covers one package’s functions carries that package’s name (<code>system_callr</code>), so a finding points at the calls behind it.</p>
 <p><strong>Fields.</strong> Every rule has <code>name</code>, <code>version</code>, <code>type</code>, <code>message</code>, <code>positive_examples</code>, and <code>negative_examples</code>. Beyond those:</p>
 <ul><li>a <strong>file context</strong> rule adds <code>path</code> (directory to search, relative to the package root), <code>recursive</code>, and <code>pattern</code> (a regular expression matched against file names);</li>
@@ -96,6 +96,19 @@
 <p><code>message</code> is shown to the user with every finding. It should be 1-2 short sentences. Write it so that someone who has never read the rule understands what was found and why it matters.</p>
 <p><strong>Examples.</strong> <code>positive_examples</code> are code or paths the rule must flag; <code>negative_examples</code> are ones it must not. Both are required, and both are reviewed. Write negatives that pin the boundary you care about rather than obviously unrelated code: if a pattern rule should ignore <code>foo$system()</code>, that is the negative worth having. Once a rule is merged these become test fixtures, and the test suite requires that every positive is flagged and no negative is.</p>
 <p><strong>Pattern rule conventions.</strong> Match <code>SYMBOL_FUNCTION_CALL</code> so that a reference to a function is not mistaken for a call to it, and exclude calls preceded by <code>$</code> so that a list element or an object’s method of the same name is not flagged. Qualified (<code>pkg::fn()</code>) and unqualified (<code>fn()</code>) call forms should both match.</p>
+</div>
+<div class="section level2">
+<h2 id="testing">Testing<a class="anchor" aria-label="anchor" href="#testing"></a></h2>
+<p>Coverage is not a percentage to chase. It is a checklist a change either satisfies or does not, and a pull request is expected to satisfy every clause below that applies to it.</p>
+<p><strong>1. One test file per script.</strong> <code>R/foo.R</code> is tested by <code>tests/testthat/test-foo.R</code>. Two files are organized by behavior rather than by script, because what they assert spans the whole package: <code>test-fixtures.R</code> and <code>test-no_execution.R</code>.</p>
+<p><strong>2. Every documented function has a happy path.</strong> One test that calls it the way the documentation says to and asserts the result — not merely that it did not error.</p>
+<p><strong>3. Every anticipated failure is anticipated by a test.</strong> Where the source has a <code><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop()</a></code>, a <code><a href="https://rdrr.io/r/base/warning.html" class="external-link">warning()</a></code>, or a <code><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch()</a></code>/<code><a href="https://rdrr.io/r/base/conditions.html" class="external-link">withCallingHandlers()</a></code> handler, at least one test reaches it. A handler is a claim that some input will occur; the test is what makes the claim checkable. A defensive branch that cannot be reached through the public interface is marked <code># nocov</code> with the reason, so that an uncovered line always means a gap rather than a judgment call.</p>
+<p><strong>4. A contained failure is asserted twice: the record and the survival.</strong> pkgaudit turns a failure into a row in <code>errors</code>, or a <code>reason</code> in <code>coverage</code>, rather than aborting the scan. A test for such a path asserts both that the row appears with the right fields <em>and</em> that the scan went on to finish.</p>
+<p><strong>5. Every empty case is tested.</strong> A function returning a data frame is tested on input that yields no rows, asserting the column names. Empty frames are what a minimal package produces, and a frame whose shape changes when it is empty breaks every downstream join.</p>
+<p><strong>6. Every rule is tested against its own examples.</strong> Positives must match, negatives must not. This is enforced generically in <code>test-fixtures.R</code> over the whole shipped database, so a new rule needs no new test — but it does need examples that pin the boundary.</p>
+<p><strong>7. Security invariants are asserted end to end, not by inspection.</strong> That pkgaudit never executes what it scans is not a property any single function can be read for, so <code>test-no_execution.R</code> builds a package whose every execution site would write a marker file, scans and exports it, and requires that no marker exists afterwards. A new read or write path belongs in that test.</p>
+<p><strong>8. Anything reading untrusted bytes or writing to disk is tested adversarially.</strong> A malformed archive, a symlink pointing out of the package, a <code>..</code> path component, a file over the size limit, an unreadable file, a non-empty target directory: each refused, each recorded, none acted on.</p>
+<p><strong>9. Every bug found against a real package becomes a test.</strong> A fixture reproducing it, added in the same change as the fix, and named for the behavior rather than for the report.</p>
 </div>
 <div class="section level2">
 <h2 id="credit">Credit<a class="anchor" aria-label="anchor" href="#credit"></a></h2>

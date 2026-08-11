@@ -65,9 +65,21 @@ subclass of `error`), so it stops by default but can be caught by class.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-# Stops with a "Refusing archive" error if the tarball is
-# malicious/malformed.
-validate_tar("path/to/package_1.0.0.tar.gz")
-} # }
+# Returns the archive's entries, or stops with a "Refusing archive" error if
+# the tarball is malicious or malformed.
+tarball <- system.file(
+  "extdata", "untrustedpkg", "untrustedpkg_0.1.0.tar.gz",
+  package = "pkgaudit"
+)
+
+entries <- validate_tar(tarball)
+entries
+#>                             name type linkname size
+#> 1         untrustedpkg/configure file            69
+#> 2       untrustedpkg/DESCRIPTION file           150
+#> 3              untrustedpkg/man/  dir             0
+#> 4 untrustedpkg/man/fetch_data.Rd file           381
+#> 5                untrustedpkg/R/  dir             0
+#> 6         untrustedpkg/R/fetch.R file            65
+#> 7           untrustedpkg/R/zzz.R file            63
 ```

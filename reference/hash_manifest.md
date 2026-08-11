@@ -72,7 +72,14 @@ the tarball.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-hash_manifest("/path/to/package")$hash
-} # }
+# untrustedpkg is a small package shipped with pkgaudit to be scanned.
+tarball <- system.file(
+  "extdata", "untrustedpkg", "untrustedpkg_0.1.0.tar.gz",
+  package = "pkgaudit"
+)
+exdir <- file.path(tempdir(), "untrustedpkg-example")
+utils::untar(tarball, exdir = exdir)
+
+hash_manifest(file.path(exdir, "untrustedpkg"))$hash
+#> [1] "50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171"
 ```

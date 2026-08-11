@@ -11,8 +11,8 @@
 <script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Static Analysis Security Testing (SAST) for R Packages">
-<meta name="description" content="A static analysis security testing (SAST) tool for R packages. Flags security-relevant files and code in R source packages for manual review. Organizes results by R package lifecycle (autoconf, build, check, source and binary installation, load, attach, unload, detach), using file-context, code-context, and pattern rules stored in a versioned and hash-verified SQLite database.">
-<meta property="og:description" content="A static analysis security testing (SAST) tool for R packages. Flags security-relevant files and code in R source packages for manual review. Organizes results by R package lifecycle (autoconf, build, check, source and binary installation, load, attach, unload, detach), using file-context, code-context, and pattern rules stored in a versioned and hash-verified SQLite database.">
+<meta name="description" content="A static analysis security testing (SAST) tool for R packages. Flags security-relevant files and code in R source packages for manual review. Organizes results by R package lifecycle (autoconf, build, check, source and binary installation, load, attach, unload, detach), using file-context, code-context, pattern, and match rules stored in a versioned and hash-verified SQLite database.">
+<meta property="og:description" content="A static analysis security testing (SAST) tool for R packages. Flags security-relevant files and code in R source packages for manual review. Organizes results by R package lifecycle (autoconf, build, check, source and binary installation, load, attach, unload, detach), using file-context, code-context, pattern, and match rules stored in a versioned and hash-verified SQLite database.">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">pkgaudit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,8 +37,8 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="articles/r-package-security.html">R Package Security</a></li>
-    <li><a class="dropdown-item" href="articles/how-it-works.html">How pkgaudit Works</a></li>
     <li><a class="dropdown-item" href="articles/rules.html">pkgaudit Rule Coverage</a></li>
+    <li><a class="dropdown-item" href="articles/internals.html">pkgaudit Internals</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
@@ -59,28 +59,37 @@
 <div class="page-header"><h1 id="pkgaudit">pkgaudit<a class="anchor" aria-label="anchor" href="#pkgaudit"></a>
 </h1></div>
 <p><a href="https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a> <a href="https://github.com/tylerjssmith/pkgaudit/actions/workflows/coverage.yaml" class="external-link"><img src="https://raw.githubusercontent.com/tylerjssmith/pkgaudit/badges/coverage.svg" alt="test coverage"></a> <a href="https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml" class="external-link"><img src="https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml/badge.svg" alt="osv-scanner"></a></p>
-<p>pkgaudit is a static analysis security testing (SAST) tool for R packages. It scans R source packages for files that can execute arbitrary commands during autoconf, builds, checks, and installations, and for lifecycle hooks whose bodies run automatically when a namespace is loaded, attached, unloaded, or detached. It also scans R source code for security-relevant patterns like <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> calls.</p>
-<p>R packages are the primary mechanism for sharing R code. They are also <a href="articles/r-package-security.html">potential attack vectors</a>. pkgaudit helps you identify which parts of an untrusted package deserve your attention before you install and load it.</p>
+<p>pkgaudit is a static analysis security testing (SAST) tool for R packages. It reports which parts of a package can execute, when they execute, and what they do, so that an untrusted package can be reviewed before it is installed and loaded. It never executes the code it scans.</p>
+<div class="section level2">
+<h2 id="how-a-package-is-covered">How a package is covered<a class="anchor" aria-label="anchor" href="#how-a-package-is-covered"></a>
+</h2>
+<p>pkgaudit accounts for every file it can identify as code, and says what it made of each one:</p>
+<ul>
+<li>
+<strong>parsed</strong> – R, wherever a package carries it: <code>R/</code>, help-file examples and <code>\Sexpr{}</code> macros, vignettes in R Markdown, Quarto, Sweave and R.rsp, <code>data/</code>, <code>demo/</code>, <code>tests/</code>, <code>tools/</code>, <code>inst/CITATION</code>, <code>.Rprofile</code>. Matched against R’s parse tree.</li>
+<li>
+<strong>matched</strong> – shell scripts and Make-like files: <code>configure</code>, <code>cleanup</code>, <code>src/Makevars</code>. Matched as text, which is less precise – a match in a comment reads the same as one in a live command.</li>
+<li>
+<strong>exportable</strong> – C, C++, Fortran, Rust, Python, JavaScript, and vignette chunks in those languages. Not read, but <code><a href="reference/export_unscanned.html">export_unscanned()</a></code> writes them out for a scanner that reads them, blank-padded so that a finding’s line number still points into the original file.</li>
+<li>
+<strong>unexamined</strong> – present and accounted for, but not read: serialized <code>.rda</code> and <code>.rds</code> objects, binaries, and files no rule claims.</li>
+</ul>
+<p>Coverage is never complete, and is not meant to be. What the <code>coverage</code> frame offers is not completeness but legibility: a clean result can be checked rather than trusted, because the scan says what it did not look at.</p>
+<p>Every finding carries the R package lifecycle phases in which it runs – <code>at_autoconf</code>, <code>at_build</code>, <code>at_check</code>, <code>at_install_src</code>, <code>at_install_bin</code>, <code>at_load</code>, <code>at_attach</code>, <code>at_unload</code>, <code>at_detach</code> – so code that executes on <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library()</a></code> is distinguishable from code that runs only when someone calls it.</p>
+<p>A finding is not an accusation. Flagged files and code are often legitimate: <code>configure</code> scripts exist for system-dependent configuration, and many packages call system tools or download files for good reason. pkgaudit identifies what deserves a reader’s attention, not what is malicious.</p>
+<p>For why this matters, see <a href="articles/r-package-security.html">R Package Security</a>. For the rule set, see <a href="articles/rules.html">Rule Coverage</a>.</p>
+</div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>You can install pkgaudit as follows:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"tylerjssmith/pkgaudit"</span><span class="op">)</span></span></code></pre></div>
-<p>pkgaudit detects security-relevant files and code using a SQLite database of rules shipped with the package at <code>inst/db/rules.db</code>. To verify that the installed copy of the database has not been modified since publication, check its SHA-256 hash.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">digest</span><span class="fu">::</span><span class="fu"><a href="https://eddelbuettel.github.io/digest/man/digest.html" class="external-link">digest</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"db"</span>, <span class="st">"rules.db"</span>, package <span class="op">=</span> <span class="st">"pkgaudit"</span><span class="op">)</span>,</span>
-<span>  algo <span class="op">=</span> <span class="st">"sha256"</span>,</span>
-<span>  file <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Expected SHA-256: <code>2139a0ff1cffcd922c6e290efd329909e277c2bd28a2ca325143da3f1b7f4aa7</code></p>
 </div>
 <div class="section level2">
 <h2 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
 </h2>
-<p>The <a href="articles/pkgaudit.html">Getting Started with pkgaudit</a> and <a href="articles/how-it-works.html">How pkgaudit Works</a> vignettes document usage. The <a href="articles/rules.html">Rule Coverage</a> vignette documents the full rule set. The example below scans <code>untrustedpkg</code>, a small package shipped with pkgaudit for demonstration:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<p>A source package tarball can be scanned before it is installed. The example below scans <code>untrustedpkg</code>, a small package shipped with pkgaudit for demonstration.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/tylerjssmith/pkgaudit" class="external-link">pkgaudit</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">tarball</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span></span>
@@ -88,34 +97,62 @@
 <span>  package <span class="op">=</span> <span class="st">"pkgaudit"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">rules</span>  <span class="op">&lt;-</span> <span class="fu"><a href="reference/load_rules.html">load_rules</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/audit_tarball.html">audit_tarball</a></span><span class="op">(</span><span class="va">tarball</span>, rules <span class="op">=</span> <span class="va">rules</span><span class="op">)</span></span></code></pre></div>
-<p><code><a href="reference/summary.pkgaudit.html">summary.pkgaudit()</a></code> reports the file and code contexts found in untrustedpkg, and counts the patterns found in each of them by the R package lifecycle phase in which the code may execute (e.g., build, installation from source, installation from binary, load). These phases can overlap (e.g., builds test that a package can be installed from source and loaded), so a pattern may be counted under more than one phase.</p>
-<p>Below, we see that untrustedpkg includes a <code>configure</code> script, which is used for system-dependent configuration but can execute arbitrary shell commands. It also calls <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> inside <code>.onLoad()</code>, which runs on <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library(untrustedpkg)</a></code>, and <code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file()</a></code> inside an ordinary function, which runs only if a user calls the parent function and so belongs to no phase. Code that runs without being asked deserves closer attention.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span>, path <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/audit_tarball.html">audit_tarball</a></span><span class="op">(</span><span class="va">tarball</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span>, path <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="co">#&gt; --- pkgaudit Summary --------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source tarball)</span></span>
-<span><span class="co">#&gt; SHA-256:   e15feb660e38860df47907e63a355406bf0a1d99355f92b354f5e8018ae6b386</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-02 22:19 UTC with pkgaudit v0.3.0, rules v0.3.0</span></span>
+<span><span class="co">#&gt; SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-11 13:05 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- Contexts ----------------------------------------------------------------</span></span>
-<span><span class="co">#&gt; file_context</span></span>
-<span><span class="co">#&gt; configure</span></span>
+<span><span class="co">#&gt; --- R Patterns --------------------------------------------------------------</span></span>
+<span><span class="co">#&gt; phase            rule            n   attck</span></span>
+<span><span class="co">#&gt; at_build         httr            1   T1041</span></span>
+<span><span class="co">#&gt; at_build         system          1   T1059.003 T1059.004</span></span>
+<span><span class="co">#&gt; at_check         download_file   1   T1105</span></span>
+<span><span class="co">#&gt; at_check         httr            1   T1041</span></span>
+<span><span class="co">#&gt; at_check         system          1   T1059.003 T1059.004</span></span>
+<span><span class="co">#&gt; at_install_src   httr            1   T1041</span></span>
+<span><span class="co">#&gt; at_install_src   system          1   T1059.003 T1059.004</span></span>
+<span><span class="co">#&gt; at_load          system          1   T1059.003 T1059.004</span></span>
+<span><span class="co">#&gt; none             download_file   1   T1105</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; code_context</span></span>
-<span><span class="co">#&gt; onLoad_base</span></span>
+<span><span class="co">#&gt; --- Shell / Make Matches ----------------------------------------------------</span></span>
+<span><span class="co">#&gt; phase            rule            n   attck</span></span>
+<span><span class="co">#&gt; at_build         curl            1   T1041 T1105</span></span>
+<span><span class="co">#&gt; at_check         curl            1   T1041 T1105</span></span>
+<span><span class="co">#&gt; at_install_src   curl            1   T1041 T1105</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- Patterns ----------------------------------------------------------------</span></span>
-<span><span class="co">#&gt; phase            code_context   rule            n   attck</span></span>
-<span><span class="co">#&gt; at_build         onLoad_base    system          1   T1059.003 T1059.004</span></span>
-<span><span class="co">#&gt; at_check         onLoad_base    system          1   T1059.003 T1059.004</span></span>
-<span><span class="co">#&gt; at_install_src   onLoad_base    system          1   T1059.003 T1059.004</span></span>
-<span><span class="co">#&gt; at_load          onLoad_base    system          1   T1059.003 T1059.004</span></span>
-<span><span class="co">#&gt; none             Other          download_file   1   T1105</span></span>
+<span><span class="co">#&gt; --- Coverage ----------------------------------------------------------------</span></span>
+<span><span class="co">#&gt; status       top_level   type          files   lines</span></span>
+<span><span class="co">#&gt; parsed       R/          R                 2       6</span></span>
+<span><span class="co">#&gt; parsed       man/        Rd                1      12</span></span>
+<span><span class="co">#&gt; matched      .           shell             1       3</span></span>
+<span><span class="co">#&gt; unexamined   .           DESCRIPTION       1</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- Errors ------------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; No exceptions were raised.</span></span></code></pre></div>
+<p><code>untrustedpkg</code> has an <code>.onLoad()</code> hook containing a <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> call, which runs whenever the package is loaded; an ordinary function containing <code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file()</a></code>, which runs at no phase because it runs only when someone calls it; and a <code>configure</code> script containing <code>curl</code>, which runs when the package is built, checked, or installed from source. Code that runs without being asked deserves closer attention.</p>
+<p>Phases overlap – building a package with vignettes also installs and loads it – so one occurrence is counted under every phase it runs in.</p>
+<p><code>path = FALSE</code> omits the local filesystem path from output that will be shared.</p>
+<p>Two functions carry a scan into other tools. <code><a href="reference/emit_sarif.html">emit_sarif()</a></code> renders the result as SARIF 2.1.0, which editors and code-scanning platforms read directly. <code><a href="reference/export_unscanned.html">export_unscanned()</a></code> writes the code pkgaudit cannot read into a directory for a scanner that can. Both are covered in <a href="articles/pkgaudit.html">Getting Started with pkgaudit</a>.</p>
+</div>
+<div class="section level2">
+<h2 id="database-integrity">Database integrity<a class="anchor" aria-label="anchor" href="#database-integrity"></a>
+</h2>
+<p>pkgaudit detects security-relevant files and code using a SQLite database of rules shipped at <code>inst/db/rules.db</code>. <code><a href="reference/load_rules.html">load_rules()</a></code> verifies the database against its bundled <code>.sha256</code> sidecar on every call and refuses to load a modified one. To check an installed copy against the value published here:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">digest</span><span class="fu">::</span><span class="fu"><a href="https://eddelbuettel.github.io/digest/man/digest.html" class="external-link">digest</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"db"</span>, <span class="st">"rules.db"</span>, package <span class="op">=</span> <span class="st">"pkgaudit"</span><span class="op">)</span>,</span>
+<span>  algo <span class="op">=</span> <span class="st">"sha256"</span>,</span>
+<span>  file <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Expected SHA-256: <code>d4eb060421019e24d34e3aa9a375fa9ccbe838cc1c9410551528418a2f88a5c9</code></p>
+</div>
+<div class="section level2">
+<h2 id="security">Security<a class="anchor" aria-label="anchor" href="#security"></a>
+</h2>
+<p>pkgaudit’s own security model, and how to report a vulnerability in it, are in <a href="https://github.com/tylerjssmith/pkgaudit/blob/master/.github/SECURITY.md" class="external-link">SECURITY.md</a>. To propose or revise a rule, see <a href="https://github.com/tylerjssmith/pkgaudit/blob/master/.github/CONTRIBUTING.md" class="external-link">CONTRIBUTING.md</a>. How pkgaudit works internally, for a reader auditing the source, is in <a href="articles/internals.html">Internals</a>.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">

@@ -95,16 +95,18 @@ should not.
 A rule is data, not code, so contributing one means writing a YAML file
 rather than R. The clearest starting point is an existing rule in the
 same category under
-[inst/rules/](https://tylerjssmith.github.io/inst/rules/). The [How
-pkgaudit
-Works](https://tylerjssmith.github.io/vignettes/how-it-works.Rmd)
-vignette walks through one rule of each category and explains how its
-fields are used.
+[inst/rules/](https://tylerjssmith.github.io/inst/rules/). The [Rule
+Coverage](https://tylerjssmith.github.io/pkgaudit/articles/rules.html)
+vignette lists every shipped rule with the phases it carries, and
+[Internals](https://tylerjssmith.github.io/pkgaudit/articles/internals.html)
+describes how a rule is used during a scan.
 
-**Categories.** A rule is a file context (a file R executes during
-build, check, or install), a code context (a lifecycle hook whose body
-runs when a namespace is loaded, attached, unloaded, or detached), or a
-pattern (a security-relevant function call).
+**Categories.** A rule is a file context (a file R reads or executes
+during build, check, install, or load), a code context (a lifecycle hook
+whose body runs when a namespace is loaded, attached, unloaded, or
+detached), a pattern (a security-relevant construct in R, matched
+against the parse tree), or a match (a regular expression matched
+against the text of a shell script or Make-like file).
 
 **Names.** The YAML file name is prefixed with the rule’s category —
 `file_`, `code_`, or `pattern_` — but the `name` field inside it is not:
@@ -168,6 +170,64 @@ reference to a function is not mistaken for a call to it, and exclude
 calls preceded by `$` so that a list element or an object’s method of
 the same name is not flagged. Qualified (`pkg::fn()`) and unqualified
 (`fn()`) call forms should both match.
+
+## Testing
+
+Coverage is not a percentage to chase. It is a checklist a change either
+satisfies or does not, and a pull request is expected to satisfy every
+clause below that applies to it.
+
+**1. One test file per script.** `R/foo.R` is tested by
+`tests/testthat/test-foo.R`. Two files are organized by behavior rather
+than by script, because what they assert spans the whole package:
+`test-fixtures.R` and `test-no_execution.R`.
+
+**2. Every documented function has a happy path.** One test that calls
+it the way the documentation says to and asserts the result — not merely
+that it did not error.
+
+**3. Every anticipated failure is anticipated by a test.** Where the
+source has a [`stop()`](https://rdrr.io/r/base/stop.html), a
+[`warning()`](https://rdrr.io/r/base/warning.html), or a
+[`tryCatch()`](https://rdrr.io/r/base/conditions.html)/[`withCallingHandlers()`](https://rdrr.io/r/base/conditions.html)
+handler, at least one test reaches it. A handler is a claim that some
+input will occur; the test is what makes the claim checkable. A
+defensive branch that cannot be reached through the public interface is
+marked `# nocov` with the reason, so that an uncovered line always means
+a gap rather than a judgment call.
+
+**4. A contained failure is asserted twice: the record and the
+survival.** pkgaudit turns a failure into a row in `errors`, or a
+`reason` in `coverage`, rather than aborting the scan. A test for such a
+path asserts both that the row appears with the right fields *and* that
+the scan went on to finish.
+
+**5. Every empty case is tested.** A function returning a data frame is
+tested on input that yields no rows, asserting the column names. Empty
+frames are what a minimal package produces, and a frame whose shape
+changes when it is empty breaks every downstream join.
+
+**6. Every rule is tested against its own examples.** Positives must
+match, negatives must not. This is enforced generically in
+`test-fixtures.R` over the whole shipped database, so a new rule needs
+no new test — but it does need examples that pin the boundary.
+
+**7. Security invariants are asserted end to end, not by inspection.**
+That pkgaudit never executes what it scans is not a property any single
+function can be read for, so `test-no_execution.R` builds a package
+whose every execution site would write a marker file, scans and exports
+it, and requires that no marker exists afterwards. A new read or write
+path belongs in that test.
+
+**8. Anything reading untrusted bytes or writing to disk is tested
+adversarially.** A malformed archive, a symlink pointing out of the
+package, a `..` path component, a file over the size limit, an
+unreadable file, a non-empty target directory: each refused, each
+recorded, none acted on.
+
+**9. Every bug found against a real package becomes a test.** A fixture
+reproducing it, added in the same change as the fix, and named for the
+behavior rather than for the report.
 
 ## Credit
 
