@@ -14,7 +14,7 @@
 # they ship with R and are not tracked as CRAN advisories.
 
 osv_lockfile <- function(path = "renv.lock", pkg = ".") {
-  db <- utils::installed.packages()
+  db <- .dependency_db()
   closure <- .runtime_closure(pkg, db)
 
   packages <- lapply(closure, function(p) {
@@ -32,8 +32,39 @@ osv_lockfile <- function(path = "renv.lock", pkg = ".") {
   )
 
   writeLines(jsonlite::toJSON(lock, auto_unbox = TRUE, pretty = TRUE), path)
+
   message("Wrote ", path, " with ", length(closure), " packages.")
+  # Named in the log so a version that came from the repository rather than
+  # from the library is visible in the run that produced it.
+  from_repo <- setdiff(closure, rownames(utils::installed.packages()))
+  if (length(from_repo) > 0L) {
+    message("Not installed, versions taken from the repository: ",
+            paste(from_repo, collapse = ", "))
+  }
   invisible(closure)
+}
+
+
+# What each package is, taken from the library where the package is installed
+# and from the repository where it is not.
+#
+# A LinkingTo dependency is absent from a library built out of binaries: it is
+# needed to compile the package that links it, not to run it. cpp11 reaches
+# RSQLite that way. Its headers are compiled into the object code a user
+# executes all the same, so it is scanned, and the repository supplies the
+# version the library cannot.
+.dependency_db <- function() {
+  cols <- c("Package", "Version", "Priority", "Depends", "Imports", "LinkingTo")
+
+  installed <- utils::installed.packages()[, cols, drop = FALSE]
+  # One row per package per library; the first library on the path wins, as it
+  # would when the package is loaded.
+  installed <- installed[!duplicated(rownames(installed)), , drop = FALSE]
+
+  available <- tryCatch(utils::available.packages()[, cols, drop = FALSE],
+                        error = function(e) installed[0L, , drop = FALSE])
+  rbind(installed,
+        available[!rownames(available) %in% rownames(installed), , drop = FALSE])
 }
 
 
@@ -48,11 +79,11 @@ osv_lockfile <- function(path = "renv.lock", pkg = ".") {
                                        recursive = TRUE)
   all <- sort(unique(c(direct, unlist(found, use.names = FALSE))))
 
-  # A dependency absent from the library means CI resolved something this
-  # script cannot see; stop rather than emit a lock file that quietly omits it.
+  # A dependency in neither the library nor the repository is one this script
+  # cannot describe; stop rather than emit a lock file that quietly omits it.
   missing <- setdiff(all, rownames(db))
   if (length(missing) > 0L) {
-    stop("not installed: ", paste(missing, collapse = ", "), call. = FALSE)
+    stop("cannot resolve: ", paste(missing, collapse = ", "), call. = FALSE)
   }
   all[!db[all, "Priority"] %in% "base"]
 }
