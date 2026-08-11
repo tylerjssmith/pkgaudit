@@ -45,8 +45,14 @@ test_that(".relativize strips the root and leaves anything outside it alone", {
   expect_equal(.relativize(character(0L), root), character(0L))
   # A path that does not sit under root comes back normalized but whole, so it
   # can never be mistaken for a package-relative path.
-  outside <- .relativize("/etc/passwd", root)
-  expect_true(startsWith(outside, "/"))
+  elsewhere <- file.path(tempdir(), "elsewhere.txt")
+  file.create(elsewhere)
+  on.exit(unlink(elsewhere), add = TRUE)
+  outside <- .relativize(elsewhere, root)
+  expect_equal(outside,
+               normalizePath(elsewhere, winslash = "/", mustWork = FALSE))
+  # Absolute on either platform: "/x" on Unix, "C:/x" or "//host/x" on Windows.
+  expect_match(outside, "^(/|[A-Za-z]:/)")
 })
 
 test_that(".xml_find_all_safe returns the condition rather than nothing", {

@@ -48,7 +48,11 @@ make_marker_pkg <- function(dir) {
 markers_dir <- function() {
   d <- tempfile("markers")
   dir.create(d)
-  d
+  # The path is written into the R and shell sources above. A Windows temp
+  # path is a run of invalid escapes inside a string literal -- "\U" in
+  # \Users, "\A" in \AppData -- so the fixture would not parse, the scan would
+  # find nothing, and no marker could be created whatever the scanner did.
+  normalizePath(d, winslash = "/")
 }
 
 test_that("the marker mechanism itself works", {
