@@ -6,7 +6,7 @@ name: Test Coverage
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   pull_request:
 
 permissions:
