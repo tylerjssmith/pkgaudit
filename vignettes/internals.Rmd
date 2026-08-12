@@ -25,7 +25,7 @@ For what pkgaudit reports, see
 [Getting Started](pkgaudit.html); for the rule set, see
 [Rule Coverage](rules.html). pkgaudit's own security model and its vulnerability
 reporting policy are in
-[SECURITY.md](https://github.com/tylerjssmith/pkgaudit/blob/master/.github/SECURITY.md).
+[SECURITY.md](https://github.com/tylerjssmith/pkgaudit/blob/main/.github/SECURITY.md).
 
 ## A scan in four movements
 

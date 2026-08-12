@@ -1,57 +1,24 @@
 
-<!-- index.md is generated from index.Rmd. Please edit this file -->
-
-# pkgaudit
-
-[![R-CMD-check](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml)
-[![test
-coverage](https://raw.githubusercontent.com/tylerjssmith/pkgaudit/badges/coverage.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/coverage.yaml)
-[![osv-scanner](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml)
+<!-- index.md is generated from index.Rmd. Please edit index.Rmd. -->
 
 pkgaudit is a static analysis security testing (SAST) tool for R
 packages. It reports which parts of a package can execute, when they
 execute, and what they do, so that an untrusted package can be reviewed
-before it is installed and loaded. It never executes the code it scans.
+before it is installed and loaded. pkgaudit never executes the code it
+scans.
 
-## How a package is covered
+A general-purpose scanner can read R – Semgrep supports it
+experimentally – but it reads files, not packages. Nothing tells it to
+look for R inside a help file’s `\examples{}` block or an `\Sexpr{}`
+macro, or inside a Sweave or R.rsp vignette; and nothing tells it that
+`.onLoad()` runs on `library()`, that `\Sexpr{}` evaluates while a help
+page is built, or that `configure` runs under `R CMD check`. pkgaudit
+does both: it extracts R from wherever a package carries it, and reports
+the lifecycle phases in which each finding runs.
 
-pkgaudit accounts for every file it can identify as code, and says what
-it made of each one:
-
-- **parsed** – R, wherever a package carries it: `R/`, help-file
-  examples and `\Sexpr{}` macros, vignettes in R Markdown, Quarto,
-  Sweave and R.rsp, `data/`, `demo/`, `tests/`, `tools/`,
-  `inst/CITATION`, `.Rprofile`. Matched against R’s parse tree.
-- **matched** – shell scripts and Make-like files: `configure`,
-  `cleanup`, `src/Makevars`. Matched as text, which is less precise – a
-  match in a comment reads the same as one in a live command.
-- **exportable** – C, C++, Fortran, Rust, Python, JavaScript, and
-  vignette chunks in those languages. Not read, but `export_unscanned()`
-  writes them out for a scanner that reads them, blank-padded so that a
-  finding’s line number still points into the original file.
-- **unexamined** – present and accounted for, but not read: serialized
-  `.rda` and `.rds` objects, binaries, and files no rule claims.
-
-Coverage is never complete, and is not meant to be. What the `coverage`
-frame offers is not completeness but legibility: a clean result can be
-checked rather than trusted, because the scan says what it did not look
-at.
-
-Every finding carries the R package lifecycle phases in which it runs –
-`at_autoconf`, `at_build`, `at_check`, `at_install_src`,
-`at_install_bin`, `at_load`, `at_attach`, `at_unload`, `at_detach` – so
-code that executes on `library()` is distinguishable from code that runs
-only when someone calls it.
-
-A finding is not an accusation. Flagged files and code are often
-legitimate: `configure` scripts exist for system-dependent
-configuration, and many packages call system tools or download files for
-good reason. pkgaudit identifies what deserves a reader’s attention, not
-what is malicious.
-
-For why this matters, see [R Package
-Security](articles/r-package-security.html). For the rule set, see [Rule
-Coverage](articles/rules.html).
+A finding is not an accusation. `configure` scripts and calls to system
+tools are often legitimate. pkgaudit identifies what deserves a
+reviewer’s attention, not what is malicious.
 
 ## Installation
 
@@ -79,7 +46,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-11 13:05 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-12 01:26 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -110,50 +77,31 @@ summary(result, path = FALSE)
 #> No exceptions were raised.
 ```
 
-`untrustedpkg` has an `.onLoad()` hook containing a `system()` call,
-which runs whenever the package is loaded; an ordinary function
-containing `download.file()`, which runs at no phase because it runs
-only when someone calls it; and a `configure` script containing `curl`,
-which runs when the package is built, checked, or installed from source.
-Code that runs without being asked deserves closer attention.
-
-Phases overlap – building a package with vignettes also installs and
-loads it – so one occurrence is counted under every phase it runs in.
-
-`path = FALSE` omits the local filesystem path from output that will be
-shared.
+Four of `untrustedpkg`’s five findings run without anyone asking for
+them. `.onLoad()` in `R/zzz.R` calls `system()`, so it runs on
+`library()` – and at build, check, and source installation, each of
+which loads the package. An `\Sexpr{}` macro in `man/fetch_data.Rd`
+calls `httr::POST()` when the help page is rendered, at those same three
+phases, and the `\examples{}` block in the same file calls
+`download.file()`, which `R CMD check` runs. The `configure` script may
+invoke `curl` at build, check, and source installation. The fifth
+finding is the contrast that makes the rest legible: `download.file()`
+in `R/fetch.R` sits in an ordinary function body, so it runs at no phase
+at all, reported under `none`, because it executes only if someone calls
+it.
 
 Two functions carry a scan into other tools. `emit_sarif()` renders the
 result as SARIF 2.1.0, which editors and code-scanning platforms read
 directly. `export_unscanned()` writes the code pkgaudit cannot read into
-a directory for a scanner that can. Both are covered in [Getting Started
-with pkgaudit](articles/pkgaudit.html).
-
-## Database integrity
-
-pkgaudit detects security-relevant files and code using a SQLite
-database of rules shipped at `inst/db/rules.db`. `load_rules()` verifies
-the database against its bundled `.sha256` sidecar on every call and
-refuses to load a modified one. To check an installed copy against the
-value published here:
-
-``` r
-digest::digest(
-  system.file("db", "rules.db", package = "pkgaudit"),
-  algo = "sha256",
-  file = TRUE
-)
-```
-
-Expected SHA-256:
-`d4eb060421019e24d34e3aa9a375fa9ccbe838cc1c9410551528418a2f88a5c9`
+a directory for a scanner that can. See [Getting Started with
+pkgaudit](articles/pkgaudit.html) for details.
 
 ## Security
 
 pkgaudit’s own security model, and how to report a vulnerability in it,
 are in
-[SECURITY.md](https://github.com/tylerjssmith/pkgaudit/blob/master/.github/SECURITY.md).
+[SECURITY.md](https://github.com/tylerjssmith/pkgaudit/blob/main/.github/SECURITY.md).
 To propose or revise a rule, see
-[CONTRIBUTING.md](https://github.com/tylerjssmith/pkgaudit/blob/master/.github/CONTRIBUTING.md).
+[CONTRIBUTING.md](https://github.com/tylerjssmith/pkgaudit/blob/main/.github/CONTRIBUTING.md).
 How pkgaudit works internally, for a reader auditing the source, is in
 [Internals](articles/internals.html).

@@ -1,5 +1,5 @@
 
-<!-- README.md is generated from README.Rmd. Please edit that file -->
+<!-- README.md is generated from README.Rmd. Please edit README.Rmd. -->
 
 # pkgaudit
 
@@ -10,43 +10,61 @@
 pkgaudit is a static analysis security testing (SAST) tool for R
 packages. It reports which parts of a package can execute, when they
 execute, and what they do, so that an untrusted package can be reviewed
-before it is installed and loaded. It never executes the code it scans.
+before it is installed and loaded. pkgaudit never executes the code it
+scans.
 
-## How a package is covered
+A general-purpose scanner can read R – Semgrep supports it
+experimentally – but it reads files, not packages. Nothing tells it to
+look for R inside a help file’s `\examples{}` block or an `\Sexpr{}`
+macro, or inside a Sweave or R.rsp vignette; and nothing tells it that
+`.onLoad()` runs on `library()`, that `\Sexpr{}` evaluates while a help
+page is built, or that `configure` runs under `R CMD check`. pkgaudit
+does both: it extracts R from wherever a package carries it, and reports
+the lifecycle phases in which each finding runs.
 
-pkgaudit accounts for every file it can identify as code, and says what
-it made of each one:
+## Overview
 
-- **parsed** – R, wherever a package carries it: `R/`, help-file
-  examples and `\Sexpr{}` macros, vignettes in R Markdown, Quarto,
-  Sweave and R.rsp, `data/`, `demo/`, `tests/`, `tools/`,
-  `inst/CITATION`, `.Rprofile`. Matched against R’s parse tree.
-- **matched** – shell scripts and Make-like files: `configure`,
-  `cleanup`, `src/Makevars`. Matched as text, which is less precise – a
-  match in a comment reads the same as one in a live command.
-- **exportable** – C, C++, Fortran, Rust, Python, JavaScript, and
-  vignette chunks in those languages. Not read, but `export_unscanned()`
-  writes them out for a scanner that reads them, blank-padded so that a
-  finding’s line number still points into the original file.
-- **unexamined** – present and accounted for, but not read: serialized
-  `.rda` and `.rds` objects, binaries, and files no rule claims.
+pkgaudit identifies every file in a package that can contain code –
+complete source files (e.g., `R/*.R`, `src/*.c`), and code carried
+inside documentation (`man/*.Rd`) and vignettes (e.g.,
+`vignettes/*.Rmd`) – and says what it made of each one:
 
-Coverage is never complete, and is not meant to be. What the `coverage`
-frame offers is not completeness but legibility: a clean result can be
-checked rather than trusted, because the scan says what it did not look
-at.
+- **parsed**: R is parsed for security-relevant patterns like `system()`
+  and `httr::POST()` calls. This includes `.R` scripts in `R/`, `data/`,
+  `demo/`, `exec/`, `tests/`, and `tools/`; examples and `\Sexpr{}`
+  macros in `.Rd` files; R chunks in R Markdown, Quarto, Sweave, and
+  R.rsp vignettes; and `inst/CITATION`, `.Rprofile`, and
+  `src/install.libs.R`.
+- **matched**: Shell scripts and Make-like files, if present, are
+  matched against regular expressions for security-relevant commands
+  like `curl`. This includes `configure`, `cleanup`, `src/Makevars`, and
+  more. Matching is textual, so a `curl` in a comment reads the same as
+  one in command position.
+- **exportable**: C, C++, Fortran, Rust, Python, and JavaScript source
+  files, and vignette chunks written in those languages, are not read,
+  but `export_unscanned()` can write them out for tools like Semgrep,
+  blank-padded so that a finding’s line number still points into the
+  original file.
+- **unexamined**: Files that may contain code but were not scanned, such
+  as serialized `.rda` and `.rds` files, are reported as unexamined.
+- **error**: If pkgaudit attempted to parse or grep a file but
+  encountered an error, the file is reported as an error.
+
+Coverage may not be complete. What pkgaudit offers is not completeness
+but legibility: a clean result can be checked rather than trusted,
+because the scan says what it did not cover.
 
 Every finding carries the R package lifecycle phases in which it runs –
 `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
-`at_install_bin`, `at_load`, `at_attach`, `at_unload`, `at_detach` – so
-code that executes on `library()` is distinguishable from code that runs
-only when someone calls it.
+`at_install_bin`, `at_load`, `at_attach`, `at_unload`, `at_detach`, or
+`none` – so code that executes on `library()` is distinguishable from
+code that runs only when someone calls it.
 
 A finding is not an accusation. Flagged files and code are often
 legitimate: `configure` scripts exist for system-dependent
 configuration, and many packages call system tools or download files for
-good reason. pkgaudit identifies what deserves a reader’s attention, not
-what is malicious.
+good reason. pkgaudit identifies what deserves a reviewer’s attention,
+not what is malicious.
 
 For why this matters, see [R Package
 Security](https://tylerjssmith.github.io/pkgaudit/articles/r-package-security.html).
@@ -79,7 +97,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-11 13:04 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-12 01:26 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -110,16 +128,21 @@ summary(result, path = FALSE)
 #> No exceptions were raised.
 ```
 
-`untrustedpkg` has an `.onLoad()` hook containing a `system()` call,
-which runs whenever the package is loaded; an ordinary function
-containing `download.file()`, which runs at no phase because it runs
-only when someone calls it; and a `configure` script containing `curl`,
-which runs when the package is built, checked, or installed from source.
-Code that runs without being asked deserves closer attention.
+Four of `untrustedpkg`’s five findings run without anyone asking for
+them. `.onLoad()` in `R/zzz.R` calls `system()`, so it runs on
+`library()` – and at build, check, and source installation, each of
+which loads the package. An `\Sexpr{}` macro in `man/fetch_data.Rd`
+calls `httr::POST()` when the help page is rendered, at those same three
+phases, and the `\examples{}` block in the same file calls
+`download.file()`, which `R CMD check` runs. The `configure` script may
+invoke `curl` at build, check, and source installation. The fifth
+finding is the contrast that makes the rest legible: `download.file()`
+in `R/fetch.R` sits in an ordinary function body, so it runs at no phase
+at all, reported under `none`, because it executes only if someone calls
+it.
 
 Phases overlap – building a package with vignettes also installs and
 loads it – so one occurrence is counted under every phase it runs in.
-
 `path = FALSE` omits the local filesystem path from output that will be
 shared.
 
@@ -147,7 +170,7 @@ digest::digest(
 ```
 
 Expected SHA-256:
-`d4eb060421019e24d34e3aa9a375fa9ccbe838cc1c9410551528418a2f88a5c9`
+`d73ed7f7e41125d89a524e22d82ac467c0ca2a93991781c8b5015f789fcf0127`
 
 ## Security
 

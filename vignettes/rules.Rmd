@@ -26,7 +26,7 @@ phase_names <- setdiff(names(rules$phases), c("context", "version"))
 ```{r helpers}
 # The rule sources are read from the installed package, but linked in the
 # repository, where a reader can browse them.
-repo <- "https://github.com/tylerjssmith/pkgaudit/blob/master/"
+repo <- "https://github.com/tylerjssmith/pkgaudit/blob/main/"
 
 # Map each rule name to the YAML file that defines it, as a path relative to
 # inst/rules/. The database records a rule's name but not where it came from,
@@ -300,7 +300,7 @@ pkgaudit v`r utils::packageVersion("pkgaudit")` separates *what* code does from
 *when* it executes. **Patterns** and **matches** answer the first, and come
 first below; **file contexts** and **code contexts** answer the second. Each
 rule is defined in a YAML file under
-[inst/rules/](https://github.com/tylerjssmith/pkgaudit/tree/master/inst/rules)
+[inst/rules/](https://github.com/tylerjssmith/pkgaudit/tree/main/inst/rules)
 and compiled into the SQLite database at `inst/db/rules.db`. The Rule columns
 below link to the defining YAML files.
 
@@ -494,7 +494,7 @@ extracted from, one per `\Sexpr` stage, because the stages do not share a phase
 profile. The rest are named for where the file sits -- `data`, `tests`,
 `vignettes` -- because `R`'s phases are right for `R/` and wrong everywhere
 else. They are defined under
-[inst/rules/phases/](https://github.com/tylerjssmith/pkgaudit/tree/master/inst/rules/phases).
+[inst/rules/phases/](https://github.com/tylerjssmith/pkgaudit/tree/main/inst/rules/phases).
 
 ```{r computed-contexts}
 emit_table(
