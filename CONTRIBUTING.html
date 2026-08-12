@@ -44,7 +44,7 @@
 <p>Thank you for your interest in pkgaudit. The most valuable contribution to this package is a rule: a new file context, code context, or pattern worth flagging, or a revision to one that already exists.</p>
 <p>Two things are out of scope here:</p>
 <ul><li>A vulnerability <strong>in pkgaudit itself</strong> should be reported privately, not in a public issue. See <a href="SECURITY.html">SECURITY.md</a>.</li>
-<li>Malicious or vulnerable code in <strong>some other R package</strong> is not a pkgaudit issue. Contact that package’s maintainer, and CRAN (<a href="mailto:cran@r-project.org">cran@r-project.org</a>) if it is distributed there.</li>
+<li>Malicious or vulnerable code <strong>in some other R package</strong> is not a pkgaudit issue. Contact that package’s maintainer, and CRAN (<a href="mailto:cran@r-project.org">cran@r-project.org</a>) if it is distributed there.</li>
 </ul><p>Rules are proposed, discussed, and drafted in GitHub issues. Contributions are YAML files exchanged in an issue thread; the maintainer is responsible for incorporating a finalized rule into the package, rebuilding the rules database and test fixtures, and running the test suite and package check.</p>
 <div class="section level2">
 <h2 id="proposing-a-new-or-revised-rule">Proposing a new or revised rule<a class="anchor" aria-label="anchor" href="#proposing-a-new-or-revised-rule"></a></h2>
@@ -73,7 +73,7 @@
 <li>
 <strong>Prevalence</strong> — what proportion of CRAN packages have the context or pattern at all? A rule matching a large share of CRAN is not so much wrong as useless: it tells a reviewer nothing about the package in front of them.</li>
 </ul><p>pkgaudit aims for <strong>precision above 0.95</strong> and <strong>prevalence below 0.05</strong>, so that a finding is worth a reviewer’s attention. A rule that misses these targets is not automatically rejected, but it needs a reason.</p>
-<p><a href="../tools/">tools/</a> contains the functions used for these runs: <code>download_cran()</code> to fetch source tarballs and <code>audit_cran()</code> to audit them in bulk. The maintainer will use them to evaluate proposed rules. If you run them yourself, please read <a href="../tools/README.html">tools/README.md</a> first — it asks you to rate-limit downloads out of respect for CRAN mirror bandwidth.</p>
+<p><a href="../dev/">dev/</a> contains the functions used for these runs: <code>download_cran()</code> to fetch source tarballs and <code>survey_cran()</code> to audit them in bulk. The maintainer will use them to evaluate proposed rules. If you run them yourself, please read <a href="../dev/README.html">dev/README.md</a> first — it asks you to rate-limit downloads out of respect for CRAN mirror bandwidth.</p>
 </div>
 <div class="section level3">
 <h3 id="id_5-results-and-refinement">5. Results and refinement<a class="anchor" aria-label="anchor" href="#id_5-results-and-refinement"></a></h3>

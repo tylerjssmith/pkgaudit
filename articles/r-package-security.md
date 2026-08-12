@@ -40,8 +40,8 @@ containing this code is loaded, before any package function is called.
 errors, so the user sees nothing unusual even if
 [`readLines()`](https://rdrr.io/r/base/readLines.html) fails because the
 file does not exist or the user lacks permission to read it. pkgaudit
-flags this hook as a code context and the `httr::POST()` call as a
-pattern inside it.
+flags this `httr::POST()` call as a pattern executing whenever a package
+is loaded.
 
 Similar attacks have been documented in ecosystems adjacent to R. In
 2022, the Python package ctx on PyPI was
@@ -58,4 +58,4 @@ both the data processed in R sessions and the underlying systems on
 which R runs, which can provide compute resources and credentials for
 lateral movement. pkgaudit provides one layer of defense against an
 under-appreciated risk, flagging security-relevant files and code in R
-packages for manual review.
+packages for human review.

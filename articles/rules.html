@@ -72,7 +72,7 @@
 it executes. <strong>Patterns</strong> and <strong>matches</strong>
 answer the first, and come first below; <strong>file contexts</strong>
 and <strong>code contexts</strong> answer the second. Each rule is
-defined in a YAML file under <a href="https://github.com/tylerjssmith/pkgaudit/tree/master/inst/rules" class="external-link">inst/rules/</a>
+defined in a YAML file under <a href="https://github.com/tylerjssmith/pkgaudit/tree/main/inst/rules" class="external-link">inst/rules/</a>
 and compiled into the SQLite database at <code>inst/db/rules.db</code>.
 The Rule columns below link to the defining YAML files.</p>
 <p>This vignette is generated from that database, at rules v0.4.0. Every
@@ -124,7 +124,7 @@ either, since pkgaudit evaluates nothing.</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_credentials.yaml" class="external-link">credentials</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_credentials.yaml" class="external-link">credentials</a></td>
 <td>a path or environment variable that only holds a secret:
 <code>~/.ssh/</code>, <code>~/.aws/</code>, <code>.netrc</code>,
 <code>id_rsa</code>, <code>~/.gnupg/</code>, and
@@ -140,7 +140,7 @@ reading it – but naming one is still not proof it is read, so read the
 line.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_curl.yaml" class="external-link">curl</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_curl.yaml" class="external-link">curl</a></td>
 <td>
 <code>curl()</code>, <code>curl_fetch_memory()</code>,
 <code>curl_fetch_disk()</code>, <code>curl_fetch_stream()</code>,
@@ -153,7 +153,7 @@ connection to a remote host. A request may be used to exfiltrate
 credentials or other data, or to fetch a remote payload.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_decoding.yaml" class="external-link">decoding</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_decoding.yaml" class="external-link">decoding</a></td>
 <td>
 <code>base64decode()</code>, <code>base64_dec()</code>,
 <code>base64_decode()</code>, <code><a href="https://rdrr.io/r/base/memCompress.html" class="external-link">memDecompress()</a></code>,
@@ -163,7 +163,7 @@ credentials or other data, or to fetch a remote payload.</td>
 (e.g., as base64) to evade static detection and decoded at runtime.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_deserialization.yaml" class="external-link">deserialization</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_deserialization.yaml" class="external-link">deserialization</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS()</a></code>, <code><a href="https://rdrr.io/r/base/load.html" class="external-link">load()</a></code>,
 <code><a href="https://rdrr.io/r/base/serialize.html" class="external-link">unserialize()</a></code>, <code><a href="https://rdrr.io/r/base/dput.html" class="external-link">dget()</a></code>
@@ -173,7 +173,7 @@ or code, which can enable arbitrary code execution (CVE-2024-27322 for
 RDS).</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_download_file.yaml" class="external-link">download_file</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_download_file.yaml" class="external-link">download_file</a></td>
 <td>
 <code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file()</a></code>, <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">url()</a></code>
 </td>
@@ -182,7 +182,7 @@ resource. This can stage a payload for execution via source() or
 system() in a two-stage attack.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_dynload.yaml" class="external-link">dynload</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_dynload.yaml" class="external-link">dynload</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/dynload.html" class="external-link">dyn.load()</a></code>, <code><a href="https://rdrr.io/r/base/library.dynam.html" class="external-link">library.dynam()</a></code>
 </td>
@@ -190,7 +190,7 @@ system() in a two-stage attack.</td>
 object, which executes outside the visible R source.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_eval_parse.yaml" class="external-link">eval_parse</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_eval_parse.yaml" class="external-link">eval_parse</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/eval.html" class="external-link">eval()</a></code>/<code><a href="https://rdrr.io/r/base/eval.html" class="external-link">evalq()</a></code> over <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">parse()</a></code>,
 <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">str2lang()</a></code> or <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">str2expression()</a></code>, when the text
@@ -207,7 +207,7 @@ running a subprocess and running Python already cover, plus the file
 reads no rule covers on its own.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_httr.yaml" class="external-link">httr</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_httr.yaml" class="external-link">httr</a></td>
 <td>
 <code>GET()</code>, <code>POST()</code>, <code>PUT()</code>,
 <code>PATCH()</code>, <code>DELETE()</code>, <code>HEAD()</code>,
@@ -218,7 +218,7 @@ to exfiltrate credentials or other data, or to fetch a remote
 payload.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_httr2.yaml" class="external-link">httr2</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_httr2.yaml" class="external-link">httr2</a></td>
 <td>
 <code>req_perform()</code>, <code>req_perform_iterative()</code>,
 <code>req_perform_parallel()</code>,
@@ -231,7 +231,7 @@ payload.</td>
 to exfiltrate credentials or other data.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_install.yaml" class="external-link">install</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_install.yaml" class="external-link">install</a></td>
 <td>
 <code><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages()</a></code>, <code>install_github()</code>,
 <code>install_gitlab()</code>, <code>install_bitbucket()</code>,
@@ -251,7 +251,7 @@ remote source. A non-default source can introduce attacker-controlled
 code.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_namespace.yaml" class="external-link">namespace</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_namespace.yaml" class="external-link">namespace</a></td>
 <td>
 <code><a href="https://rdrr.io/r/utils/getFromNamespace.html" class="external-link">getFromNamespace()</a></code>, <code><a href="https://rdrr.io/r/base/ns-reflect.html" class="external-link">getExportedValue()</a></code>,
 <code><a href="https://rdrr.io/r/utils/getAnywhere.html" class="external-link">getAnywhere()</a></code>, <code><a href="https://rdrr.io/r/utils/getFromNamespace.html" class="external-link">assignInNamespace()</a></code>,
@@ -265,7 +265,7 @@ call made later can run something else. The ::: operator is not matched
 here, since R CMD check already reports it.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_options_repos.yaml" class="external-link">options_repos</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_options_repos.yaml" class="external-link">options_repos</a></td>
 <td><code>options(repos = )</code></td>
 <td>options(repos = …) replaces the CRAN mirror for the R session.
 Subsequent install.packages() calls will fetch packages from the
@@ -273,7 +273,7 @@ configured repository. If set to an attacker-controlled server, this
 poisons the installation source.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_persistence.yaml" class="external-link">persistence</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_persistence.yaml" class="external-link">persistence</a></td>
 <td>a startup file or scheduler: <code>~/.bashrc</code>,
 <code>~/.zshrc</code>, <code>~/.profile</code>,
 <code>~/.Rprofile</code>, <code>~/.Renviron</code>,
@@ -289,7 +289,7 @@ command rather than a sentence, since prose that merely mentions
 ~/.bashrc is not a package writing to it.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_python.yaml" class="external-link">python</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_python.yaml" class="external-link">python</a></td>
 <td>
 <code>py_run_string()</code>, <code>py_run_file()</code>,
 <code>py_eval()</code>, <code>source_python()</code>,
@@ -302,7 +302,7 @@ account for. import_builtins() is listed with them because it returns
 Python’s own eval, exec and <strong>import</strong>.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_rcurl.yaml" class="external-link">rcurl</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_rcurl.yaml" class="external-link">rcurl</a></td>
 <td>
 <code>getURL()</code>, <code>getURI()</code>,
 <code>getForm()</code>, <code>postForm()</code>,
@@ -313,7 +313,7 @@ be used to exfiltrate credentials or other data, or to fetch a remote
 payload.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_socket.yaml" class="external-link">socket</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_socket.yaml" class="external-link">socket</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">socketConnection()</a></code>, <code><a href="https://rdrr.io/r/utils/make.socket.html" class="external-link">make.socket()</a></code>,
 <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">serverSocket()</a></code>, <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">socketAccept()</a></code>
@@ -323,12 +323,12 @@ exfiltrate data or receive a remote payload outside the usual HTTP
 clients.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_source.yaml" class="external-link">source</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_source.yaml" class="external-link">source</a></td>
 <td><code><a href="https://rdrr.io/r/base/source.html" class="external-link">source()</a></code></td>
 <td>source() can fetch and execute local and remote R scripts.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system.yaml" class="external-link">system</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_system.yaml" class="external-link">system</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code>, <code><a href="https://rdrr.io/r/base/system2.html" class="external-link">system2()</a></code>, <code>shell()</code>,
 <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">pipe()</a></code>
@@ -337,7 +337,7 @@ clients.</td>
 arbitrary shell commands.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system_callr.yaml" class="external-link">system_callr</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_system_callr.yaml" class="external-link">system_callr</a></td>
 <td>
 <code><a href="https://callr.r-lib.org/reference/r.html" class="external-link">callr::r()</a></code>, <code>r_bg()</code>, <code>r_safe()</code>,
 <code>r_copycat()</code>, <code>r_vanilla()</code>,
@@ -352,7 +352,7 @@ command, which may be used to execute arbitrary R code or shell commands
 outside the visible R source.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system_processx.yaml" class="external-link">system_processx</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_system_processx.yaml" class="external-link">system_processx</a></td>
 <td>
 <code><a href="http://processx.r-lib.org/reference/run.html" class="external-link">processx::run()</a></code>, <code><a href="http://processx.r-lib.org/reference/pipeline.html" class="external-link">processx::pipeline()</a></code>,
 <code>process$new()</code>
@@ -361,7 +361,7 @@ outside the visible R source.</td>
 to execute arbitrary shell commands outside the visible R source.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/patterns/pattern_system_sys.yaml" class="external-link">system_sys</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_system_sys.yaml" class="external-link">system_sys</a></td>
 <td>
 <code>exec_wait()</code>, <code>exec_background()</code>,
 <code>exec_internal()</code>, <code>eval_safe()</code>,
@@ -405,56 +405,56 @@ warrants reading the file itself more than a pattern finding does.</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_chmod.yaml" class="external-link">chmod</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/matches/match_chmod.yaml" class="external-link">chmod</a></td>
 <td>Making a file executable, or setting its setuid or setgid bit,
 during a build turns something the package shipped as data into
 something that can be run – in the setuid case, with the privileges of
 whoever owns it rather than whoever runs it.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_credentials.yaml" class="external-link">credentials</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/matches/match_credentials.yaml" class="external-link">credentials</a></td>
 <td>A build script naming a credential store is reading, or preparing to
 read, something that only exists to authenticate its owner. Nothing a
 package needs in order to build lives in these files, and a build runs
 with the full privileges of whoever installs the package.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_curl.yaml" class="external-link">curl</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/matches/match_curl.yaml" class="external-link">curl</a></td>
 <td>curl fetches a remote resource or sends data to a remote host. In a
 shell script or Make-like file it runs when the package is built,
 checked, or installed, and may be used to fetch a remote payload or to
 exfiltrate credentials or other data.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_decoding.yaml" class="external-link">decoding</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/matches/match_decoding.yaml" class="external-link">decoding</a></td>
 <td>A decoding command turns bytes that are not readable as text back
 into something that is. In a build script it is most often seen
 immediately before the result is run or written to disk, which is how a
 payload is carried past a reader who only skims the source.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_install.yaml" class="external-link">install</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/matches/match_install.yaml" class="external-link">install</a></td>
 <td>Installing software during a package build reaches outside the
 package for code and runs it. What arrives is chosen by a remote index
 rather than by the package under audit, and is not covered by this scan
 or by the R dependency graph.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_interpreter.yaml" class="external-link">interpreter</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/matches/match_interpreter.yaml" class="external-link">interpreter</a></td>
 <td>A build script that calls another language’s interpreter runs code
 pkgaudit does not read. The script it runs may live in the package, be
 written by an earlier step, or be fetched; either way its contents are
 not part of this scan.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_persistence.yaml" class="external-link">persistence</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/matches/match_persistence.yaml" class="external-link">persistence</a></td>
 <td>A build script touching a startup file or a scheduler is arranging
 to run again later, outside the install that put it there. Removing the
 package does not undo it. .Rprofile and .Renviron are the same idea one
 level in: R reads them at the start of every session.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_rscript.yaml" class="external-link">rscript</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/matches/match_rscript.yaml" class="external-link">rscript</a></td>
 <td>Rscript runs R code from a shell script or Make-like file, either
 from a file it is given or inline with -e. That code executes when the
 package is built, checked, or installed, and pkgaudit does not parse it:
@@ -463,21 +463,21 @@ through this invocation. The invocation is reported so a reviewer can
 follow it.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_socket.yaml" class="external-link">socket</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/matches/match_socket.yaml" class="external-link">socket</a></td>
 <td>Opening a socket from a build script moves data to or from a remote
 host without an HTTP client, which is both a way to fetch a payload and
 a way to send one out. A shell redirection to /dev/tcp does it with no
 external program at all.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_transfer.yaml" class="external-link">transfer</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/matches/match_transfer.yaml" class="external-link">transfer</a></td>
 <td>A file-transfer command moves a file between the build machine and a
 remote host. Unlike an HTTP fetch it often carries credentials of its
 own, and it runs in whichever direction the script asks for, so it is a
 way to send data out as well as to bring code in.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/matches/match_wget.yaml" class="external-link">wget</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/matches/match_wget.yaml" class="external-link">wget</a></td>
 <td>wget fetches a remote resource or sends data to a remote host. In a
 shell script or Make-like file it runs when the package is built,
 checked, or installed, and may be used to fetch a remote payload or to
@@ -612,7 +612,7 @@ rather than from anything written in it.</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_R_scripts.yaml" class="external-link">R_scripts</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_R_scripts.yaml" class="external-link">R_scripts</a></td>
 <td><code>R/*.[RrSsq]</code></td>
 <td><code>R</code></td>
 <td>no</td>
@@ -626,7 +626,7 @@ contexts and patterns; the files themselves are not a finding, which is
 why this rule does not report.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_R_scripts_unix.yaml" class="external-link">R_scripts_unix</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_R_scripts_unix.yaml" class="external-link">R_scripts_unix</a></td>
 <td><code>R/unix/*.[RrSsq]</code></td>
 <td><code>R</code></td>
 <td>no</td>
@@ -640,7 +640,7 @@ code contexts and patterns; the files themselves are not a finding,
 which is why this rule does not report.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_R_scripts_windows.yaml" class="external-link">R_scripts_windows</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_R_scripts_windows.yaml" class="external-link">R_scripts_windows</a></td>
 <td><code>R/windows/*.[RrSsq]</code></td>
 <td><code>R</code></td>
 <td>no</td>
@@ -654,7 +654,7 @@ scanned for code contexts and patterns; the files themselves are not a
 finding, which is why this rule does not report.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_cleanup.yaml" class="external-link">cleanup</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_cleanup.yaml" class="external-link">cleanup</a></td>
 <td><code>cleanup</code></td>
 <td><code>shell</code></td>
 <td>yes</td>
@@ -664,7 +664,7 @@ CMD build, and during installation from source only under R CMD INSTALL
 –clean or –preclean. It can execute arbitrary shell commands.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_cleanup_ucrt.yaml" class="external-link">cleanup_ucrt</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_cleanup_ucrt.yaml" class="external-link">cleanup_ucrt</a></td>
 <td><code>cleanup.ucrt</code></td>
 <td><code>shell</code></td>
 <td>yes</td>
@@ -675,7 +675,7 @@ CMD INSTALL –clean or –preclean; it takes precedence over cleanup.win
 when present. It can execute arbitrary shell commands.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_cleanup_win.yaml" class="external-link">cleanup_win</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_cleanup_win.yaml" class="external-link">cleanup_win</a></td>
 <td><code>cleanup.win</code></td>
 <td><code>shell</code></td>
 <td>yes</td>
@@ -685,7 +685,7 @@ build, and during installation from source only under R CMD INSTALL
 –clean or –preclean. It can execute arbitrary shell commands.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure.yaml" class="external-link">configure</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure.yaml" class="external-link">configure</a></td>
 <td><code>configure</code></td>
 <td><code>shell</code></td>
 <td>yes</td>
@@ -699,7 +699,7 @@ performed by R CMD check and by R CMD build when a package has
 vignettes. It can execute arbitrary shell commands.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure_ac.yaml" class="external-link">configure_ac</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure_ac.yaml" class="external-link">configure_ac</a></td>
 <td><code>configure.ac</code></td>
 <td><code>shell</code></td>
 <td>yes</td>
@@ -709,7 +709,7 @@ it is processed by Autoconf to generate the configure script, which
 executes shell commands when a package is installed from source.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure_in.yaml" class="external-link">configure_in</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure_in.yaml" class="external-link">configure_in</a></td>
 <td><code>configure.in</code></td>
 <td><code>shell</code></td>
 <td>yes</td>
@@ -720,7 +720,7 @@ script, which executes shell commands when a package is installed from
 source.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure_ucrt.yaml" class="external-link">configure_ucrt</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure_ucrt.yaml" class="external-link">configure_ucrt</a></td>
 <td><code>configure.ucrt</code></td>
 <td><code>shell</code></td>
 <td>yes</td>
@@ -735,7 +735,7 @@ build when a package has vignettes; it takes precedence over
 configure.win when present.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_configure_win.yaml" class="external-link">configure_win</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure_win.yaml" class="external-link">configure_win</a></td>
 <td><code>configure.win</code></td>
 <td><code>shell</code></td>
 <td>yes</td>
@@ -749,7 +749,7 @@ the installs performed by R CMD check and by R CMD build when a package
 has vignettes.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_data_scripts.yaml" class="external-link">data_scripts</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_data_scripts.yaml" class="external-link">data_scripts</a></td>
 <td><code>data/*.[RrSsq]</code></td>
 <td><code>R</code></td>
 <td>no</td>
@@ -763,7 +763,7 @@ arbitrary R before the package is ever loaded. It does not survive into
 a source tarball: build replaces it with its own output.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_data_serialized.yaml" class="external-link">data_serialized</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_data_serialized.yaml" class="external-link">data_serialized</a></td>
 <td><code>data/*.(rda\|RData\|Rdata\|rdata\|rds\|RDS\|Rds)</code></td>
 <td><code>other</code></td>
 <td>no</td>
@@ -777,7 +777,7 @@ code, and pkgaudit cannot inspect one, so it is recorded rather than
 passed over as inert data.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_demo_scripts.yaml" class="external-link">demo_scripts</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_demo_scripts.yaml" class="external-link">demo_scripts</a></td>
 <td><code>demo/*.[RrSsq]</code></td>
 <td><code>R</code></td>
 <td>no</td>
@@ -787,7 +787,7 @@ command reaches it, but it ships in the installed package and runs with
 the user’s privileges when invoked.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_description.yaml" class="external-link">description</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_description.yaml" class="external-link">description</a></td>
 <td><code>DESCRIPTION</code></td>
 <td><code>other</code></td>
 <td>no</td>
@@ -799,7 +799,7 @@ evaluates when the package is built and checked. pkgaudit does not read
 the file, so the row records that it executes and was not examined.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_exec_other.yaml" class="external-link">exec_other</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_exec_other.yaml" class="external-link">exec_other</a></td>
 <td><code>exec/*.(py\|pl\|rb\|bat\|ps1\|tcl\|lua)</code></td>
 <td><code>other</code></td>
 <td>no</td>
@@ -810,7 +810,7 @@ as a runnable program, but nothing runs it during a lifecycle
 phase.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_exec_scripts_R.yaml" class="external-link">exec_scripts_R</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_exec_scripts_R.yaml" class="external-link">exec_scripts_R</a></td>
 <td><code>exec/*.[RrSsq]</code></td>
 <td><code>R</code></td>
 <td>no</td>
@@ -821,7 +821,7 @@ user’s privileges when invoked. Over half the files CRAN packages put in
 exec/ are R, so they are parsed rather than matched as text.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_exec_scripts_shell.yaml" class="external-link">exec_scripts_shell</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_exec_scripts_shell.yaml" class="external-link">exec_scripts_shell</a></td>
 <td><code>exec/*.(sh\|bash\|ksh\|zsh\|csh)</code></td>
 <td><code>shell</code></td>
 <td>no</td>
@@ -834,7 +834,7 @@ files this rule does not match, and extensionless scripts whose language
 is known only from a shebang.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_inst_citation.yaml" class="external-link">inst_citation</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_citation.yaml" class="external-link">inst_citation</a></td>
 <td><code>inst/CITATION</code></td>
 <td><code>R</code></td>
 <td>no</td>
@@ -845,7 +845,7 @@ installed package. A plain .R file under inst/ is never sourced, so this
 is specific to the CITATION filename.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_inst_tests.yaml" class="external-link">inst_tests</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_tests.yaml" class="external-link">inst_tests</a></td>
 <td><code>inst/tests/*.[RrSsq]</code></td>
 <td><code>R</code></td>
 <td>no</td>
@@ -855,7 +855,7 @@ check runs through a runner in tests/. Unlike tests/, inst/ is copied
 into the installed package, so this code also ships to the user.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_inst_tinytest.yaml" class="external-link">inst_tinytest</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_tinytest.yaml" class="external-link">inst_tinytest</a></td>
 <td><code>inst/tinytest/*.[RrSsq]</code></td>
 <td><code>R</code></td>
 <td>no</td>
@@ -866,7 +866,7 @@ installed package, so this code also ships to the user and can be run
 again after installation.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_inst_unittests.yaml" class="external-link">inst_unittests</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_unittests.yaml" class="external-link">inst_unittests</a></td>
 <td><code>inst/unitTests/*.[RrSsq]</code></td>
 <td><code>R</code></td>
 <td>no</td>
@@ -876,7 +876,7 @@ through a runner in tests/. Unlike tests/, inst/ is copied into the
 installed package, so this code also ships to the user.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_inst_web.yaml" class="external-link">inst_web</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_web.yaml" class="external-link">inst_web</a></td>
 <td><code>inst/*.(js\|mjs\|ts)</code></td>
 <td><code>other</code></td>
 <td>no</td>
@@ -887,7 +887,7 @@ is still code the package ships and pkgaudit does not read, so it is
 recorded and can be exported.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_man_pages.yaml" class="external-link">man_pages</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_man_pages.yaml" class="external-link">man_pages</a></td>
 <td><code>man/*.[Rr]d</code></td>
 <td><code>Rd</code></td>
 <td>no</td>
@@ -902,7 +902,7 @@ the files themselves are not a finding, which is why this rule does not
 report.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_man_pages_unix.yaml" class="external-link">man_pages_unix</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_man_pages_unix.yaml" class="external-link">man_pages_unix</a></td>
 <td><code>man/unix/*.[Rr]d</code></td>
 <td><code>Rd</code></td>
 <td>no</td>
@@ -917,7 +917,7 @@ patterns; the files themselves are not a finding, which is why this rule
 does not report.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_man_pages_windows.yaml" class="external-link">man_pages_windows</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_man_pages_windows.yaml" class="external-link">man_pages_windows</a></td>
 <td><code>man/windows/*.[Rr]d</code></td>
 <td><code>Rd</code></td>
 <td>no</td>
@@ -932,7 +932,7 @@ patterns; the files themselves are not a finding, which is why this rule
 does not report.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_r_sysdata.yaml" class="external-link">r_sysdata</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_r_sysdata.yaml" class="external-link">r_sysdata</a></td>
 <td><code>R/sysdata.rda</code></td>
 <td><code>other</code></td>
 <td>no</td>
@@ -945,7 +945,7 @@ into the namespace when the package loads. Deserializing it can execute
 arbitrary code, and pkgaudit cannot inspect it.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_rprofile.yaml" class="external-link">rprofile</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_rprofile.yaml" class="external-link">rprofile</a></td>
 <td><code>.Rprofile</code></td>
 <td><code>R</code></td>
 <td>no</td>
@@ -958,7 +958,7 @@ command starts an R process inside the package. It runs before any
 package is loaded, earlier than any other R in the package.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_compiled.yaml" class="external-link">src_compiled</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_compiled.yaml" class="external-link">src_compiled</a></td>
 <td><code>src/*.(c\|cc\|cpp\|cxx\|C\|h\|hpp\|hxx\|ipp\|f\|f90\|f95\|f03\|f77\|for\|m\|mm\|rs\|java)</code></td>
 <td><code>other</code></td>
 <td>no</td>
@@ -974,7 +974,7 @@ the directory, so that compiled source shipped anywhere else – a header
 library under inst/include/, say – is accounted for too.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_install_libs_R.yaml" class="external-link">src_install_libs_R</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_install_libs_R.yaml" class="external-link">src_install_libs_R</a></td>
 <td><code>src/install.libs.R</code></td>
 <td><code>R</code></td>
 <td>yes</td>
@@ -988,7 +988,7 @@ including the installs performed by R CMD check and by R CMD build when
 a package has vignettes. It can run arbitrary R code.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makefile.yaml" class="external-link">src_makefile</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makefile.yaml" class="external-link">src_makefile</a></td>
 <td><code>src/Makefile</code></td>
 <td><code>make</code></td>
 <td>yes</td>
@@ -1003,7 +1003,7 @@ CMD build runs its clean target. It is read by make and its recipes
 execute arbitrary shell commands.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makefile_ucrt.yaml" class="external-link">src_makefile_ucrt</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makefile_ucrt.yaml" class="external-link">src_makefile_ucrt</a></td>
 <td><code>src/Makefile.ucrt</code></td>
 <td><code>make</code></td>
 <td>yes</td>
@@ -1019,7 +1019,7 @@ It is read by make and its recipes execute arbitrary shell
 commands.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makefile_win.yaml" class="external-link">src_makefile_win</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makefile_win.yaml" class="external-link">src_makefile_win</a></td>
 <td><code>src/Makefile.win</code></td>
 <td><code>make</code></td>
 <td>yes</td>
@@ -1034,7 +1034,7 @@ also use it, and R CMD build runs its clean target. It is read by make
 and its recipes execute arbitrary shell commands.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makevars.yaml" class="external-link">src_makevars</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars.yaml" class="external-link">src_makevars</a></td>
 <td><code>src/Makevars</code></td>
 <td><code>make</code></td>
 <td>yes</td>
@@ -1049,7 +1049,7 @@ src/. It is read by make and can execute shell via make constructs such
 as $(shell …).</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makevars_in.yaml" class="external-link">src_makevars_in</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars_in.yaml" class="external-link">src_makevars_in</a></td>
 <td><code>src/Makevars.in</code></td>
 <td><code>make</code></td>
 <td>yes</td>
@@ -1064,7 +1064,7 @@ installed from source, including the installs performed by R CMD check
 and by R CMD build.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makevars_ucrt.yaml" class="external-link">src_makevars_ucrt</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars_ucrt.yaml" class="external-link">src_makevars_ucrt</a></td>
 <td><code>src/Makevars.ucrt</code></td>
 <td><code>make</code></td>
 <td>yes</td>
@@ -1080,7 +1080,7 @@ cleaning src/. It is read by make and can execute shell via make
 constructs such as $(shell …).</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_makevars_win.yaml" class="external-link">src_makevars_win</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars_win.yaml" class="external-link">src_makevars_win</a></td>
 <td><code>src/Makevars.win</code></td>
 <td><code>make</code></td>
 <td>yes</td>
@@ -1095,7 +1095,7 @@ when cleaning src/. It is read by make and can execute shell via make
 constructs such as $(shell …).</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_src_other.yaml" class="external-link">src_other</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_other.yaml" class="external-link">src_other</a></td>
 <td><code>src/*.</code></td>
 <td><code>other</code></td>
 <td>no</td>
@@ -1109,7 +1109,7 @@ part of what gets built; the row exists so it is accounted for rather
 than passed over.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_tests_scripts.yaml" class="external-link">tests_scripts</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_tests_scripts.yaml" class="external-link">tests_scripts</a></td>
 <td><code>tests/*.[RrSsq]</code></td>
 <td><code>R</code></td>
 <td>no</td>
@@ -1119,7 +1119,7 @@ entry point of whatever testing framework the package uses, and it
 executes arbitrary R during checking.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_tests_testthat.yaml" class="external-link">tests_testthat</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_tests_testthat.yaml" class="external-link">tests_testthat</a></td>
 <td><code>tests/testthat/*.[RrSsq]</code></td>
 <td><code>R</code></td>
 <td>no</td>
@@ -1130,7 +1130,7 @@ tests/testthat/ fixtures/ holds inert data – so only the top level is
 scanned.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_tools_scripts.yaml" class="external-link">tools_scripts</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_tools_scripts.yaml" class="external-link">tools_scripts</a></td>
 <td><code>tools/*.[RrSsq]</code></td>
 <td><code>R</code></td>
 <td>no</td>
@@ -1141,7 +1141,7 @@ invocation is reported where it appears and carries that file’s phases.
 The code is scanned here so a reviewer can read what would run.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_vignettes_qmd.yaml" class="external-link">vignettes_qmd</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_vignettes_qmd.yaml" class="external-link">vignettes_qmd</a></td>
 <td><code>vignettes/*.qmd</code></td>
 <td><code>qmd</code></td>
 <td>no</td>
@@ -1155,7 +1155,7 @@ executes arbitrary R with the package loaded, before anyone reads the
 rendered document.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_vignettes_rmd.yaml" class="external-link">vignettes_rmd</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_vignettes_rmd.yaml" class="external-link">vignettes_rmd</a></td>
 <td><code>vignettes/*.[Rr]md</code></td>
 <td><code>Rmd</code></td>
 <td>no</td>
@@ -1168,7 +1168,7 @@ check, which rebuilds it. It executes arbitrary R with the package
 loaded, before anyone reads the rendered document.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_vignettes_rnw.yaml" class="external-link">vignettes_rnw</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_vignettes_rnw.yaml" class="external-link">vignettes_rnw</a></td>
 <td><code>vignettes/*.[Rr]nw</code></td>
 <td><code>Rnw</code></td>
 <td>no</td>
@@ -1182,7 +1182,7 @@ which rebuilds it. It executes arbitrary R with the package loaded,
 before anyone reads the rendered document.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/file_contexts/file_vignettes_rsp.yaml" class="external-link">vignettes_rsp</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_vignettes_rsp.yaml" class="external-link">vignettes_rsp</a></td>
 <td><code>vignettes/*.rsp</code></td>
 <td><code>rsp</code></td>
 <td>no</td>
@@ -1222,7 +1222,7 @@ reading rather than a cautious one.</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_lastlib.yaml" class="external-link">LastLib_base</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_lastlib.yaml" class="external-link">LastLib_base</a></td>
 <td><code>.Last.lib()</code></td>
 <td>
 <code>at_check</code>, <code>at_detach</code>
@@ -1236,7 +1236,7 @@ the package while checking that it can be unloaded cleanly, so
 .Last.lib() runs during checking without any call from a user.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_onattach.yaml" class="external-link">onAttach_base</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onattach.yaml" class="external-link">onAttach_base</a></td>
 <td><code>.onAttach()</code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -1249,7 +1249,7 @@ testing that it loads, so .onAttach() runs during those phases without
 any call from a user.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_ondetach.yaml" class="external-link">onDetach_base</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_ondetach.yaml" class="external-link">onDetach_base</a></td>
 <td><code>.onDetach()</code></td>
 <td>
 <code>at_check</code>, <code>at_detach</code>
@@ -1261,7 +1261,7 @@ while checking that it can be unloaded cleanly, so .onDetach() runs
 during checking without any call from a user.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_onload.yaml" class="external-link">onLoad_base</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onload.yaml" class="external-link">onLoad_base</a></td>
 <td><code>.onLoad()</code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -1274,7 +1274,7 @@ check all load the package, so .onLoad() runs during those phases
 without any call from a user.</td>
 </tr>
 <tr class="odd">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_onunload.yaml" class="external-link">onUnload_base</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onunload.yaml" class="external-link">onUnload_base</a></td>
 <td><code>.onUnload()</code></td>
 <td>
 <code>at_check</code>, <code>at_unload</code>
@@ -1286,7 +1286,7 @@ cleanly, so .onUnload() runs during checking without any call from a
 user.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/master/inst/rules/code_contexts/code_onload_rlang.yaml" class="external-link">on_load_rlang</a></td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onload_rlang.yaml" class="external-link">on_load_rlang</a></td>
 <td><code><a href="https://rlang.r-lib.org/reference/on_load.html" class="external-link">rlang::on_load()</a></code></td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -1314,7 +1314,7 @@ the code was extracted from, one per <code>\Sexpr</code> stage, because
 the stages do not share a phase profile. The rest are named for where
 the file sits – <code>data</code>, <code>tests</code>,
 <code>vignettes</code> – because <code>R</code>’s phases are right for
-<code>R/</code> and wrong everywhere else. They are defined under <a href="https://github.com/tylerjssmith/pkgaudit/tree/master/inst/rules/phases" class="external-link">inst/rules/phases/</a>.</p>
+<code>R/</code> and wrong everywhere else. They are defined under <a href="https://github.com/tylerjssmith/pkgaudit/tree/main/inst/rules/phases" class="external-link">inst/rules/phases/</a>.</p>
 <table class="table">
 <colgroup>
 <col width="33%">

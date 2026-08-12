@@ -1,7 +1,7 @@
 # pkgaudit: Static Analysis Security Testing (SAST) for R Packages
 
 A static analysis security testing (SAST) tool for R packages. Flags
-security-relevant files and code in R source packages for manual review.
+security-relevant files and code in R source packages for human review.
 Organizes results by R package lifecycle (autoconf, build, check, source
 and binary installation, load, attach, unload, detach), using
 file-context, code-context, pattern, and match rules stored in a

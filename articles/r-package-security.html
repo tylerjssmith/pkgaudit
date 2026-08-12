@@ -99,9 +99,9 @@ controlled by the attacker. This occurs whenever a package or dependency
 containing this code is loaded, before any package function is called.
 <code><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch()</a></code> suppresses any errors, so the user sees nothing
 unusual even if <code><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines()</a></code> fails because the file does not
-exist or the user lacks permission to read it. pkgaudit flags this hook
-as a code context and the <code>httr::POST()</code> call as a pattern
-inside it.</p>
+exist or the user lacks permission to read it. pkgaudit flags this
+<code>httr::POST()</code> call as a pattern executing whenever a package
+is loaded.</p>
 <p>Similar attacks have been documented in ecosystems adjacent to R. In
 2022, the Python package ctx on PyPI was <a href="https://www.sonatype.com/blog/pypi-package-ctx-compromised-are-you-at-risk" class="external-link">compromised</a>
 to exfiltrate environment variables – including credentials. Later that
@@ -115,7 +115,7 @@ include both the data processed in R sessions and the underlying systems
 on which R runs, which can provide compute resources and credentials for
 lateral movement. pkgaudit provides one layer of defense against an
 under-appreciated risk, flagging security-relevant files and code in R
-packages for manual review.</p>
+packages for human review.</p>
   </main>
 </div>
 

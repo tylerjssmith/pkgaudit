@@ -9,7 +9,7 @@ Two things are out of scope here:
 - A vulnerability **in pkgaudit itself** should be reported privately,
   not in a public issue. See
   [SECURITY.md](https://tylerjssmith.github.io/pkgaudit/SECURITY.md).
-- Malicious or vulnerable code in **some other R package** is not a
+- Malicious or vulnerable code **in some other R package** is not a
   pkgaudit issue. Contact that package’s maintainer, and CRAN
   (<cran@r-project.org>) if it is distributed there.
 
@@ -74,12 +74,12 @@ pkgaudit aims for **precision above 0.95** and **prevalence below
 misses these targets is not automatically rejected, but it needs a
 reason.
 
-[tools/](https://tylerjssmith.github.io/tools/) contains the functions
-used for these runs: `download_cran()` to fetch source tarballs and
-`audit_cran()` to audit them in bulk. The maintainer will use them to
+[dev/](https://tylerjssmith.github.io/dev/) contains the functions used
+for these runs: `download_cran()` to fetch source tarballs and
+`survey_cran()` to audit them in bulk. The maintainer will use them to
 evaluate proposed rules. If you run them yourself, please read
-[tools/README.md](https://tylerjssmith.github.io/tools/README.md) first
-— it asks you to rate-limit downloads out of respect for CRAN mirror
+[dev/README.md](https://tylerjssmith.github.io/dev/README.md) first — it
+asks you to rate-limit downloads out of respect for CRAN mirror
 bandwidth.
 
 ### 5. Results and refinement
