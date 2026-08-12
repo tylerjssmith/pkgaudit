@@ -8,7 +8,7 @@ Two things are out of scope here:
 
 - A vulnerability **in pkgaudit itself** should be reported privately, not in a
   public issue. See [SECURITY.md](SECURITY.md).
-- Malicious or vulnerable code in **some other R package** is not a pkgaudit
+- Malicious or vulnerable code **in some other R package** is not a pkgaudit
   issue. Contact that package's maintainer, and CRAN
   ([cran@r-project.org](mailto:cran@r-project.org)) if it is distributed there.
 
