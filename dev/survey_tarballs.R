@@ -1,4 +1,4 @@
-# tools/survey_tarballs.R
+# dev/survey_tarballs.R
 #
 # Reconstructs the empirical basis for the default caps in tar_entries() /
 # validate_tar(). Two surveys over a directory of source package tarballs:

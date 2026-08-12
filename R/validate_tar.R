@@ -2,7 +2,7 @@
 # tarballs.
 
 # Caps and rules below were selected based on a survey of all source package
-# on CRAN as of July 7, 2026 (n=24,216). See tools/survey_tarballs.R for
+# on CRAN as of July 7, 2026 (n=24,216). See dev/survey_tarballs.R for
 # analysis functions. The analysis found: 0 link entries, 0 non-standard
 # typeflags (GNU long-name / PAX), 0 traversal paths, 0 absolute paths,
 # 0 backslash, control-character, or empty paths, 0 unparseable size fields, and
@@ -241,7 +241,7 @@ tar_entries <- function(tarfile,
 
 # Refuse an untrusted archive with a classed condition. Subclassing `error`
 # keeps the fail-closed behavior, while the `pkgaudit_invalid_tarball` class
-# lets batch callers (e.g., audit_cran()) record a refusal.
+# lets batch callers (e.g., survey_cran()) record a refusal.
 .refuse_tar <- function(...) {
   stop(structure(
     class = c("pkgaudit_invalid_tarball", "error", "condition"),

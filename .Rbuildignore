@@ -1,18 +1,38 @@
-^renv$
-^renv\.lock$
+# R
 ^\.Rhistory$
 ^\.Rprofile$
-^tools$
 ^pkgaudit\.Rproj$
 ^\.Rproj\.user$
-^LICENSE\.md$
-\.DS_Store$
-^\.github$
-^docs$
-^references\.bib$
-^\.claude$
-^README\.Rmd$
-^[^/]+\.html$
+
+# dev directories
 ^data-raw$
+^dev$
+^docs$
+^tools$
+
+# dev infrastructure
+^\.claude$
+^\.github$
+^renv$
+^renv\.lock$
+
+# documentation
+^[^/]+\.html$
+^README\.Rmd$
 ^_pkgdown\.yml$
 ^pkgdown$
+^references\.bib$
+
+# license
+^LICENSE\.md$
+
+# scrap
+\.DS_Store$
+
+
+
+
+
+
+
+

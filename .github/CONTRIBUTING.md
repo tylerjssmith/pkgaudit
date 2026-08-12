@@ -68,10 +68,10 @@ pkgaudit aims for **precision above 0.95** and **prevalence below 0.05**, so
 that a finding is worth a reviewer's attention. A rule that misses these targets
 is not automatically rejected, but it needs a reason.
 
-[tools/](../tools/) contains the functions used for these runs: `download_cran()`
-to fetch source tarballs and `audit_cran()` to audit them in bulk. The 
+[dev/](../dev/) contains the functions used for these runs: `download_cran()`
+to fetch source tarballs and `survey_cran()` to audit them in bulk. The 
 maintainer will use them to evaluate proposed rules. If you run them yourself, 
-please read [tools/README.md](../tools/README.md) first — it asks you to rate-limit 
+please read [dev/README.md](../dev/README.md) first — it asks you to rate-limit 
 downloads out of respect for CRAN mirror bandwidth.
 
 ### 5. Results and refinement

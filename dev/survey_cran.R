@@ -112,7 +112,7 @@
 #' \dontrun{
 #' # Download source packages first with download_cran().
 #' rules  <- pkgaudit::load_rules()
-#' result <- audit_cran("data/cran/src", checkpoint_dir = "data/cran/checkpoints")
+#' result <- survey_cran("data/cran/src", checkpoint_dir = "data/cran/checkpoints")
 #'
 #' # Patterns that run as a consequence of some lifecycle phase, rather than
 #' # only when a user calls the function they sit in ("Other").
@@ -130,7 +130,7 @@
 #'
 #' @importFrom parallel mclapply detectCores
 #' @export
-audit_cran <- function(
+survey_cran <- function(
   dir,
   rules          = pkgaudit::load_rules(),
   temp_dir       = file.path(tempdir(), "pkgaudit"),
@@ -254,7 +254,7 @@ audit_cran <- function(
 # --- Helpers ------------------------------------------------------------------
 
 # Audit one tarball, capturing errors and warnings as data so nothing depends on
-# forked-worker stderr. Returns the frames audit_cran() documents. Under
+# forked-worker stderr. Returns the frames survey_cran() documents. Under
 # on_error = "stop" a failure is re-raised instead of captured.
 #
 # Package name and version label every row from the audited DESCRIPTION

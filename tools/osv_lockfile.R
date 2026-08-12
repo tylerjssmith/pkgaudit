@@ -10,11 +10,10 @@
 #   Rscript tools/osv_lockfile.R [output-path]
 #
 # Only Depends, Imports and LinkingTo are followed: Suggests are needed to
-# develop and check the package, not to use it. Base packages are dropped, as
-# they ship with R and are not tracked as CRAN advisories.
+# develop and check the package, not to use it. Base packages are dropped.
 
 osv_lockfile <- function(path = "renv.lock", pkg = ".") {
-  db <- .dependency_db()
+  db      <- .dependency_db()
   closure <- .runtime_closure(pkg, db)
 
   packages <- lapply(closure, function(p) {
@@ -51,20 +50,18 @@ osv_lockfile <- function(path = "renv.lock", pkg = ".") {
 # A LinkingTo dependency is absent from a library built out of binaries: it is
 # needed to compile the package that links it, not to run it. cpp11 reaches
 # RSQLite that way. Its headers are compiled into the object code a user
-# executes all the same, so it is scanned, and the repository supplies the
-# version the library cannot.
+# executes, so it is supplied by the repository and scanned.
 .dependency_db <- function() {
   cols <- c("Package", "Version", "Priority", "Depends", "Imports", "LinkingTo")
 
   installed <- utils::installed.packages()[, cols, drop = FALSE]
-  # One row per package per library; the first library on the path wins, as it
-  # would when the package is loaded.
   installed <- installed[!duplicated(rownames(installed)), , drop = FALSE]
 
   available <- tryCatch(utils::available.packages()[, cols, drop = FALSE],
                         error = function(e) installed[0L, , drop = FALSE])
   rbind(installed,
-        available[!rownames(available) %in% rownames(installed), , drop = FALSE])
+        available[!rownames(available) %in% rownames(installed), , drop = FALSE]
+  )
 }
 
 
@@ -75,9 +72,9 @@ osv_lockfile <- function(path = "renv.lock", pkg = ".") {
   desc   <- read.dcf(file.path(pkg, "DESCRIPTION"))
   direct <- .parse_deps(desc[1L, intersect(colnames(desc), fields)])
 
-  found <- tools::package_dependencies(direct, db = db, which = fields,
-                                       recursive = TRUE)
-  all <- sort(unique(c(direct, unlist(found, use.names = FALSE))))
+  found  <- tools::package_dependencies(direct, db = db, which = fields,
+                                        recursive = TRUE)
+  all    <- sort(unique(c(direct, unlist(found, use.names = FALSE))))
 
   # A dependency in neither the library nor the repository is one this script
   # cannot describe; stop rather than emit a lock file that quietly omits it.
@@ -93,7 +90,7 @@ osv_lockfile <- function(path = "renv.lock", pkg = ".") {
 # version constraints and the R entry.
 .parse_deps <- function(fields) {
   entries <- unlist(strsplit(stats::na.omit(as.character(fields)), ","))
-  names <- trimws(sub("\\(.*", "", entries))
+  names   <- trimws(sub("\\(.*", "", entries))
   sort(unique(names[nzchar(names) & names != "R"]))
 }
 
