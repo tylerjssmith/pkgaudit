@@ -55,9 +55,12 @@
   </div>
 </nav><div class="container template-home">
 <div class="row">
-  <main id="main" class="col-md-9"><p>pkgaudit is a static analysis security testing (SAST) tool for R packages. It reports which parts of a package can execute, when they execute, and what they do, so that an untrusted package can be reviewed before it is installed and loaded. pkgaudit never executes the code it scans.</p>
+  <main id="main" class="col-md-9"><div class="section level1">
+<div class="page-header"><h1 id="pkgaudit">pkgaudit<a class="anchor" aria-label="anchor" href="#pkgaudit"></a>
+</h1></div>
+<p>pkgaudit is a static analysis security testing (SAST) tool for R packages. It reports which parts of a package can execute, when they execute, and what they do, so that an untrusted package can be reviewed before it is installed and loaded. pkgaudit never executes the code it scans.</p>
 <p>A general-purpose scanner can read R – Semgrep supports it experimentally – but it reads files, not packages. Nothing tells it to look for R inside a help file’s <code>\examples{}</code> block or an <code>\Sexpr{}</code> macro, or inside a Sweave or R.rsp vignette; and nothing tells it that <code>.onLoad()</code> runs on <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library()</a></code>, that <code>\Sexpr{}</code> evaluates while a help page is built, or that <code>configure</code> runs under <code>R CMD check</code>. pkgaudit does both: it extracts R from wherever a package carries it, and reports the lifecycle phases in which each finding runs.</p>
-<p>A finding is not an accusation. <code>configure</code> scripts and calls to system tools are often legitimate. pkgaudit identifies what deserves a reviewer’s attention, not what is malicious.</p>
+<p>A finding is not an accusation. <code>configure</code> scripts and calls to system tools, for example, are often legitimate. pkgaudit helps to identify what deserves reviewer attention, not what is malicious.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -82,7 +85,7 @@
 <span><span class="co">#&gt; --- pkgaudit Summary --------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source tarball)</span></span>
 <span><span class="co">#&gt; SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-12 01:26 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-12 16:06 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- R Patterns --------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; phase            rule            n   attck</span></span>
@@ -119,7 +122,7 @@
 </h2>
 <p>pkgaudit’s own security model, and how to report a vulnerability in it, are in <a href="https://github.com/tylerjssmith/pkgaudit/blob/main/.github/SECURITY.md" class="external-link">SECURITY.md</a>. To propose or revise a rule, see <a href="https://github.com/tylerjssmith/pkgaudit/blob/main/.github/CONTRIBUTING.md" class="external-link">CONTRIBUTING.md</a>. How pkgaudit works internally, for a reader auditing the source, is in <a href="articles/internals.html">Internals</a>.</p>
 </div>
-
+</div>
   </main><aside class="col-md-3"><div class="links">
 <h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">
