@@ -13,6 +13,8 @@ knitr::opts_chunk$set(
 )
 ```
 
+# pkgaudit
+
 pkgaudit is a static analysis security testing (SAST) tool for R packages. It
 reports which parts of a package can execute, when they execute, and what they
 do, so that an untrusted package can be reviewed before it is installed and

@@ -1,6 +1,8 @@
 
 <!-- index.md is generated from index.Rmd. Please edit index.Rmd. -->
 
+# pkgaudit
+
 pkgaudit is a static analysis security testing (SAST) tool for R
 packages. It reports which parts of a package can execute, when they
 execute, and what they do, so that an untrusted package can be reviewed
@@ -17,8 +19,8 @@ does both: it extracts R from wherever a package carries it, and reports
 the lifecycle phases in which each finding runs.
 
 A finding is not an accusation. `configure` scripts and calls to system
-tools are often legitimate. pkgaudit identifies what deserves a
-reviewer’s attention, not what is malicious.
+tools, for example, are often legitimate. pkgaudit helps to identify
+what deserves reviewer attention, not what is malicious.
 
 ## Installation
 
@@ -46,7 +48,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-12 01:26 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-12 16:06 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
