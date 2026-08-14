@@ -1,5 +1,5 @@
 name: tools_scripts
-version: "0.5.0"
+version: "0.4.0"
 type: R
 message: >-
   tools/ holds helper scripts that nothing runs on its own. It is reached only

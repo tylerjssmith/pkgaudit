@@ -1,5 +1,5 @@
 name: src_compiled
-version: "0.5.0"
+version: "0.4.0"
 type: other
 message: >-
   Compiled source is built into a package's shared object by R CMD INSTALL and

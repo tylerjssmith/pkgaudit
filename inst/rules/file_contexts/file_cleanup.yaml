@@ -1,5 +1,5 @@
 name: cleanup
-version: "0.5.0"
+version: "0.4.0"
 type: shell
 report: TRUE
 code_context: ~

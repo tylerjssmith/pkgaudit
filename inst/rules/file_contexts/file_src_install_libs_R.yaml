@@ -1,5 +1,5 @@
 name: src_install_libs_R
-version: "0.5.0"
+version: "0.4.0"
 type: R
 report: TRUE
 code_context: computed

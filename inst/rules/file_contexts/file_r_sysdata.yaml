@@ -1,5 +1,5 @@
 name: r_sysdata
-version: "0.5.0"
+version: "0.4.0"
 type: other
 message: >-
   R/sysdata.rda holds a package's internal objects and is restored into the

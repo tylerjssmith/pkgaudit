@@ -1,5 +1,5 @@
 name: exec_scripts_shell
-version: "0.5.0"
+version: "0.4.0"
 type: shell
 message: >-
   Shell scripts under exec/ ship in the installed package and are marked

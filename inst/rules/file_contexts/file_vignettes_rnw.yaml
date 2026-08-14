@@ -1,5 +1,5 @@
 name: vignettes_rnw
-version: "0.5.0"
+version: "0.4.0"
 type: Rnw
 message: >-
   A Sweave or knitr vignette carries executable chunks between <<>>= and @, and inline \Sexpr macros. Vignette code runs when the vignette is rendered: during R CMD build,

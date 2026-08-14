@@ -1,5 +1,5 @@
 name: rprofile
-version: "0.5.0"
+version: "0.4.0"
 type: R
 message: >-
   R evaluates a .Rprofile found in the working directory when it starts, so a

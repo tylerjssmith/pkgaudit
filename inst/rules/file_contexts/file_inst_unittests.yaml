@@ -1,5 +1,5 @@
 name: inst_unittests
-version: "0.5.0"
+version: "0.4.0"
 type: R
 message: >-
   RUnit keeps its tests under inst/unitTests/, which R CMD check runs through a

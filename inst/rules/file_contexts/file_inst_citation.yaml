@@ -1,5 +1,5 @@
 name: inst_citation
-version: "0.5.0"
+version: "0.4.0"
 type: R
 message: >-
   inst/CITATION is R code that utils::readCitationFile() evaluates. R CMD check

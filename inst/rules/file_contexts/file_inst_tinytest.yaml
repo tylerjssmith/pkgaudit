@@ -1,5 +1,5 @@
 name: inst_tinytest
-version: "0.5.0"
+version: "0.4.0"
 type: R
 message: >-
   tinytest keeps its tests under inst/tinytest/, which R CMD check runs through

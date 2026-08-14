@@ -1,5 +1,5 @@
 name: Rd_examples
-version: "0.5.0"
+version: "0.1.0"
 language: R
 kind: segment
 segment: Rd_examples

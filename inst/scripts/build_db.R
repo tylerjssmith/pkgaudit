@@ -440,8 +440,7 @@ init_db <- function(
     c("0.1.0", "Initial release"),
     c("0.2.0", "Expanded pattern rule coverage"),
     c("0.3.0", "Phase metadata and corrected context messages"),
-    c("0.4.0", "Regex rules for shell scripts and Make-like files"),
-    c("0.5.0", "Phases keyed on file context and code context")
+    c("0.4.0", "Regex rules for shell scripts and Make-like files")
   )
 ) {
   db_dir <- dirname(db_path)

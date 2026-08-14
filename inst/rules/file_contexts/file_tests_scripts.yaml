@@ -1,5 +1,5 @@
 name: tests_scripts
-version: "0.5.0"
+version: "0.4.0"
 type: R
 message: >-
   R CMD check runs every .R file directly under tests/. This is the entry point
