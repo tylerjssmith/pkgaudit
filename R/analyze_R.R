@@ -6,7 +6,7 @@
 analyze_segment.R <- function(segment, rules) {
   parsed <- parse_code(segment$lines)
   if (!is.null(parsed$error)) {
-    return(.findings(errors = .error_row(
+    return(new_findings(errors = .error_row(
       step = "parse_code", file_context = segment$file_context,
       message = parsed$error
     )))
@@ -75,7 +75,7 @@ analyze_segment.R <- function(segment, rules) {
   pat$file_rule       <- rep(segment$file_rule, nrow(pat))
   pat$rd_context <- rep(segment$context, nrow(pat))
 
-  .findings(patterns = pat, errors = errors)
+  new_findings(patterns = pat, errors = errors)
 }
 
 

@@ -219,7 +219,7 @@ test_that("a stage is read case-insensitively, as parse_Rd() reads it", {
   expect_match(read_Rd_code(path)$sexpr$build, "x <- 1")
 })
 
-test_that("only the wrappers R CMD check does not run are marked guarded", {
+test_that("only the wrapper no example run reaches is marked guarded", {
   path <- rd_file(c("\\name{f}", "\\title{T}", "\\examples{",   # 1-3
                     "plain <- 1",                                    # 4
                     "\\dontrun{ nope <- 2 }",                      # 5
@@ -229,8 +229,9 @@ test_that("only the wrappers R CMD check does not run are marked guarded", {
                     "}"))
   on.exit(unlink(dirname(path), recursive = TRUE), add = TRUE)
 
-  # \\dontshow and \\testonly do run under check, so they are not guarded.
-  expect_setequal(read_Rd_code(path)$guarded, c(5L, 6L))
+  # \\dontshow and \\testonly run under any example run, and \\donttest runs
+  # under `R CMD check --as-cran`, so only \\dontrun is guarded.
+  expect_setequal(read_Rd_code(path)$guarded, 5L)
 })
 
 # Assembly (internal) ----------------------------------------------------------

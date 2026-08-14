@@ -157,15 +157,15 @@ test_that("analyze_segment() returns frames with the canonical columns", {
 })
 
 # rbind() accepts a frame carrying an extra column without complaint, so an
-# unconformed analyser would corrupt the accumulated result silently. .findings()
-# is where that is prevented; the contract cannot be enforced after dispatch
-# because UseMethod() ends the generic.
-test_that(".findings() drops a column an analyser had no business returning", {
+# unconformed analyser would corrupt the accumulated result silently.
+# new_findings() is where that is prevented; the contract cannot be enforced
+# after dispatch, because UseMethod() ends the generic.
+test_that("new_findings() drops a column an analyser had no business returning", {
   stray <- .empty_matches(with_phases = FALSE)
   stray[1L, ] <- list("curl", "configure", 1L, 1L, "p", "m", "T1041")
   stray$scratch <- TRUE
 
-  out <- .findings(matches = stray)
+  out <- new_findings(matches = stray)
   expect_named(out$matches, names(.empty_matches(FALSE)))
   expect_equal(nrow(out$matches), 1L)
 })

@@ -86,6 +86,12 @@ Adding a file format is one new `R/extract_*.R` plus a rule. Adding a language i
 one new `R/analyze_*.R` plus rules carrying that language. Neither touches
 `audit_package()`, and neither touches the other.
 
+Both generics are exported, along with `new_segment()` and `new_findings()`,
+which build what a method returns. A method can therefore be registered from
+another package rather than only by editing this one -- though the rule that
+points the scan at the new files still has to reach the rules database, which
+means the issue thread `CONTRIBUTING.md` describes.
+
 ## The call graph
 
 The graph below is derived from pkgaudit's own source, by parsing it with the
@@ -236,3 +242,7 @@ fixed by editing prose.
 - It does not trace call graphs. Whether a particular package calls a particular
   function is not something pkgaudit determines, which is why the phases of code
   inside a function definition are a stated reading rather than a finding.
+- It does not identify a file by its contents, only by its name. An
+  extensionless script -- `tools/build` opening `#!/bin/sh` -- earns no coverage
+  row: 434 such files across 134 of CRAN's 24,216 packages. Admitting a file on
+  a leading `#!` would close this and is a candidate for a later release.

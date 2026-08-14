@@ -1,0 +1,73 @@
+# .github/workflows/rules-db-hash.yaml
+# The README publishes the SHA-256 of inst/db/rules.db so a user can check an
+# installed copy against a value that did not travel with it. README.md is
+# generated from README.Rmd, which computes that hash at knit time, so the
+# published value goes stale whenever the database is rebuilt without re-knitting
+# -- and a stale value tells a user following the documented procedure that the
+# database has been tampered with. This fails the build instead.
+name: Rules DB Hash
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rules-db-hash:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Compare the published hash against the shipped database
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          db="inst/db/rules.db"
+          [ -f "$db" ] || { echo "::error::$db not found"; exit 1; }
+
+          actual=$(sha256sum "$db" | cut -d' ' -f1)
+
+          # The published value is the one following "Expected SHA-256:".
+          # Anchoring on that label rather than on any 64-hex string keeps
+          # example output elsewhere in the README from being read as the claim.
+          # Newlines are flattened first: pandoc wraps the label onto its own
+          # line, so the label and the hash are not reliably adjacent.
+          published=$(tr '\n' ' ' < README.md \
+                      | grep -oE 'Expected SHA-256: *`[a-f0-9]{64}`' \
+                      | grep -oE '[a-f0-9]{64}' || true)
+
+          if [ -z "$published" ]; then
+            echo "::error::No 'Expected SHA-256:' line found in README.md."
+            echo "Re-knit README.Rmd; the integrity section is expected to publish one."
+            exit 1
+          fi
+
+          echo "published: $published"
+          echo "database:  $actual"
+
+          if [ "$published" != "$actual" ]; then
+            echo "::error::README.md publishes a stale rules-database hash."
+            echo "Re-knit README.Rmd with rmarkdown::render(\"README.Rmd\") and commit README.md."
+            exit 1
+          fi
+
+          # The sidecar load_rules() verifies on every call must agree too, or a
+          # correct README would sit alongside a database that refuses to load.
+          if [ -f "$db.sha256" ]; then
+            sidecar=$(tr -d '[:space:]' < "$db.sha256")
+            echo "sidecar:   $sidecar"
+            if [ "$sidecar" != "$actual" ]; then
+              echo "::error::$db.sha256 does not match $db."
+              echo "Rebuild with Rscript inst/scripts/build_db.R and commit both."
+              exit 1
+            fi
+          else
+            echo "::error::$db.sha256 not found; load_rules() would refuse the database."
+            exit 1
+          fi
+
+          echo "README, sidecar and database agree."

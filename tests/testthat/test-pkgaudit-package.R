@@ -41,7 +41,10 @@ test_that("the package exports exactly its documented entry points", {
   expect_setequal(
     getNamespaceExports("pkgaudit"),
     c("audit_package", "audit_tarball", "emit_sarif", "export_unscanned",
-      "hash_manifest", "load_rules", "rules_version", "validate_tar")
+      "hash_manifest", "load_rules", "rules_version", "validate_tar",
+      # The two axes of dispatch, with the constructors a method outside this
+      # package needs to build a return value the scan will accept.
+      "extract_segments", "analyze_segment", "new_segment", "new_findings")
   )
 })
 

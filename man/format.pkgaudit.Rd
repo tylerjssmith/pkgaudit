@@ -13,7 +13,8 @@
 \item{x}{A \code{pkgaudit} object.}
 
 \item{path}{Logical; if \code{TRUE} (default) include the \verb{Path:} line showing the
-local filesystem location scanned. Set \code{FALSE} to omit local paths.}
+local filesystem location scanned, with the home directory written as \code{~}.
+Set \code{FALSE} to omit the line.}
 
 \item{...}{Ignored, for S3 compatibility.}
 }

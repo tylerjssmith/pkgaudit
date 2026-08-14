@@ -152,13 +152,11 @@ find_indirect <- function(tree, pattern_rules, file_context) {
 
 
 # The frame find_indirect() returns when it finds nothing: the columns
-# find_patterns() produces, plus indirect.
+# find_patterns() produces, plus indirect, which is what it returns when it
+# finds something.
 .empty_indirect <- function() {
-  out <- .empty_patterns(with_phases = FALSE)
-  out$code_context <- NULL
-  out$guarded      <- NULL
-  out$preview      <- NULL
-  out$indirect     <- logical(0L)
+  out <- .empty_found()
+  out$indirect <- logical(0L)
   attr(out, "nodes") <- list()
   out
 }

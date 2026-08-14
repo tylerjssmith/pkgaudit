@@ -4,7 +4,7 @@
 # pkgaudit
 
 [![R-CMD-check](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml)
-[![coverage](https://raw.githubusercontent.com/tylerjssmith/pkgaudit/badges/coverage.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/coverage.yaml)
+[![coverage](https://raw.githubusercontent.com/tylerjssmith/pkgaudit/badges/coverage.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/test-coverage.yaml)
 [![osv-scanner](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml)
 
 pkgaudit is a static analysis security testing (SAST) tool for R
@@ -60,11 +60,9 @@ Every finding carries the R package lifecycle phases in which it runs –
 `none` – so code that executes on `library()` is distinguishable from
 code that runs only when someone calls it.
 
-A finding is not an accusation. Flagged files and code are often
-legitimate: `configure` scripts exist for system-dependent
-configuration, and many packages call system tools or download files for
-good reason. pkgaudit identifies what deserves a reviewer’s attention,
-not what is malicious.
+A finding is not an accusation. `configure` scripts and calls to system
+tools, for example, are often legitimate. pkgaudit helps to identify
+what deserves reviewer attention, not what is malicious.
 
 For why this matters, see [R Package
 Security](https://tylerjssmith.github.io/pkgaudit/articles/r-package-security.html).
@@ -97,7 +95,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-12 01:26 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-14 16:10 UTC with pkgaudit v0.5.0, rules v0.5.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -153,7 +151,7 @@ a directory for a scanner that can. Both are covered in [Getting Started
 with
 pkgaudit](https://tylerjssmith.github.io/pkgaudit/articles/pkgaudit.html).
 
-## Database integrity
+## Rule Database Integrity
 
 pkgaudit detects security-relevant files and code using a SQLite
 database of rules shipped at `inst/db/rules.db`. `load_rules()` verifies
@@ -170,7 +168,7 @@ digest::digest(
 ```
 
 Expected SHA-256:
-`d73ed7f7e41125d89a524e22d82ac467c0ca2a93991781c8b5015f789fcf0127`
+`6a0c3370efe7b5a746281f271eaf25cf44f200e44666eb34a10cab443adece5a`
 
 ## Security
 

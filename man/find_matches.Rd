@@ -33,19 +33,16 @@ a shell or through make (e.g., \code{configure}, \code{src/Makevars}).
 }
 \details{
 Each rule's regular expression is evaluated against every line with
-\code{base::gregexpr()} using \code{perl = TRUE}, \code{ignore.case = FALSE}, and
-\code{useBytes = FALSE}. Every hit is a match found, reported at the line it occurs
-on and the character position it starts at; a line matched more than once
-yields one row per match. A failing regular expression (including one R
-reports only as a warning) is recorded in the errors data frame before the
-loop moves on to the next rule.
+\code{base::gregexpr(perl = TRUE)}, case-sensitively; a line matched more than once
+yields one row per match. A failing expression is recorded in \code{errors} and the
+scan moves on.
 
-Matching text is inherently less precise than matching a parse tree: a match
-has no syntactic structure behind it, so one inside a comment,
-a quoted string, or a branch that never runs is reported the same as a live
-command. Findings are candidates for review, not confirmed behavior.
+Matching text is less precise than matching a parse tree: a match has no
+syntax behind it, so one inside a comment, a quoted string, or a branch that
+never runs is reported the same as a live command. Findings are candidates for
+review, not confirmed behaviour.
 
-Reading the file, and the limits that protect against hostile input, are
-\code{\link[=read_code]{read_code()}}'s responsibility rather than this function's.
+Reading the file, and the limits protecting against hostile input, are
+\code{\link[=read_code]{read_code()}}'s responsibility.
 }
 \keyword{internal}

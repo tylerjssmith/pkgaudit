@@ -29,8 +29,10 @@
 #'   empty and an existing file is left alone. `TRUE` allows writing into a
 #'   directory that already holds something and replaces a previous export of
 #'   the same file. Nothing is ever deleted either way.
-#' @param max_bytes Largest file to copy, in bytes. A larger one is recorded in
-#'   the manifest and left behind.
+#' @param max_bytes Largest file to copy, in bytes; defaults to 64 MB. A larger
+#'   one is recorded in the manifest and left behind. This is a separate limit
+#'   from the 10 MB one [audit_package()] scans under: copying a file costs far
+#'   less than parsing it.
 #'
 #' @return Invisibly, a manifest data frame with one row per exportable span:
 #'   `path` (relative to `dir`, `NA` if not written), `file_context`,
@@ -48,17 +50,19 @@
 #' account of what it could not read is the single source of truth.
 #'
 #' @section Security considerations:
-#' This is the only function in pkgaudit that writes. Both the content and the
-#' file names come from an untrusted package, so: every target path is resolved
-#' and must lie under `dir`; a path component that is `.`, `..`, or that
-#' contains a separator or a NUL byte is refused; symlinks are never followed,
-#' and content is read and rewritten rather than copied, so a link pointing out
-#' of the package cannot pull a file in; nothing is written executable; and
-#' nothing is removed. A refused span is recorded in the manifest
-#' rather than dropped, since a file that cannot be exported safely is one worth
-#' knowing about.
-#'
-#' Exporting still executes nothing.
+#' This is the only function in pkgaudit that writes, and both the content and
+#' the file names come from an untrusted package. Therefore:
+#' \itemize{
+#'   \item every target path is resolved and must lie under `dir`;
+#'   \item a path component that is `.`, `..`, or that contains a separator or a
+#'     NUL byte is refused;
+#'   \item symlinks are never followed, and content is read and rewritten rather
+#'     than copied, so a link pointing out of the package cannot pull a file in;
+#'   \item nothing is written executable, and nothing is removed.
+#' }
+#' A refused span is recorded in the manifest rather than dropped, since a file
+#' that cannot be exported safely is one worth knowing about. Exporting still
+#' executes nothing.
 #'
 #' @examples
 #' # untrustedpkg is a small package shipped with pkgaudit to be scanned. It is
@@ -79,10 +83,15 @@
 #' @export
 export_unscanned <- function(object, dir, source = NULL, overwrite = FALSE,
                              max_bytes = .max_export_bytes) {
-  stopifnot(inherits(object, "pkgaudit"))
-  stopifnot(is.character(dir), length(dir) == 1L, !is.na(dir), nzchar(dir))
-  stopifnot(is.logical(overwrite), length(overwrite) == 1L, !is.na(overwrite))
-  stopifnot(is.numeric(max_bytes), length(max_bytes) == 1L, max_bytes > 0)
+  .check_pkgaudit(object)
+  if (!is.character(dir) || length(dir) != 1L || is.na(dir) || !nzchar(dir)) {
+    .stop_arg("`dir` must be a single, non-empty directory path.")
+  }
+  .check_flag(overwrite, "overwrite")
+  if (!is.numeric(max_bytes) || length(max_bytes) != 1L || is.na(max_bytes) ||
+      max_bytes <= 0) {
+    .stop_arg("`max_bytes` must be a single positive number of bytes.")
+  }
 
   source <- .export_source(object, source)
   .prepare_export_dir(dir, overwrite)

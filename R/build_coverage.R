@@ -1,11 +1,6 @@
 # This script builds the coverage frame: one row per file the package carries
-# that is, or could be, code -- saying how well pkgaudit read it and why not
-# better.
-#
-# Coverage never reaches 100%, and is not meant to. What the frame is for is
-# making the remainder legible: a user should be able to see what was not
-# examined and decide whether it matters. Which files it accounts for is
-# .in_scope() below.
+# that is, or could be, code, saying how well pkgaudit read it and why not
+# better. Which files it accounts for is .in_scope() below.
 
 # The boundary of the package. Version-control and IDE state is not package
 # content, and enumerating .git/objects/ would bury the frame. Files listed in
@@ -138,9 +133,13 @@ build_coverage <- function(path, found, file_context_rules,
     if (!is.na(lang[[i]]) && !lang[[i]] %in% .coverage_analysed) {
       status[[i]] <- "exportable"; reason[[i]] <- "no_analyser"; next
     }
-    # Text in a language pkgaudit can read, sitting where no rule looks -- an
-    # R script under misc/, say. Named honestly rather than quietly scanned.
-    status[[i]]   <- "unexamined"; reason[[i]] <- "no_rule"
+    # Nothing read the file. Either a rule claimed it and that rule's type has
+    # no extractor -- DESCRIPTION is accounted for, not parsed -- or no rule
+    # looks where it sits, as for an R script under misc/. The two are separate
+    # claims: the first is a limit of what pkgaudit reads, the second a limit of
+    # where it looks.
+    status[[i]] <- "unexamined"
+    reason[[i]] <- if (is.na(rule[[i]])) "no_rule" else "no_extractor"
   }
 
   lines <- .coverage_lines(path, files, status, bytes)
@@ -163,17 +162,14 @@ build_coverage <- function(path, found, file_context_rules,
 # The files the frame accounts for: those a rule claimed, and those whose name
 # says what kind of file they are, wherever they sit.
 #
-# A rule's `filename` either names a kind of file -- it is anchored on the end,
-# as every extension and every exact name is -- or it names a place, as src/'s
-# catch-all does. Only the first kind is applied across the whole tree, which is
-# what puts a stray .R under misc/, or an .rds under inst/extdata/, in the frame
-# while leaving NAMESPACE, MD5 and a README out of it.
-#
-# This is an allowlist, and it is derived rather than written: adding a rule for
-# a new kind of file starts accounting for that kind everywhere, with nothing
-# else to update. What it costs is a file whose name says nothing -- a .txt read
-# and evaluated is not in the frame, though the R that reads it is a finding in
-# its own right.
+# A rule's `filename` either names a kind of file, anchored on the end, or names
+# a place, as src/'s catch-all does. Only the first is applied across the whole
+# tree, which puts a stray .R under misc/ in the frame while leaving NAMESPACE
+# and MD5 out. The allowlist is therefore derived rather than written: a rule
+# for a new kind of file starts accounting for it everywhere. What it costs is a
+# file whose name says nothing -- a .txt read and evaluated is not in the frame,
+# though the R that reads it is a finding in its own right, and an extensionless
+# script is out too, since nothing here opens a file to identify it.
 .in_scope <- function(files, rule, file_context_rules) {
   kinds <- file_context_rules$filename[grepl("[$]$", file_context_rules$filename)]
   named <- Reduce(`|`, lapply(kinds, grepl, x = basename(files)), FALSE)
@@ -181,12 +177,10 @@ build_coverage <- function(path, found, file_context_rules,
 }
 
 
-# Combine the tree walk with the spans the analysers reported.
-#
-# A file can appear in both: an .Rmd is parsed for its R chunks, and each chunk
-# in a language nothing reads is a span of its own. The span rows carry no rule,
-# so they take the phases of the file they sit in -- a Python chunk runs when
-# the vignette is built, whatever the chunk is written in.
+# Combine the tree walk with the spans the analysers reported. A file can appear
+# in both: an .Rmd is parsed for its R chunks, and each chunk in a language
+# nothing reads is a span of its own. Span rows carry no rule, so they take the
+# phases of the file they sit in.
 .merge_coverage <- function(files, spans) {
   if (nrow(spans) == 0L) return(files)
   spans$rule <- files$rule[match(spans$file_context, files$file_context)]

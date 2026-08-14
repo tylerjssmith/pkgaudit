@@ -21,7 +21,8 @@ make_test_tarball <- function(r_content, pkg_name = "testpkg", version = "0.1.0"
 
 # error paths ------------------------------------------------------------------
 test_that("audit_tarball() stops if the path does not exist", {
-  expect_error(audit_tarball("/no/such/file.tar.gz"), "file.exists")
+  expect_error(audit_tarball("/no/such/file.tar.gz"),
+               "`path` is not an existing file")
 })
 
 test_that("audit_tarball() stops when no directory matches the package name", {

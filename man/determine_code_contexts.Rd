@@ -17,8 +17,8 @@ in the \code{"nodes"} attribute aligned to the rows.}
 \code{xpath}) is used.}
 }
 \value{
-\code{patterns} with an added \code{code_context} column (a named context,
-\code{"R"}, or \code{"Other"}; never \code{NA}). The \code{"nodes"} attribute is
+\code{patterns} with an added \code{code_context} column -- a named context,
+\code{"top_level"} or \code{"in_function"}, never \code{NA}. The \code{"nodes"} attribute is
 dropped from the result.
 }
 \description{
@@ -26,17 +26,14 @@ Assigns every pattern found by \code{\link[=find_patterns]{find_patterns()}} the
 execute in.
 }
 \details{
-Named contexts are defined by \code{rules$code_contexts}: a pattern occurs in a
-named context iff its node is a descendant of that context's node. When a
-pattern sits inside more than one named context, the most-specific
-(innermost) one wins.
-
-\code{"R"} and \code{"Other"} are not rule-matched; they are computed here as
-fallbacks for a pattern in no named context. \code{"R"} is assigned when
-the pattern has no function-definition ancestor; \code{"Other"} when it has one.
-
+A pattern occurs in a named context iff its node is a descendant of that
+context's node; where it sits inside more than one, the innermost wins.
 Containment is tested by exact XML path identity, never by path-prefix
-comparison (sibling paths such as \code{expr[1]} and \code{expr[12]} would
-false-match).
+comparison, since sibling paths such as \code{expr[1]} and \code{expr[12]} would
+false-match.
+
+\code{"top_level"} and \code{"in_function"} are not rule-matched. They are computed
+here for a pattern in no named context: \code{"in_function"} when it has a
+function-definition ancestor, \code{"top_level"} when it does not.
 }
 \keyword{internal}

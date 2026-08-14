@@ -254,10 +254,11 @@ both detected. Pattern rules carry
 [MITRE ATT&CK](https://attack.mitre.org/) technique labels.
 
 A finding also records how the code is *reached*. `guarded` is `TRUE` for code
-that ships but the lifecycle does not run -- a `\dontrun{}` or `\donttest{}`
-block, or a vignette chunk marked `eval=FALSE`; its phases still come from its
-context, so they read as an upper bound. `indirect` is `TRUE` where the call was
-made through the function's name rather than the function.
+that ships but the lifecycle does not run -- a `\dontrun{}` block, or a vignette
+chunk suppressed by `eval=FALSE` or `#| eval: false`; its phases still come from
+its context, so they read as an upper bound. A `\donttest{}` block is not guarded:
+a plain `R CMD check` skips it, but `--as-cran` runs it. `indirect` is `TRUE`
+where the call was made through the function's name rather than the function.
 
 A pattern rule declares no phases of its own. A pattern takes them from the file
 context it was found in and the code context it sits in, resolved as
@@ -268,11 +269,20 @@ A call made through a function's name rather than the function --
 the rule that owns the name, with the `indirect` column set. Each rule declares
 the names it claims, and a name is only accepted if calling it bare would have
 matched that same rule, so an indirect finding can never be attributed to a
-rule that would not have reported the direct call. Three rules claim no names:
-`eval_parse`, `options_repos` and `system_processx` each match on more than the
-callee -- a nested call, a named argument, a package qualifier -- and none of
-that survives the trip through `do.call()`. A name assembled at runtime is not
-resolved either, since pkgaudit evaluates nothing.
+rule that would not have reported the direct call.
+
+```{r nameless, echo = FALSE}
+fns      <- rules$patterns$functions
+nameless <- sort(rules$patterns$name[is.na(fns) | !nzchar(fns)])
+```
+
+`r length(nameless)` rules claim no names -- `r knitr::combine_words(sprintf("\x60%s\x60", nameless))` --
+for two different reasons. `eval_parse`, `options_repos` and `system_processx`
+match on more than the callee: a nested call, a named argument, a package
+qualifier, none of which survives the trip through `do.call()`. `credentials`
+and `persistence` match string constants rather than calls, so there is no
+callee to claim in the first place. A name assembled at runtime is not resolved
+either, since pkgaudit evaluates nothing.
 
 ```{r patterns}
 pat <- rules$patterns

@@ -34,14 +34,12 @@ Finds patterns -- syntactic constructs of interest (e.g., \code{system()},
 \code{eval(parse())}, an outbound HTTP call).
 }
 \details{
-For each pattern rule, this function evaluates the rule's XPath against the
-parse tree with \code{.xml_find_all_safe()}. Every matching node is a pattern
-found. A failing or invalid XPath (including one that libxml2 reports only as
-a warning) comes back as a condition, which is recorded in the errors data
-frame before the loop moves on to the next rule.
+Each rule's XPath is evaluated with \code{.xml_find_all_safe()}, so an invalid one
+-- including one libxml2 reports only as a warning -- is recorded in \code{errors}
+and the scan moves on.
 
-The returned data frame carries the matched XML nodes as a \code{"nodes"}
-attribute, aligned row-for-row, so \code{\link[=determine_code_contexts]{determine_code_contexts()}} can test
-containment by node identity without re-running the pattern XPaths.
+The \code{"nodes"} attribute holds the matched XML nodes aligned row-for-row, so
+\code{\link[=determine_code_contexts]{determine_code_contexts()}} can test containment by node identity without
+re-running the pattern XPaths.
 }
 \keyword{internal}

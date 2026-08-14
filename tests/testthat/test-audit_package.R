@@ -65,7 +65,8 @@ test_that("audit_package() resolves the phases of every finding", {
 })
 
 test_that("audit_package() errors on a non-directory", {
-  expect_error(audit_package(tempfile()), "dir.exists")
+  # The message names the argument, not the predicate that tested it.
+  expect_error(audit_package(tempfile()), "`path` is not an existing directory")
 })
 
 # integration ------------------------------------------------------------------
@@ -657,8 +658,8 @@ test_that("both entry points refuse a rules list missing any class", {
   expect_setequal(.rule_classes, names(rules))
   for (class in .rule_classes) {
     short <- rules[setdiff(names(rules), class)]
-    expect_error(audit_package(pkg, short), ".rule_classes", fixed = TRUE)
-    expect_error(audit_tarball(tb, rules = short), ".rule_classes", fixed = TRUE)
+    expect_error(audit_package(pkg, short), class, fixed = TRUE)
+    expect_error(audit_tarball(tb, rules = short), class, fixed = TRUE)
   }
 })
 

@@ -18,19 +18,16 @@ A list with two elements:
 }
 }
 \description{
-Parses R code with \code{parse(keep.source = TRUE)}, converts the parse data to
-XML with \code{\link[xmlparsedata:xml_parse_data]{xmlparsedata::xml_parse_data()}}, and reads it into an
-\code{xml_document} with \code{\link[xml2:read_xml]{xml2::read_xml()}}. The parse and the XML
-conversion-and-read are each wrapped in \code{tryCatch()} so malformed code yields
-a recoverable error rather than aborting the audit.
+Parses R code with \code{parse(keep.source = TRUE)}, converts it to XML with
+\code{\link[xmlparsedata:xml_parse_data]{xmlparsedata::xml_parse_data()}} and reads it with \code{\link[xml2:read_xml]{xml2::read_xml()}}. Each
+step is wrapped so malformed code yields a recoverable error rather than
+aborting the scan.
 }
 \details{
-Code is taken as text rather than read from a path so that one parser serves
-both an R script, whose lines are the file itself, and a help file, whose R
-code is extracted from \verb{\\examples\{\}} and \verb{\\Sexpr\{\}} by \code{\link[=read_Rd_code]{read_Rd_code()}}.
-
-\code{parse()} numbers lines from the start of what it is given, so a caller that
-keeps its lines aligned to the file they came from gets source references
-pointing into the original file with no further adjustment. Both readers do.
+Code is taken as text, not a path, so one parser serves both an R script and
+the code \code{\link[=read_Rd_code]{read_Rd_code()}} recovers from a help file. \code{parse()} numbers lines
+from the start of what it is given, so a caller whose lines stay aligned to
+the source file gets source references pointing into it directly. Both
+readers keep that alignment.
 }
 \keyword{internal}

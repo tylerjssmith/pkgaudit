@@ -19,6 +19,7 @@
     "",
     .section_header("R Patterns"),
     .summary_section(x$patterns, "No patterns were found.", findings),
+    .none_note(x$patterns),
     "",
     .section_header("Shell / Make Matches"),
     .summary_section(x$matches, "No matches were found.", findings),
@@ -32,12 +33,8 @@
 }
 
 
-# Render the Coverage section: what pkgaudit made of the package, then the
-# uncovered code that runs anyway.
-#
-# Counts with reasons, and no percentage. Nothing is assumed inert, so coverage
-# never reaches 100% and a ratio would only ever flatter -- what a reader needs
-# is which files were not examined and whether they execute.
+# Render the Coverage section: counts with reasons, and no percentage. See
+# ?summary.pkgaudit for why.
 .coverage_section <- function(coverage) {
   if (nrow(coverage) == 0L) return("No files were found.")
   .format_table(coverage)
@@ -50,14 +47,25 @@
 }
 
 
-# Render the Errors section: every error by step and script, followed by the
-# notes describing the coverage lost, or the all-clear when there were none.
+# A "none" row says pkgaudit could not tie the code to a phase, not that the
+# code is inert. Under R/ that covers every function body, which is most of a
+# typical package, so a reader meeting the row is told what it rests on rather
+# than left to infer that the code is unreachable.
+.none_note <- function(df) {
+  if (nrow(df) == 0L || !any(df$phase == "none")) return(NULL)
+  c("", strwrap(paste(
+      "none: reported at no phase because nothing in the package was seen to",
+      "call it. Code under R/ is read this way by rule; a caller elsewhere, or",
+      "a user, can still reach it. See vignette(\"rules\")."
+    ), width = .report_width))
+}
+
+
+# Render the Errors section: every error by step and file context, followed by
+# the notes describing the coverage lost, or the all-clear when there were none.
 #
-# Only two columns. The rule is already implied by the step for the rules that
-# have one, and a message runs long enough to wrap the report -- what the reader
-# needs from the table is where to look, and the notes say what it cost.
-# "file_context", not "script": an error can be recorded against a Makevars or
-# a help page, and file_context is what every frame in the object calls it.
+# Only two columns: the reader needs where to look, and the notes say what it
+# cost. The rule and the message are in `s$errors` for a caller who wants them.
 .errors_section <- function(errors) {
   if (nrow(errors) == 0L) return("No exceptions were raised.")
   c(.format_table(errors[, c("step", "file_context")]), "", .error_notes(errors))
@@ -82,13 +90,30 @@
 
   lines <- .field("Package:", pkg_value)
   if (isTRUE(path)) {
-    lines <- c(lines, .field("Path:", .or_unknown(m$pkg_path)))
+    lines <- c(lines, .field("Path:", .under_home(.or_unknown(m$pkg_path))))
   }
   c(
     lines,
     .field("SHA-256:", .or_unknown(m$pkg_sha256)),
     .field("Scanned:", scanned_value)
   )
+}
+
+
+# A path with the home directory written as "~". Reports are meant to be shared
+# and a home directory carries a username, but the path is also what says which
+# copy was scanned, so it is shortened rather than dropped; `path = FALSE` omits
+# the line outright. The separator check keeps /home/ann out of /home/anna, and
+# anything that does not sit under home is returned untouched.
+.under_home <- function(p) {
+  home <- sub("/+$", "",
+              tryCatch(normalizePath("~", winslash = "/", mustWork = FALSE),
+                       error = function(e) ""))
+  q <- gsub("\\", "/", p, fixed = TRUE)
+  if (!nzchar(home) || !startsWith(q, home)) return(p)
+  rest <- substring(q, nchar(home) + 1L)
+  if (nzchar(rest) && !startsWith(rest, "/")) return(p)
+  paste0("~", rest)
 }
 
 

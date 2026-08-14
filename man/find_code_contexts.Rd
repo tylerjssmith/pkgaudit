@@ -35,10 +35,8 @@ bodies execute when a package namespace is loaded, attached, unloaded, or
 detached.
 }
 \details{
-For each code-context rule, this function evaluates the rule's XPath against
-the parse tree with \code{.xml_find_all_safe()}. Every matching node is a code
-context found. A failing or invalid XPath (including one that libxml2 reports
-only as a warning) comes back as a condition, which is recorded in the errors
-data frame before the loop moves on to the next rule.
+Each rule's XPath is evaluated with \code{.xml_find_all_safe()}, so an invalid one
+-- including one libxml2 reports only as a warning -- is recorded in \code{errors}
+and the scan moves on.
 }
 \keyword{internal}

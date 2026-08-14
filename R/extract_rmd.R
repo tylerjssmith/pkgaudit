@@ -26,18 +26,32 @@ extract_segments.Rmd <- function(source) {
       # line_number points into the .Rmd with no offset to apply.
       lines        = .blank_except(n, ch$first:ch$last, read$lines),
       file_context  = source$file_context,
-      # A chunk carries no label of its own: what it belongs to is the file
-      # context it sits in.
+      # No label of its own: a chunk belongs to the file context it sits in.
       context       = NA_character_,
       file_rule     = source$file_rule,
-      # A hook assigned in a vignette chunk is not a hook, so a vignette's file
-      # context names no code-context rules and this is NULL.
       code_contexts = source$code_contexts,
       # A chunk that never evaluates still ships; it is scanned and marked, and
       # keeps the context's phases as an upper bound.
       guarded_lines  = if (ch$eval) integer(0L) else ch$first:ch$last
     )
   })
+
+  # Inline code runs when the document is rendered, exactly as the chunks do,
+  # and it is always R. It gets one segment of its own rather than joining a
+  # chunk's, since it belongs to no chunk.
+  inline <- .rmd_inline(read$lines, chunks)
+  if (length(inline$keep)) {
+    segments <- c(segments, list(new_segment(
+      language      = "R",
+      lines         = .blank_except(n, inline$keep, inline$lines),
+      file_context  = source$file_context,
+      context       = NA_character_,
+      file_rule     = source$file_rule,
+      code_contexts = source$code_contexts,
+      # Inline code carries no eval option; there is nowhere to put one.
+      guarded_lines = integer(0L)
+    )))
+  }
 
   list(segments = Filter(Negate(is.null), segments), errors = errors)
 }
@@ -64,9 +78,11 @@ extract_segments.Rmd <- function(source) {
     close  <- which(fence & seq_len(n) > i)
     last   <- if (length(close)) close[[1L]] - 1L else n
     if (last >= i + 1L && !is.null(header$language)) {
+      body <- (i + 1L):last
       chunks[[length(chunks) + 1L]] <- list(
         language = header$language, first = i + 1L, last = last,
-        eval = header$eval
+        # Either syntax can suppress a chunk, so either is enough to guard it.
+        eval = header$eval && .rmd_pipe_eval(lines[body])
       )
     }
     i <- if (length(close)) close[[1L]] + 1L else n + 1L
@@ -98,6 +114,100 @@ extract_segments.Rmd <- function(source) {
   eval <- !grepl("(^|,)[[:space:]]*eval[[:space:]]*=[[:space:]]*F(ALSE)?[[:space:]]*(,|$)",
                  inside)
   list(language = language, eval = eval)
+}
+
+
+# The inline R in a document: `r expr` as knitr writes it, and `{r} expr` as
+# Quarto does. Returns list(lines, keep) in the shape .blank_except() wants,
+# with each expression sitting at the column it occupies in the source.
+#
+# Three kinds of line are skipped. A line inside a fenced chunk is already a
+# segment of its own, and reading it again would report its code twice. The YAML
+# front matter is configuration rather than prose, and knitr does not evaluate
+# inline code there. A span written with doubled backticks -- `` `r x` `` -- is
+# how a document displays inline code without running it.
+.rmd_inline <- function(lines, chunks) {
+  n    <- length(lines)
+  out  <- lines
+  keep <- integer(0L)
+
+  skip <- logical(n)
+  for (ch in chunks) skip[ch$first:ch$last] <- TRUE
+  # Fence lines themselves sit outside every chunk's body but carry no prose.
+  skip <- skip | grepl("^[[:space:]]*```", lines)
+  skip[.rmd_front_matter(lines)] <- TRUE
+
+  for (i in seq_len(n)) {
+    if (skip[[i]]) next
+    code <- .inline_code(.mask_verbatim(lines[[i]]),
+                         .rmd_inline_pattern, .rmd_inline_code)
+    if (!is.na(code)) {
+      out[[i]] <- code
+      keep     <- c(keep, i)
+    }
+  }
+  list(lines = out, keep = keep)
+}
+
+
+# Blank out every doubled-backtick span, which is how a document shows inline
+# code without running it: `` `r x` `` displays the text rather than evaluating
+# it. Replaced with spaces of the same width rather than removed, so every
+# column after the span stays where it was.
+.mask_verbatim <- function(line) {
+  spans <- gregexpr("``.*?``", line)[[1L]]
+  if (spans[[1L]] == -1L) return(line)
+  widths <- attr(spans, "match.length")
+  for (i in seq_along(spans)) {
+    substr(line, spans[[i]], spans[[i]] + widths[[i]] - 1L) <-
+      strrep(" ", widths[[i]])
+  }
+  line
+}
+
+
+# One inline expression, in either syntax, and the code inside it. Neither form
+# may contain a backtick, so neither runs past its own closing one.
+.rmd_inline_pattern <- "`(?:\\{r\\}|r)[ \t][^`]*`"
+
+.rmd_inline_code <- function(macro) {
+  sub("^`(\\{r\\}|r)[ \t]", "", sub("`$", "", macro))
+}
+
+
+# The lines of the YAML front matter, if the document opens with one: the ---
+# fence on line 1, its closing fence, and everything between.
+.rmd_front_matter <- function(lines) {
+  if (length(lines) == 0L || !grepl("^---[[:space:]]*$", lines[[1L]])) {
+    return(integer(0L))
+  }
+  close <- which(grepl("^(---|\\.\\.\\.)[[:space:]]*$", lines) & seq_along(lines) > 1L)
+  if (length(close) == 0L) return(integer(0L))
+  1L:close[[1L]]
+}
+
+
+# Whether a chunk's hash-pipe options let it evaluate. Quarto writes chunk
+# options as YAML comments on the lines after the fence:
+#
+#   ```{r}
+#   #| eval: false
+#
+# knitr reads the same syntax, so this is not Quarto-only. The options run until
+# the first line that is not one, which is what keeps a `#|` written further
+# down, inside the code, from being read as an option.
+#
+# Only a literal false counts, as in the header form: an option computed at
+# render time is left unguarded, since resolving it would mean evaluating the
+# document.
+.rmd_pipe_eval <- function(body) {
+  is_pipe <- grepl("^[[:space:]]*#\\|", body)
+  pipe    <- body[cumsum(!is_pipe) == 0L]
+  if (length(pipe) == 0L) return(TRUE)
+  !any(grepl(
+    "^[[:space:]]*#\\|[[:space:]]*eval[[:space:]]*:[[:space:]]*(false|FALSE|F)[[:space:]]*$",
+    pipe
+  ))
 }
 
 

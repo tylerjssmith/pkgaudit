@@ -88,6 +88,17 @@ test_that("print.summary.pkgaudit() honours the recorded path and an override", 
                                              path = TRUE)))))
 })
 
+test_that("the Path: line writes the home directory as ~", {
+  home <- normalizePath("~", winslash = "/", mustWork = FALSE)
+  expect_equal(.under_home(file.path(home, "pkg")), "~/pkg")
+  expect_equal(.under_home(home), "~")
+  # A sibling whose name merely starts with the home directory's is untouched,
+  # as is anything outside it.
+  expect_equal(.under_home(paste0(home, "x/y")), paste0(home, "x/y"))
+  expect_equal(.under_home("/opt/pkg"), "/opt/pkg")
+  expect_equal(.under_home("unknown"), "unknown")
+})
+
 test_that("print.summary.pkgaudit() reports empty sections with a message", {
   lines <- capture.output(print(summary(make_obj())))
   expect_true(any(grepl("^No patterns were found\\.$", lines)))

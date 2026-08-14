@@ -45,6 +45,115 @@ test_that("an eval=FALSE chunk is scanned and marked guarded", {
   expect_false(res$patterns$guarded[res$patterns$line_number == 8L])
 })
 
+test_that("a hash-pipe eval option guards a chunk, in either document type", {
+  for (name in c("v.Rmd", "v.qmd")) {
+    pkg <- vignette_pkg(name, c("---", "title: V", "---",
+                                "```{r}", "#| label: a", "#| eval: false",
+                                "system('id')", "```",
+                                "```{r}", "#| eval: true", "system('id')", "```",
+                                "```{r}", "system('id')", "```"))
+    on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+    res <- audit_package(pkg, rules)
+    guarded <- res$patterns$guarded[order(res$patterns$line_number)]
+    expect_equal(guarded, c(TRUE, FALSE, FALSE), info = name)
+  }
+})
+
+test_that("a hash-pipe line below the code is not read as an option", {
+  # Options run until the first line that is not one, so a `#|` comment written
+  # further down is code, not configuration.
+  pkg <- vignette_pkg("v.Rmd", c("---", "title: V", "---",
+                                 "```{r}", "system('id')", "#| eval: false",
+                                 "```"))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  expect_false(audit_package(pkg, rules)$patterns$guarded)
+})
+
+test_that("either eval syntax alone is enough to guard a chunk", {
+  pkg <- vignette_pkg("v.Rmd", c("---", "title: V", "---",
+                                 "```{r, eval=FALSE}", "#| label: a",
+                                 "system('id')", "```"))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  expect_true(audit_package(pkg, rules)$patterns$guarded)
+})
+
+test_that("an eval option computed at render time is left unguarded", {
+  pkg <- vignette_pkg("v.Rmd", c("---", "title: V", "---",
+                                 "```{r}", "#| eval: !expr nzchar(Sys.getenv('X'))",
+                                 "system('id')", "```"))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  # Resolving it would mean evaluating the document, so it reports more.
+  expect_false(audit_package(pkg, rules)$patterns$guarded)
+})
+
+test_that("inline code is extracted at its own line and column", {
+  pkg <- vignette_pkg("v.Rmd", c("---", "title: V", "---",   # 1-3
+                                 "Inline `r system('id')` here."))  # 4
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  expect_equal(res$patterns$rule, "system")
+  expect_equal(res$patterns$line_number, 4L)
+  # Column 8 is where the macro opens in the source line, as it is for the
+  # \Sexpr the Rnw extractor reads. Padding to it is the point of the rewrite.
+  expect_equal(res$patterns$column_number, 8L)
+  expect_false(res$patterns$guarded)
+})
+
+test_that("the Quarto inline form is extracted too", {
+  pkg <- vignette_pkg("v.qmd", c("---", "title: V", "---",
+                                 "Inline `{r} system('id')` here."))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  expect_equal(res$patterns$rule, "system")
+  expect_equal(res$patterns$line_number, 4L)
+  expect_equal(res$patterns$column_number, 8L)
+})
+
+test_that("two inline expressions on one line both report", {
+  pkg <- vignette_pkg("v.Rmd", c("---", "title: V", "---",
+                                 "Two `r system('a')` and `r system('b')` here."))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  expect_equal(nrow(res$patterns), 2L)
+  expect_setequal(res$patterns$column_number, c(5L, 25L))
+})
+
+test_that("inline code shown verbatim in doubled backticks is not run", {
+  pkg <- vignette_pkg("v.Rmd", c("---", "title: V", "---",
+                                 "Literal `` `r system('id')` `` shown."))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  expect_equal(nrow(audit_package(pkg, rules)$patterns), 0L)
+})
+
+test_that("inline code is not read from front matter or inside a chunk", {
+  # A chunk's code is a segment already; reading it again would double-count it,
+  # and knitr does not evaluate inline code in the YAML header.
+  pkg <- vignette_pkg("v.Rmd", c("---", "title: \"`r system('yaml')`\"", "---",
+                                 "```{r}", "x <- \"`r system('chunk')`\"", "```"))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  expect_equal(nrow(audit_package(pkg, rules)$patterns), 0L)
+})
+
+test_that("a vignette whose only code is inline is still read", {
+  pkg <- vignette_pkg("v.Rmd", c("---", "title: V", "---",
+                                 "Only `r system('id')` here."))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  expect_equal(nrow(res$patterns), 1L)
+  row <- res$coverage[res$coverage$file_context == "vignettes/v.Rmd", ]
+  expect_equal(row$status, "parsed")
+})
+
 test_that("qmd is read by the Rmd extractor it inherits from", {
   pkg <- vignette_pkg("v.qmd", c("---", "title: V", "---",
                             "```{r}", "system('id')", "```"))

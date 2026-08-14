@@ -66,14 +66,22 @@ extract_segments.Rnw <- function(source) {
     }
     # Inline \Sexpr{} outside a chunk. Only the innermost braces are read, so a
     # macro spanning lines is left alone rather than guessed at.
-    m <- regmatches(lines[[i]], regexpr("\\\\Sexpr\\{[^{}]*\\}", lines[[i]]))
-    if (length(m) == 1L) {
-      code   <- sub("^\\\\Sexpr\\{", "", sub("\\}$", "", m))
-      at     <- regexpr(m, lines[[i]], fixed = TRUE)
-      out[[i]] <- paste0(strrep(" ", at - 1L), code)
-      keep   <- c(keep, i)
+    inline <- .inline_code(lines[[i]], .rnw_sexpr_pattern, .rnw_sexpr_code)
+    if (!is.na(inline)) {
+      out[[i]] <- inline
+      keep     <- c(keep, i)
     }
     i <- i + 1L
   }
   list(lines = out, keep = unique(keep), guarded = unique(guarded))
+}
+
+
+# One \Sexpr{} macro, and the code inside it. Only the innermost braces match,
+# so a macro whose code itself carries braces is left alone rather than read
+# wrongly.
+.rnw_sexpr_pattern <- "\\\\Sexpr\\{[^{}]*\\}"
+
+.rnw_sexpr_code <- function(macro) {
+  sub("^\\\\Sexpr\\{", "", sub("\\}$", "", macro))
 }

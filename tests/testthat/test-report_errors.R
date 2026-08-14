@@ -155,9 +155,18 @@ test_that("phase restricts the report to the phases named", {
 })
 
 test_that("phase accepts none, for code that ships but runs at no phase", {
-  s <- summary(rich_obj(), phase = "none")
+  obj <- rich_obj()
+  s   <- summary(obj, phase = "none")
   expect_equal(unique(s$patterns$phase), "none")
-  expect_true(all(s$patterns$code_context == "Other"))
+
+  # A summary frame carries no code_context column, so the claim is checked
+  # against the object it summarises: "none" selects exactly the findings no
+  # phase covers, which are the function bodies nothing is assumed to call.
+  unphased <- obj$patterns[!apply(obj$patterns[, .phase_columns], 1L, any), ]
+  expect_gt(nrow(unphased), 0L)
+  expect_setequal(unique(unphased$code_context), .context_in_function)
+  expect_setequal(s$patterns$rule, unique(unphased$rule))
+  expect_equal(sum(s$patterns$n), nrow(unphased))
 })
 
 # An unknown phase matching nothing would render as a clean scan.

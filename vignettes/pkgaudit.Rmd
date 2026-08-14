@@ -115,8 +115,9 @@ result$patterns[, c("rule", "file_context", "line_number", "code_context",
                     "guarded", "indirect", "preview")]
 ```
 
-`matches` mirrors `patterns` but carries no `code_context`: a shell script has
-no R parse tree to sit in, so a match is located by file alone.
+`matches` mirrors `patterns` but carries none of the three columns that come
+from a parse tree -- `code_context`, `guarded` and `indirect`. A shell script
+has no R parse tree to sit in, so a match is located by file and line alone.
 
 ```{r matches-columns}
 result$matches[, c("rule", "file_context", "line_number", "preview")]

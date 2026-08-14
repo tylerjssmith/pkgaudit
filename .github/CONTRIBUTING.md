@@ -17,6 +17,21 @@ YAML files exchanged in an issue thread; the maintainer is responsible for
 incorporating a finalized rule into the package, rebuilding the rules database
 and test fixtures, and running the test suite and package check.
 
+This is deliberately not a pull-request workflow, which is unusual and worth
+explaining. A rule is a detection claim about untrusted code, and a merged rule
+becomes part of what every user's scan reports. Two things follow. A rule has to
+be justified by measurement against CRAN before it is worth shipping — the
+precision and prevalence gate below is the substance of the review, and it is
+work that happens in discussion rather than in a diff. And the rules database is
+a build artifact with a published hash: a contributor cannot regenerate it in a
+branch without that hash becoming a second thing to review. Keeping the database
+and its hash in one pair of hands is what lets the README's published hash mean
+something.
+
+The cost is that contributing is less convenient than opening a PR. If you would
+rather work in a branch, say so in the issue — the YAML is the contribution
+either way, and the discussion is what the process is actually for.
+
 ## Proposing a new or revised rule
 
 ### 1. Open an issue
@@ -99,7 +114,8 @@ regular expression matched against the text of a shell script or Make-like
 file).
 
 **Names.** The YAML file name is prefixed with the rule's category —
-`file_`, `code_`, or `pattern_` — but the `name` field inside it is not: the
+`file_`, `code_`, `pattern_`, or `match_` — but the `name` field inside it is
+not: the
 category is already known from where the rule lives, and the name is what a
 finding reports. A code context is named for the hook it matches and the package
 that defines it, joined by an underscore, following their own capitalization and
@@ -107,20 +123,33 @@ separators (`onLoad_base`, `on_load_rlang`). A pattern that covers one package's
 functions carries that package's name (`system_callr`), so a finding points at
 the calls behind it.
 
-**Fields.** Every rule has `name`, `version`, `type`, `message`,
+**Fields.** Every rule has `name`, `version`, `message`,
 `positive_examples`, and `negative_examples`. Beyond those:
 
-- a **file context** rule adds `path` (directory to search, relative to the
-  package root), `recursive`, and `pattern` (a regular expression matched
-  against file names);
-- a **code context** rule adds `xpath`;
-- a **pattern** rule adds `xpath` and `attck` (MITRE ATT&CK technique IDs).
+- a **file context** rule adds `type` (the format of the file, which selects how
+  it is read: `R`, `Rd`, `Rmd`, `qmd`, `Rnw`, `rsp`, `shell`, `make`, or
+  `other`), `path` (directory to search, relative to the package root),
+  `recursive`, `filename` (a regular expression matched against file names),
+  `report` (whether a matched file is a finding in its own right),
+  `code_context`, and `assume_called`;
+- a **code context** rule adds `language` and `kind`. A `kind: xpath` rule adds
+  `xpath`; a `kind: segment` rule adds `segment`, the label an extractor stamps
+  on part of a help file;
+- a **pattern** rule adds `language`, `xpath`, `attck` (MITRE ATT&CK technique
+  IDs), and `functions` (the names it matches as a bare call, which is how an
+  indirect call is attributed back to it — written out empty when the rule
+  matches on more than the callee);
+- a **match** rule adds `language` and `regex`.
 
-`type` is the language or format of what the rule matches, not a severity. A
-file context rule is `R`, `shell`, `make`, or `other`; a code context or pattern
-rule is always `R`, since both are matched against R's parse tree. How much a
-finding matters is a property of the pattern together with the context it was
-found in, which a rule cannot know, so no rule declares one.
+`code_context` names the code-context rules that can apply inside the files a
+file-context rule claims: `~` where none can, `computed` where only `top_level`
+and `in_function` can, or a list of rule names. `assume_called` says whether code
+inside a function definition there is taken to run when the code around it runs;
+it is `~` wherever `code_context` is, and required otherwise.
+
+Neither `type` nor `language` is a severity. How much a finding matters is a
+property of the pattern together with the context it was found in, which a rule
+cannot know, so no rule declares one.
 
 **Phases.** A file or code context rule must also declare, as `TRUE` or `FALSE`,
 each of the nine lifecycle phases in which its code runs: `at_autoconf`,
@@ -135,8 +164,9 @@ assignments were established by running `R CMD build`, `R CMD check`, and
 documentation, and several are narrower than the documentation implies. Say in
 the issue thread how you determined yours.
 
-The two computed contexts, `Top-level` and `Other`, are not rules and are
-authored separately under [inst/rules/phases/](../inst/rules/phases/).
+The two computed contexts, `top_level` and `in_function`, are not rules and are
+authored nowhere: they carry no phases of their own, inheriting instead from the
+file context they sit in.
 
 `message` is shown to the user with every finding. It should be 1-2 short 
 sentences. Write it so that someone who has never read the rule understands what 

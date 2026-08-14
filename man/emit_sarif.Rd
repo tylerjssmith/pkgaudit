@@ -32,11 +32,9 @@ of pkgaudit's phase model onto SARIF's severity field, not a severity
 judgement: pkgaudit does not rank findings, and the line it can draw honestly
 is between code that runs on its own and code that runs only when called.
 
-A file context is always a \code{note}. It is not a claim about code -- it says a
-file exists and will execute -- and most packages that build native code have
-one. Read a \code{note} on a file context as pkgaudit pointing at something it
-could only grep, not as a minor finding: across CRAN, 78\% of reported file
-contexts contain no match at all, so often that row is all pkgaudit can say.
+A file context is always a \code{note}: it says a file exists and will execute
+rather than making a claim about its code. Read it as pkgaudit pointing at
+something it could only grep, not as a minor finding.
 
 \code{partialFingerprints} identifies a finding by its rule, its file, the code
 context it sits in, and the text of the line -- not by line number, which
@@ -46,9 +44,8 @@ run makes several findings read as one. The \code{coverage} frame becomes the
 \code{artifacts} array, so a consumer can see which files were never read, and
 \code{errors} become execution notifications on the invocation.
 
-Requires the jsonlite package, which is a suggested dependency: pkgaudit's
-short list of imports is part of what a security team evaluates, and only
-this function needs a JSON writer.
+Requires jsonlite, a suggested dependency, since only this function needs a
+JSON writer.
 }
 \examples{
 \dontshow{if (requireNamespace("jsonlite", quietly = TRUE)) withAutoprint(\{ # examplesIf}

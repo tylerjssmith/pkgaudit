@@ -1,99 +1,69 @@
-#' Extract the R code from an .Rd help file
+#' Read the R code out of an .Rd help file
 #'
-#' Recovers the two kinds of R code an `.Rd` file can carry -- the body of
-#' `\examples{}` and the code inside `\Sexpr{}` macros -- as text suitable for
-#' `base::parse(text = )`.
+#' Recovers the R code an `.Rd` file carries -- the body of `\examples{}` and the
+#' code inside `\Sexpr{}` macros -- as text suitable for `base::parse(text = )`.
 #'
 #' @param path Path to a single `.Rd` file.
 #' @param macros Rd macros to expand while parsing, as returned by
-#'   [tools::loadPkgRdMacros()]. Defaults to `NULL`, which parses the file
-#'   alone.
+#'   [tools::loadPkgRdMacros()]. Defaults to `NULL`, which parses the file alone
+#'   and leaves code reaching the page through a user-defined macro invisible.
 #'
-#' @return A named list of three elements:
+#' @return A named list:
 #'   \describe{
-#'     \item{examples}{Length-one character string: the code from
-#'       `\examples{}`.}
-#'     \item{sexpr}{Length-one character string: the code from every `\Sexpr{}`
-#'       macro in the file, wherever it appears.}
-#'     \item{error}{`NULL` when the file parsed cleanly, otherwise a character
-#'       message. Both code strings are `""` when the file was not read or could
-#'       not be parsed at all, and may be *incomplete* when it parsed with a
-#'       warning, so a non-`NULL` `error` means the extraction is not to be
-#'       trusted as a full account of the file's code.}
+#'     \item{examples}{Length-one character string: the code from `\examples{}`.}
+#'     \item{guarded}{Integer vector: the lines of `examples` sitting inside
+#'       `\dontrun{}`, which no example run reaches.}
+#'     \item{sexpr}{Named list of three length-one strings -- `build`, `install`
+#'       and `render` -- holding each `\Sexpr{}` macro's code by the stage it
+#'       runs at. An unlabelled macro counts as `install`.}
+#'     \item{error}{`NULL` when the file parsed cleanly, otherwise a message. The
+#'       code strings are `""` when nothing was read, and may be incomplete when
+#'       the file parsed with a warning, so a non-`NULL` `error` means the
+#'       extraction is not a full account of the file's code.}
 #'   }
 #'
 #' @details
-#' The two are returned separately because they run at different times.
-#' `\examples{}` runs under `R CMD check` and when a user calls `example()`;
-#' `\Sexpr{}` runs while the help page is built or installed, which is the
-#' earlier and less visible of the two. Merging them would make that distinction
-#' unrecoverable.
+#' Examples and `\Sexpr` are returned separately, and `\Sexpr` by stage, because
+#' they run at different times: examples under `R CMD check`, a macro while the
+#' page is built, installed or rendered. Merging them would lose that.
 #'
-#' Both strings are *line-aligned*: line N of the returned text is line N of the
-#' `.Rd` file, and everything else is blank padding. Parsing with
-#' `parse(text = , keep.source = TRUE)` therefore yields source references whose
-#' line and column numbers point straight into the original file, with no offset
-#' table to carry around. Columns are preserved the same way where the fragments
-#' allow it.
+#' Every string is *line-aligned*: line N of the returned text is line N of the
+#' `.Rd` file, and the rest is blank padding. Parsing with `keep.source = TRUE`
+#' therefore yields source references pointing straight into the original file,
+#' with no offset to apply.
 #'
 #' Code is recovered from `tools::parse_Rd()`'s parse tree rather than by
-#' matching text, so brace nesting, `%` comments, and the `\%` / `\\` / `\{`
-#' escapes are handled by R's own Rd parser. The extracted text is real R code:
-#' an example written `cat("a\\nb")` in the `.Rd` comes back as `cat("a\nb")`.
-#'
-#' Inside `\examples{}`:
-#' \itemize{
-#'   \item `\dontrun{}`, `\donttest{}`, `\dontshow{}`, and `\testonly{}` are
-#'     unwrapped and their contents included. Whether the code is reached is a
-#'     question for the caller; all four are R code shipped in the package.
-#'   \item `\dots` becomes `...`, so a call does not silently lose an argument.
-#'   \item Rd comments (`%` to end of line) are dropped, as they are not R code
-#'     and would not parse.
-#'   \item An inline `\Sexpr{}` goes to the `sexpr` string and leaves a gap in
-#'     the `examples` one, so `h(\Sexpr{2+2})` yields `h()` there.
-#' }
-#'
-#' User-defined Rd macros are expanded when `macros` is supplied, so a
-#' `\Sexpr{}` reaching a page through a macro is recovered at the point of use,
-#' with a source reference pointing at the page that used it. Without `macros`,
-#' that code is invisible and each use records an `unknown macro` warning.
-#' Scanning `man/macros/` directly would not help: `tools::parse_Rd()` returns a
-#' `\newcommand` body as an opaque token, so the code inside it is not reachable
-#' until the macro is expanded somewhere.
+#' matching text, so brace nesting, `%` comments and the `\%` / `\\` / `\{`
+#' escapes are handled by R's own parser; an example written `cat("a\\nb")` comes
+#' back as `cat("a\nb")`. Inside `\examples{}`, `\dontrun{}` and its siblings are
+#' unwrapped and their contents included -- all four are code that ships -- while
+#' Rd comments are dropped and an inline `\Sexpr{}` moves to the `sexpr` string.
 #'
 #' @section Security considerations:
 #' Nothing here evaluates the code it extracts. R's Rd machinery separates
 #' parsing from rendering: `tools::parse_Rd()` and `tools::loadPkgRdMacros()`
-#' only read, while the `tools::prepare_Rd()` and `tools::Rd2*()` family
-#' evaluate `\Sexpr{}` as a matter of course. pkgaudit must never call the
-#' latter, and a regression test asserts that a scan of a package whose Rd code
-#' would write a marker file leaves no marker behind.
+#' only read, while the `tools::prepare_Rd()` and `tools::Rd2*()` family evaluate
+#' `\Sexpr{}` as a matter of course. pkgaudit must never call the latter, and a
+#' regression test asserts that scanning a package whose Rd code would write a
+#' marker file leaves no marker behind.
 #'
-#' A help file is untrusted input like any other file under audit, so one above
-#' the scanning limit is refused unread and reported through `error`, rather
-#' than handed to `tools::parse_Rd()`.
+#' A help file is untrusted input like any other, so one above the scanning limit
+#' is refused unread and reported through `error`.
 #'
 #' @section Known limits:
-#' `\Sexpr[results=rd]` produces Rd that is itself parsed and may contain
-#' further code; that second-order surface is not followed. No `stage` option is
-#' consulted, so the `sexpr` string mixes build-, install-, and render-time code
-#' together.
+#' `\Sexpr[results=rd]` produces Rd that is itself parsed and may carry further
+#' code; that second-order surface is not followed.
 #'
-#' `tools::parse_Rd()` recovers from some malformed input with a warning rather
-#' than an error, returning a truncated tree. Whatever was recovered is still
-#' returned, since dropping it would lose real code, but the warning is reported
-#' in `error` so that a partial extraction is never mistaken for a complete one.
+#' `tools::parse_Rd()` recovers from some malformed input with a warning and a
+#' truncated tree. Whatever was recovered is still returned, since dropping it
+#' would lose real code, and the warning is reported in `error`.
 #'
 #' The `examples` string is not guaranteed to parse. R never syntax-checks
-#' `\dontrun{}`: `tools::Rd2ex()` comments those lines out with `##D`, and
-#' `R CMD check` therefore never sees them. Including that code, as this
-#' function does, exposes `\dontrun{}` blocks that are not valid R -- a stray
-#' bracket, a sentence of prose, a mis-escaped backslash. Over a sample of 3081
-#' `.Rd` files from CRAN, 5 (0.16%) produced an `examples` string that would not
-#' parse, every one of them for that reason; no `sexpr` string failed. Since the
-#' two are each assembled whole, one broken `\dontrun{}` costs the
-#' valid example code in the same file, which is worth weighing before this is
-#' wired into a scan.
+#' `\dontrun{}`, so including that code exposes blocks that are not valid R.
+#' Across 3081 CRAN help files, 5 (0.16%) produced an unparseable `examples`
+#' string, every one for that reason; no `sexpr` string failed. The string is
+#' assembled whole, so one broken `\dontrun{}` costs the valid example code in
+#' the same file.
 #'
 #' @keywords internal
 read_Rd_code <- function(path, macros = NULL) {
@@ -129,9 +99,12 @@ read_Rd_code <- function(path, macros = NULL) {
 # a given run reaches is not something this function decides.
 .Rd_example_wrappers <- c("\\dontrun", "\\donttest", "\\dontshow", "\\testonly")
 
-# Of those four, the two R CMD check does not run. Code under them still ships,
-# so it is scanned and marked rather than dropped.
-.Rd_unrun_wrappers <- c("\\dontrun", "\\donttest")
+# Of those four, the one no example run reaches. `\donttest` is not among them:
+# it is skipped by a plain `R CMD check` but run under `--as-cran`, which is the
+# check CRAN performs, so treating it as unrun would understate the surface.
+# Code under `\dontrun` still ships, so it is scanned and marked rather than
+# dropped.
+.Rd_unrun_wrappers <- "\\dontrun"
 
 # Leaf tags that carry code. Inside \examples, R code is tagged RCODE, except
 # within \dontrun, which R treats as verbatim and tags VERB.

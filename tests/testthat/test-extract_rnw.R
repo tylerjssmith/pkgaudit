@@ -20,6 +20,20 @@ test_that("the Rnw extractor reads <<>>= chunks and inline \\Sexpr", {
   expect_true(all(res$patterns$code_context == .context_top_level))
 })
 
+test_that("two inline \\Sexpr on one line both report, at their own columns", {
+  pkg <- vignette_pkg("v.Rnw", c(
+    "\\begin{document}",                                          # 1
+    "Two \\Sexpr{system('a')} and \\Sexpr{system('b')} here.",    # 2
+    "\\end{document}"                                             # 3
+  ))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  expect_equal(nrow(res$patterns), 2L)
+  expect_equal(unique(res$patterns$line_number), 2L)
+  expect_setequal(res$patterns$column_number, c(5L, 29L))
+})
+
 test_that("an Rnw chunk marked eval=FALSE is guarded", {
   pkg <- vignette_pkg("v.Rnw", c("\\begin{document}", "<<a, eval=FALSE>>=",
                             "system('id')", "@", "\\end{document}"))

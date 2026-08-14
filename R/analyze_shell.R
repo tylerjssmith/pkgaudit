@@ -9,7 +9,7 @@ analyze_segment.shell <- function(segment, rules) {
   mat <- fm$matches
   mat$preview <- .preview(segment$lines, mat$line_number, mat$column_number)
 
-  .findings(matches = mat, errors = fm$errors)
+  new_findings(matches = mat, errors = fm$errors)
 }
 
 

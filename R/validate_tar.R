@@ -1,15 +1,13 @@
 # Tar header inspection and fail-closed validation for untrusted source package
 # tarballs.
 
-# Caps and rules below were selected based on a survey of all source package
-# on CRAN as of July 7, 2026 (n=24,216). See dev/survey_tarballs.R for
-# analysis functions. The analysis found: 0 link entries, 0 non-standard
-# typeflags (GNU long-name / PAX), 0 traversal paths, 0 absolute paths,
-# 0 backslash, control-character, or empty paths, 0 unparseable size fields, and
-# exactly one top-level directory in every archive. Maxima observed: 13,624
-# entries, ~140 MB uncompressed, and an ~85:1 expansion ratio. Refusing all of
-# the above therefore rejects no legitimate CRAN package. Note that results may
-# be different for Bioconductor, which was not surveyed.
+# The caps and refusals below come from a survey of every CRAN source package as
+# of 7 July 2026 (n = 24,216); see dev/survey_tarballs.R. Not one archive
+# carried a link entry, a non-standard typeflag, a traversal, absolute,
+# backslash, control-character or empty path, an unparseable size, or more than
+# one top-level directory, so refusing all of them rejects no legitimate
+# package. The maxima observed were 13,624 entries, ~140 MB uncompressed and an
+# ~85:1 expansion ratio. Bioconductor was not surveyed and may differ.
 
 #' Validate a source package tarball before extraction
 #'
@@ -22,9 +20,8 @@
 #' containing backslashes or control characters, empty paths, unparseable size
 #' fields, and archives that do not extract to exactly one top-level directory.
 #' It also enforces the entry-count, uncompressed-size, and expansion-ratio caps
-#' applied while reading (`max_entries`, `max_bytes`, `max_ratio`). A survey of
-#' all CRAN source tarballs found none of the structural problems, so the rules
-#' cost nothing on legitimate packages. Reads gzip and uncompressed tar only.
+#' applied while reading (`max_entries`, `max_bytes`, `max_ratio`). No CRAN
+#' source tarball trips any of these. Reads gzip and uncompressed tar only.
 #'
 #' A refusal is signaled as a `pkgaudit_invalid_tarball` condition (a subclass
 #' of `error`), so it stops by default but can be caught by class.
@@ -224,8 +221,8 @@ tar_entries <- function(tarfile,
                     max_ratio, " (possible decompression bomb).")
       }
       if (got < want) {
-        .refuse_tar("Refusing archive: truncated (entry data shorter than",
-          "declared).")
+        .refuse_tar("Refusing archive: truncated (entry data shorter than ",
+                    "declared).")
       }
       skip <- skip - want
     }

@@ -22,20 +22,17 @@
 #'
 #' @details
 #' Each rule's regular expression is evaluated against every line with
-#' `base::gregexpr()` using `perl = TRUE`, `ignore.case = FALSE`, and
-#' `useBytes = FALSE`. Every hit is a match found, reported at the line it occurs
-#' on and the character position it starts at; a line matched more than once
-#' yields one row per match. A failing regular expression (including one R
-#' reports only as a warning) is recorded in the errors data frame before the
-#' loop moves on to the next rule.
+#' `base::gregexpr(perl = TRUE)`, case-sensitively; a line matched more than once
+#' yields one row per match. A failing expression is recorded in `errors` and the
+#' scan moves on.
 #'
-#' Matching text is inherently less precise than matching a parse tree: a match
-#' has no syntactic structure behind it, so one inside a comment,
-#' a quoted string, or a branch that never runs is reported the same as a live
-#' command. Findings are candidates for review, not confirmed behavior.
+#' Matching text is less precise than matching a parse tree: a match has no
+#' syntax behind it, so one inside a comment, a quoted string, or a branch that
+#' never runs is reported the same as a live command. Findings are candidates for
+#' review, not confirmed behaviour.
 #'
-#' Reading the file, and the limits that protect against hostile input, are
-#' [read_code()]'s responsibility rather than this function's.
+#' Reading the file, and the limits protecting against hostile input, are
+#' [read_code()]'s responsibility.
 #'
 #' @keywords internal
 find_matches <- function(lines, match_rules, file_context) {

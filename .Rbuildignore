@@ -17,7 +17,11 @@
 ^renv\.lock$
 
 # documentation
+# Knitting a vignette leaves its HTML beside the source. That copy is stale the
+# moment the source changes, and must not ship as though it were built from the
+# code in this tarball; R CMD build renders the real one into inst/doc.
 ^[^/]+\.html$
+^vignettes/.*\.html$
 ^README\.Rmd$
 ^_pkgdown\.yml$
 ^pkgdown$

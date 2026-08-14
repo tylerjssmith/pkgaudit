@@ -8,162 +8,107 @@
 #' @param rules Named list of rules. Defaults to the rules bundled with the
 #'   package as returned by [load_rules()].
 #' @param .origin Internal. Used by [audit_tarball()] to record tarball
-#'   provenance. Leave `NULL` for a directory scan. Otherwise a list of `path`
-#'   and `sha256`, each a length-one character, and `is_tarball`, a length-one
-#'   logical that is not `NA`; these become the scan's provenance, so a
-#'   malformed one is refused before the scan rather than silently recorded.
+#'   provenance: a list of `path` and `sha256`, each a length-one character, and
+#'   `is_tarball`, a length-one logical that is not `NA`. A malformed one is
+#'   refused before the scan rather than silently recorded. `NULL` for a
+#'   directory scan, which is hashed with [hash_manifest()] instead.
 #'
-#' @return A [new_pkgaudit()] object: a named list with class `pkgaudit`
-#'   containing five data frames and a `metadata` list.
+#' @return A [new_pkgaudit()] object: a named list with class `pkgaudit` holding
+#'   five data frames and a `metadata` list. Every findings frame carries the
+#'   nine phase columns described under Lifecycle phases and joins to the others
+#'   on `file_context`. Paths are relative to the package root.
 #'   \describe{
-#'     \item{file_contexts}{`rule`, `file_context`, `message`, and the phase
-#'       columns.}
-#'     \item{patterns}{`rule`, `file_context`, `line_number`,
-#'       `column_number`, `code_context`, `guarded`, `indirect`, `preview`,
-#'       `message`, `attck`, and the phase columns, in that order: the leading
-#'       columns are the ones a reader skims, and `message` and `attck` restate
-#'       the rule rather than the occurrence. `guarded` and `indirect` say how
-#'       the code is reached rather than what it is, and are described under
-#'       Details. `code_context` is where the code sits *within its file*:
-#'       `top_level`, `in_function`, the lifecycle hook enclosing it, or the
-#'       part of a help file it came from. Where the *file* sits is
-#'       `file_context`, and a finding's phases come from the two together.
-#'       Join to the other tables on `file_context`.}
-#'     \item{matches}{`rule`, `file_context`, `line_number`,
-#'       `column_number`, `preview`, `message`, `attck`, and the phase columns,
-#'       ordered as `patterns` is, less the `code_context` a match has no
-#'       parse tree to sit in. Regular matches matched in the shell scripts
-#'       and Make-like files among the file contexts. Join to the other tables
-#'       on `file_context`.}
+#'     \item{file_contexts}{`rule`, `file_context`, `message`.}
+#'     \item{patterns}{`rule`, `file_context`, `line_number`, `column_number`,
+#'       `code_context`, `guarded`, `indirect`, `preview`, `message`, `attck`.
+#'       `code_context` is where the code sits within its file: `top_level`,
+#'       `in_function`, an enclosing lifecycle hook, or the part of a help file
+#'       it came from.}
+#'     \item{matches}{`rule`, `file_context`, `line_number`, `column_number`,
+#'       `preview`, `message`, `attck`: regular-expression matches in the shell
+#'       and Make-like file contexts. Text matching has no parse tree behind it,
+#'       so the three columns `patterns` derives from one -- `code_context`,
+#'       `guarded` and `indirect` -- are absent rather than empty.}
 #'     \item{coverage}{`file_context`, `language`, `status`, `reason`,
-#'       `first_line`, `last_line`, `lines`, `bytes`, `rule`, and the phase
-#'       columns. One row for every file in the package -- not only the ones
-#'       scanned -- saying how well pkgaudit read it and why not better. See
-#'       Details.}
-#'     \item{errors}{`step`, `file_context`, `rule`, `message`.}
-#'     \item{metadata}{List of `pkg_name`, `pkg_version`, `pkg_path`,
-#'       `pkg_is_tarball`, `pkg_sha256`, `pkgaudit_version`,
-#'       `pkgaudit_rules_version`, `pkgaudit_rules_sha256`, and `scanned`. The
-#'       two rules fields describe the database `rules` was read from, and are
-#'       `NA` for a rules list that did not come from [load_rules()].}
+#'       `first_line`, `last_line`, `lines`, `bytes`, `rule`. One row per file
+#'       the package carries that is, or could be, code.}
+#'     \item{errors}{`step`, `file_context`, `rule`, `message`. Recoverable
+#'       failures, collected rather than aborting the scan.}
+#'     \item{metadata}{`pkg_name`, `pkg_version`, `pkg_path`, `pkg_is_tarball`,
+#'       `pkg_sha256`, `pkgaudit_version`, `pkgaudit_rules_version`,
+#'       `pkgaudit_rules_sha256`, `scanned`. The two rules fields are `NA` for a
+#'       rules list that did not come from [load_rules()].}
 #'   }
-#'   The phase columns are the nine described under Details.
 #'
 #' @details
-#' Every file the scan looks at is found by a file-context rule, and that rule's
-#' `type` decides how the file is read: an `R` script is parsed as it stands, an
-#' `Rd` help file has its `\examples{}` and `\Sexpr{}` code extracted first, and
-#' a `shell` or `make` file is matched line by line against the match rules.
-#' Reading a file yields one or more *segments* of code, which are what the
-#' finders actually see; a help file yields two, because its examples and its
-#' `\Sexpr` macros run at different phases.
+#' A file-context rule decides which files are read and how. Only some rules
+#' report the files they match as findings in their own right; the rest exist to
+#' point the scan at code. A file in a language pkgaudit cannot read is left
+#' unscanned rather than scanned badly, so a file's absence from `patterns` and
+#' `matches` is not evidence that it is clean -- `coverage` is where that
+#' question is answered.
 #'
-#' A rule's `report` field separates being scanned from being reported. Every
-#' rule tells the scan which files to read; only a reporting rule adds a row to
-#' `file_contexts`. `report` is `TRUE` where a file runs automatically *and* is
-#' matched as text rather than parsed -- the shell and Make-like files, whose
-#' contents pkgaudit cannot report on precisely, so the file itself is the
-#' finding. `src/install.libs.R` reports too: it is parsed, but its presence
-#' alone replaces R's default handling of compiled artifacts. Everything else is
-#' scanned just as thoroughly; only the row asserting the file exists is
-#' withheld.
+#' @section Coverage:
+#' `coverage` accounts for the code a package carries, so a clean scan can be
+#' checked rather than trusted. `status` is one of `parsed` (read as R),
+#' `matched` (scanned as text), `exportable` (a language pkgaudit does not read,
+#' which [export_unscanned()] can hand to a tool that does), `unexamined` (never
+#' read), or `error` (read attempted and refused); `reason` says what stood in
+#' the way. `unexamined` and `error` are different claims: pkgaudit never tried
+#' to read the first and could not read the second.
 #'
-#' A file context is claimed by extension, so a language pkgaudit cannot read is
-#' left unscanned rather than scanned badly -- the Perl, Python and batch scripts
-#' under `exec/`, for instance. Nothing is reported for an unclaimed file, so its
-#' absence from the findings is not evidence that it is clean.
+#' `reason` is `NA` where nothing stood in the way, and otherwise one of:
+#' `no_analyser` (pkgaudit does not read that language), `no_extractor` (a rule
+#' claimed the file but nothing reads that kind of file, as for `DESCRIPTION`),
+#' `no_rule` (no rule looks where it sits), `serialized`, `binary`, `symlink`,
+#' `too_large` (over the 10 MB scanning limit), `unreadable`, or `unparseable`.
 #'
-#' The `coverage` frame accounts for the code in a package, so that a clean
-#' scan can be checked rather than taken on trust. Each row's `status` is one of
-#' `parsed` (read as R), `matched` (scanned as text), `exportable` (a language
-#' pkgaudit does not read, which [export_unscanned()] can hand to a tool that
-#' does), `unexamined` (never read), or `error` (read attempted and refused --
-#' too large, unreadable, or would not parse). `reason` says what stood in the
-#' way. `unexamined` and `error` are different claims: pkgaudit never tried to
-#' read the first and could not read the second. Every `error` row has a
-#' matching row in `errors`, and only a failure at a reading step counts: a rule
-#' that fails on a file says nothing about the file.
+#' A file earns a row when a rule claimed it, or when its name says what kind of
+#' file it is, wherever it sits. Files are identified by name and never by
+#' content, so a script with no extension -- `tools/build` opening `#!/bin/sh`
+#' -- is missed. Coverage never reaches 100% and is not meant
+#' to; what it offers is legibility rather than completeness. Deserializing an
+#' `.rda` can execute arbitrary code, so serialized objects are reported as
+#' executable surface rather than as data. Version-control and IDE state is
+#' excluded, and `.Rbuildignore` is not consulted, since the package under audit
+#' writes it.
 #'
-#' The frame accounts for a file when a rule claimed it, or when its name
-#' says what kind of file it is -- an `.R` under `misc/`, an `.rds` under
-#' `inst/extdata/` -- wherever it sits. A name that says nothing, such as
-#' `NAMESPACE` or `MD5`, is left out, since a frame that lists everything is
-#' harder to read than one that lists the code. That allowlist is derived from
-#' the rules rather than written down, so a rule for a new kind of file starts
-#' accounting for it everywhere.
-#'
-#' Coverage therefore never reaches 100%, and is not meant to. What the frame
-#' offers is not completeness but legibility: what was not examined, and whether
-#' it runs. Deserializing an `.rda` can execute arbitrary code, so serialized
-#' objects are reported as executable surface rather than as data. Phases come
-#' from where a file sits rather than from what it is named, so a file in a
-#' directory no rule anticipates is still reported, with no phases.
-#' Version-control and IDE state (`.git/`, `.Rproj.user/`, `renv/library/`) is
-#' outside the package and excluded; `.Rbuildignore` is not consulted, since it
-#' is written by the package under audit.
-#'
-#' Recoverable failures in the orchestrated finders are collected in the
-#' `errors` data frame rather than aborting the audit. File paths in every
-#' returned data frame are relative to the package root.
-#'
-#' `patterns` and `matches` each carry a `preview`: a display-only excerpt of the
-#' line at `line_number`, whitespace collapsed, so the frames can be skimmed
-#' without opening the files. A trailing `...` means there is more to see. A long
-#' line is windowed on the match rather than cut off at its start, so
-#' `column_number` does not index into the preview. A preview from a help file
-#' comes from the extracted code, not the `.Rd` text.
-#'
-#' Each findings data frame also carries one logical column per package
-#' lifecycle phase -- `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
-#' `at_install_bin`, `at_load`, `at_attach`, `at_unload`, and `at_detach` --
-#' which is `TRUE` when that finding's code runs during the phase, so findings
-#' can be filtered by when they execute. A file context takes its phases from
-#' the rule that matched, and a match inherits them from the file context it was
-#' found in.
-#'
-#' A pattern's phases come from where its file sits and where the code sits
-#' within it, resolved in that order: a lifecycle hook or a part of a help file
-#' carries phases of its own; otherwise the code inherits the phases of the file
-#' context around it, so the same call reports `at_check` under `tests/` and
-#' `at_build` under `data/`.
-#'
-#' Code inside a function definition inherits too, unless the rule for its file
-#' sets `assume_called = FALSE`, in which case it is reported as running at no
-#' phase. Only the rules for `R/` set it. Both readings are measured -- a
-#' function called from top level runs whenever that top-level code does, and one
-#' nothing calls runs nowhere -- so a rule chooses which measurement to report
-#' rather than stating a third. `R/` reports the second because it is dominated
-#' by exported functions the lifecycle never calls; elsewhere the first is
-#' reported, since a helper in a test file is there to be called. Neither is a
-#' claim about *this* package's call graph, which pkgaudit does not trace.
-#'
-#' A finding can belong to several phases, so the phase columns do not partition
+#' @section Lifecycle phases:
+#' Every findings frame carries one logical column per phase -- `at_autoconf`,
+#' `at_build`, `at_check`, `at_install_src`, `at_install_bin`, `at_load`,
+#' `at_attach`, `at_unload` and `at_detach` -- `TRUE` when that finding's code
+#' runs then. A finding can belong to several, so the columns do not partition
 #' the rows.
 #'
-#' Code from a help file is attributed to one of two computed contexts:
-#' `Rd_examples`, which `R CMD check` runs, and `Rd_Sexpr`, which is evaluated
-#' whenever the page is rendered -- during `R CMD build`, installation from
-#' source, and `R CMD check`, but not on installation from a binary package.
+#' A file context, and a match found in one, take the phases of the rule that
+#' matched. A pattern takes them from where its file sits and where the code
+#' sits within it: a lifecycle hook or a part of a help file carries phases of
+#' its own, and otherwise the code inherits the phases around it, so the same
+#' call reports `at_check` under `tests/` and `at_build` under `data/`. Code
+#' inside a function definition inherits too, except where a rule sets
+#' `assume_called = FALSE`, as the rules for `R/` do. See `vignette("rules")`.
 #'
-#' `patterns` carries two logical columns describing how its code is reached
-#' rather than what the code is. `guarded` is `TRUE` for code that ships but
-#' the lifecycle does not run -- a `\dontrun{}` or `\donttest{}` block, or a
-#' vignette chunk marked `eval=FALSE`. Its phases still come from its context,
-#' so they stay an upper bound. `indirect` is `TRUE` where the call was made
-#' through the function's name rather than the function, as in
-#' `do.call("system", ...)`; such a finding is reported under the rule that owns
-#' the name, so filtering on `rule` returns every call to it however it was
-#' spelled. See [find_indirect()].
+#' @section Reading a finding:
+#' `preview` is a display-only excerpt of the line, whitespace collapsed, so the
+#' frames can be skimmed without opening files. A long line is windowed on the
+#' match, so `column_number` does not index into it.
 #'
-#' Patterns are matched against R's parse tree, matches against the text of
-#' a shell script or Make-like file. Text matching has no syntax behind it, so
-#' a match reported inside a comment or a quoted string cannot be told
-#' apart from one in a live command; see [find_matches()].
+#' `guarded` is `TRUE` for code that ships but the lifecycle does not run -- a
+#' `\dontrun{}` block, or a vignette chunk suppressed by either `eval=FALSE` in
+#' its header or `#| eval: false` beneath it. Its phases still come from its
+#' context and remain an upper bound. A document-wide `execute: eval: false` in
+#' Quarto front matter is not read, so a chunk it suppresses still reports.
+#' `indirect` is `TRUE` where
+#' the call was made through the function's name, as in `do.call("system", ...)`,
+#' and is reported under the rule that owns the name; see [find_indirect()].
 #'
-#' When called by [audit_tarball()], `.origin` is a list with `path`, `sha256`,
-#' and `is_tarball`, which are used for the `metadata` list. When calling
-#' [audit_package()] on a package directory directly, leave `NULL`, in which
-#' case the directory is hashed with [hash_manifest()].
+#' Patterns are matched against R's parse tree, matches against text. Text
+#' matching has no syntax behind it, so a match inside a comment or a quoted
+#' string cannot be told from one in a live command; see [find_matches()].
+#'
+#' A file over 10 MB is not read at all: a hostile package must not be able to
+#' spend the scanner's memory. It still earns a `coverage` row, with `reason`
+#' `too_large`, so the skip is reported rather than silent.
 #'
 #' @examples
 #' # untrustedpkg is a small package shipped with pkgaudit to be scanned.
@@ -182,8 +127,8 @@
 #'
 #' @export
 audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
-  stopifnot(is.character(path), length(path) == 1L, dir.exists(path))
-  stopifnot(is.list(rules), all(.rule_classes %in% names(rules)))
+  .check_path(path, "path", dir = TRUE)
+  .check_rules(rules)
   .validate_origin(.origin)
 
   # The finders build frames without phase columns; phases are attached once,
@@ -208,7 +153,7 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
   scanned <- character(0L)
   for (fc in .scan_file_contexts(found$file_contexts, rules$file_contexts)) {
     scanned[[fc$file_context]] <- fc$type
-    # Classed by the rule's type, which is the only thing deciding how the file
+    # classed by the rule's type, which is the only thing deciding how the file
     # is read, and the only place a new variety of file is named.
     src    <- new_source(file.path(path, fc$file_context),
                          fc$file_context, fc$type, macros,
@@ -218,7 +163,7 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
     errors <- rbind(errors, read$errors)
 
     for (segment in read$segments) {
-      # Classed by the segment's language, which the extractor set. One file may
+      # classed by the segment's language, which the extractor set. One file may
       # yield several languages, so this is a separate axis from the source.
       hits <- analyze_segment(segment, rules)
 
@@ -229,20 +174,17 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
     }
   }
 
-  # Built from the tree rather than from the rules, so a file no rule
-  # anticipates is still accounted for. Its phases come from the rule that
-  # claimed it, which for the directory-wide coverage rules means a file
-  # inherits the phases of where it sits rather than of what it is named.
+  # build coverage frame from the tree rather than from the rules, so a file no
+  # rule anticipates is still accounted for.
   coverage <- .merge_coverage(
     build_coverage(path, found$file_contexts, rules$file_contexts,
                    scanned = scanned, errors = errors),
     spans
   )
 
+  # resolve phases
   file_contexts <- .attach_phases(file_contexts, rules$phases)
   coverage      <- .attach_phases(coverage, rules$phases)
-  # Resolved from where the file sits and where the code sits within it, then
-  # stripped of the two columns that carried the first of those.
   patterns      <- .resolve_pattern_phases(patterns, rules)
   patterns      <- patterns[, setdiff(names(patterns),
                                       .internal_pattern_columns), drop = FALSE]

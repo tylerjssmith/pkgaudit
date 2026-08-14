@@ -220,14 +220,13 @@ test_that(".summarize_findings() without a context column omits it", {
   expect_true(nrow(out) > 0L)
 })
 
-test_that(".summarize_findings() names the context column it was asked for", {
+test_that(".summarize_findings() returns the same shape for both frames", {
   obj <- rich_obj()
+  shape <- c("phase", "rule", "n", "attck")
 
-  for (context in list(NULL, "code_context")) {
-    expected <- c("phase", context, "rule", "n", "attck")
-    expect_named(.summarize_findings(.empty_patterns(), context = context),
-                 expected)
-    expect_named(.summarize_findings(obj$patterns, context = context),
-                 expected)
-  }
+  # patterns and matches summarise identically: matches carry no code_context,
+  # so a summary that distinguished them could not be shared between the two.
+  expect_named(.summarize_findings(obj$patterns), shape)
+  expect_named(.summarize_findings(obj$matches), shape)
+  expect_named(.summarize_findings(.empty_matches()), shape)
 })

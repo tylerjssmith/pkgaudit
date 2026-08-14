@@ -33,18 +33,14 @@ Hashes a package manifest, a canonically ordered list of every included
 file's relative path and SHA-256 content hash.
 }
 \details{
-Directories, unlike tarballs, have no single canonical byte stream to hash.
-This function instead hashes a manifest: a canonically ordered list of
-every included file's relative path and SHA-256 content hash. The manifest is
-returned alongside the hash so that two disagreeing scans can be diffed to
-identify which file differs.
+A directory, unlike a tarball, has no single canonical byte stream to hash.
+The manifest is returned alongside the hash so two disagreeing scans can be
+diffed to find which file differs.
 
-A directory hash is a weaker provenance claim than a tarball hash, because
-its scope depends on \code{exclude}: two directories that differ only in excluded
-paths hash identically. The exclusion patterns are returned so the caller
-can record them. Empty directories and symlinks are likewise not represented
-in the manifest, so two trees differing only in those also hash identically.
-For vetting untrusted code, prefer hashing the tarball.
+A directory hash is a weaker provenance claim than a tarball hash: its scope
+depends on \code{exclude}, and empty directories and symlinks are not represented,
+so trees differing only in those hash identically. For vetting untrusted
+code, prefer hashing the tarball.
 }
 \examples{
 # untrustedpkg is a small package shipped with pkgaudit to be scanned.

@@ -118,6 +118,17 @@ test_that("DESCRIPTION is reported, since Authors@R is evaluated", {
   expect_true(d$at_build && d$at_check)
 })
 
+test_that("a file a rule claimed but nothing reads is not blamed on the rules", {
+  pkg <- make_pkg()
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  row <- cov_of(pkg)
+  row <- row[row$file_context == "DESCRIPTION", ]
+  expect_equal(row$status, "unexamined")
+  expect_equal(row$reason, "no_extractor")
+  expect_false(is.na(row$rule))
+})
+
 test_that("a file where no rule reaches is reported with no phases", {
   pkg <- make_pkg(files = list("odd/thing.R" = "x <- 1"))
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)

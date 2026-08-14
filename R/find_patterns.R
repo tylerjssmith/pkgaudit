@@ -23,15 +23,13 @@
 #'   }
 #'
 #' @details
-#' For each pattern rule, this function evaluates the rule's XPath against the
-#' parse tree with `.xml_find_all_safe()`. Every matching node is a pattern
-#' found. A failing or invalid XPath (including one that libxml2 reports only as
-#' a warning) comes back as a condition, which is recorded in the errors data
-#' frame before the loop moves on to the next rule.
+#' Each rule's XPath is evaluated with `.xml_find_all_safe()`, so an invalid one
+#' -- including one libxml2 reports only as a warning -- is recorded in `errors`
+#' and the scan moves on.
 #'
-#' The returned data frame carries the matched XML nodes as a `"nodes"`
-#' attribute, aligned row-for-row, so [determine_code_contexts()] can test
-#' containment by node identity without re-running the pattern XPaths.
+#' The `"nodes"` attribute holds the matched XML nodes aligned row-for-row, so
+#' [determine_code_contexts()] can test containment by node identity without
+#' re-running the pattern XPaths.
 #'
 #' @keywords internal
 find_patterns <- function(tree, pattern_rules, file_context) {
@@ -40,8 +38,7 @@ find_patterns <- function(tree, pattern_rules, file_context) {
   errors    <- .empty_errors()
 
   if (is.null(pattern_rules) || nrow(pattern_rules) == 0L) {
-    out <- .empty_patterns(with_phases = FALSE)
-    out$code_context <- NULL
+    out <- .empty_found()
     attr(out, "nodes") <- list()
     return(list(patterns = out, errors = errors))
   }
@@ -75,13 +72,7 @@ find_patterns <- function(tree, pattern_rules, file_context) {
     }
   }
 
-  patterns <- if (length(rows) == 0L) {
-    out <- .empty_patterns(with_phases = FALSE)
-    out$code_context <- NULL
-    out
-  } else {
-    do.call(rbind, rows)
-  }
+  patterns <- if (length(rows) == 0L) .empty_found() else do.call(rbind, rows)
 
   attr(patterns, "nodes") <- node_bag
   list(patterns = patterns, errors = errors)

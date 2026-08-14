@@ -43,11 +43,28 @@
 
 # While a scan is running the frame carries two more columns than the result
 # does: `file_rule`, the file-context rule that claimed the file, and
-# `rd_context`, the label of the segment the code came out of. Resolving a
-# pattern's phases needs both -- a phase depends on where the file sits as well
-# as where the code sits within it -- and audit_package() drops them once the
-# phases are attached, so they never reach the caller.
+# `rd_context`, which part of a help page the code came from. Resolving a
+# pattern's phases needs both, and audit_package() drops them once the phases
+# are attached, so they never reach the caller.
 .internal_pattern_columns <- c("file_rule", "rd_context")
+
+# What find_patterns() and find_indirect() return: only the columns a match on
+# the parse tree can fill. Everything else a pattern eventually carries -- the
+# code context, `guarded`, `indirect`, `preview`, the phases -- is attached by
+# the caller from where the code sits, which a finder does not know. A finder
+# that found nothing returns this shape too, so its result is the same frame
+# either way.
+.empty_found <- function() {
+  data.frame(
+    rule          = character(0L),
+    file_context  = character(0L),
+    line_number   = integer(0L),
+    column_number = integer(0L),
+    message       = character(0L),
+    attck         = character(0L),
+    stringsAsFactors = FALSE
+  )
+}
 
 .empty_patterns <- function(with_phases = TRUE) {
   df <- data.frame(
@@ -157,6 +174,42 @@
 }
 
 
+# Rewrite one line of prose so it holds only the code its inline macros carry,
+# each sitting at the column it occupies in the source. `\Sexpr{system("id")}`
+# in an .Rnw and `` `r system("id")` `` in an .Rmd both become a line of spaces
+# with system("id") at the macro's own offset.
+#
+# That keeps a finding's line_number and column_number pointing into the real
+# file, and the result parses as R because the prose around it is gone. Returns
+# NA when the line carries no inline code, which the callers use to decide
+# whether the line is worth keeping.
+#
+# `pattern` matches a whole macro; `extract` pulls the code out of one match.
+# Every match on the line is placed, so a second macro is not lost.
+.inline_code <- function(line, pattern, extract) {
+  at <- gregexpr(pattern, line, perl = TRUE)[[1L]]
+  if (at[[1L]] == -1L) return(NA_character_)
+
+  macros <- regmatches(line, gregexpr(pattern, line, perl = TRUE))[[1L]]
+  out    <- character(0L)
+  for (i in seq_along(macros)) {
+    code <- extract(macros[[i]])
+    # Pad from wherever the previous macro's code ended, so each lands on its
+    # own column rather than the second following the first. From the second
+    # macro on, a semicolon takes the place of the first padding space: two
+    # expressions separated by blanks alone are not parseable R, and spending a
+    # space keeps every column after it where it was.
+    pad <- at[[i]] - 1L - sum(nchar(out))
+    out <- if (length(out)) {
+      c(out, ";", strrep(" ", max(pad - 1L, 0L)), code)
+    } else {
+      c(out, strrep(" ", max(pad, 0L)), code)
+    }
+  }
+  paste0(out, collapse = "")
+}
+
+
 # Evaluate an XPath, promoting libxml2 warnings (e.g. invalid XPath) to errors
 # so an ill-formed match is caught rather than silently returning nothing.
 # Returns the node set on success or the caught condition on failure.
@@ -168,4 +221,54 @@
     ),
     error = function(e) e
   )
+}
+
+
+# --- Argument checks ----------------------------------------------------------
+
+# stopifnot() reports the expression it tested, so a caller who passes a missing
+# path is told "dir.exists(path) is not TRUE" -- a statement about pkgaudit's
+# internals rather than about their call. These name the argument and say what
+# was wrong with it. call. = FALSE because the failure is the caller's argument,
+# not the frame it was checked in.
+.stop_arg <- function(...) stop(..., call. = FALSE)
+
+.check_path <- function(path, arg, dir = FALSE) {
+  if (!is.character(path) || length(path) != 1L || is.na(path) || !nzchar(path)) {
+    .stop_arg("`", arg, "` must be a single, non-empty file path.")
+  }
+  exists <- if (dir) dir.exists(path) else file.exists(path)
+  if (!exists) {
+    .stop_arg("`", arg, "` is not an existing ",
+              if (dir) "directory" else "file", ": ", path)
+  }
+  invisible(path)
+}
+
+.check_rules <- function(rules) {
+  if (!is.list(rules)) {
+    .stop_arg("`rules` must be a list of rules, as load_rules() returns.")
+  }
+  absent <- setdiff(.rule_classes, names(rules))
+  if (length(absent)) {
+    .stop_arg("`rules` is missing ",
+              paste0("`", absent, "`", collapse = ", "),
+              "; pass the list load_rules() returns.")
+  }
+  invisible(rules)
+}
+
+.check_pkgaudit <- function(object, arg = "object") {
+  if (!inherits(object, "pkgaudit")) {
+    .stop_arg("`", arg, "` must be a pkgaudit object from audit_package() or ",
+              "audit_tarball(), not ", class(object)[[1L]], ".")
+  }
+  invisible(object)
+}
+
+.check_flag <- function(x, arg) {
+  if (!is.logical(x) || length(x) != 1L || is.na(x)) {
+    .stop_arg("`", arg, "` must be TRUE or FALSE.")
+  }
+  invisible(x)
 }

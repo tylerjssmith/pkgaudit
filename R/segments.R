@@ -10,15 +10,12 @@
 # One file queued for scanning, classed by its rule's type so extract_segments()
 # can dispatch on it.
 #
-#   file_rule      the file-context rule that claimed this file. A pattern's
-#                  phases depend on it as well as on where the code sits, so it
-#                  travels with the file rather than being looked up again.
+#   file_rule      the file-context rule that claimed this file, which a
+#                  pattern's phases depend on as well as on where the code sits.
 #   code_contexts  the code-context rules that can apply here, or NULL for none.
-#                  This is what confines the lifecycle hooks to the directories
-#                  whose code becomes the namespace: a .onLoad defined in data/
-#                  ships as an ordinary object and never fires, which the probe
-#                  package measures, so attributing it to onLoad_base would be a
-#                  false reading rather than a cautious one.
+#                  This is what keeps the lifecycle hooks out of data/ and
+#                  tests/, where a .onLoad ships as an ordinary object and is
+#                  never called.
 new_source <- function(path, file_context, type, macros = NULL,
                        file_rule = NA_character_, code_contexts = NULL) {
   structure(
@@ -36,21 +33,33 @@ new_source <- function(path, file_context, type, macros = NULL,
   c(type, .source_parents[[type]], "pkgaudit_source")
 }
 
-# A contiguous, line-aligned run of code in one language, classed by that
-# language so analyze_segment() can dispatch on it.
-#
-#   context        the segment's label, matched by a `kind: segment`
-#                  code-context rule, or NA where the segment has none. This is
-#                  how a help file's \examples and \Sexpr stages are told apart:
-#                  once they have yielded R code, nothing in that code says
-#                  which it came from.
-#   file_rule      the file-context rule that claimed the file this came out of.
-#   code_contexts  the code-context rules that can apply, inherited from the
-#                  source. A hook assigned in a help-page example is not a hook,
-#                  so a help file's segments carry only the Rd rules.
-#   guarded_lines  lines whose code ships but the lifecycle does not run --
-#                  a \dontrun{} block, or a chunk marked eval=FALSE. Phases
-#                  still come from the context, so they are an upper bound.
+#' Build one code segment
+#'
+#' A contiguous, line-aligned run of code in one language, classed by that
+#' language so [analyze_segment()] can dispatch on it. An [extract_segments()]
+#' method returns these.
+#'
+#' @param language The language of the code, which selects the analyser.
+#' @param lines Character vector of the segment's lines, blank-padded to the
+#'   line numbers they occupy in the file so a finding's line is the real one.
+#' @param file_context Package-root-relative path of the file it came from.
+#' @param context The segment's label, matched by a `kind: segment` code-context
+#'   rule, or `NA` where it has none. It is the only record of which part of a
+#'   help file the code came from.
+#' @param file_rule The file-context rule that claimed the file.
+#' @param code_contexts The code-context rules that can apply, from the source.
+#' @param guarded_lines Lines whose code ships but the lifecycle does not run --
+#'   a `\dontrun{}` block, or a chunk marked `eval=FALSE`. Phases still come from
+#'   the context, so they are an upper bound.
+#'
+#' @return A `pkgaudit_segment` object.
+#'
+#' @seealso [extract_segments()], whose methods return these.
+#' @examples
+#' seg <- new_segment(language = "R", lines = c("", "system('id')"),
+#'                    file_context = "R/f.R")
+#' class(seg)
+#' @export
 new_segment <- function(language, lines, file_context,
                         context = NA_character_, file_rule = NA_character_,
                         code_contexts = NULL, guarded_lines = integer(0L)) {
@@ -84,7 +93,22 @@ new_segment <- function(language, lines, file_context,
 #' The scanning size limit is enforced here, before dispatch, so no method can
 #' skip it. A method must not re-implement it.
 #'
-#' @keywords internal
+#' A method reads untrusted bytes and must never evaluate them. Return the code
+#' as text in a segment; deciding what it means is [analyze_segment()]'s job.
+#'
+#' @seealso [analyze_segment()], the other axis of dispatch, and
+#'   `vignette("internals")`.
+#' @examples
+#' # Adding a file format outside pkgaudit: a method for a new rule `type`,
+#' # here one that treats a .txt file as if it held R code.
+#' extract_segments.txt <- function(source) {
+#'   list(segments = list(new_segment(language = "R",
+#'                                    lines = readLines(source$path),
+#'                                    file_context = source$file_context)),
+#'        errors = NULL)
+#' }
+#' registerS3method("extract_segments", "txt", extract_segments.txt)
+#' @export
 extract_segments <- function(source) {
   oversize <- .over_scan_limit(source$path)
   if (!is.null(oversize)) {
@@ -120,11 +144,28 @@ extract_segments.default <- function(source) {
 #'   columns.
 #'
 #' @section Method contract:
-#' A method must build its return value with `.findings()`, which holds every
+#' A method must build its return value with [new_findings()], which holds every
 #' analyser to the same frame shape. `UseMethod()` ends the generic, so this
 #' cannot be enforced after dispatch.
 #'
-#' @keywords internal
+#' A method must not evaluate the code it is given. It reads untrusted text and
+#' reports what it finds; nothing in a scan is ever run.
+#'
+#' @seealso [extract_segments()], the other axis of dispatch, [new_findings()],
+#'   and `vignette("internals")`.
+#' @examples
+#' # Adding a language outside pkgaudit: a method for segments the extractor
+#' # labelled "python", reporting each line that calls eval().
+#' analyze_segment.python <- function(segment, rules) {
+#'   at <- grep("\\beval\\(", segment$lines)
+#'   new_findings(matches = data.frame(
+#'     rule = "py_eval", file_context = segment$file_context,
+#'     line_number = at, column_number = NA_integer_,
+#'     preview = trimws(segment$lines[at]),
+#'     message = "eval() in Python code", attck = NA_character_))
+#' }
+#' registerS3method("analyze_segment", "python", analyze_segment.python)
+#' @export
 analyze_segment <- function(segment, rules) UseMethod("analyze_segment")
 
 # A language with no analyser yields no findings and no error -- but it does
@@ -133,7 +174,7 @@ analyze_segment <- function(segment, rules) UseMethod("analyze_segment")
 # matches, not a forgotten branch.
 #' @export
 analyze_segment.default <- function(segment, rules) {
-  .findings(coverage = .segment_coverage(segment))
+  new_findings(coverage = .segment_coverage(segment))
 }
 
 
@@ -161,10 +202,26 @@ analyze_segment.default <- function(segment, rules) {
 }
 
 
-# The return value of an analyser: each frame reduced to its canonical columns,
-# an omitted one empty. rbind() accepts a stray column silently, so conforming
-# here is what keeps a malformed frame out of the result.
-.findings <- function(patterns = NULL, matches = NULL, coverage = NULL,
+#' Build the return value of an [analyze_segment()] method
+#'
+#' Each frame is reduced to its canonical columns and an omitted one is empty.
+#' `rbind()` accepts a stray column silently, so conforming here is what keeps a
+#' malformed frame out of the result.
+#'
+#' @param patterns,matches,coverage Data frames with the columns
+#'   [audit_package()] documents, less the phase columns, or `NULL` for none.
+#'   Extra columns are dropped; the phases are resolved later, from context.
+#' @param errors Data frame with columns `step`, `file_context`, `rule` and
+#'   `message`.
+#'
+#' @return A list of the four frames, each conformed to its canonical columns.
+#'
+#' @seealso [analyze_segment()], whose methods return this.
+#' @examples
+#' # An analyser that found nothing still returns all four frames.
+#' str(new_findings(), max.level = 1)
+#' @export
+new_findings <- function(patterns = NULL, matches = NULL, coverage = NULL,
                       errors = .empty_errors()) {
   conform <- function(df, template) {
     if (is.null(df)) template else df[, names(template), drop = FALSE]
@@ -187,16 +244,13 @@ analyze_segment.default <- function(segment, rules) {
 
 # A one-line, display-only excerpt of the source a finding sits on.
 #
-# Anchored on the line rather than on the matched span. Most pattern rules match
-# a bare SYMBOL_FUNCTION_CALL, so the span is the function's name and repeats
-# what `rule` already says; the arguments that decide whether a finding matters
-# are on the line around it. When the line is too long to show whole, the window
-# moves to keep the match visible rather than truncating it away. A trailing
-# "..." means there is more to see, further along the line or on the lines
-# after it.
+# Anchored on the line, not the matched span: the span is usually just the
+# function's name, and what decides whether a finding matters is around it. A
+# long line is windowed to keep the match visible; a trailing "..." means there
+# is more to see.
 #
-# The result is for reading, not indexing: whitespace is collapsed and the text
-# may start partway into the line, so `column_number` does not address it.
+# For reading, not indexing: whitespace is collapsed and the text may start
+# partway into the line, so `column_number` does not address it.
 .preview <- function(lines, line_number, column_number, continues = FALSE) {
   n <- length(line_number)
   if (n == 0L) return(character(0L))

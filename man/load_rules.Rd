@@ -11,50 +11,37 @@ load_rules(db_path = .db_path())
 with the installed package.}
 }
 \value{
-A named list with five data frames:
+A named list of five data frames, each row a rule. Common columns are
+\code{name} and \code{version}; \code{message} is what a finding reports.
 \describe{
-\item{file_contexts}{Data frame with columns \code{name}, \code{version}, \code{type},
-\code{message}, \code{path}, \code{recursive}, \code{report}, \code{filename}, \code{code_context}.
-\code{type} selects how a matched file is read and scanned;
-\code{report} is \code{TRUE} for a rule whose matches are findings in their own
-right, and \code{FALSE} for one that only tells the scanner which files to
-read; \code{assume_called} is \code{TRUE} where code inside a function definition
-is taken to run when the code around it runs, and \code{FALSE} where it is
-reported as running at no phase -- the two readings the probe package
-measures, \code{NA} where no code contexts apply;
-\code{code_context} names the code-context rules that can apply inside
-the files this rule claims, space-separated -- \code{NA} where none can, and
-\code{"computed"} where only \code{top_level} and \code{in_function} can. That is what
-confines the lifecycle hooks to the directories whose code becomes the
-namespace, since a \code{.onLoad} defined elsewhere never runs.}
-\item{code_contexts}{Data frame with columns \code{name}, \code{version},
-\code{language}, \code{message}, \code{kind}, \code{xpath}, \code{segment}. \code{kind} is \code{"xpath"}
-for a rule matched against the parse tree and \code{"segment"} for one
-matched against a label the extractor stamped; exactly one of \code{xpath}
-and \code{segment} is set accordingly. A segment rule exists because the
-distinction it draws is invisible to the parse tree: once a help file
-has yielded R code, nothing in that code says whether it came from
-\verb{\\\\examples} or from a \verb{\\\\Sexpr}.}
-\item{patterns}{Data frame with columns \code{name}, \code{version}, \code{language},
-\code{message}, \code{attck}, \code{functions}, \code{xpath}. \code{functions} is the
-space-separated names the rule matches as a bare call, which is how
-\code{\link[=find_indirect]{find_indirect()}} attributes an indirect call back to it; it is empty
-for a rule that matches on more than the callee.}
-\item{matches}{Data frame with columns \code{name}, \code{version}, \code{language},
-\code{message}, \code{attck}, \code{regex}. A match rule is evaluated against every
-segment in its \code{language}, which is what keeps a shell rule from being
-applied to R code.}
-\item{phases}{Data frame with columns \code{context}, \code{version}, and one
-logical column per lifecycle phase. One row per rule, file-context and
-code-context alike. The computed contexts \code{top_level} and
-\code{in_function} have no row and need none: they inherit the phases of the
-file context they sit in.}
+\item{file_contexts}{\code{name}, \code{version}, \code{type}, \code{message}, \code{path},
+\code{recursive}, \code{report}, \code{filename}, \code{code_context}, \code{assume_called}.
+\code{type} selects how a matched file is read. \code{report} is \code{TRUE} for a rule
+whose matches are findings in their own right. \code{code_context} names the
+code-context rules that can apply inside these files, space-separated --
+\code{NA} where none can, \code{"computed"} where only \code{top_level} and
+\code{in_function} can. \code{assume_called} says whether code inside a function
+definition is taken to run when the code around it runs, and is \code{NA}
+wherever \code{code_context} is.}
+\item{code_contexts}{\code{name}, \code{version}, \code{language}, \code{message}, \code{kind},
+\code{xpath}, \code{segment}. \code{kind} is \code{"xpath"} for a rule matched against the
+parse tree and \code{"segment"} for one matched against a label the extractor
+stamped; exactly one of the two columns is set accordingly.}
+\item{patterns}{\code{name}, \code{version}, \code{language}, \code{message}, \code{attck},
+\code{functions}, \code{xpath}. \code{functions} is the space-separated names the rule
+matches as a bare call, which is how \code{\link[=find_indirect]{find_indirect()}} attributes an
+indirect call back to it; empty for a rule matching on more than the
+callee.}
+\item{matches}{\code{name}, \code{version}, \code{language}, \code{message}, \code{attck}, \code{regex}.
+A match rule is evaluated only against code in its \code{language}.}
+\item{phases}{\code{context}, \code{version}, and one logical column per lifecycle
+phase. One row per rule. The computed contexts \code{top_level} and
+\code{in_function} have none, and need none: they inherit.}
 }
-The list carries a \code{"provenance"} attribute recording the database the
-rules were read from -- a list of \code{db_path}, \code{version}, and \code{sha256} --
-which \code{\link[=audit_package]{audit_package()}} reports in a scan's \code{metadata}. The \code{sha256} is the
-hash computed from the database during verification, not a value re-read
-from the sidecar afterwards, so it records what this call measured.
+The list carries a \code{"provenance"} attribute -- \code{db_path}, \code{version} and
+\code{sha256} -- which \code{\link[=audit_package]{audit_package()}} reports in a scan's \code{metadata}. The
+\code{sha256} is the hash computed during verification, not re-read from the
+sidecar afterwards, so it records what this call measured.
 }
 \description{
 Loads the file-context, code-context, pattern, and match rules, and the
@@ -62,20 +49,26 @@ lifecycle phases of every context, from the bundled SQLite database as a
 named list suitable for passing to \code{\link[=audit_package]{audit_package()}} or \code{\link[=audit_tarball]{audit_tarball()}}.
 }
 \details{
-Before reading, the database is verified against its SHA-256 sidecar so that
-a tampered or corrupted rules file is rejected rather than silently trusted.
+Before reading, the database is verified against its SHA-256 sidecar so that a
+tampered or corrupted rules file is rejected rather than silently trusted.
 }
 \section{Security considerations}{
 
-Verification is time-of-check to time-of-use (TOCTOU): the database is hashed
-and then re-opened by path to query it, so a file swapped in the interval
-between the two is not detected. This does not weaken the bundled default --
-an attacker able to win that race already has write access to the installed
-package and could replace the sidecar or this package's code outright. If
-loading rules from a path other parties can write, treat the SHA-256 check as
-protection against accidental corruption or a substituted database given an
-authentic sidecar -- not against an attacker who can modify the file
-concurrently. Load from a path only trusted writers control.
+The sidecar ships beside the database, so anyone who can rewrite one can
+rewrite the other. It is an integrity check, not an authenticity check: it
+catches a corrupted download or a database swapped for another, and it cannot
+catch a deliberate edit of an installed copy. The out-of-band anchor is the
+hash published in the README, which is compared against the shipped database
+on every commit; checking an installed copy against that is what detects a
+tampered install, and \code{\link[=rules_version]{rules_version()}} reports what a scan actually used.
+
+Verification is time-of-check to time-of-use: the database is hashed and then
+re-opened by path to query it, so a file swapped in between is not detected.
+That does not weaken the bundled default, since an attacker able to win the
+race already has write access to the installed package. When loading rules
+from a path other parties can write, treat the check as protection against
+corruption or a substituted database given an authentic sidecar, not against
+an attacker modifying the file concurrently.
 }
 
 \examples{

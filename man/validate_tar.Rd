@@ -43,9 +43,8 @@ long-name, PAX), path traversal, absolute and drive-qualified paths, paths
 containing backslashes or control characters, empty paths, unparseable size
 fields, and archives that do not extract to exactly one top-level directory.
 It also enforces the entry-count, uncompressed-size, and expansion-ratio caps
-applied while reading (\code{max_entries}, \code{max_bytes}, \code{max_ratio}). A survey of
-all CRAN source tarballs found none of the structural problems, so the rules
-cost nothing on legitimate packages. Reads gzip and uncompressed tar only.
+applied while reading (\code{max_entries}, \code{max_bytes}, \code{max_ratio}). No CRAN
+source tarball trips any of these. Reads gzip and uncompressed tar only.
 
 A refusal is signaled as a \code{pkgaudit_invalid_tarball} condition (a subclass
 of \code{error}), so it stops by default but can be caught by class.

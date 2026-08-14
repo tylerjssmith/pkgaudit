@@ -58,9 +58,11 @@ audit_tarball <- function(
   max_bytes   = 2 * 1024^3,
   max_ratio   = 256
 ) {
-  stopifnot(is.character(path), length(path) == 1L, file.exists(path))
-  stopifnot(is.list(rules), all(.rule_classes %in% names(rules)))
-  stopifnot(is.character(temp_dir), length(temp_dir) == 1L)
+  .check_path(path, "path")
+  .check_rules(rules)
+  if (!is.character(temp_dir) || length(temp_dir) != 1L || is.na(temp_dir)) {
+    .stop_arg("`temp_dir` must be a single directory path.")
+  }
 
   # validate_tar() reads gzip/uncompressed tar only
   if (!grepl("\\.(tar\\.gz|tgz|tar)$", path, ignore.case = TRUE)) {
@@ -179,13 +181,11 @@ audit_tarball <- function(
 }
 
 
-# Compare the tarball filename's package/version (parsed by
-# .validate_tarball_extraction()) against the audited DESCRIPTION and, on any
-# disagreement, signal a `pkgaudit_provenance_mismatch` condition. It subclasses
-# `warning`, so a caller sees a normal warning but can also catch it by class and
-# read its structured fields instead of parsing the message. The DESCRIPTION
-# values still win; this only flags a possible mislabeled or repackaged tarball.
-# Called for its side effect.
+# Compare the tarball filename's package and version against the audited
+# DESCRIPTION and, on disagreement, signal a `pkgaudit_provenance_mismatch`
+# condition. It subclasses `warning`, so a caller can catch it by class and read
+# its fields rather than parsing the message. DESCRIPTION still wins; this only
+# flags a possibly mislabeled or repackaged tarball.
 .validate_tarball_name <- function(path, tar_name, pkg_name, desc_name, desc_version) {
   fname_version <- if (grepl("_", tar_name)) sub("^[^_]*_", "", tar_name) else NA_character_
 

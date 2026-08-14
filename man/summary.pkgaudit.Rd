@@ -13,7 +13,8 @@
 \item{object}{A \code{pkgaudit} object.}
 
 \item{path}{Logical; if \code{TRUE} (default) include the \verb{Path:} line showing the
-local filesystem location scanned. Set \code{FALSE} to omit local paths.
+local filesystem location scanned, with the home directory written as \code{~}.
+Set \code{FALSE} to omit the line.
 \code{summary.pkgaudit()} records the choice in the object it returns;
 \code{print.summary.pkgaudit()} uses that recorded value unless given its own.}
 
@@ -27,27 +28,21 @@ local filesystem location scanned. Set \code{FALSE} to omit local paths.
 }
 \value{
 \code{summary.pkgaudit()} returns a \code{summary.pkgaudit} object: a named list
-of four summary data frames, the errors, the scan \code{metadata}, and the
-recorded \code{path}.
+of five summary data frames, the scan \code{metadata}, the recorded \code{path}, and
+the recorded \code{phase} -- the phases the frames were filtered to, or \code{NULL}
+for an unfiltered summary. \code{print()} reads it to head the report with the
+phases asked for, so an empty section is not mistaken for a clean scan.
 \describe{
 \item{file_contexts}{\code{file_context}: each file context found, once.}
-\item{patterns}{\code{phase}, \code{rule}, \code{n}, \code{attck}: how often each pattern
-rule was matched, split by the lifecycle phase its code executes in,
-with the ATT&CK techniques the rule carries. The code context a finding
-sits in is how its phases were derived rather than a finding of its
-own, so it stays on the object's \code{patterns} frame and out of the
-report.}
-\item{matches}{\code{phase}, \code{rule}, \code{n}, \code{attck}: how often each match rule
-was matched across the shell scripts and Make-like files, split by the
-lifecycle phase those files execute in. Shaped as \code{patterns} is; which
-file each match sits in is on the object's \code{matches} frame.}
+\item{patterns}{\code{phase}, \code{rule}, \code{n}, \code{attck}: how often each pattern rule
+matched, split by the phase its code executes in.}
+\item{matches}{\code{phase}, \code{rule}, \code{n}, \code{attck}: as \code{patterns}, across the
+shell and Make-like files.}
 \item{coverage}{\code{status}, \code{top_level}, \code{type}, \code{files}, \code{lines}: how much
-of the package pkgaudit read, grouped by where the files sit and what
-kind they are. \code{type} is what a file was read as where a rule read it,
-and its extension otherwise.}
-\item{errors}{\code{step}, \code{file_context}, \code{rule}, \code{error}: the rows of the
-object's \code{errors} data frame, renamed for display. The report shows
-only \code{step} and \code{file_context}; the notes are built from the other two.}
+of the package was read, grouped by where the files sit and what kind
+they are. \code{type} is what a file was read as, or its extension.}
+\item{errors}{\code{step}, \code{file_context}, \code{rule}, \code{error}: the object's
+\code{errors} rows, renamed for display.}
 }
 \code{print.summary.pkgaudit()} returns \code{x} invisibly.
 }
@@ -62,36 +57,28 @@ returns the object invisibly.
 }
 \details{
 The report opens with the same metadata block as \code{\link[=print.pkgaudit]{print.pkgaudit()}}, then
-gives the \verb{R Patterns}, \verb{Shell / Make Matches}, \code{Coverage}, and \code{Errors}
-sections. A section with nothing to report says so. The \code{file_contexts}
+gives the \verb{R Patterns}, \verb{Shell / Make Matches}, \code{Coverage} and \code{Errors}
+sections; a section with nothing to report says so. The \code{file_contexts}
 summary is returned for programmatic use but is not part of the report.
 
-\code{Coverage} is counts with reasons, and deliberately no percentage. Nothing in
-a package is assumed inert, so coverage never reaches 100\% and a ratio would
-only ever flatter; what a reader needs is which files went unexamined and
-whether they execute. Which files those are is in the object's own
-\code{coverage} frame; the report gives the shape of the package, not the list.
-
-A pattern occurrence executes in every phase its code context does, and a
-match in every phase its file context does, so each contributes one row per
-phase and the \code{n} column sums to more than the number of occurrences.
-Occurrences that execute in no phase at all are gathered under \code{none}.
-
 Both findings tables are grouped by phase and rule alone. Where a finding
-sits -- the code context of a pattern, the file of a match -- is on the
-object's own frames; the report answers what runs, and when.
+sits is on the object's own frames; the report answers what runs, and when.
+An occurrence executes in every phase its context does, so it contributes one
+row per phase and \code{n} sums to more than the number of occurrences. Those
+executing in no phase are gathered under \code{none}.
 
-\code{phase} restricts the report to the phases named. It is the only way to
-narrow it: the summary has already been expanded by phase, so it cannot be
-subset afterwards. The default reports every phase, and a filtered report
-names its phases in the header, so it cannot be mistaken for a full scan.
-
-The \code{Errors} section lists every error by step and file context, and is
-followed by
-one note per step stating what scan coverage was lost. The rule and the
-message are left out of the table -- a message is often long enough to wrap
-the report on its own -- and are in \code{s$errors} for a caller who wants them.
+\code{Coverage} is counts with reasons and deliberately no percentage: coverage
+never reaches 100\%, so a ratio would only flatter. Which files went
+unexamined is in the object's \code{coverage} frame.
 }
+\section{Filtering by phase}{
+
+\code{phase} restricts the report to the phases named, and is the only way to
+narrow it: the summary has already been expanded by phase, so it cannot be
+subset afterwards. A filtered report names its phases in the header, so it
+cannot be mistaken for a full scan.
+}
+
 \examples{
 # untrustedpkg is a small package shipped with pkgaudit to be scanned.
 tarball <- system.file(

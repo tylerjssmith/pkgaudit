@@ -82,28 +82,19 @@ new_pkgaudit <- function(
 )
 
 
-# The two computed code contexts, which no rule defines.
+# The two computed code contexts, which no rule defines. They are the whole of
+# what a parse tree can tell on its own: code at the top level, and code inside
+# a function definition. Everything else is a rule.
 #
-# A code context says where code sits within a file, and these two are the whole
-# of what a parse tree can tell on its own: code at the top level of the segment,
-# and code inside a function definition. Everything else -- the lifecycle hooks,
-# the parts of a help file -- is a rule.
-#
-# Neither has phases of its own. Top-level code carries the phases of the file
-# context it sits in, and code inside a function definition carries them too
-# unless that file context overrides `in_function`. Both readings are measured:
-# a function called from top level fires wherever that top-level code does, and
-# one nothing calls fires nowhere. The override is how a rule says which of the
-# two it reports; today only the rules for R/ carry one.
+# Neither carries phases of its own. Both inherit from the file context they sit
+# in, except where a rule sets `assume_called: FALSE`, as the rules for R/ do.
 .context_top_level   <- "top_level"
 .context_in_function <- "in_function"
 
 # The labels the extractors stamp on a segment, and the vocabulary a
-# `kind: segment` code-context rule matches against.
-#
-# These exist because the distinction is invisible to the parse tree: once an
-# .Rd file has yielded R code, nothing in that code says whether it came from
-# \examples or from a \Sexpr, or from which stage.
+# `kind: segment` code-context rule matches against. They exist because the
+# distinction is invisible to the parse tree: once an .Rd file has yielded R
+# code, nothing in it says which part of the page it came from.
 .context_rd_examples <- "Rd_examples"
 
 # One label per \Sexpr stage. The three phase profiles are not nested --
@@ -153,8 +144,9 @@ new_pkgaudit <- function(
 # about the file. `reason` says what stood in the way, NA where nothing did.
 .coverage_statuses <- c("parsed", "matched", "exportable", "unexamined",
                         "error")
-.coverage_reasons <- c("no_analyser", "serialized", "binary", "no_rule",
-                       "symlink", "too_large", "unreadable", "unparseable")
+.coverage_reasons <- c("no_analyser", "no_extractor", "serialized", "binary",
+                       "no_rule", "symlink", "too_large", "unreadable",
+                       "unparseable")
 
 
 # Validate that a metadata list has exactly its expected fields and that each
