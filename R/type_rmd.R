@@ -25,10 +25,14 @@ extract_segments.Rmd <- function(source) {
       # Line-aligned to the source, as every other extractor is, so a finding's
       # line_number points into the .Rmd with no offset to apply.
       lines        = .blank_except(n, ch$first:ch$last, read$lines),
-      file_context = source$file_context,
-      context      = source$code_context,
-      # A hook assigned in a vignette chunk is not a hook.
-      named_contexts = FALSE,
+      file_context  = source$file_context,
+      # A chunk carries no label of its own: what it belongs to is the file
+      # context it sits in.
+      context       = NA_character_,
+      file_rule     = source$file_rule,
+      # A hook assigned in a vignette chunk is not a hook, so a vignette's file
+      # context names no code-context rules and this is NULL.
+      code_contexts = source$code_contexts,
       # A chunk that never evaluates still ships; it is scanned and marked, and
       # keeps the context's phases as an upper bound.
       guarded_lines  = if (ch$eval) integer(0L) else ch$first:ch$last

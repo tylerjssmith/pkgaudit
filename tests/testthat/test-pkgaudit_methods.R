@@ -201,7 +201,7 @@ test_that(".in_phase() selects the named phases and 'none'", {
   # "none" is the code that ships but runs at no phase.
   none <- .in_phase(obj$patterns, "none")
   expect_equal(nrow(none), 1L)
-  expect_equal(none$code_context, "Other")
+  expect_equal(none$code_context, .context_in_function)
 
   expect_equal(nrow(.in_phase(obj$patterns, c("at_load", "none"))), 3L)
   expect_equal(nrow(.in_phase(obj$patterns, NULL)), nrow(obj$patterns))

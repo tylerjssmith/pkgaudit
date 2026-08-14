@@ -22,7 +22,8 @@ extract_segments.shell <- function(source) {
     segments = list(new_segment(
       language     = "shell",
       lines        = read$lines,
-      file_context = source$file_context
+      file_context = source$file_context,
+      file_rule    = source$file_rule
     )),
     errors = errors
   )

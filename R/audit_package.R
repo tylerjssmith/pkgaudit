@@ -24,9 +24,11 @@
 #'       columns are the ones a reader skims, and `message` and `attck` restate
 #'       the rule rather than the occurrence. `guarded` and `indirect` say how
 #'       the code is reached rather than what it is, and are described under
-#'       Details. `code_context` is where the code sits -- the directory or
-#'       file it is in, or the lifecycle hook enclosing it -- and is what its
-#'       phases are looked up from. Join to the other tables on `file_context`.}
+#'       Details. `code_context` is where the code sits *within its file*:
+#'       `top_level`, `in_function`, the lifecycle hook enclosing it, or the
+#'       part of a help file it came from. Where the *file* sits is
+#'       `file_context`, and a finding's phases come from the two together.
+#'       Join to the other tables on `file_context`.}
 #'     \item{matches}{`rule`, `file_context`, `line_number`,
 #'       `column_number`, `preview`, `message`, `attck`, and the phase columns,
 #'       ordered as `patterns` is, less the `code_context` a match has no
@@ -115,12 +117,25 @@
 #' lifecycle phase -- `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
 #' `at_install_bin`, `at_load`, `at_attach`, `at_unload`, and `at_detach` --
 #' which is `TRUE` when that finding's code runs during the phase, so findings
-#' can be filtered by when they execute. A file or code context takes its phases
-#' from the rule that matched; a pattern inherits them from its `code_context`;
-#' a match inherits them from the file context it was found in. A pattern
-#' in an ordinary function is `FALSE` for every phase: it runs only if something
-#' calls it, and that holds for a function defined in a help-file example too. A
-#' finding can belong to several phases, so the phase columns do not partition
+#' can be filtered by when they execute. A file context takes its phases from
+#' the rule that matched, and a match inherits them from the file context it was
+#' found in.
+#'
+#' A pattern's phases come from where its file sits and where the code sits
+#' within it, resolved in that order: a lifecycle hook or a part of a help file
+#' carries phases of its own; otherwise the code inherits the phases of the file
+#' context around it, so the same call reports `at_check` under `tests/` and
+#' `at_build` under `data/`.
+#'
+#' Code inside a function definition inherits too, with one exception: the rules
+#' for `R/` report it as running at no phase. Both readings are measured -- a
+#' function called from top level runs whenever that top-level code does, and one
+#' nothing calls runs nowhere -- and `R/` reports the second because it is
+#' dominated by exported functions the lifecycle never calls. Elsewhere the first
+#' is reported, since a helper in a test file is there to be called. Neither is a
+#' claim about *this* package's call graph, which pkgaudit does not trace.
+#'
+#' A finding can belong to several phases, so the phase columns do not partition
 #' the rows.
 #'
 #' Code from a help file is attributed to one of two computed contexts:
@@ -180,7 +195,8 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
   errors <- rbind(errors, found$errors)
 
   # Every rule finds files to scan; only some files are reported as findings.
-  file_contexts <- .reported_contexts(found$file_contexts, rules$file_contexts)
+  file_contexts <- .report_file_contexts(found$file_contexts,
+                                         rules$file_contexts)
 
   # Rd macros are loaded once for the package. Without them, a \Sexpr reaching a
   # help page through a user-defined macro is invisible to the scan. Loading
@@ -188,14 +204,14 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
   macros <- .load_rd_macros(path)
 
   scanned <- character(0L)
-  for (target in .scan_targets(found$file_contexts, rules$file_contexts)) {
-    scanned[[target$file_context]] <- target$type
+  for (fc in .scan_file_contexts(found$file_contexts, rules$file_contexts)) {
+    scanned[[fc$file_context]] <- fc$type
     # Classed by the rule's type, which is the only thing deciding how the file
     # is read, and the only place a new variety of file is named.
-    src    <- new_source(file.path(path, target$file_context),
-                         target$file_context, target$type, macros,
-                         namespace_source = target$namespace_source,
-                         code_context     = target$code_context)
+    src    <- new_source(file.path(path, fc$file_context),
+                         fc$file_context, fc$type, macros,
+                         file_rule     = fc$rule,
+                         code_contexts = fc$code_contexts)
     read   <- extract_segments(src)
     errors <- rbind(errors, read$errors)
 
@@ -223,7 +239,11 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
 
   file_contexts <- .attach_phases(file_contexts, rules$phases)
   coverage      <- .attach_phases(coverage, rules$phases)
-  patterns      <- .resolve_pattern_phases(patterns, rules$phases)
+  # Resolved from where the file sits and where the code sits within it, then
+  # stripped of the two columns that carried the first of those.
+  patterns      <- .resolve_pattern_phases(patterns, rules)
+  patterns      <- patterns[, setdiff(names(patterns),
+                                      .internal_pattern_columns), drop = FALSE]
   matches       <- .resolve_match_phases(matches,
     .attach_phases(found$file_contexts, rules$phases)
   )
@@ -257,7 +277,7 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
 
 # The rows of a found-contexts frame that are findings in their own right.
 # `report` is a property of the rule (report: TRUE).
-.reported_contexts <- function(file_contexts, file_context_rules) {
+.report_file_contexts <- function(file_contexts, file_context_rules) {
   if (nrow(file_contexts) == 0L) return(file_contexts)
 
   report <- file_context_rules$report[match(file_contexts$rule,
@@ -276,16 +296,21 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
 }
 
 
-# The files to scan, as a list of list(file_context, type).
+# The files to scan, as a list of list(file_context, type, rule, code_contexts).
 #
 # The type comes from the rule that matched and selects how the file is read.
-# A path is returned once per type even when several rules of that type matched
-# it, so a file is read once; .resolve_match_phases() unions the phases of
-# every rule that matched a given path.
+# The rule travels with the file because a pattern's phases depend on it, and
+# `code_contexts` because the rule decides which code contexts can arise inside
+# the files it claims.
+#
+# A path is returned once per (type, rule) even when several rules of that type
+# matched it, so a file is read once per distinct reading; a file matching two
+# rules of the same type with different code contexts is genuinely two readings.
+# .resolve_match_phases() unions the phases of every rule that matched a path.
 #
 # A path matching rules of two different types is scanned once for each, which
 # is the honest reading: the file really does hold both kinds of content.
-.scan_targets <- function(file_contexts, file_context_rules) {
+.scan_file_contexts <- function(file_contexts, file_context_rules) {
   if (nrow(file_contexts) == 0L) return(list())
 
   i    <- match(file_contexts$rule, file_context_rules$name)
@@ -297,17 +322,40 @@ audit_package <- function(path = ".", rules = load_rules(), .origin = NULL) {
   keep <- !is.na(type) & type != "other"
   if (!any(keep)) return(list())
 
+  # A rules list assembled by hand may not carry the field. Treat its absence as
+  # "no code contexts apply", which withholds the hook rules rather than
+  # applying them somewhere the probe package measures they cannot fire.
+  spec <- if (is.null(file_context_rules$code_context)) {
+    rep(NA_character_, sum(keep))
+  } else {
+    file_context_rules$code_context[i][keep]
+  }
+
   pairs <- unique(data.frame(
-    file_context     = file_contexts$file_context[keep],
-    type             = type[keep],
-    # A rules list assembled by hand may not carry the field; treat its absence
-    # as "not a namespace source", which withholds the hook rules rather than
-    # applying them somewhere they cannot fire.
-    namespace_source = if (is.null(file_context_rules$namespace_source)) FALSE
-                       else isTRUE_vec(file_context_rules$namespace_source[i][keep]),
-    code_context     = if (is.null(file_context_rules$code_context)) .context_top_level
-                       else file_context_rules$code_context[i][keep],
+    file_context = file_contexts$file_context[keep],
+    type         = type[keep],
+    rule         = file_contexts$rule[keep],
+    code_context = spec,
     stringsAsFactors = FALSE
   ))
-  lapply(seq_len(nrow(pairs)), function(i) as.list(pairs[i, , drop = FALSE]))
+
+  lapply(seq_len(nrow(pairs)), function(j) {
+    row <- as.list(pairs[j, , drop = FALSE])
+    row$code_contexts <- .named_contexts(row$code_context)
+    row$code_context  <- NULL
+    row
+  })
+}
+
+
+# The code-context rule names a file-context rule's spec declares, or NULL where
+# it declares none. "computed" names no rules: only the top_level/in_function
+# distinction applies there, and neither is a rule.
+.named_contexts <- function(spec) {
+  if (length(spec) != 1L || is.na(spec) || identical(spec, "computed")) {
+    return(NULL)
+  }
+  named <- strsplit(spec, "[[:space:]]+")[[1L]]
+  named <- named[nzchar(named)]
+  if (length(named) == 0L) NULL else named
 }

@@ -28,11 +28,12 @@ extract_segments.rsp <- function(source) {
 
   list(
     segments = list(new_segment(
-      language     = "R",
-      lines        = lines,
-      file_context = source$file_context,
-      context      = source$code_context,
-      named_contexts = FALSE
+      language      = "R",
+      lines         = lines,
+      file_context  = source$file_context,
+      context       = NA_character_,
+      file_rule     = source$file_rule,
+      code_contexts = source$code_contexts
     )),
     errors = errors
   )

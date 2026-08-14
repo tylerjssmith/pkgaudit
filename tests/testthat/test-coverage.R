@@ -225,16 +225,6 @@ test_that("the report stays inside its width on a package of many files", {
   expect_true(all(nchar(lines) <= 77L))
 })
 
-test_that("a location too long for the report keeps its distinctive tail", {
-  deep <- paste0("src/", strrep("vendor/", 8L), "thing.c")
-  short <- .elide(deep)
-
-  expect_lte(nchar(short), 40L)
-  expect_true(startsWith(short, "..."))
-  expect_true(endsWith(short, "thing.c"))
-  expect_equal(.elide("src/hi.c"), "src/hi.c")
-})
-
 test_that("a binary file is accounted for as unexamined, not read", {
   pkg <- make_pkg()
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)

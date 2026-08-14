@@ -1,5 +1,5 @@
 name: description
-version: "0.1.0"
+version: "0.5.0"
 type: other
 message: >-
   DESCRIPTION is not inert. Its Authors@R field is R code, which R parses
@@ -17,8 +17,7 @@ at_detach: FALSE
 path: "."
 recursive: FALSE
 report: FALSE
-namespace_source: FALSE
-code_context: "R"
+code_context: ~
 filename: '^DESCRIPTION$'
 positive_examples:
   - DESCRIPTION

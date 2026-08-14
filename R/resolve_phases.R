@@ -32,16 +32,56 @@
 
 # Attach phase columns to the patterns frame.
 #
-# A pattern's phases are those of its code context, which is either a
-# code-context rule name or one of the sentinels determine_code_contexts()
-# assigns: "R" for code with no enclosing function, "Other" for code
-# inside an ordinary function. Both sentinels have rows in the phases table.
+# A phase is a property of both where the file sits and where the code sits
+# within it, so resolving one walks a chain, first match winning:
 #
-# "Other" resolves to no phases at all, which is the intended reading: that code
-# runs only if something calls it, never as a consequence of building,
-# installing, checking, or loading the package.
-.resolve_pattern_phases <- function(patterns, phases) {
-  cbind(patterns, .phase_lookup(patterns$code_context, phases))
+#   1. the code context is a rule -- a lifecycle hook, or a part of a help file
+#      -- and carries phases of its own.
+#   2. the file context overrides `in_function`, and says so outright.
+#   3. the code is inside a function definition, and takes the phases of the
+#      segment around it.
+#   4. otherwise it is top-level code, and takes the file context's phases.
+#
+# Steps 3 and 4 are the same lookup: code inherits from where it sits. They are
+# written apart because only 3 can be overridden, and because the distinction is
+# what the override is choosing between. Both readings are measured -- a
+# function called from top level fires wherever that top-level code does, and
+# one nothing calls fires nowhere -- so a rule that overrides is choosing which
+# measurement to report, not asserting something unmeasured.
+#
+# `file_rule` and `segment_context` are carried on the frame for this and
+# dropped before the result is built; they are how a pattern knows where it sat.
+.resolve_pattern_phases <- function(patterns, rules) {
+  out <- .empty_phase_cols(nrow(patterns))
+  if (nrow(patterns) == 0L) return(cbind(patterns, out))
+
+  # Where a pattern inherits from: the segment's own context where it has one,
+  # as a help file's \examples does, and the file context otherwise.
+  inherited <- ifelse(is.na(patterns$segment_context),
+                      patterns$file_rule, patterns$segment_context)
+
+  computed <- patterns$code_context %in% .computed_contexts
+  keys     <- ifelse(computed, inherited, patterns$code_context)
+
+  out <- .phase_lookup(keys, rules$phases)
+  .apply_phase_overrides(out, patterns, rules$phase_overrides)
+}
+
+
+# Replace the phases of any row a file context overrides for its code context.
+#
+# Applied after the chain rather than inside it so that an override is visibly
+# the last word: whatever the row would have inherited, this is what the rule
+# says it carries.
+.apply_phase_overrides <- function(out, patterns, overrides) {
+  if (is.null(overrides) || nrow(overrides) == 0L) return(cbind(patterns, out))
+
+  hit <- match(paste(patterns$file_rule, patterns$code_context, sep = "\r"),
+               paste(overrides$file_context, overrides$code_context, sep = "\r"))
+  for (phase in .phase_columns) {
+    out[[phase]][!is.na(hit)] <- as.logical(overrides[[phase]][hit[!is.na(hit)]])
+  }
+  cbind(patterns, out)
 }
 
 

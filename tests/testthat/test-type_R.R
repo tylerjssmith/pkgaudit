@@ -20,25 +20,28 @@ test_that("a file that cannot be read yields no segment and an error", {
   expect_equal(out$errors$file_context, "R/gone.R")
 })
 
-test_that("the hook rules apply only where the code becomes the namespace", {
+test_that("the hook rules reach a segment only when its file context names them", {
   pkg <- make_pkg(files = list("R/f.R" = "x <- 1"))
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
-  src <- function(ns) new_source(file.path(pkg, "R/f.R"), "R/f.R", "R",
-                                 namespace_source = ns)
+  src <- function(ctx) new_source(file.path(pkg, "R/f.R"), "R/f.R", "R",
+                                  code_contexts = ctx)
 
-  expect_true(extract_segments(src(TRUE))$segments[[1L]]$named_contexts)
-  # A .onLoad defined outside R/ ships as an ordinary object and never fires.
-  expect_false(extract_segments(src(FALSE))$segments[[1L]]$named_contexts)
+  expect_equal(extract_segments(src(.hook_rules))$segments[[1L]]$code_contexts,
+               .hook_rules)
+  # A .onLoad defined outside R/ ships as an ordinary object and never fires,
+  # which the execution_surface probe measures directly.
+  expect_null(extract_segments(src(NULL))$segments[[1L]]$code_contexts)
 })
 
-test_that("a file-context rule's own context replaces Top-level", {
+test_that("an R segment carries no label of its own, and knows its file rule", {
   pkg <- make_pkg(files = list("R/f.R" = "x <- 1"))
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
-  seg <- function(ctx) extract_segments(
+  seg <- extract_segments(
     new_source(file.path(pkg, "R/f.R"), "R/f.R", "R",
-               code_context = ctx))$segments[[1L]]
+               file_rule = "R_scripts"))$segments[[1L]]
 
-  # NA leaves determine_code_contexts() to place patterns as usual.
-  expect_true(is.na(seg(.context_top_level)$context))
-  expect_equal(seg("data")$context, "data")
+  # No label: what top-level code in an R script belongs to is decided by the
+  # file context when phases are resolved, not by the segment.
+  expect_true(is.na(seg$context))
+  expect_equal(seg$file_rule, "R_scripts")
 })

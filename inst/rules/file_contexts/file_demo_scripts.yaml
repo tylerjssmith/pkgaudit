@@ -1,5 +1,5 @@
 name: demo_scripts
-version: "0.1.0"
+version: "0.5.0"
 type: R
 message: >-
   A demo runs when a user calls demo(). No build, check or install command
@@ -17,8 +17,7 @@ at_detach: FALSE
 path: "demo"
 recursive: FALSE
 report: FALSE
-namespace_source: FALSE
-code_context: "demo"
+code_context: computed
 filename: '\.[RrSsq]$'
 positive_examples:
   - demo/intro.R

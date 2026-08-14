@@ -27,11 +27,12 @@ test_that("examples and each Sexpr stage are separate segments", {
                          function(s) class(s)[[1L]] == "R", logical(1L))))
 })
 
-test_that("a help file defines no code contexts of its own", {
+test_that("a help file carries only the code contexts its file rule names", {
   out <- rd_segments(c("\\name{f}", "\\examples{", ".onLoad <- function() 1", "}"))
-  # A hook assigned in an example is not a hook.
-  expect_false(any(vapply(out$segments,
-                          function(s) s$named_contexts, logical(1L))))
+  # A hook assigned in an example is not a hook: the rule for man/ names the Rd
+  # contexts and no others, so the hook rules never reach these segments.
+  expect_true(all(vapply(out$segments,
+                         function(s) is.null(s$code_contexts), logical(1L))))
 })
 
 test_that("dontrun is guarded and dontshow is not", {

@@ -1,9 +1,12 @@
 name: man_pages
-version: "0.1.0"
+version: "0.5.0"
 type: Rd
 report: FALSE
-namespace_source: FALSE
-code_context: "R"
+code_context:
+  - Rd_examples
+  - Rd_Sexpr_build
+  - Rd_Sexpr_install
+  - Rd_Sexpr_render
 message: >-
   Help files in man carry R code in two places: \examples{}, which R CMD check
   runs, and \Sexpr{}, which is evaluated when the help page is rendered during

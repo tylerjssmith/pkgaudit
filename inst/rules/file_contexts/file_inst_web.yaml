@@ -1,5 +1,5 @@
 name: inst_web
-version: "0.1.0"
+version: "0.5.0"
 type: other
 message: >-
   JavaScript shipped under inst/ runs in a browser when a user renders the
@@ -18,8 +18,7 @@ at_detach: FALSE
 path: "inst"
 recursive: TRUE
 report: FALSE
-namespace_source: FALSE
-code_context: "R"
+code_context: ~
 filename: '\.(js|mjs|ts)$'
 positive_examples:
   - inst/htmlwidgets/w.js

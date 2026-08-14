@@ -1,9 +1,14 @@
 name: R_scripts
-version: "0.1.0"
+version: "0.5.0"
 type: R
 report: FALSE
-namespace_source: TRUE
-code_context: "R"
+code_context:
+  - onLoad_base
+  - onAttach_base
+  - onDetach_base
+  - onUnload_base
+  - LastLib_base
+  - on_load_rlang
 message: >-
   R source files in R are evaluated when the package is installed from source,
   when the lazy-load database is built. They are scanned for code contexts and
@@ -29,3 +34,20 @@ negative_examples:
   - R/unix/only.R
   - R/README.md
   - zzz.R
+
+# Code inside a function definition in R/ is reported as running at no
+# phase. Both readings are measured: the probe package shows that a function
+# called from top level fires wherever that top-level code does, and that one
+# nothing calls fires nowhere. R/ reports the second because it is dominated
+# by exported functions the lifecycle never calls, and reporting the first
+# would mark every package's whole codebase as executing at install.
+in_function:
+  at_autoconf: FALSE
+  at_build: FALSE
+  at_check: FALSE
+  at_install_src: FALSE
+  at_install_bin: FALSE
+  at_load: FALSE
+  at_attach: FALSE
+  at_unload: FALSE
+  at_detach: FALSE

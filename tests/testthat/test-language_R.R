@@ -16,7 +16,7 @@ test_that("code that will not parse is an error, not an empty result", {
 })
 
 test_that("a finding carries a preview of the line it sits on", {
-  found <- r_segment(c("x <- 1", "system('id')"), named_contexts = TRUE)
+  found <- r_segment(c("x <- 1", "system('id')"), code_contexts = .hook_rules)
 
   expect_equal(found$patterns$line_number, 2L)
   expect_equal(found$patterns$preview, "system('id')")
@@ -43,7 +43,7 @@ test_that("guarded lines are marked and everything else is not", {
 
 test_that("direct and indirect findings arrive as one frame", {
   found <- r_segment(c("system('id')", "do.call('system', list('id'))"),
-                     named_contexts = TRUE)
+                     code_contexts = .hook_rules)
 
   expect_equal(nrow(found$patterns), 2L)
   expect_setequal(found$patterns$indirect, c(FALSE, TRUE))
@@ -55,20 +55,21 @@ test_that("a preview is right for an indirect finding too", {
   # rbind() drops attributes, so the matched nodes have to be carried across
   # the join by hand; a wrong preview is how that would show up.
   found <- r_segment(c("x <- 1", "do.call('system', list('id'))"),
-                     named_contexts = TRUE)
+                     code_contexts = .hook_rules)
   expect_match(found$patterns$preview, "do.call", fixed = TRUE)
 })
 
-test_that("a segment's own context replaces Top-level, and only that", {
+test_that("a segment's label replaces top_level, and only that", {
   found <- analyze_segment(
     new_segment("R", c("system('a')", "f <- function() system('b')"),
-                "tests/testthat/test-x.R", context = "tests"),
+                "man/f.Rd", context = .context_rd_examples),
     rules)
   ctx <- setNames(found$patterns$code_context, found$patterns$line_number)
 
-  expect_equal(ctx[["1"]], "tests")
-  # Code inside a function runs only when called, wherever the file sits.
-  expect_equal(ctx[["2"]], .context_other)
+  expect_equal(ctx[["1"]], .context_rd_examples)
+  # Code inside a function keeps in_function, so the fact that it sits in one
+  # is not lost; it inherits the segment's phases when they are resolved.
+  expect_equal(ctx[["2"]], .context_in_function)
 })
 
 test_that("a broken code-context rule is reported rather than matching nothing", {
@@ -78,7 +79,7 @@ test_that("a broken code-context rule is reported rather than matching nothing",
   broken$code_contexts$xpath[[1L]] <- "//["
 
   found <- analyze_segment(
-    new_segment("R", "system('id')", "R/zzz.R", named_contexts = TRUE), broken)
+    new_segment("R", "system('id')", "R/zzz.R", code_contexts = .hook_rules), broken)
   expect_equal(found$errors$step, "find_code_contexts")
 })
 

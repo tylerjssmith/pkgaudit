@@ -31,7 +31,7 @@ test_that("shell code never brings named contexts with it", {
 
   seg <- extract_segments(
     new_source(file.path(pkg, "configure"), "configure", "shell"))$segments[[1L]]
-  expect_false(seg$named_contexts)
+  expect_null(seg$code_contexts)
 })
 
 test_that("a file that cannot be read yields no segment and an error", {

@@ -22,6 +22,16 @@ rule_row <- function(class_df, name) {
   class_df[class_df$name == name, , drop = FALSE]
 }
 
+# The lifecycle-hook code contexts, as a file-context rule for R/ names them.
+# Passing these to new_source()/new_segment() is what makes a hook reachable in
+# a test, the way the shipped rules make it reachable only under R/.
+.hook_rules <- c("onLoad_base", "onAttach_base", "onDetach_base",
+                 "onUnload_base", "LastLib_base", "on_load_rlang")
+
+# The Rd segment contexts, as the file-context rule for man/ names them.
+.rd_rules <- c("Rd_examples", "Rd_Sexpr_build", "Rd_Sexpr_install",
+               "Rd_Sexpr_render")
+
 # The nine phase values as a list, TRUE for the phases named and FALSE for the
 # rest, ready to splice into a row assignment on a findings frame.
 phase_values <- function(...) {
@@ -59,7 +69,7 @@ make_obj <- function(n_file = 0L, n_pat = 0L, n_expr = 0L,
     fc[i, ] <- c(list("configure", "configure", "m"), install_phases)
   }
   for (i in seq_len(n_pat)) {
-    pt[i, ] <- c(list("system", "R/zzz.R", 1L, 1L, "R", FALSE, FALSE,
+    pt[i, ] <- c(list("system", "R/zzz.R", 1L, 1L, "top_level", FALSE, FALSE,
                       "p", "m", "T1059"), install_phases)
   }
   for (i in seq_len(n_expr)) {
@@ -91,9 +101,9 @@ rich_obj <- function(errors = .empty_errors(), metadata = good_metadata()) {
                      FALSE, FALSE, "p", "m", "T1059"), loaded)
   pt[2L, ] <- c(list("rcurl",  "R/zzz.R", 2L, 1L, "onLoad_base",
                      FALSE, FALSE, "p", "m", "T1041"), loaded)
-  pt[3L, ] <- c(list("source", "R/aaa.R", 3L, 1L, "R",
+  pt[3L, ] <- c(list("source", "R/aaa.R", 3L, 1L, "top_level",
                      FALSE, FALSE, "p", "m", "T1059"), installed)
-  pt[4L, ] <- c(list("source", "R/aaa.R", 7L, 1L, "Other",
+  pt[4L, ] <- c(list("source", "R/aaa.R", 7L, 1L, "in_function",
                      FALSE, FALSE, "p", "m", "T1059"), uncalled)
 
   # An match takes its phases from the file context it sits in, so all of

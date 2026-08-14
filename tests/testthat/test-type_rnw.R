@@ -17,7 +17,7 @@ test_that("the Rnw extractor reads <<>>= chunks and inline \\Sexpr", {
   res <- audit_package(pkg, rules)
   expect_setequal(res$patterns$rule, c("system", "download_file"))
   expect_setequal(res$patterns$line_number, c(4L, 6L))
-  expect_true(all(res$patterns$code_context == "vignettes"))
+  expect_true(all(res$patterns$code_context == .context_top_level))
 })
 
 test_that("an Rnw chunk marked eval=FALSE is guarded", {

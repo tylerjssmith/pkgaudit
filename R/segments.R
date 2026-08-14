@@ -9,21 +9,21 @@
 
 # One file queued for scanning, classed by its rule's type so extract_segments()
 # can dispatch on it.
-# namespace_source says whether this file's R code becomes the package
-# namespace. Only there can a lifecycle hook actually run: a .onLoad defined in,
-# say, data/ ships as an ordinary object and is never called, so attributing it
-# to onLoad_base would be a false reading rather than a cautious one.
-# code_context names the computed context that top-level code in this file
-# belongs to. "R" means compute it from the parse tree as usual; any
-# other value replaces it, which is how data/, demo/ and the rest carry phases
-# of their own rather than the ones R/ carries.
+#
+#   file_rule      the file-context rule that claimed this file. A pattern's
+#                  phases depend on it as well as on where the code sits, so it
+#                  travels with the file rather than being looked up again.
+#   code_contexts  the code-context rules that can apply here, or NULL for none.
+#                  This is what confines the lifecycle hooks to the directories
+#                  whose code becomes the namespace: a .onLoad defined in data/
+#                  ships as an ordinary object and never fires, which the probe
+#                  package measures, so attributing it to onLoad_base would be a
+#                  false reading rather than a cautious one.
 new_source <- function(path, file_context, type, macros = NULL,
-                       namespace_source = FALSE,
-                       code_context = .context_top_level) {
+                       file_rule = NA_character_, code_contexts = NULL) {
   structure(
     list(path = path, file_context = file_context, macros = macros,
-         namespace_source = isTRUE(namespace_source),
-         code_context = code_context),
+         file_rule = file_rule, code_contexts = code_contexts),
     class = .source_class(type)
   )
 }
@@ -39,20 +39,25 @@ new_source <- function(path, file_context, type, macros = NULL,
 # A contiguous, line-aligned run of code in one language, classed by that
 # language so analyze_segment() can dispatch on it.
 #
-#   context         the code context to attribute patterns to, or NA to compute
-#                   it from the parse tree
-#   named_contexts  whether the named code-context rules (.onLoad and friends)
-#                   apply here. A hook assigned in a help-page example is not a
-#                   hook, so a help file's segments withhold them.
-#   guarded_lines   lines whose code ships but the lifecycle does not run --
-#                   a \dontrun{} block, or a chunk marked eval=FALSE. Phases
-#                   still come from the context, so they are an upper bound.
+#   context        the segment's label, matched by a `kind: segment`
+#                  code-context rule, or NA where the segment has none. This is
+#                  how a help file's \examples and \Sexpr stages are told apart:
+#                  once they have yielded R code, nothing in that code says
+#                  which it came from.
+#   file_rule      the file-context rule that claimed the file this came out of.
+#   code_contexts  the code-context rules that can apply, inherited from the
+#                  source. A hook assigned in a help-page example is not a hook,
+#                  so a help file's segments carry only the Rd rules.
+#   guarded_lines  lines whose code ships but the lifecycle does not run --
+#                  a \dontrun{} block, or a chunk marked eval=FALSE. Phases
+#                  still come from the context, so they are an upper bound.
 new_segment <- function(language, lines, file_context,
-                        context = NA_character_, named_contexts = FALSE,
-                        guarded_lines = integer(0L)) {
+                        context = NA_character_, file_rule = NA_character_,
+                        code_contexts = NULL, guarded_lines = integer(0L)) {
   structure(
     list(lines = lines, file_context = file_context, context = context,
-         named_contexts = named_contexts, guarded_lines = guarded_lines),
+         file_rule = file_rule, code_contexts = code_contexts,
+         guarded_lines = guarded_lines),
     class = c(language, "pkgaudit_segment")
   )
 }

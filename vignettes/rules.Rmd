@@ -41,7 +41,7 @@ rule_files <- local({
     line <- grep("^name: ", readLines(file.path(root, path)), value = TRUE)
     if (length(line) == 0L) NA_character_ else sub("^name: ", "", line[[1L]])
   }, character(1L))
-  # Files under inst/rules/phases/ define a computed context, not a rule, and
+  # The computed contexts have no rule file to link to, and
   # carry no name field.
   keep <- !is.na(named)
   split(stats::setNames(paths[keep], named[keep]), dirname(paths[keep]))
@@ -53,8 +53,7 @@ rule_link <- function(name, category) {
 }
 
 # The phases a context runs in, named as the columns a caller would filter on.
-# "none" is the reading `summary()` gives it: code reached only when something
-# calls it.
+# "none" is what `summary()` calls a context that runs at no phase at all.
 phase_cell <- function(context) {
   row <- rules$phases[match(context, rules$phases$context), phase_names]
   on  <- phase_names[as.logical(row)]
@@ -97,12 +96,16 @@ emit_table <- function(headers, ...) {
 # definition, not a summary of one. Every rule in the database must appear
 # here, so a new rule fails this document until it is described.
 code_labels <- c(
-  LastLib_base  = "`.Last.lib()`",
-  onAttach_base = "`.onAttach()`",
-  onDetach_base = "`.onDetach()`",
-  onLoad_base   = "`.onLoad()`",
-  on_load_rlang = "`rlang::on_load()`",
-  onUnload_base = "`.onUnload()`"
+  LastLib_base     = "`.Last.lib()`",
+  onAttach_base    = "`.onAttach()`",
+  onDetach_base    = "`.onDetach()`",
+  onLoad_base      = "`.onLoad()`",
+  on_load_rlang    = "`rlang::on_load()`",
+  onUnload_base    = "`.onUnload()`",
+  Rd_examples      = "`\\examples{}`",
+  Rd_Sexpr_build   = "`\\Sexpr[stage=build]`",
+  Rd_Sexpr_install = "`\\Sexpr[stage=install]`",
+  Rd_Sexpr_render  = "`\\Sexpr[stage=render]`"
 )
 
 pattern_labels <- c(
@@ -185,90 +188,20 @@ pattern_labels <- c(
   system = "`system()`, `system2()`, `shell()`, `pipe()`"
 )
 
-# Descriptions of the computed contexts. These are authored under
-# inst/rules/phases/, which carries phases but no message. A file-context rule
-# names the one its top-level code belongs to, which is how code outside R/
-# carries phases of its own.
+# The two computed code contexts, which no rule defines and which carry no
+# phases of their own.
 computed_contexts <- data.frame(
-  context = c("R", "Other", "Rd_examples",
-              "Rd_Sexpr_build", "Rd_Sexpr_install", "Rd_Sexpr_render",
-              "data", "demo", "exec", "tests", "tools", "citation",
-              "Rprofile", "vignettes"),
+  context = c("top_level", "in_function"),
   description = c(
     paste(
-      "Top-level code in an R script is evaluated once, when the lazy-load",
-      "database is built during installation from source, which R CMD check",
-      "and R CMD build also perform. It is not re-evaluated when the namespace",
-      "is loaded: loading restores the values from that database."
+      "Code outside any function definition. It carries the phases of the file",
+      "context it sits in, so the same call reads at_check under tests/ and",
+      "at_build under data/."
     ),
     paste(
-      "Code inside an ordinary function definition runs at no lifecycle phase.",
-      "It executes only if something calls that function, never as a",
-      "consequence of building, installing, checking, or loading the package.",
-      "This holds for a function defined in a help-file example too."
-    ),
-    paste(
-      "Code in an \\examples{} block of a help file is run by R CMD check, and",
-      "by a user who calls example(). Building or installing the package",
-      "renders the help page but never evaluates its examples."
-    ),
-    paste(
-      "A \\Sexpr{} macro declaring stage=build is evaluated when R CMD build",
-      "renders the help page, and when the package is installed from a source",
-      "directory or checked. It is not reached when a source tarball is",
-      "installed: build already evaluated it and froze the result into the Rd."
-    ),
-    paste(
-      "A \\Sexpr{} macro declaring stage=install, or declaring no stage at all,",
-      "which Writing R Extensions gives install as the default for. Evaluated",
-      "whenever the page is rendered from source: build, either install, and",
-      "check. Not when a prebuilt binary is installed."
-    ),
-    paste(
-      "A \\Sexpr{} macro declaring stage=render is evaluated when the page is",
-      "rendered for display: during R CMD build and R CMD check, and when a",
-      "user calls help(). It does not run at either install."
-    ),
-    paste(
-      "A .R file under data/ is evaluated when R CMD build converts data/ to a",
-      "lazy-load database, and when the package is installed from a source",
-      "directory. It does not survive into a source tarball: build replaces it",
-      "with the .rda it produced."
-    ),
-    paste(
-      "A demo runs only when a user calls demo(). No lifecycle command reaches",
-      "it, though it ships in the installed package."
-    ),
-    paste(
-      "R code under exec/ runs only when a user invokes the script. R CMD",
-      "INSTALL copies exec/ into the installed package and marks its contents",
-      "executable, but no lifecycle command runs them."
-    ),
-    paste(
-      "Test code, whether under tests/, tests/testthat/ or inst/tinytest/, is",
-      "run by R CMD check and by nothing else. All three are reached through a",
-      "runner in tests/."
-    ),
-    paste(
-      "tools/ holds helper scripts that nothing runs on its own. They are",
-      "reached only if configure or a Makevars invokes them, which is reported",
-      "where that invocation appears."
-    ),
-    paste(
-      "inst/CITATION is R code that utils::readCitationFile() evaluates. R CMD",
-      "check reads it, as does any user who calls citation(). A plain .R file",
-      "under inst/ is never sourced."
-    ),
-    paste(
-      "A .Rprofile at the package root is evaluated whenever a lifecycle",
-      "command starts an R process inside the package: R CMD build, and",
-      "installation from a source directory. It runs before any package is",
-      "loaded."
-    ),
-    paste(
-      "Vignette code runs when the vignette is rendered: during R CMD build,",
-      "and again under R CMD check, which rebuilds it. Shared by Rmd, qmd and",
-      "Rnw -- the format decides how the code is extracted, not when it runs."
+      "Code inside a function definition. It inherits the phases of the code",
+      "around it, except under R/, where the rules report it as running at no",
+      "phase."
     )
   ),
   stringsAsFactors = FALSE
@@ -283,11 +216,14 @@ stopifnot(
   all(rules$matches$name         %in% names(rule_files$matches)),
   setequal(names(code_labels), rules$code_contexts$name),
   setequal(names(pattern_labels), rules$patterns$name),
-  setequal(computed_contexts$context,
-           setdiff(rules$phases$context,
-                   c(rules$file_contexts$name, rules$code_contexts$name))),
-  # Every context a file-context rule names must be described here too.
-  all(rules$file_contexts$code_context %in% computed_contexts$context),
+  # The computed contexts are exactly those with no phases row: they inherit.
+  setequal(computed_contexts$context, c("top_level", "in_function")),
+  length(setdiff(rules$phases$context,
+                 c(rules$file_contexts$name, rules$code_contexts$name))) == 0L,
+  # Every code context a file-context rule names must be a rule that exists.
+  all(setdiff(unlist(strsplit(
+        stats::na.omit(rules$file_contexts$code_context), "[[:space:]]+")),
+      "computed") %in% rules$code_contexts$name),
   # Only a rule naming one file has a name to check against its own pattern.
   local({
     fc  <- rules$file_contexts[anchored(rules$file_contexts$filename), ]
@@ -312,8 +248,8 @@ ships without a description fails the build rather than appearing unexplained.
 
 Patterns are security-relevant function calls. Each pattern finding is
 attributed to the code context it executes in, so a `system()` call inside
-`.onLoad` is distinguished from one inside an ordinary function ("Other") or at
-top level ("R"). Qualified (`pkg::fn()`) and unqualified (`fn()`) call forms are
+`.onLoad` is distinguished from one inside an ordinary function
+(`in_function`) or at top level (`top_level`). Qualified (`pkg::fn()`) and unqualified (`fn()`) call forms are
 both detected. Pattern rules carry
 [MITRE ATT&CK](https://attack.mitre.org/) technique labels.
 
@@ -323,8 +259,9 @@ block, or a vignette chunk marked `eval=FALSE`; its phases still come from its
 context, so they read as an upper bound. `indirect` is `TRUE` where the call was
 made through the function's name rather than the function.
 
-A pattern rule declares no phases of its own: a pattern inherits them from the
-code context it sits in, listed in the two tables above.
+A pattern rule declares no phases of its own. A pattern takes them from the file
+context it was found in and the code context it sits in, resolved as
+[Lifecycle Phases](#lifecycle-phases) describes.
 
 A call made through a function's name rather than the function --
 `do.call("system", ...)`, `match.fun()`, `getFunction()` -- is reported under
@@ -355,10 +292,9 @@ A file context typed `R` is parsed and scanned for patterns instead, and no
 other file in the package is scanned for matches at all. Match rules
 carry [MITRE ATT&CK](https://attack.mitre.org/) technique labels.
 
-Like a pattern rule, a match rule declares no phases of its own: a match
-inherits them from the file context it was found in, listed in the
-File Contexts table above. Where a file matches more than one file-context rule,
-it takes the phases of every rule that matched it.
+Like a pattern rule, a match rule declares no phases of its own. Where a file
+matches more than one file-context rule, it takes the phases of every rule that
+matched it.
 
 Matching text is less precise than matching a parse tree. A match has no
 syntax behind it, so a match inside a comment, a quoted string, or a branch that
@@ -391,9 +327,9 @@ cat(
 
 ## Lifecycle Phases
 
-Every file and code context declares the phases of the package lifecycle in
-which its code runs. Each finding carries one logical column per phase, so
-findings can be filtered by when they execute, e.g.
+A phase is a property of two things: where a file sits in the package, and where
+the code sits within that file. Each finding carries one logical column per
+phase, so findings can be filtered by when they execute, e.g.
 `subset(result$patterns, at_install_src)`.
 
 ```{r phases-legend}
@@ -417,10 +353,22 @@ emit_table(
 )
 ```
 
-Phase assignments were established by running `R CMD build`, `R CMD check`, and
-`R CMD INSTALL` against instrumented packages rather than read from
-documentation. A rule can belong to several phases, and the Phases column below
-reads `none` for code that runs at no phase at all.
+A match takes the phases of the file context it was found in. A pattern resolves
+them in order: a code context carrying phases of its own wins, and otherwise the
+code inherits the phases of the file context around it. So the same `system()`
+call reads `at_check` under `tests/` and `at_build` under `data/`.
+
+Code inside a function definition inherits too, with one exception: under `R/` it
+is reported as running at no phase. Both readings are measured -- a function
+called from top-level code runs whenever that code does, and one nothing calls
+runs nowhere -- and `R/` reports the second because it is dominated by exported
+functions the lifecycle never calls. Neither is a claim about any particular
+package's call graph, which pkgaudit does not trace.
+
+Every phase value below was established by running instrumented packages through
+`R CMD build`, `R CMD check` and `R CMD INSTALL` and recording which sites fired,
+rather than read from documentation. A rule can belong to several phases, and a
+Phases column reads `none` for code that runs at no phase at all.
 
 ## File Contexts
 
@@ -466,41 +414,42 @@ emit_table(
 
 ## Code Contexts
 
-Code contexts are lifecycle hooks whose bodies run automatically when a
-namespace is loaded, attached, unloaded, or detached. These rules are applied
-only where a package's R code becomes its namespace -- `R/`, `R/unix/`,
-`R/windows/`. A `.onLoad` defined anywhere else ships as an ordinary object and
-is never called, so attributing it to a hook would be a false reading rather
-than a cautious one.
+A code context says where code sits *within* its file. Every pattern carries
+one, and it is half of what decides the finding's phases.
+
+Two kinds are rules. A **lifecycle hook** is found by matching the parse tree,
+and applies only where a package's R code becomes its namespace: `R/`,
+`R/unix/`, `R/windows/`. A `.onLoad` defined anywhere else ships as an ordinary
+object and never fires -- measured, not assumed. A **part of a help file** is
+found by matching a label the extractor stamped, because the distinction is
+invisible to the parse tree: once an `.Rd` has yielded R code, nothing in that
+code says whether it came from `\examples` or from a `\Sexpr`, or which stage.
+
+Both carry phases of their own, so a finding in one takes them directly.
 
 ```{r code-contexts}
 cc <- rules$code_contexts
 emit_table(
-  c("Rule", "Code Context", "Phases", "Description"),
+  c("Rule", "Code Context", "Matched by", "Phases", "Description"),
   rule_link(cc$name, "code_contexts"),
   code_labels[cc$name],
+  ifelse(cc$kind == "xpath", "parse tree", "segment label"),
   vapply(cc$name, phase_cell, character(1L)),
   cc$message
 )
 ```
 
-## Computed Contexts
-
-Every pattern is attributed to the code context that contains it. Most of those
-contexts are computed rather than matched by a rule, and so have phases but no
-rule of their own. `R` and `Other` are computed from where a pattern sits in the
-parse tree. The `Rd_` contexts come from which part of a help file the code was
-extracted from, one per `\Sexpr` stage, because the stages do not share a phase
-profile. The rest are named for where the file sits -- `data`, `tests`,
-`vignettes` -- because `R`'s phases are right for `R/` and wrong everywhere
-else. They are defined under
-[inst/rules/phases/](https://github.com/tylerjssmith/pkgaudit/tree/main/inst/rules/phases).
+The remaining two are computed from the parse tree and are the only contexts
+with no phases of their own. They inherit from the file context around them,
+which is why there is no `data` or `tests` code context: a `system()` call at
+the top level of a data script and one in a test file sit in the same place in
+their files, and what differs is when the file runs.
 
 ```{r computed-contexts}
 emit_table(
   c("Context", "Phases", "Description"),
   paste0("`", computed_contexts$context, "`"),
-  vapply(computed_contexts$context, phase_cell, character(1L)),
+  rep("inherited", nrow(computed_contexts)),
   computed_contexts$description
 )
 ```

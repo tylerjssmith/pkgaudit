@@ -1,5 +1,5 @@
 name: src_other
-version: "0.1.0"
+version: "0.5.0"
 type: other
 message: >-
   A file under src/ in no language pkgaudit recognises. Everything in src/ is
@@ -17,8 +17,7 @@ at_detach: FALSE
 path: "src"
 recursive: TRUE
 report: FALSE
-namespace_source: FALSE
-code_context: "R"
+code_context: ~
 filename: '.'
 positive_examples:
   - src/vendor/odd.zz

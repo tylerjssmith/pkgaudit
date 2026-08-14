@@ -22,8 +22,9 @@ extract_segments.Rnw <- function(source) {
       language     = "R",
       lines        = .blank_except(length(read$lines), found$keep, found$lines),
       file_context = source$file_context,
-      context      = source$code_context,
-      named_contexts = FALSE,
+      context       = NA_character_,
+      file_rule     = source$file_rule,
+      code_contexts = source$code_contexts,
       guarded_lines  = found$guarded
     )),
     errors = errors

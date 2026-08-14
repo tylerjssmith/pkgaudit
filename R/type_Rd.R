@@ -31,14 +31,17 @@ extract_segments.Rd <- function(source) {
   for (part in parts) {
     if (!nzchar(trimws(part$text))) next
     segments[[length(segments) + 1L]] <- new_segment(
-      language     = "R",
-      lines        = strsplit(part$text, "\n", fixed = TRUE)[[1L]],
-      file_context = source$file_context,
-      context      = part$context,
-      # A help file defines no code contexts of its own: a hook assigned in an
-      # example is not a hook.
-      named_contexts = FALSE,
-      guarded_lines  = part$guarded
+      language      = "R",
+      lines         = strsplit(part$text, "\n", fixed = TRUE)[[1L]],
+      file_context  = source$file_context,
+      # The label a `kind: segment` rule matches. It is the only record of where
+      # this code came from: the extracted R says nothing about it.
+      context       = part$context,
+      file_rule     = source$file_rule,
+      # Only the rules the file context names, which for a help file are the Rd
+      # ones. A hook assigned in an example is not a hook.
+      code_contexts = source$code_contexts,
+      guarded_lines = part$guarded
     )
   }
   list(segments = segments, errors = errors)

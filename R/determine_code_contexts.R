@@ -67,7 +67,7 @@ determine_code_contexts <- function(tree, patterns, rules) {
     code_context[[j]] <- if (!is.na(winner)) {
       winner
     } else if (.has_function_ancestor(pnode)) {
-      .context_other
+      .context_in_function
     } else {
       .context_top_level
     }

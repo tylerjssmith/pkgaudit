@@ -1,9 +1,8 @@
 name: cleanup_ucrt
-version: "0.3.0"
+version: "0.5.0"
 type: shell
 report: TRUE
-namespace_source: FALSE
-code_context: "R"
+code_context: ~
 message: >-
   cleanup.ucrt is a shell script run on the Windows UCRT toolchain at the end of
   R CMD build, and during installation from source only under R CMD INSTALL

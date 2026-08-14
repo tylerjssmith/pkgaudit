@@ -1,3 +1,46 @@
+# pkgaudit 0.5.0
+
+## Breaking changes
+
+* A finding's phases are now resolved from **both** the file context it sits in
+  and the code context within that file, rather than from one flattened
+  namespace. `patterns$code_context` therefore reports only where code sits
+  inside its file: `top_level`, `in_function`, a lifecycle hook, or a part of a
+  help file. The contexts named for locations -- `data`, `demo`, `exec`,
+  `tests`, `tools`, `citation`, `Rprofile`, `vignettes` -- are gone; the same
+  information is in `file_context`, and the phases they conferred are unchanged.
+* `R` and `Other` are renamed `top_level` and `in_function`. `Other` was never
+  only "other": it meant code inside a function definition, and now says so.
+* Code inside a function definition no longer reports as running at no phase
+  everywhere. It inherits the phases of the code around it, except under `R/`.
+  A helper called by a test file now reports `at_check` instead of nothing,
+  which is the under-report this release fixes. Findings move out of `"none"`
+  and never into it.
+* `load_rules()` returns a sixth element, `phase_overrides`, and
+  `file_contexts` no longer carries `namespace_source` -- a file-context rule
+  now names the code-context rules that can apply inside it, which is both more
+  precise and one fewer field.
+
+## Rules
+
+* Rule set 0.5.0. `Rd_examples` and the three `Rd_Sexpr_*` contexts are now
+  rules with their own versions, messages and examples, matched on a label the
+  extractor stamps rather than hardcoded in the package. Every context a
+  finding can carry is now defined by a rule.
+
+## Evidence
+
+* Every phase pkgaudit reports is measured by the `execution_surface` probe
+  package, including the two readings of a function body: one called from
+  top-level code, which fires wherever that code does, and one nothing calls,
+  which fires nowhere. A rule that overrides `in_function` is choosing between
+  two measurements rather than asserting something unmeasured.
+* The probe now covers `tests/testthat/`, `inst/tinytest/` and
+  `inst/unitTests/`, which previously rested on inference from plain `tests/`.
+  All three run at check and nowhere else. It also measures that a `.onLoad`
+  defined outside `R/` never fires, which is what confines the hook rules to
+  the directories whose code becomes the namespace.
+
 # pkgaudit 0.4.0
 
 * pkgaudit now accounts for every file it can identify as code, in a new

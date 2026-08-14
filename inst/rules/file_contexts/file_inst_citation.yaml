@@ -1,5 +1,5 @@
 name: inst_citation
-version: "0.1.0"
+version: "0.5.0"
 type: R
 message: >-
   inst/CITATION is R code that utils::readCitationFile() evaluates. R CMD check
@@ -18,8 +18,7 @@ at_detach: FALSE
 path: "inst"
 recursive: FALSE
 report: FALSE
-namespace_source: FALSE
-code_context: "citation"
+code_context: computed
 filename: '^CITATION$'
 positive_examples:
   - inst/CITATION

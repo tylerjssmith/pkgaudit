@@ -17,16 +17,15 @@ extract_segments.R <- function(source) {
 
   list(
     segments = list(new_segment(
-      language       = "R",
-      lines          = read$lines,
-      file_context   = source$file_context,
-      # NA leaves determine_code_contexts() to place patterns as usual. A rule
-      # naming any other context replaces `R` with it, so a finding in
-      # data/ or tests/ carries that file type's phases instead of R/'s.
-      context = if (identical(source$code_context, .context_top_level))
-                  NA_character_ else source$code_context,
-      # The named hook rules apply only where the code becomes the namespace.
-      named_contexts = source$namespace_source
+      language      = "R",
+      lines         = read$lines,
+      file_context  = source$file_context,
+      # An R script carries no segment label. What its top-level code belongs to
+      # is a property of the file context, resolved when phases are attached,
+      # rather than of anything the segment itself can say.
+      context       = NA_character_,
+      file_rule     = source$file_rule,
+      code_contexts = source$code_contexts
     )),
     errors = errors
   )

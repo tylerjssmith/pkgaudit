@@ -1,6 +1,7 @@
 name: onUnload_base
-version: "0.3.0"
+version: "0.5.0"
 language: R
+kind: xpath
 message: >-
   .onUnload() executes arbitrary code when a package namespace is unloaded,
   e.g., by calling unloadNamespace() or detach(unload=TRUE). R CMD check unloads

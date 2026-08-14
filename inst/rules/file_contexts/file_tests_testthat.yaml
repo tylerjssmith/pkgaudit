@@ -1,5 +1,5 @@
 name: tests_testthat
-version: "0.1.0"
+version: "0.5.0"
 type: R
 message: >-
   testthat sources the files directly under tests/testthat/ when R CMD check
@@ -17,8 +17,7 @@ at_detach: FALSE
 path: "tests/testthat"
 recursive: FALSE
 report: FALSE
-namespace_source: FALSE
-code_context: "tests"
+code_context: computed
 filename: '\.[RrSsq]$'
 positive_examples:
   - tests/testthat/test-audit.R

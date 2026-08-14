@@ -1,5 +1,5 @@
 name: r_sysdata
-version: "0.1.0"
+version: "0.5.0"
 type: other
 message: >-
   R/sysdata.rda holds a package's internal objects and is restored into the
@@ -17,8 +17,7 @@ at_detach: FALSE
 path: "R"
 recursive: FALSE
 report: FALSE
-namespace_source: FALSE
-code_context: "R"
+code_context: ~
 filename: '^sysdata\.rda$'
 positive_examples:
   - R/sysdata.rda

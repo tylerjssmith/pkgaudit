@@ -1,0 +1,44 @@
+name: Rd_Sexpr_install
+version: "0.5.0"
+language: R
+kind: segment
+segment: Rd_Sexpr_install
+message: >-
+  \Sexpr[stage=install], and an unlabelled \Sexpr, which Writing R Extensions
+  gives install as the default for and which measured identically. Evaluated
+  whenever the help page is rendered from source: build, either install, and
+  check. Not on installation from a binary, whose help ships pre-rendered.
+# Established with an instrumented probe package carrying one \Sexpr per stage,
+# run through R CMD build, R CMD INSTALL from a directory, a source tarball and
+# a binary, R CMD check, and help().
+at_autoconf: FALSE
+at_build: TRUE
+at_check: TRUE
+at_install_src: TRUE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+positive_examples:
+  - |
+    \name{probe}
+    \alias{probe}
+    \title{Probe}
+    \description{\Sexpr[stage=install,results=hide]{x <- 1}}
+  - |
+    \name{probe}
+    \alias{probe}
+    \title{Probe}
+    \description{\Sexpr[results=hide]{x <- 1}}
+negative_examples:
+  - |
+    \name{probe}
+    \alias{probe}
+    \title{Probe}
+    \description{\Sexpr[stage=render,results=hide]{x <- 1}}
+  - |
+    \name{probe}
+    \alias{probe}
+    \title{Probe}
+    \description{No macro at all.}

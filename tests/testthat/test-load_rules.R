@@ -1,25 +1,28 @@
 # load_rules() -----------------------------------------------------------------
-test_that("load_rules() returns five rule data frames with expected columns", {
+test_that("load_rules() returns six rule data frames with expected columns", {
   rules <- load_rules()
   expect_named(rules, c("file_contexts", "code_contexts", "patterns", "matches",
-                        "phases"))
+                        "phases", "phase_overrides"))
 
   expect_named(rules$file_contexts,
                c("name", "version", "type", "message", "path", "recursive",
-                 "report", "namespace_source", "filename", "code_context"))
+                 "report", "filename", "code_context"))
   expect_type(rules$file_contexts$report, "logical")
   # A file context declares a `type`, the format of the file, which selects how
   # it is read. Every other class declares a `language`, the language of the code
   # it is evaluated against -- a separate axis, since one file can yield code in
   # more than one language.
   expect_named(rules$code_contexts,
-               c("name", "version", "language", "message", "xpath"))
+               c("name", "version", "language", "message", "kind", "xpath",
+                 "segment"))
   expect_named(rules$patterns,
                c("name", "version", "language", "message", "attck",
                  "functions", "xpath"))
   expect_named(rules$matches,
                c("name", "version", "language", "message", "attck", "regex"))
   expect_named(rules$phases, c("context", "version", .phase_columns))
+  expect_named(rules$phase_overrides,
+               c("file_context", "code_context", "version", .phase_columns))
 
   expect_type(rules$file_contexts$recursive, "logical")
   expect_gt(nrow(rules$file_contexts), 0L)
@@ -42,23 +45,50 @@ test_that("load_rules() returns phases as logicals for every context", {
 
   for (phase in .phase_columns) expect_type(rules$phases[[phase]], "logical")
 
-  # Every context a finding can be attributed to has a row: each file- and
-  # code-context rule, plus the computed contexts.
+  # One row per rule, and only per rule. The computed contexts have none: they
+  # take the phases of the file context they sit in, or an override.
   expect_setequal(
     rules$phases$context,
-    c(rules$file_contexts$name, rules$code_contexts$name, .sentinel_contexts,
-      rules$file_contexts$code_context)
+    c(rules$file_contexts$name, rules$code_contexts$name)
   )
+  expect_false(any(.computed_contexts %in% rules$phases$context))
 
-  # The computed contexts carry the phases established for them: top-level code
-  # runs when the package is installed, built, or checked but not when it is
-  # loaded; code in an ordinary function runs at no phase at all.
-  top <- rules$phases[rules$phases$context == "R", ]
+  # R/ carries the phases established for it: top-level code runs when the
+  # package is installed, built or checked, but not when it is loaded.
+  top <- rules$phases[rules$phases$context == "R_scripts", ]
   expect_true(top$at_install_src && top$at_build && top$at_check)
   expect_false(top$at_load)
 
-  other <- rules$phases[rules$phases$context == "Other", ]
-  expect_false(any(unlist(other[, .phase_columns])))
+  # And R/ is where a function body is reported as running at no phase, which is
+  # an override rather than a property of in_function everywhere.
+  over <- rules$phase_overrides[
+    rules$phase_overrides$file_context == "R_scripts" &
+    rules$phase_overrides$code_context == .context_in_function, ]
+  expect_equal(nrow(over), 1L)
+  expect_false(any(unlist(over[, .phase_columns])))
+})
+
+test_that("only the rules for R/ override the phases of a function body", {
+  rules <- load_rules()
+  expect_setequal(unique(rules$phase_overrides$code_context),
+                  .context_in_function)
+  expect_true(all(grepl("^R_scripts", rules$phase_overrides$file_context)))
+})
+
+test_that("every code context a file-context rule names is a rule that exists", {
+  rules <- load_rules()
+  named <- unlist(strsplit(stats::na.omit(rules$file_contexts$code_context),
+                           "[[:space:]]+"))
+  named <- setdiff(unique(named[nzchar(named)]), "computed")
+  expect_equal(setdiff(named, rules$code_contexts$name), character(0))
+  # And the hooks reach only R/, which is what replaced the namespace_source
+  # flag. The probe package measures that a .onLoad elsewhere never fires.
+  hooks <- rules$code_contexts$name[rules$code_contexts$kind == "xpath"]
+  carriers <- rules$file_contexts$name[
+    vapply(rules$file_contexts$code_context, function(spec) {
+      any(hooks %in% strsplit(if (is.na(spec)) "" else spec, "[[:space:]]+")[[1L]])
+    }, logical(1L))]
+  expect_true(all(grepl("^R_scripts", carriers)))
 })
 
 test_that("load_rules() refuses a database missing phases for a context", {

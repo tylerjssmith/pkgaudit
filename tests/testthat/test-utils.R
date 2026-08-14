@@ -8,8 +8,12 @@ test_that("every empty frame carries its documented columns", {
     expect_named(fn(with_phases = TRUE), .pkgaudit_columns[[nm]], info = nm)
     expect_equal(nrow(fn()), 0L, info = nm)
     # Without phases: the shape a finder builds before they are joined on.
-    expect_named(fn(with_phases = FALSE),
-                 setdiff(.pkgaudit_columns[[nm]], .phase_columns), info = nm)
+    # Patterns carry two more columns while the scan runs -- where the file sat
+    # and where the segment did -- which resolving their phases needs and
+    # audit_package() drops before the result is built.
+    bare <- setdiff(.pkgaudit_columns[[nm]], .phase_columns)
+    if (nm == "patterns") bare <- c(bare, .internal_pattern_columns)
+    expect_named(fn(with_phases = FALSE), bare, info = nm)
   }
   expect_named(.empty_errors(), .pkgaudit_columns$errors)
 })
@@ -76,7 +80,10 @@ test_that("every empty frame keeps its shape with and without phase columns", {
     full <- builders[[name]]()
     expect_equal(nrow(bare), 0L, info = name)
     expect_equal(nrow(full), 0L, info = name)
-    # The phase columns are the only difference, and they come last.
-    expect_equal(names(full), c(names(bare), .phase_columns), info = name)
+    # The phase columns are the only difference, and they come last -- except
+    # for patterns, whose bare shape also carries the two scan-time columns.
+    expect_equal(names(full),
+                 c(setdiff(names(bare), .internal_pattern_columns),
+                   .phase_columns), info = name)
   }
 })

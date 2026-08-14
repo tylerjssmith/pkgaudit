@@ -1,5 +1,5 @@
 name: vignettes_rsp
-version: "0.1.0"
+version: "0.5.0"
 type: rsp
 message: >-
   An R.rsp vignette is a template: everything is output except the R between <%
@@ -18,8 +18,7 @@ at_detach: FALSE
 path: "vignettes"
 recursive: FALSE
 report: FALSE
-namespace_source: FALSE
-code_context: "vignettes"
+code_context: computed
 filename: '\.rsp$'
 positive_examples:
   - vignettes/intro.md.rsp

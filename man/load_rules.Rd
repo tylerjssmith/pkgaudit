@@ -11,18 +11,26 @@ load_rules(db_path = .db_path())
 with the installed package.}
 }
 \value{
-A named list with five data frames:
+A named list with six data frames:
 \describe{
 \item{file_contexts}{Data frame with columns \code{name}, \code{version}, \code{type},
-\code{message}, \code{path}, \code{recursive}, \code{report}, \code{namespace_source},
-\code{filename}, \code{code_context}. \code{type} selects how a matched file is read
-and scanned;
+\code{message}, \code{path}, \code{recursive}, \code{report}, \code{filename}, \code{code_context}.
+\code{type} selects how a matched file is read and scanned;
 \code{report} is \code{TRUE} for a rule whose matches are findings in their own
 right, and \code{FALSE} for one that only tells the scanner which files to
-read; \code{namespace_source} is \code{TRUE} only where R code becomes the
-package namespace, which is where a lifecycle hook can actually run.}
+read; \code{code_context} names the code-context rules that can apply inside
+the files this rule claims, space-separated -- \code{NA} where none can, and
+\code{"computed"} where only \code{top_level} and \code{in_function} can. That is what
+confines the lifecycle hooks to the directories whose code becomes the
+namespace, since a \code{.onLoad} defined elsewhere never runs.}
 \item{code_contexts}{Data frame with columns \code{name}, \code{version},
-\code{language}, \code{message}, \code{xpath}.}
+\code{language}, \code{message}, \code{kind}, \code{xpath}, \code{segment}. \code{kind} is \code{"xpath"}
+for a rule matched against the parse tree and \code{"segment"} for one
+matched against a label the extractor stamped; exactly one of \code{xpath}
+and \code{segment} is set accordingly. A segment rule exists because the
+distinction it draws is invisible to the parse tree: once a help file
+has yielded R code, nothing in that code says whether it came from
+\verb{\\\\examples} or from a \verb{\\\\Sexpr}.}
 \item{patterns}{Data frame with columns \code{name}, \code{version}, \code{language},
 \code{message}, \code{attck}, \code{functions}, \code{xpath}. \code{functions} is the
 space-separated names the rule matches as a bare call, which is how
@@ -33,9 +41,15 @@ for a rule that matches on more than the callee.}
 segment in its \code{language}, which is what keeps a shell rule from being
 applied to R code.}
 \item{phases}{Data frame with columns \code{context}, \code{version}, and one
-logical column per lifecycle phase. One row per context code can
-execute in: every file- and code-context rule, plus the computed
-contexts \code{"R"} and \code{"Other"}.}
+logical column per lifecycle phase. One row per rule, file-context and
+code-context alike. The computed contexts \code{top_level} and
+\code{in_function} have no row and need none: they inherit the phases of the
+file context they sit in.}
+\item{phase_overrides}{Data frame with columns \code{file_context},
+\code{code_context}, \code{version}, and one logical column per lifecycle phase.
+Where a code context's phases depart from its file context's, which is
+the exception rather than the rule -- today only \verb{R/}, where code inside
+a function definition is reported as running at no phase.}
 }
 The list carries a \code{"provenance"} attribute recording the database the
 rules were read from -- a list of \code{db_path}, \code{version}, and \code{sha256} --

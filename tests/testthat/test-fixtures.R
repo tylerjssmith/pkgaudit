@@ -5,9 +5,13 @@
 rules <- load_rules()
 
 # --- Code-context fixtures ----------------------------------------------------
+# An xpath rule is matched against the parse tree, so its examples are R code.
 test_that("code-context rules match their positive fixtures and reject negatives", {
   base <- test_path("fixtures", "code_contexts")
-  for (name in rules$code_contexts$name) {
+  xpath_rules <- rules$code_contexts$name[rules$code_contexts$kind == "xpath"]
+  expect_gt(length(xpath_rules), 0L)
+
+  for (name in xpath_rules) {
     rule_dir <- file.path(base, name)
     expect_true(dir.exists(rule_dir), info = name)
     rule <- rule_row(rules$code_contexts, name)
@@ -25,6 +29,52 @@ test_that("code-context rules match their positive fixtures and reject negatives
       expect_equal(nrow(res$code_contexts), 0L, info = neg)
     }
   }
+})
+
+# A segment rule claims a whole segment rather than a shape in the R, so it has
+# no XPath and its examples are help files. What it asserts is a round trip: the
+# extractor stamps the label the rule declares, on a page that carries that kind
+# of code and on no other.
+#
+# This is the only thing that ties a `kind: segment` rule to the extractor. The
+# name a rule declares is checked against a fixed vocabulary when the database is
+# built, but nothing there confirms that the extractor actually stamps it on the
+# page the rule describes.
+test_that("segment rules are stamped on their positive fixtures only", {
+  base <- test_path("fixtures", "code_contexts")
+  segment_rules <- rules$code_contexts[rules$code_contexts$kind == "segment", ]
+  expect_gt(nrow(segment_rules), 0L)
+
+  labels_of <- function(path) {
+    res <- extract_segments(new_source(path, basename(path), "Rd"))
+    expect_equal(nrow(res$errors), 0L, info = path)
+    vapply(res$segments, `[[`, character(1L), "context")
+  }
+
+  for (i in seq_len(nrow(segment_rules))) {
+    name     <- segment_rules$name[[i]]
+    label    <- segment_rules$segment[[i]]
+    rule_dir <- file.path(base, name)
+    expect_true(dir.exists(rule_dir), info = name)
+
+    for (pos in list.files(rule_dir, pattern = "^positive_\\d+\\.Rd$",
+                           full.names = TRUE)) {
+      expect_true(label %in% labels_of(pos), info = pos)
+    }
+    for (neg in list.files(rule_dir, pattern = "^negative_\\d+\\.Rd$",
+                           full.names = TRUE)) {
+      expect_false(label %in% labels_of(neg), info = neg)
+    }
+  }
+})
+
+# Every label a segment rule claims must be one an extractor can produce, or the
+# rule would sit in the database never firing.
+test_that("every segment rule names a label the extractors stamp", {
+  segment_rules <- rules$code_contexts[rules$code_contexts$kind == "segment", ]
+  expect_true(all(segment_rules$segment %in% .segment_labels))
+  # And the reverse: a label no rule claims would yield findings with no phases.
+  expect_setequal(segment_rules$segment, .segment_labels)
 })
 
 # --- Pattern fixtures ---------------------------------------------------------

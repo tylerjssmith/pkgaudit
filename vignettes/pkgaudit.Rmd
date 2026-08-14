@@ -150,7 +150,10 @@ result$patterns[result$patterns$at_load,
 ```
 
 `summary()` takes a `phase` argument for the same purpose, including `"none"`
-for code that ships but runs at no phase.
+for findings pkgaudit could not attribute to any phase. Under `R/` that is code
+inside a function definition, which the rules report as running nowhere because
+`R/` is dominated by exported functions the lifecycle never calls. It is not a
+claim that this package never calls them: pkgaudit does not trace call graphs.
 
 ```{r summary-phase}
 summary(result, phase = "at_load", path = FALSE)

@@ -25,18 +25,58 @@ test_that("a file or code context takes the phases of the rule that matched", {
   expect_true(out$at_build[[2L]])
 })
 
-test_that("a pattern takes the phases of the code context it sits in", {
+# A pattern row as the scan builds it, carrying the two columns that say where
+# the file sat and where the segment did.
+scan_pattern <- function(code_context, file_rule = "R_scripts",
+                         segment_context = NA_character_) {
   pat <- .empty_patterns(with_phases = FALSE)
-  pat[1L, ] <- list("system", "R/zzz.R", 1L, 1L, "onLoad_base", FALSE, FALSE,
-                    "p", "m", "T1059")
-  pat[2L, ] <- list("system", "R/zzz.R", 5L, 1L, "Other", FALSE, FALSE,
-                    "p", "m", "T1059")
-  out <- .resolve_pattern_phases(pat, rules$phases)
+  pat[1L, ] <- list("system", "R/zzz.R", 1L, 1L, code_context, FALSE, FALSE,
+                    "p", "m", "T1059", file_rule, segment_context)
+  pat
+}
 
+test_that("a pattern in a named code context takes that rule's phases", {
+  out <- .resolve_pattern_phases(scan_pattern("onLoad_base"), rules)
   expect_true(out$at_load[[1L]])
-  # "Other" is code inside an ordinary function: it runs only if something
-  # calls it, which is no lifecycle phase at all.
-  expect_false(any(unlist(out[2L, .phase_columns])))
+})
+
+test_that("top-level code takes the phases of the file context it sits in", {
+  # R/ is built and checked and installed, but not loaded: the lazy-load
+  # database holds the resulting values rather than re-evaluating the source.
+  out <- .resolve_pattern_phases(scan_pattern(.context_top_level), rules)
+  expect_true(out$at_build[[1L]] && out$at_check[[1L]] &&
+              out$at_install_src[[1L]])
+  expect_false(out$at_load[[1L]])
+
+  # Under tests/, the same code carries that directory's phases instead.
+  out <- .resolve_pattern_phases(
+    scan_pattern(.context_top_level, file_rule = "tests_testthat"), rules)
+  expect_true(out$at_check[[1L]])
+  expect_false(out$at_build[[1L]])
+})
+
+test_that("a function body inherits, except where its file context overrides", {
+  # In R/, reported as running at no phase. Both readings are measured; the
+  # rule for R/ says which one it reports, because R/ is dominated by exported
+  # functions the lifecycle never calls.
+  out <- .resolve_pattern_phases(scan_pattern(.context_in_function), rules)
+  expect_false(any(unlist(out[1L, .phase_columns])))
+
+  # Under tests/ there is no override, so it inherits: the probe package
+  # measures that a function called from a test file runs when check does.
+  out <- .resolve_pattern_phases(
+    scan_pattern(.context_in_function, file_rule = "tests_testthat"), rules)
+  expect_true(out$at_check[[1L]])
+})
+
+test_that("a function body in a help file inherits from its segment", {
+  # Not from the file: man/ is processed at build and install, but an example
+  # is evaluated only by R CMD check, so the segment is what it takes.
+  out <- .resolve_pattern_phases(
+    scan_pattern(.context_in_function, file_rule = "man_pages",
+                 segment_context = .context_rd_examples), rules)
+  expect_true(out$at_check[[1L]])
+  expect_false(out$at_build[[1L]] || out$at_install_src[[1L]])
 })
 
 test_that("a match takes the union of phases of every rule matching its file", {

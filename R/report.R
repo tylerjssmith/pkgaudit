@@ -64,15 +64,6 @@
 }
 
 
-# Shorten a path from the left, keeping the tail that distinguishes it, so a
-# deep directory cannot push the report past its width. Display only; the frame
-# carries the whole path.
-.elide <- function(x, width = 40L) {
-  ifelse(nchar(x) <= width, x,
-         paste0("...", substring(x, nchar(x) - width + 4L)))
-}
-
-
 # --- Shared Display Helpers ---------------------------------------------------
 
 # The metadata block shared by the print and summary reports: what was scanned,

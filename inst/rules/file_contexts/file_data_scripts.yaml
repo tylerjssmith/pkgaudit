@@ -1,5 +1,5 @@
 name: data_scripts
-version: "0.1.0"
+version: "0.5.0"
 type: R
 message: >-
   A .R file under data/ is R code that runs when the package's data is prepared.
@@ -19,8 +19,7 @@ at_detach: FALSE
 path: "data"
 recursive: FALSE
 report: FALSE
-namespace_source: FALSE
-code_context: "data"
+code_context: computed
 filename: '\.[RrSsq]$'
 positive_examples:
   - data/things.R

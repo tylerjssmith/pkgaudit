@@ -14,11 +14,16 @@ analyze_segment.R <- function(segment, rules) {
   tree   <- parsed$tree
   errors <- .empty_errors()
 
+  # Only the rules this segment's file context names, and of those only the ones
+  # matched against the parse tree. A `kind: segment` rule claims the segment as
+  # a whole and has no XPath to evaluate.
+  applicable <- .applicable_contexts(rules$code_contexts, segment$code_contexts)
+
   # Run for its errors: determine_code_contexts() evaluates the same XPaths to
   # place patterns but skips one that fails, so without this a broken
   # code-context rule would quietly stop matching.
-  if (isTRUE(segment$named_contexts)) {
-    errors <- rbind(errors, find_code_contexts(tree, rules$code_contexts,
+  if (nrow(applicable) > 0L) {
+    errors <- rbind(errors, find_code_contexts(tree, applicable,
                                                segment$file_context)$errors)
   }
 
@@ -45,15 +50,18 @@ analyze_segment.R <- function(segment, rules) {
   pat$guarded <- pat$line_number %in% segment$guarded_lines
 
   if (nrow(pat) > 0L) {
-    # Where the named rules are withheld, only the R/Other distinction
-    # is computed: code at the top level of the segment takes the segment's own
-    # context, and code inside a function definition stays "Other", since it
-    # runs only if something calls it.
-    pat <- determine_code_contexts(
-      tree, pat,
-      if (isTRUE(segment$named_contexts)) rules
-      else utils::modifyList(rules, list(code_contexts = NULL))
-    )
+    # Where no named rule applies, only the top_level/in_function distinction is
+    # computed: whether the code sits inside a function definition. What that
+    # means for phases is decided later, from the file context.
+    # Assigned rather than merged: modifyList() recurses when both sides are
+    # lists, and a data frame is a list, so it would splice columns together.
+    applicable_rules <- rules
+    applicable_rules$code_contexts <- applicable
+    pat <- determine_code_contexts(tree, pat, applicable_rules)
+    # A segment carrying a label attributes its top-level code to that label --
+    # a help file's \examples run when the examples do. Code inside a function
+    # keeps in_function and inherits the label's phases when they are resolved,
+    # so the fact that it sits in a function is not lost here.
     if (!is.na(segment$context)) {
       pat$code_context[pat$code_context == .context_top_level] <- segment$context
     }
@@ -63,7 +71,26 @@ analyze_segment.R <- function(segment, rules) {
   # Drop the node handle before accumulating; rbind() ignores attributes.
   attr(pat, "nodes") <- NULL
 
+  # Where the code sat, which resolving its phases needs alongside where it is.
+  pat$file_rule       <- rep(segment$file_rule, nrow(pat))
+  pat$segment_context <- rep(segment$context, nrow(pat))
+
   .findings(patterns = pat, errors = errors)
+}
+
+
+# The code-context rules that apply to a segment, from the names its file
+# context declared, restricted to those matched against the parse tree.
+#
+# A file context naming none yields none: that is how the lifecycle hooks stay
+# out of data/ and tests/, where the probe package measures that a .onLoad never
+# fires.
+.applicable_contexts <- function(code_contexts, names) {
+  empty <- code_contexts[0L, , drop = FALSE]
+  if (is.null(code_contexts) || nrow(code_contexts) == 0L) return(empty)
+  if (is.null(names) || length(names) == 0L) return(empty)
+  code_contexts[code_contexts$name %in% names &
+                code_contexts$kind == "xpath", , drop = FALSE]
 }
 
 

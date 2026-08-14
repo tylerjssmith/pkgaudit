@@ -1,6 +1,7 @@
 name: on_load_rlang
-version: "0.3.0"
+version: "0.5.0"
 language: R
+kind: xpath
 message: >-
   rlang::on_load() registers arbitrary code to execute when a package namespace
   is loaded, e.g., by calling library(), require(), or loadNamespace(), or by

@@ -1,0 +1,9 @@
+bibentry(
+  key      = "pkgaudit",
+  bibtype  = "Manual",
+  title    = "pkgaudit: Static Analysis Security Testing (SAST) for R Packages",
+  author   = c(person("Tyler", "Smith")),
+  note     = "R package version 0.4.0",
+  year     = "2026",
+  url      = "https://github.com/tylerjssmith/pkgaudit"
+)

@@ -28,7 +28,7 @@ new_pkgaudit <- function(
 ) {
   .validate_result_df(file_contexts, "file_contexts")
   .validate_result_df(patterns,      "patterns")
-  .validate_result_df(matches,   "matches")
+  .validate_result_df(matches,       "matches")
   .validate_result_df(coverage,      "coverage")
   .validate_result_df(errors,        "errors")
   .validate_metadata(metadata)
@@ -82,23 +82,31 @@ new_pkgaudit <- function(
 )
 
 
-# The code contexts that are computed rather than rule-matched. Each has a row
-# in the phases table, so resolving a pattern's phases stays a lookup.
+# The two computed code contexts, which no rule defines.
 #
-# A code context is named for where the code sits: the package directory or file
-# it is in, subdivided where one place holds parts that run at different times.
-# `Other` and the named hooks are the exceptions, and are named for the construct
-# they match, because they are not places -- code inside a function is anywhere,
-# and a hook is a hook wherever in R/ it is written.
+# A code context says where code sits within a file, and these two are the whole
+# of what a parse tree can tell on its own: code at the top level of the segment,
+# and code inside a function definition. Everything else -- the lifecycle hooks,
+# the parts of a help file -- is a rule.
 #
-# `R` is assigned by determine_code_contexts() to top-level code, then replaced
-# by the file-context rule's own name where there is one, which is how code in
-# data/ or tests/ carries the phases of where it sits rather than of R/.
-.context_top_level  <- "R"
-.context_other      <- "Other"
+# Neither has phases of its own. Top-level code carries the phases of the file
+# context it sits in, and code inside a function definition carries them too
+# unless that file context overrides `in_function`. Both readings are measured:
+# a function called from top level fires wherever that top-level code does, and
+# one nothing calls fires nowhere. The override is how a rule says which of the
+# two it reports; today only the rules for R/ carry one.
+.context_top_level   <- "top_level"
+.context_in_function <- "in_function"
+
+# The labels the extractors stamp on a segment, and the vocabulary a
+# `kind: segment` code-context rule matches against.
+#
+# These exist because the distinction is invisible to the parse tree: once an
+# .Rd file has yielded R code, nothing in that code says whether it came from
+# \examples or from a \Sexpr, or from which stage.
 .context_rd_examples <- "Rd_examples"
 
-# One context per \Sexpr stage. The three phase profiles are not nested --
+# One label per \Sexpr stage. The three phase profiles are not nested --
 # stage=render does not run at either install, and stage=build does not run when
 # a tarball is installed, its result having been frozen into the Rd at build
 # time -- so they cannot share a context.
@@ -106,8 +114,9 @@ new_pkgaudit <- function(
                        install = "Rd_Sexpr_install",
                        render  = "Rd_Sexpr_render")
 
-.sentinel_contexts  <- c(.context_top_level, .context_other,
-                         .context_rd_examples, unname(.context_rd_sexpr))
+.segment_labels <- c(.context_rd_examples, unname(.context_rd_sexpr))
+
+.computed_contexts <- c(.context_top_level, .context_in_function)
 
 
 # The rule classes load_rules() returns, and that a rules list must carry all
@@ -115,7 +124,7 @@ new_pkgaudit <- function(
 # indistinguishable from a package that has none -- so it is refused rather
 # than run.
 .rule_classes <- c("file_contexts", "code_contexts", "patterns", "matches",
-                   "phases")
+                   "phases", "phase_overrides")
 
 
 # Expected columns for each result data frame. `rule` names the rule that

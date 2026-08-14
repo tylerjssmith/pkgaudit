@@ -21,19 +21,19 @@ test_that("a pattern in a named hook is labeled with that context", {
   expect_equal(pat$code_context, "onLoad_base")
 })
 
-test_that("a top-level pattern is labeled Top-level", {
+test_that("a top-level pattern is labeled top_level", {
   pat <- contexts_for("system('x')")
-  expect_equal(pat$code_context, "R")
+  expect_equal(pat$code_context, .context_top_level)
 })
 
-test_that("a pattern in an ordinary function is labeled Other", {
+test_that("a pattern in an ordinary function is labeled in_function", {
   pat <- contexts_for("f <- function() system('x')")
-  expect_equal(pat$code_context, "Other")
+  expect_equal(pat$code_context, .context_in_function)
 })
 
-test_that("a pattern in a backslash-lambda function is labeled Other", {
+test_that("a pattern in a backslash-lambda function is labeled in_function", {
   pat <- contexts_for("f <- \\(a) system('x')")
-  expect_equal(pat$code_context, "Other")
+  expect_equal(pat$code_context, .context_in_function)
 })
 
 test_that("the most-specific (innermost) named context wins", {
@@ -72,7 +72,7 @@ test_that("determine_code_contexts() falls back cleanly when no code contexts ex
   tree  <- tree_from_text(c("system('top')", "g <- function() system('inner')"))
   fp    <- find_patterns(tree, rules$patterns, "R/zzz.R")
   out   <- determine_code_contexts(tree, fp$patterns, no_cc)
-  expect_setequal(out$code_context, c("R", "Other"))
+  expect_setequal(out$code_context, .computed_contexts)
 })
 
 test_that(".deepest_context() returns NA for a node with no ancestors", {

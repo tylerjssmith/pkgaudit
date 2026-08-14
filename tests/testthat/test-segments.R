@@ -8,11 +8,11 @@ test_that("extract_segments() gives one R segment for an R file", {
   on.exit(unlink(path), add = TRUE)
 
   res <- extract_segments(new_source(path, "R/zzz.R", "R",
-                                     namespace_source = TRUE))
+                                     code_contexts = .hook_rules))
   expect_length(res$segments, 1L)
   expect_s3_class(res$segments[[1L]], "R")
   expect_length(res$segments[[1L]]$lines, 2L)
-  expect_true(res$segments[[1L]]$named_contexts)
+  expect_true(length(res$segments[[1L]]$code_contexts) > 0L)
   expect_equal(nrow(res$errors), 0L)
 })
 
@@ -26,7 +26,7 @@ test_that("extract_segments() gives a shell segment for shell and make files", {
     res <- extract_segments(new_source(path, "configure", type))
     expect_length(res$segments, 1L)
     expect_s3_class(res$segments[[1L]], "shell")
-    expect_false(res$segments[[1L]]$named_contexts)
+    expect_null(res$segments[[1L]]$code_contexts)
   }
 })
 
@@ -45,8 +45,10 @@ test_that("extract_segments() splits a help file into its two code segments", {
   for (s in res$segments) expect_s3_class(s, "R")
   expect_setequal(vapply(res$segments, `[[`, "", "context"),
                   c(.context_rd_examples, .context_rd_sexpr[["install"]]))
-  # A hook assigned in an example is not a hook.
-  expect_false(any(vapply(res$segments, `[[`, TRUE, "named_contexts")))
+  # A hook assigned in an example is not a hook: no code-context rules were
+  # named for this source, so none reach its segments.
+  expect_true(all(vapply(res$segments,
+                         function(s) is.null(s$code_contexts), logical(1L))))
 })
 
 test_that("extract_segments() fails closed for a type with no method", {
@@ -108,7 +110,7 @@ test_that("extract_segments() enforces the size limit before dispatch", {
 
 test_that("analyze_segment() finds patterns in an R segment", {
   seg <- new_segment("R", c(".onLoad <- function(l, p) system('id')"),
-                     "R/zzz.R", named_contexts = TRUE)
+                     "R/zzz.R", code_contexts = .hook_rules)
   found <- analyze_segment(seg, rules)
   expect_true("system" %in% found$patterns$rule)
   expect_equal(found$patterns$code_context, "onLoad_base")
@@ -122,11 +124,11 @@ test_that("analyze_segment() withholds named contexts when the segment says so",
   # Other and carries no phases -- it runs only if something calls it.
   rd <- analyze_segment(
     new_segment("R", lines, "man/f.Rd", context = .context_rd_examples,
-                named_contexts = FALSE), rules)
-  expect_equal(rd$patterns$code_context, .context_other)
+                code_contexts = NULL), rules)
+  expect_equal(rd$patterns$code_context, .context_in_function)
 
   r <- analyze_segment(
-    new_segment("R", lines, "R/zzz.R", named_contexts = TRUE), rules)
+    new_segment("R", lines, "R/zzz.R", code_contexts = .hook_rules), rules)
   expect_equal(r$patterns$code_context, "onLoad_base")
 })
 

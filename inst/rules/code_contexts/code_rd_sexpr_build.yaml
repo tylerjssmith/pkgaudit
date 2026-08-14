@@ -1,0 +1,44 @@
+name: Rd_Sexpr_build
+version: "0.5.0"
+language: R
+kind: segment
+segment: Rd_Sexpr_build
+message: >-
+  \Sexpr[stage=build] is evaluated when R CMD build renders the help page, and
+  when the package is installed from a source directory or checked. It is not
+  reached when a source tarball is installed: build already evaluated it and
+  froze the result into the Rd that shipped.
+# The phase columns are identical to Rd_Sexpr_install's: the one place the two
+# differ -- installing a tarball rather than a directory -- is not a phase of its
+# own. The contexts stay separate because the stage a \Sexpr declares is worth
+# reporting, and because at_install_src may yet be split.
+#
+# Established with an instrumented probe package carrying one \Sexpr per stage,
+# run through R CMD build, R CMD INSTALL from a directory, a source tarball and
+# a binary, R CMD check, and help().
+at_autoconf: FALSE
+at_build: TRUE
+at_check: TRUE
+at_install_src: TRUE
+at_install_bin: FALSE
+at_load: FALSE
+at_attach: FALSE
+at_unload: FALSE
+at_detach: FALSE
+positive_examples:
+  - |
+    \name{probe}
+    \alias{probe}
+    \title{Probe}
+    \description{\Sexpr[stage=build,results=hide]{x <- 1}}
+negative_examples:
+  - |
+    \name{probe}
+    \alias{probe}
+    \title{Probe}
+    \description{\Sexpr[stage=render,results=hide]{x <- 1}}
+  - |
+    \name{probe}
+    \alias{probe}
+    \title{Probe}
+    \description{No macro at all.}

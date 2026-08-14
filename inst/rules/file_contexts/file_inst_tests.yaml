@@ -1,5 +1,5 @@
 name: inst_tests
-version: "0.1.0"
+version: "0.5.0"
 type: R
 message: >-
   Older versions of testthat kept tests under inst/tests/, which R CMD check runs
@@ -17,8 +17,7 @@ at_detach: FALSE
 path: "inst/tests"
 recursive: FALSE
 report: FALSE
-namespace_source: FALSE
-code_context: "tests"
+code_context: computed
 filename: '\.[RrSsq]$'
 positive_examples:
   - inst/tests/test-audit.R

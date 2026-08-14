@@ -52,7 +52,7 @@ test_that("audit_package() resolves the phases of every finding", {
   expect_true(all(hook$at_load))
   expect_true(all(hook$at_install_src))
 
-  uncalled <- res$patterns[res$patterns$code_context == "Other", ]
+  uncalled <- res$patterns[res$patterns$code_context == .context_in_function, ]
   expect_equal(nrow(uncalled), 1L)
   expect_false(any(unlist(uncalled[, .phase_columns])))
 
@@ -96,11 +96,11 @@ test_that("audit_package() finds file contexts, code contexts and patterns", {
   expect_equal(sys_hook$code_context, "onLoad_base")
 
   src_top <- res$patterns[res$patterns$rule == "source", ]
-  expect_equal(src_top$code_context, "R")
+  expect_equal(src_top$code_context, .context_top_level)
 
   installlibs <- res$patterns[res$patterns$file_context == "src/install.libs.R", ]
   expect_equal(installlibs$rule, "system")
-  expect_equal(installlibs$code_context, "R")
+  expect_equal(installlibs$code_context, .context_top_level)
 
   expect_equal(nrow(res$errors), 0L)
 })
@@ -181,9 +181,10 @@ test_that("audit_package() attributes help-file code to its two contexts", {
   ctx <- stats::setNames(res$patterns$code_context, res$patterns$rule)
 
   expect_equal(unname(ctx[["download_file"]]), "Rd_examples")
-  # A pattern inside a function definition in an example runs only if something
-  # calls it, exactly as in a script, so it is Other rather than Rd_examples.
-  expect_true("Other" %in% res$patterns$code_context)
+  # A pattern inside a function definition in an example keeps in_function --
+  # the fact that it sits in a function is not lost -- and inherits the phases
+  # of the segment around it when they are resolved.
+  expect_true(.context_in_function %in% res$patterns$code_context)
   expect_true("Rd_Sexpr_install" %in% res$patterns$code_context)
   expect_equal(nrow(res$errors), 0L)
 })
@@ -451,8 +452,8 @@ test_that("a lifecycle hook outside R/ is not attributed to a hook", {
 
 # file-type code contexts ------------------------------------------------------
 # Top-level code outside R/ must not inherit R/'s phases. Each of these contexts
-# was measured with an instrumented probe package; see inst/rules/phases/.
-test_that("top-level code takes the code context its file-context rule names", {
+# was measured with an instrumented probe package; see ../execution_surface.
+test_that("top-level code takes the phases of the file context it sits in", {
   call <- "system('id')"
   pkg  <- make_pkg(files = list(
     "R/zzz.R"        = call,
@@ -466,15 +467,27 @@ test_that("top-level code takes the code context its file-context rule names", {
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
 
   res <- audit_package(pkg, rules)
-  ctx <- setNames(res$patterns$code_context, res$patterns$file_context)
 
-  expect_equal(ctx[["R/zzz.R"]],       "R")
-  expect_equal(ctx[["data/things.R"]], "data")
-  expect_equal(ctx[["demo/intro.R"]],  "demo")
-  expect_equal(ctx[["tests/setup.R"]], "tests")
-  expect_equal(ctx[["tools/build.R"]], "tools")
-  expect_equal(ctx[["inst/CITATION"]], "citation")
-  expect_equal(ctx[[".Rprofile"]],     "Rprofile")
+  # Every one of these is top-level code, so the context says only that. What
+  # differs is the phases, which come from where the file sits: a code context
+  # is no longer a restatement of the directory.
+  ctx <- setNames(res$patterns$code_context, res$patterns$file_context)
+  for (f in names(ctx)) expect_equal(ctx[[f]], .context_top_level, info = f)
+
+  phases_of <- function(file) {
+    row <- res$patterns[res$patterns$file_context == file, , drop = FALSE]
+    .phase_columns[unlist(row[1L, .phase_columns])]
+  }
+  expect_setequal(phases_of("R/zzz.R"),
+                  c("at_build", "at_check", "at_install_src"))
+  expect_setequal(phases_of("data/things.R"),
+                  c("at_build", "at_install_src"))
+  expect_setequal(phases_of("tests/setup.R"), "at_check")
+  expect_setequal(phases_of("inst/CITATION"), "at_check")
+  expect_setequal(phases_of(".Rprofile"), c("at_build", "at_install_src"))
+  # demo/ and tools/ are reached only by direct invocation.
+  expect_equal(phases_of("demo/intro.R"), character(0))
+  expect_equal(phases_of("tools/build.R"), character(0))
 })
 
 test_that("each file-type context carries its own measured phases", {
@@ -524,7 +537,8 @@ test_that("a testthat or tinytest file is scanned but its fixtures are not", {
     c("tests/testthat/test-a.R", "tests/testthat/helper-a.R",
       "inst/tinytest/test_a.R")
   )
-  expect_true(all(res$patterns$code_context == "tests"))
+  expect_true(all(res$patterns$code_context == .context_top_level))
+  expect_true(all(res$patterns$at_check))
 })
 
 # Sexpr stages and guarded code ------------------------------------------------
@@ -703,9 +717,10 @@ test_that("code under exec/ runs at no lifecycle phase", {
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
 
   res <- audit_package(pkg, rules)
-  # Not Top-level: that would confer build, check and install_src phases on code
-  # nothing in the lifecycle runs.
-  expect_equal(res$patterns$code_context, "exec")
+  # Top-level code, but under exec/, which no lifecycle command reaches. The
+  # context says where in the file it sits; the phases say when it runs, and
+  # here they are none.
+  expect_equal(res$patterns$code_context, .context_top_level)
   expect_false(any(unlist(res$patterns[, .phase_columns])))
 })
 
@@ -754,14 +769,14 @@ test_that("RUnit and legacy testthat locations are scanned as test code", {
   res <- audit_package(pkg, rules)
   expect_setequal(res$patterns$file_context,
                   c("inst/unitTests/runit.audit.R", "inst/tests/test-audit.R"))
-  expect_true(all(res$patterns$code_context == "tests"))
+  expect_true(all(res$patterns$code_context == .context_top_level))
   expect_true(all(res$patterns$at_check))
   # Scanned, not reported: they are R, and parsed.
   expect_equal(nrow(res$file_contexts), 0L)
 })
 
-test_that("a package where no rule matched yields no reported contexts and no targets", {
+test_that("a package where no rule matched reports and scans nothing", {
   none <- .empty_file_contexts(with_phases = FALSE)[0, ]
-  expect_equal(nrow(.reported_contexts(none, rules$file_contexts)), 0L)
-  expect_equal(.scan_targets(none, rules$file_contexts), list())
+  expect_equal(nrow(.report_file_contexts(none, rules$file_contexts)), 0L)
+  expect_equal(.scan_file_contexts(none, rules$file_contexts), list())
 })

@@ -1,5 +1,5 @@
 name: rprofile
-version: "0.1.0"
+version: "0.5.0"
 type: R
 message: >-
   R evaluates a .Rprofile found in the working directory when it starts, so a
@@ -18,8 +18,7 @@ at_detach: FALSE
 path: "."
 recursive: FALSE
 report: FALSE
-namespace_source: FALSE
-code_context: "Rprofile"
+code_context: computed
 filename: '^\.Rprofile$'
 positive_examples:
   - .Rprofile

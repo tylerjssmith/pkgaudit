@@ -27,7 +27,7 @@ test_that("a vignette finding points at its line in the source file", {
 
   res <- audit_package(pkg, rules)
   expect_equal(res$patterns$line_number, 7L)
-  expect_equal(res$patterns$code_context, "vignettes")
+  expect_equal(res$patterns$code_context, .context_top_level)
   expect_true(res$patterns$at_build)
   expect_true(res$patterns$at_check)
   expect_false(res$patterns$at_install_src)

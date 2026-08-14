@@ -1,9 +1,8 @@
 name: src_makevars_ucrt
-version: "0.3.0"
+version: "0.5.0"
 type: make
 report: TRUE
-namespace_source: FALSE
-code_context: "R"
+code_context: ~
 message: >-
   src/Makevars.ucrt sets make variables used to compile code in src/ on the
   Windows UCRT toolchain when a package is installed from source, including the

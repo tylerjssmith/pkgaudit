@@ -31,9 +31,11 @@ columns.}
 columns are the ones a reader skims, and \code{message} and \code{attck} restate
 the rule rather than the occurrence. \code{guarded} and \code{indirect} say how
 the code is reached rather than what it is, and are described under
-Details. \code{code_context} is where the code sits -- the directory or
-file it is in, or the lifecycle hook enclosing it -- and is what its
-phases are looked up from. Join to the other tables on \code{file_context}.}
+Details. \code{code_context} is where the code sits \emph{within its file}:
+\code{top_level}, \code{in_function}, the lifecycle hook enclosing it, or the
+part of a help file it came from. Where the \emph{file} sits is
+\code{file_context}, and a finding's phases come from the two together.
+Join to the other tables on \code{file_context}.}
 \item{matches}{\code{rule}, \code{file_context}, \code{line_number},
 \code{column_number}, \code{preview}, \code{message}, \code{attck}, and the phase columns,
 ordered as \code{patterns} is, less the \code{code_context} a match has no
@@ -126,12 +128,25 @@ Each findings data frame also carries one logical column per package
 lifecycle phase -- \code{at_autoconf}, \code{at_build}, \code{at_check}, \code{at_install_src},
 \code{at_install_bin}, \code{at_load}, \code{at_attach}, \code{at_unload}, and \code{at_detach} --
 which is \code{TRUE} when that finding's code runs during the phase, so findings
-can be filtered by when they execute. A file or code context takes its phases
-from the rule that matched; a pattern inherits them from its \code{code_context};
-a match inherits them from the file context it was found in. A pattern
-in an ordinary function is \code{FALSE} for every phase: it runs only if something
-calls it, and that holds for a function defined in a help-file example too. A
-finding can belong to several phases, so the phase columns do not partition
+can be filtered by when they execute. A file context takes its phases from
+the rule that matched, and a match inherits them from the file context it was
+found in.
+
+A pattern's phases come from where its file sits and where the code sits
+within it, resolved in that order: a lifecycle hook or a part of a help file
+carries phases of its own; otherwise the code inherits the phases of the file
+context around it, so the same call reports \code{at_check} under \verb{tests/} and
+\code{at_build} under \verb{data/}.
+
+Code inside a function definition inherits too, with one exception: the rules
+for \verb{R/} report it as running at no phase. Both readings are measured -- a
+function called from top level runs whenever that top-level code does, and one
+nothing calls runs nowhere -- and \verb{R/} reports the second because it is
+dominated by exported functions the lifecycle never calls. Elsewhere the first
+is reported, since a helper in a test file is there to be called. Neither is a
+claim about \emph{this} package's call graph, which pkgaudit does not trace.
+
+A finding can belong to several phases, so the phase columns do not partition
 the rows.
 
 Code from a help file is attributed to one of two computed contexts:

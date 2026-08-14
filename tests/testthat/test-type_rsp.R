@@ -17,7 +17,7 @@ test_that("the rsp extractor reads <% %> and <%= %>, skipping directives", {
   res <- audit_package(pkg, rules)
   expect_setequal(res$patterns$rule, c("system", "download_file"))
   expect_setequal(res$patterns$line_number, c(3L, 4L))
-  expect_true(all(res$patterns$code_context == "vignettes"))
+  expect_true(all(res$patterns$code_context == .context_top_level))
   expect_true(all(res$patterns$at_build & res$patterns$at_check))
 })
 

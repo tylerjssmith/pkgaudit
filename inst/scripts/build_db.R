@@ -18,21 +18,46 @@
 # Scalar (single-string) fields required in each rule class, plus the example
 # fields. attck (patterns) and recursive (file contexts) are handled specially.
 .file_context_scalars <- c("name", "version", "type", "message", "path",
-                           "filename", "code_context")
-.code_context_scalars <- c("name", "version", "language", "message", "xpath")
+                           "filename")
+.code_context_scalars <- c("name", "version", "language", "message", "kind")
 .pattern_scalars      <- c("name", "version", "language", "message", "xpath")
 .match_scalars        <- c("name", "version", "language", "message", "regex")
 
 .example_fields <- c("positive_examples", "negative_examples")
 
-# Lifecycle phases. Every file- and code-context rule declares all nine; they
-# are hoisted out of those rules into the phases table, which also holds the
-# computed contexts authored under inst/rules/phases/. Pattern rules do not
-# declare them: a pattern inherits its phases from the context it sits in.
+# Lifecycle phases. Every file- and code-context rule declares all nine, hoisted
+# out of the rule into the phases table. Pattern rules do not declare them: a
+# pattern inherits its phases from the file context it was found in and the code
+# context it sits in.
 .phase_fields <- c(
   "at_autoconf", "at_build", "at_check", "at_install_src", "at_install_bin",
   "at_load", "at_attach", "at_unload", "at_detach"
 )
+
+# How a code-context rule decides whether it applies.
+#
+# "xpath" evaluates an XPath against the R parse tree, which is how the
+# lifecycle hooks are found. "segment" matches a label the extractor stamped on
+# the segment, which is the only way to reach a distinction the parse tree
+# cannot see: by the time an .Rd file has yielded R code, nothing in that code
+# says whether it came from \examples or from a \Sexpr.
+.code_context_kinds <- c("xpath", "segment")
+
+# The segment labels the extractors stamp, and therefore the only values a
+# kind: segment rule can match on. A rule naming anything else could never fire,
+# so it is refused here rather than shipped inert.
+.segment_labels <- c("Rd_examples", "Rd_Sexpr_build", "Rd_Sexpr_install",
+                     "Rd_Sexpr_render")
+
+# The computed code contexts, which no rule defines.
+#
+# They need no phases of their own: top-level code carries the phases of the
+# file context it sits in, and code inside a function definition carries them
+# too unless that file context overrides in_function. Both readings are measured
+# -- see the execution_surface probe -- and the override is how a rule says which
+# of the two it reports.
+.context_top_level <- "top_level"
+.context_in_function <- "in_function"
 
 # The two axes a rule can name, and neither is a severity: severity is a property
 # of a pattern together with the context it was found in, which a rule is in no
@@ -195,6 +220,70 @@
   invisible(TRUE)
 }
 
+# Validate a file-context rule's `code_context`, which says which code contexts
+# can apply inside the files this rule claims. One of three forms:
+#
+#   null        no code contexts apply. Either the type carries no R at all, as
+#               shell and make do, or it is never read, as "other" is.
+#   "computed"  only the computed contexts: top level, or inside a function.
+#   a list      those code-context rules are tried first, then the computed
+#               ones. This is what confines the lifecycle hooks to the
+#               directories whose code becomes the namespace -- a .onLoad in
+#               data/ ships as an ordinary object and is never called.
+#
+# The field is required even when it is null, so that "no code contexts apply"
+# is a decision on the record rather than an omission, the same reason a pattern
+# rule writes out an empty `functions`.
+.validate_code_context_spec <- function(rule, path) {
+  spec <- rule$code_context
+  if (is.null(spec)) return(NULL)
+
+  spec <- unlist(spec)
+  if (!is.character(spec) || length(spec) == 0L || any(is.na(spec))) {
+    stop("Field 'code_context' must be null, \"computed\", or a sequence of ",
+         "code-context rule names in: ", path)
+  }
+  spec <- trimws(spec)
+  if (identical(spec, "computed")) return("computed")
+
+  if (any(!nzchar(spec))) {
+    stop("Field 'code_context' must not contain empty names in: ", path)
+  }
+  if ("computed" %in% spec) {
+    stop("Field 'code_context' must not mix \"computed\" with rule names in: ",
+         path, "\n  The computed contexts are always tried after the named ",
+         "ones, so listing both says nothing extra.")
+  }
+  spec
+}
+
+# Validate a file-context rule's optional `in_function` block, which overrides
+# the phases code inside a function definition carries.
+#
+# Without it, such code inherits the phases of the context around it: the probe
+# package measures that a function called from top level fires wherever that
+# top-level code does. The override is how a rule reports the other measured
+# bound instead -- that a function nothing calls fires nowhere -- and it is
+# needed only where the first reading would drown the signal.
+.validate_phase_override <- function(rule, path) {
+  if (is.null(rule$in_function)) return(NULL)
+  over <- rule$in_function
+  if (!is.list(over)) {
+    stop("Field 'in_function' must be a block of the nine phase fields in: ",
+         path)
+  }
+  missing_fields <- setdiff(.phase_fields, names(over))
+  if (length(missing_fields) > 0L) {
+    stop("Field 'in_function' is missing phase fields in: ", path, "\n  ",
+         paste(missing_fields, collapse = ", "),
+         "\n  An override states all nine, so a partial one cannot be read as ",
+         "inheriting the rest.")
+  }
+  .validate_phases(over, path)
+  over
+}
+
+
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
 
@@ -205,13 +294,13 @@ read_file_context_yaml <- function(path) {
   stopifnot(file.exists(path))
   rule <- yaml::read_yaml(path)
 
-  expected <- c(.file_context_scalars, "recursive", "report",
-                "namespace_source", .phase_fields, .example_fields)
-  .check_fields(rule, expected, path)
+  expected <- c(.file_context_scalars, "recursive", "report", "code_context",
+                .phase_fields, .example_fields)
+  .check_fields(rule, expected, path, optional = "in_function")
   .validate_common(rule, path, .file_context_scalars, "file_context")
   .validate_phases(rule, path)
 
-  for (field in c("recursive", "report", "namespace_source")) {
+  for (field in c("recursive", "report")) {
     value <- rule[[field]]
     if (!is.logical(value) || length(value) != 1L || is.na(value)) {
       stop("Field '", field, "' must be TRUE or FALSE in: ", path)
@@ -221,6 +310,9 @@ read_file_context_yaml <- function(path) {
     stop("Field 'path' must not contain '..' in: ", path)
   }
   .validate_regex(rule$filename, path)
+
+  rule$code_context <- .validate_code_context_spec(rule, path)
+  rule$in_function  <- .validate_phase_override(rule, path)
 
   rule$positive_examples <- unlist(rule$positive_examples)
   rule$negative_examples <- unlist(rule$negative_examples)
@@ -232,10 +324,41 @@ read_code_context_yaml <- function(path) {
   rule <- yaml::read_yaml(path)
 
   expected <- c(.code_context_scalars, .phase_fields, .example_fields)
-  .check_fields(rule, expected, path)
+  .check_fields(rule, expected, path, optional = c("xpath", "segment"))
   .validate_common(rule, path, .code_context_scalars, "code_context")
   .validate_phases(rule, path)
-  .validate_xpath(rule$xpath, path)
+
+  if (!rule$kind %in% .code_context_kinds) {
+    stop("Field 'kind' must be one of: ",
+         paste(.code_context_kinds, collapse = ", "), " in: ", path)
+  }
+
+  # Exactly one discriminator, so a rule cannot carry a second one that is
+  # silently never consulted.
+  if (identical(rule$kind, "xpath")) {
+    if (!is.null(rule$segment)) {
+      stop("Field 'segment' must not be set on a kind: xpath rule in: ", path)
+    }
+    if (!is.character(rule$xpath) || length(rule$xpath) != 1L ||
+        !nzchar(trimws(rule$xpath))) {
+      stop("Field 'xpath' must be a single string on a kind: xpath rule in: ",
+           path)
+    }
+    .validate_xpath(rule$xpath, path)
+  } else {
+    if (!is.null(rule$xpath)) {
+      stop("Field 'xpath' must not be set on a kind: segment rule in: ", path)
+    }
+    if (!is.character(rule$segment) || length(rule$segment) != 1L) {
+      stop("Field 'segment' must be a single string on a kind: segment rule ",
+           "in: ", path)
+    }
+    if (!rule$segment %in% .segment_labels) {
+      stop("Field 'segment' names '", rule$segment, "', which no extractor ",
+           "stamps, in: ", path, "\n  Must be one of: ",
+           paste(.segment_labels, collapse = ", "))
+    }
+  }
 
   rule$positive_examples <- unlist(rule$positive_examples)
   rule$negative_examples <- unlist(rule$negative_examples)
@@ -284,38 +407,16 @@ read_match_yaml <- function(path) {
   rule
 }
 
-# Read one computed-context phases file: a context name and the nine phases,
-# with no rule attached. The context name allows the punctuation the computed
-# contexts use ("Top-level"), which rule names may not contain.
-read_phase_yaml <- function(path) {
-  stopifnot(file.exists(path))
-  rule <- yaml::read_yaml(path)
-
-  .check_fields(rule, c("context", "version", .phase_fields), path)
-  if (!is.character(rule$context) || length(rule$context) != 1L ||
-      !grepl("^[A-Za-z][A-Za-z0-9_.-]{0,63}$", rule$context)) {
-    stop(
-      "Field 'context' must start with a letter, contain only letters, ",
-      "digits, underscores, hyphens, and periods, and be at most 64 ",
-      "characters in: ", path
-    )
-  }
-  if (!is.character(rule$version) || length(rule$version) != 1L ||
-      nchar(trimws(rule$version)) == 0L) {
-    stop("Field 'version' must be a single string in: ", path)
-  }
-  .validate_phases(rule, path)
-  rule
-}
-
-# Reject missing required fields; warn on unexpected extras.
-.check_fields <- function(rule, expected, path) {
+# Reject missing required fields; warn on unexpected extras. `optional` names
+# fields a rule may carry but need not, and which are therefore neither required
+# nor unexpected.
+.check_fields <- function(rule, expected, path, optional = character(0L)) {
   missing_fields <- setdiff(expected, names(rule))
   if (length(missing_fields) > 0L) {
     stop("Missing required fields in: ", path, "\n  ",
          paste(missing_fields, collapse = ", "))
   }
-  extra_fields <- setdiff(names(rule), expected)
+  extra_fields <- setdiff(names(rule), c(expected, optional))
   if (length(extra_fields) > 0L) {
     warning("Unexpected fields in: ", path, "\n  ",
             paste(extra_fields, collapse = ", "))
@@ -339,7 +440,8 @@ init_db <- function(
     c("0.1.0", "Initial release"),
     c("0.2.0", "Expanded pattern rule coverage"),
     c("0.3.0", "Phase metadata and corrected context messages"),
-    c("0.4.0", "Regex rules for shell scripts and Make-like files")
+    c("0.4.0", "Regex rules for shell scripts and Make-like files"),
+    c("0.5.0", "Phases keyed on file context and code context")
   )
 ) {
   db_dir <- dirname(db_path)
@@ -371,17 +473,14 @@ init_db <- function(
       path      TEXT NOT NULL,
       recursive INTEGER NOT NULL,
       report    INTEGER NOT NULL,
-      -- TRUE only for the directories whose code becomes the package namespace.
-      -- A .onLoad defined anywhere else is never called, so the named
-      -- code-context rules must not be applied there.
-      namespace_source INTEGER NOT NULL,
       filename  TEXT NOT NULL,
-      -- The computed code context that top-level code in this file belongs to.
-      -- Top-level means compute it from the parse tree as usual; any other
-      -- value replaces it, which is how data/, demo/ and the rest get phases of
-      -- their own instead of the ones R/ carries. Unused where a type has no R
-      -- code contexts.
-      code_context TEXT NOT NULL
+      -- Which code contexts can apply inside the files this rule claims: NULL
+      -- for none, 'computed' for the computed ones only, or a space-separated
+      -- list of code-context rule names tried before them. The list is what
+      -- confines the lifecycle hooks to the directories whose code becomes the
+      -- namespace, which the probe package measures: a .onLoad defined in data/
+      -- or tests/ never fires.
+      code_context TEXT
     )")
 
   DBI::dbExecute(con, "
@@ -389,8 +488,13 @@ init_db <- function(
       name     TEXT PRIMARY KEY,
       version  TEXT NOT NULL REFERENCES rule_versions(version),
       language TEXT NOT NULL,
-      message TEXT NOT NULL,
-      xpath   TEXT NOT NULL
+      message  TEXT NOT NULL,
+      -- How the rule decides it applies: 'xpath' against the R parse tree, or
+      -- 'segment' against the label the extractor stamped. Exactly one of the
+      -- two columns below is set, according to this.
+      kind     TEXT NOT NULL,
+      xpath    TEXT,
+      segment  TEXT
     )")
 
   DBI::dbExecute(con, "
@@ -420,15 +524,34 @@ init_db <- function(
       regex    TEXT NOT NULL
     )")
 
-  # One row per context that code can execute in: every file- and code-context
-  # rule, plus the computed contexts. Keyed by context name so resolving a
-  # finding's phases is a lookup on the rule that matched it, or -- for a
-  # pattern -- on the code context it sits in.
+  # One row per rule, file-context and code-context alike, keyed by rule name.
+  #
+  # The computed contexts have no row and need none. Top-level code carries the
+  # phases of the file context it sits in, and code inside a function definition
+  # carries them too, unless that file context overrides it below.
   DBI::dbExecute(con, sprintf("
     CREATE TABLE phases (
       context TEXT PRIMARY KEY,
       version TEXT NOT NULL REFERENCES rule_versions(version),
       %s
+    )", paste(sprintf("%s INTEGER NOT NULL", .phase_fields),
+              collapse = ",\n      ")))
+
+  # Where a code context's phases depart from the file context's.
+  #
+  # A phase is a property of both -- where the file sits, and where the code
+  # sits within it -- but the two agree almost everywhere, so this table holds
+  # only the disagreements. Today that is R/, where a function body is reported
+  # as running at no phase: both readings are measured, and R/ is the one place
+  # where reporting the other would mark every package's whole codebase as
+  # executing at install.
+  DBI::dbExecute(con, sprintf("
+    CREATE TABLE phase_overrides (
+      file_context TEXT NOT NULL REFERENCES file_contexts(name),
+      code_context TEXT NOT NULL,
+      version      TEXT NOT NULL REFERENCES rule_versions(version),
+      %s,
+      PRIMARY KEY (file_context, code_context)
     )", paste(sprintf("%s INTEGER NOT NULL", .phase_fields),
               collapse = ",\n      ")))
 
@@ -458,13 +581,19 @@ load_file_context <- function(rule, con, path) {
   .assert_version(con, rule$version, path)
   DBI::dbExecute(
     con,
-    "INSERT INTO file_contexts (name, version, type, message, path, recursive, report, namespace_source, filename, code_context)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO file_contexts (name, version, type, message, path, recursive, report, filename, code_context)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     params = list(rule$name, rule$version, rule$type, trimws(rule$message),
                   trimws(rule$path), as.integer(rule$recursive),
-                  as.integer(rule$report), as.integer(rule$namespace_source),
-                  trimws(rule$filename), trimws(rule$code_context))
+                  as.integer(rule$report), trimws(rule$filename),
+                  # Stored space-separated, as `functions` and `attck` are.
+                  if (is.null(rule$code_context)) NA_character_
+                  else paste(rule$code_context, collapse = " "))
   )
+  if (!is.null(rule$in_function)) {
+    load_phase_override(rule$name, .context_in_function, rule$version,
+                        rule$in_function, con, path)
+  }
   invisible(rule$name)
 }
 
@@ -472,16 +601,35 @@ load_code_context <- function(rule, con, path) {
   .assert_version(con, rule$version, path)
   DBI::dbExecute(
     con,
-    "INSERT INTO code_contexts (name, version, language, message, xpath)
-     VALUES (?, ?, ?, ?, ?)",
+    "INSERT INTO code_contexts (name, version, language, message, kind, xpath, segment)
+     VALUES (?, ?, ?, ?, ?, ?, ?)",
     params = list(rule$name, rule$version, rule$language, trimws(rule$message),
-                  trimws(rule$xpath))
+                  rule$kind,
+                  if (is.null(rule$xpath)) NA_character_ else trimws(rule$xpath),
+                  if (is.null(rule$segment)) NA_character_ else rule$segment)
   )
   invisible(rule$name)
 }
 
-# Insert one phases row. Used both for the phases hoisted out of a file- or
-# code-context rule and for the computed contexts, which have no rule.
+# Insert one phase-override row: the phases a code context carries inside the
+# files a given file-context rule claims, where they differ from that rule's own.
+load_phase_override <- function(file_context, code_context, version, values,
+                                con, path) {
+  .assert_version(con, version, path)
+  sql <- sprintf(
+    "INSERT INTO phase_overrides (file_context, code_context, version, %s)
+     VALUES (%s)",
+    paste(.phase_fields, collapse = ", "),
+    paste(rep("?", length(.phase_fields) + 3L), collapse = ", ")
+  )
+  DBI::dbExecute(con, sql, params = c(
+    list(file_context, code_context, version),
+    lapply(.phase_fields, function(field) as.integer(values[[field]]))
+  ))
+  invisible(file_context)
+}
+
+# Insert one phases row, hoisted out of a file- or code-context rule.
 load_phases <- function(context, version, values, con, path) {
   .assert_version(con, version, path)
   sql <- sprintf(
@@ -567,17 +715,19 @@ build_rules_db <- function(
       }
     }
 
-    # The computed contexts: phases with no rule of their own.
-    phase_dir <- file.path(rules_root, "phases")
-    if (!dir.exists(phase_dir)) stop("Rules directory not found: ", phase_dir)
-    phase_files <- list.files(phase_dir, pattern = "\\.ya?ml$",
-                              full.names = TRUE)
-    if (length(phase_files) == 0L) stop("No YAML files found in: ", phase_dir)
-    for (f in phase_files) {
-      computed <- read_phase_yaml(f)
-      load_phases(computed$context, computed$version, computed, con, f)
-      message("  Loaded [phases]: ", computed$context)
-      names_loaded <- c(names_loaded, computed$context)
+    # Every code-context rule a file-context rule names must exist, or that
+    # rule's files would be scanned for a context nothing can supply.
+    declared <- DBI::dbGetQuery(
+      con, "SELECT name, code_context FROM file_contexts
+             WHERE code_context IS NOT NULL AND code_context != 'computed'")
+    known <- DBI::dbGetQuery(con, "SELECT name FROM code_contexts")$name
+    for (i in seq_len(nrow(declared))) {
+      named   <- strsplit(declared$code_context[[i]], "[[:space:]]+")[[1L]]
+      missing <- setdiff(named[nzchar(named)], known)
+      if (length(missing) > 0L) {
+        stop("File-context rule '", declared$name[[i]], "' names code contexts ",
+             "that do not exist: ", paste(missing, collapse = ", "))
+      }
     }
 
     DBI::dbExecute(con, "COMMIT")
@@ -607,21 +757,29 @@ build_fixtures <- function(
   rules_root   = file.path("inst", "rules"),
   fixtures_dir = file.path("tests", "testthat", "fixtures")
 ) {
+  # A code-context rule's examples are R code where it matches on an XPath, and
+  # a help file where it matches on a segment label -- because what a segment
+  # rule claims is not a shape in the R, it is where the R came from.
   classes <- list(
-    file_contexts = list(reader = read_file_context_yaml, ext = "txt"),
-    code_contexts = list(reader = read_code_context_yaml, ext = "R"),
-    patterns      = list(reader = read_pattern_yaml,      ext = "R"),
-    matches       = list(reader = read_match_yaml,        ext = "txt")
+    file_contexts = list(reader = read_file_context_yaml,
+                         ext = function(rule) "txt"),
+    code_contexts = list(reader = read_code_context_yaml,
+                         ext = function(rule)
+                           if (identical(rule$kind, "segment")) "Rd" else "R"),
+    patterns      = list(reader = read_pattern_yaml,
+                         ext = function(rule) "R"),
+    matches       = list(reader = read_match_yaml,
+                         ext = function(rule) "txt")
   )
 
   for (cls in names(classes)) {
     src_dir <- file.path(rules_root, cls)
     if (!dir.exists(src_dir)) stop("Rules directory not found: ", src_dir)
     yaml_files <- list.files(src_dir, pattern = "\\.ya?ml$", full.names = TRUE)
-    ext        <- classes[[cls]]$ext
 
     for (f in yaml_files) {
       rule     <- classes[[cls]]$reader(f)
+      ext      <- classes[[cls]]$ext(rule)
       rule_dir <- file.path(fixtures_dir, cls, rule$name)
       if (!dir.exists(rule_dir)) dir.create(rule_dir, recursive = TRUE)
 
