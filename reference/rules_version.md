@@ -32,5 +32,5 @@ see its Security considerations.
 
 ``` r
 rules_version()
-#> [1] "0.5.0"
+#> [1] "0.4.0"
 ```

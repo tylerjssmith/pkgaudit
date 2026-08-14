@@ -89,9 +89,9 @@ result <- audit_package(pkg)
 print(result)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/RtmpuuCDKY/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/Rtmp2JnW5K/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-14 12:05 UTC with pkgaudit v0.5.0, rules v0.5.0
+#> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -108,9 +108,9 @@ the code runs in, with the MITRE ATT&CK techniques the rule carries.
 summary(result)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/RtmpuuCDKY/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/Rtmp2JnW5K/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-14 12:05 UTC with pkgaudit v0.5.0, rules v0.5.0
+#> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -240,7 +240,7 @@ summary(result, phase = "at_load", path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-14 12:05 UTC with pkgaudit v0.5.0, rules v0.5.0
+#> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> Phases:    at_load
 #> 
 #> --- R Patterns --------------------------------------------------------------
@@ -371,7 +371,7 @@ substr(sarif, 1, 200)
 #>       "tool": {
 #>         "driver": {
 #>           "name": "pkgaudit",
-#>           "version": "0.5.0",
+#>           "version": "0.4.0",
 #> 
 ```
 
@@ -423,7 +423,7 @@ print(audit_tarball(tarball), path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-14 12:05 UTC with pkgaudit v0.5.0, rules v0.5.0
+#> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -445,7 +445,7 @@ reports the version.
 ``` r
 
 rules_version()
-#> [1] "0.5.0"
+#> [1] "0.4.0"
 
 rules <- load_rules()
 vapply(rules, nrow, integer(1))
@@ -469,7 +469,7 @@ digest::digest(
   algo = "sha256",
   file = TRUE
 )
-#> [1] "6577865b9b71ca81c3455d114c3caa1dd8fa2af6f4eaa3b8065dcaf2a5e05512"
+#> [1] "e97284562a5155b1809df5386b9a53491c2c2415426bd89ec45d0c5e92773005"
 ```
 
 The full rule set is documented in [Rule

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pkgaudit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,27 +40,6 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.5.0" id="pkgaudit-050">pkgaudit 0.5.0<a class="anchor" aria-label="anchor" href="#pkgaudit-050"></a></h2>
-<div class="section level3">
-<h3 id="breaking-changes-0-5-0">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-5-0"></a></h3>
-<ul><li>A finding’s phases are now resolved from <strong>both</strong> the file context it sits in and the code context within that file, rather than from one flattened namespace. <code>patterns$code_context</code> therefore reports only where code sits inside its file: <code>top_level</code>, <code>in_function</code>, a lifecycle hook, or a part of a help file. The contexts named for locations – <code>data</code>, <code>demo</code>, <code>exec</code>, <code>tests</code>, <code>tools</code>, <code>citation</code>, <code>Rprofile</code>, <code>vignettes</code> – are gone; the same information is in <code>file_context</code>, and the phases they conferred are unchanged.</li>
-<li>
-<code>R</code> and <code>Other</code> are renamed <code>top_level</code> and <code>in_function</code>. <code>Other</code> was never only “other”: it meant code inside a function definition, and now says so.</li>
-<li>Code inside a function definition no longer reports as running at no phase everywhere. It inherits the phases of the code around it, except under <code>R/</code>. A helper called by a test file now reports <code>at_check</code> instead of nothing, which is the under-report this release fixes. Findings move out of <code>"none"</code> and never into it.</li>
-<li>
-<code><a href="../reference/load_rules.html">load_rules()</a></code> returns a sixth element, <code>phase_overrides</code>, and <code>file_contexts</code> no longer carries <code>namespace_source</code> – a file-context rule now names the code-context rules that can apply inside it, which is both more precise and one fewer field.</li>
-</ul></div>
-<div class="section level3">
-<h3 id="rules-0-5-0">Rules<a class="anchor" aria-label="anchor" href="#rules-0-5-0"></a></h3>
-<ul><li>Rule set 0.5.0. <code>Rd_examples</code> and the three <code>Rd_Sexpr_*</code> contexts are now rules with their own versions, messages and examples, matched on a label the extractor stamps rather than hardcoded in the package. Every context a finding can carry is now defined by a rule.</li>
-</ul></div>
-<div class="section level3">
-<h3 id="evidence-0-5-0">Evidence<a class="anchor" aria-label="anchor" href="#evidence-0-5-0"></a></h3>
-<ul><li>Every phase pkgaudit reports is measured by the <code>execution_surface</code> probe package, including the two readings of a function body: one called from top-level code, which fires wherever that code does, and one nothing calls, which fires nowhere. A rule that overrides <code>in_function</code> is choosing between two measurements rather than asserting something unmeasured.</li>
-<li>The probe now covers <code>tests/testthat/</code>, <code>inst/tinytest/</code> and <code>inst/unitTests/</code>, which previously rested on inference from plain <code>tests/</code>. All three run at check and nowhere else. It also measures that a <code>.onLoad</code> defined outside <code>R/</code> never fires, which is what confines the hook rules to the directories whose code becomes the namespace.</li>
-</ul></div>
-</div>
-    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.4.0" id="pkgaudit-040">pkgaudit 0.4.0<a class="anchor" aria-label="anchor" href="#pkgaudit-040"></a></h2>
 <ul><li>pkgaudit now accounts for every file it can identify as code, in a new <code>coverage</code> frame, and says what it made of each one: <code>parsed</code>, <code>matched</code>, <code>exportable</code>, <code>unexamined</code>, or <code>error</code>. A clean scan can be checked rather than trusted, because the scan states what it did not read.</li>
 <li>
@@ -69,6 +48,12 @@
 <code><a href="../reference/emit_sarif.html">emit_sarif()</a></code> renders a result as SARIF 2.1.0, so findings open on the line they were found in any editor or code-scanning platform that reads it.</li>
 <li>Extraction and analysis dispatch on two independent axes: a file’s <em>type</em> decides how it is read, a segment’s <em>language</em> decides how it is analysed. Adding a file format and adding a language are now separate, additive changes.</li>
 <li>Rules reach parity across R and shell, and the rule set roughly doubles: decoding, interpreters, software installation, sockets, credential files, and persistence via startup files are now caught in both.</li>
+<li>A finding’s phases are resolved from both the file context it sits in and the code context within that file, rather than from one flattened namespace. <code>patterns$code_context</code> now reports only where code sits inside its file: <code>top_level</code>, <code>in_function</code>, a lifecycle hook, or a part of a help file. The contexts named for locations – <code>data</code>, <code>demo</code>, <code>exec</code>, <code>tests</code>, <code>tools</code>, <code>citation</code>, <code>Rprofile</code>, <code>vignettes</code> – are gone, since <code>file_context</code> already says where the file sits. <code>R</code> and <code>Other</code> are renamed <code>top_level</code> and <code>in_function</code>; <code>Other</code> always meant code inside a function definition, and now says so.</li>
+<li>Code inside a function definition inherits the phases of the code around it, except under <code>R/</code>. A helper called by a test file reports <code>at_check</code> instead of nothing, which is an under-report this release fixes: findings move out of <code>"none"</code> and never into it.</li>
+<li>
+<code>Rd_examples</code> and the three <code>Rd_Sexpr_*</code> contexts are rules rather than constants in the package, matched on a label the extractor stamps rather than on an XPath. Every context a finding can carry is now defined by a rule, with its own version, message and examples.</li>
+<li>A file-context rule names the code-context rules that can apply inside it, replacing the <code>namespace_source</code> flag. <code><a href="../reference/load_rules.html">load_rules()</a></code> returns a sixth element, <code>phase_overrides</code>.</li>
+<li>Every phase pkgaudit reports is measured by an instrumented probe package, including both readings of a function body: one called from top-level code, which fires wherever that code does, and one nothing calls, which fires nowhere. A rule that overrides <code>in_function</code> is choosing between two measurements rather than asserting something unmeasured. The probe now covers <code>tests/testthat/</code>, <code>inst/tinytest/</code> and <code>inst/unitTests/</code>, which previously rested on inference from plain <code>tests/</code>, and confirms that a <code>.onLoad</code> defined outside <code>R/</code> never fires.</li>
 <li>Indirect calls are attributed to the rule that owns the name, so <code>do.call("system", ...)</code> reports as a <code>system</code> finding.</li>
 <li>Four vignettes, one audience each: getting started, R package security, rule coverage, and internals – the last with a call graph derived from pkgaudit’s own parse trees, so it cannot fall behind the code.</li>
 <li>Every documented function’s examples run, against <code>untrustedpkg</code>, the small package pkgaudit ships to be scanned. Nothing is held back behind <code>\dontrun{}</code>, so <code>R CMD check</code> exercises the documentation.</li>

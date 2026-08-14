@@ -1,6 +1,6 @@
 # pkgaudit Rule Coverage
 
-pkgaudit v0.5.0 separates *what* code does from *when* it executes.
+pkgaudit v0.4.0 separates *what* code does from *when* it executes.
 **Patterns** and **matches** answer the first, and come first below;
 **file contexts** and **code contexts** answer the second. Each rule is
 defined in a YAML file under
@@ -8,7 +8,7 @@ defined in a YAML file under
 and compiled into the SQLite database at `inst/db/rules.db`. The Rule
 columns below link to the defining YAML files.
 
-This vignette is generated from that database, at rules v0.5.0. Every
+This vignette is generated from that database, at rules v0.4.0. Every
 rule in it must be described here, so a rule that ships without a
 description fails the build rather than appearing unexplained.
 
