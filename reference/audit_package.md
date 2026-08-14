@@ -51,9 +51,11 @@ and a `metadata` list.
   a reader skims, and `message` and `attck` restate the rule rather than
   the occurrence. `guarded` and `indirect` say how the code is reached
   rather than what it is, and are described under Details.
-  `code_context` is where the code sits – the directory or file it is
-  in, or the lifecycle hook enclosing it – and is what its phases are
-  looked up from. Join to the other tables on `file_context`.
+  `code_context` is where the code sits *within its file*: `top_level`,
+  `in_function`, the lifecycle hook enclosing it, or the part of a help
+  file it came from. Where the *file* sits is `file_context`, and a
+  finding's phases come from the two together. Join to the other tables
+  on `file_context`.
 
 - matches:
 
@@ -157,14 +159,27 @@ Each findings data frame also carries one logical column per package
 lifecycle phase – `at_autoconf`, `at_build`, `at_check`,
 `at_install_src`, `at_install_bin`, `at_load`, `at_attach`, `at_unload`,
 and `at_detach` – which is `TRUE` when that finding's code runs during
-the phase, so findings can be filtered by when they execute. A file or
-code context takes its phases from the rule that matched; a pattern
-inherits them from its `code_context`; a match inherits them from the
-file context it was found in. A pattern in an ordinary function is
-`FALSE` for every phase: it runs only if something calls it, and that
-holds for a function defined in a help-file example too. A finding can
-belong to several phases, so the phase columns do not partition the
-rows.
+the phase, so findings can be filtered by when they execute. A file
+context takes its phases from the rule that matched, and a match
+inherits them from the file context it was found in.
+
+A pattern's phases come from where its file sits and where the code sits
+within it, resolved in that order: a lifecycle hook or a part of a help
+file carries phases of its own; otherwise the code inherits the phases
+of the file context around it, so the same call reports `at_check` under
+`tests/` and `at_build` under `data/`.
+
+Code inside a function definition inherits too, with one exception: the
+rules for `R/` report it as running at no phase. Both readings are
+measured – a function called from top level runs whenever that top-level
+code does, and one nothing calls runs nowhere – and `R/` reports the
+second because it is dominated by exported functions the lifecycle never
+calls. Elsewhere the first is reported, since a helper in a test file is
+there to be called. Neither is a claim about *this* package's call
+graph, which pkgaudit does not trace.
+
+A finding can belong to several phases, so the phase columns do not
+partition the rows.
 
 Code from a help file is attributed to one of two computed contexts:
 `Rd_examples`, which `R CMD check` runs, and `Rd_Sexpr`, which is
@@ -221,7 +236,7 @@ result$file_contexts
 #> 3     FALSE     FALSE
 result$patterns
 #>            rule      file_context line_number column_number     code_context
-#> 1 download_file         R/fetch.R           2             3            Other
+#> 1 download_file         R/fetch.R           2             3      in_function
 #> 2        system           R/zzz.R           2             3      onLoad_base
 #> 3 download_file man/fetch_data.Rd          11             1      Rd_examples
 #> 4          httr man/fetch_data.Rd           6            30 Rd_Sexpr_install
@@ -253,9 +268,9 @@ result$patterns
 print(result)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/RtmpuKvdKV/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/Rtmpv6nLPc/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-12 16:09 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-14 12:05 UTC with pkgaudit v0.5.0, rules v0.5.0
 #> 
 #> File contexts:  1
 #> Patterns:       4

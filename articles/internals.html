@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pkgaudit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -102,11 +102,23 @@ apply.</li>
 contexts, patterns and matches in each segment.</li>
 <li>
 <strong>Resolve.</strong> Lifecycle phases are attached once, at the
-end, from <code>rules$phases</code>.</li>
+end.</li>
 </ol>
 <p>The findings frames are built <strong>without</strong> phase columns
 throughout and joined once in step 4. Nothing before it knows about
 phases.</p>
+<p>A phase is a property of two things – where the file sits in the
+package, and where the code sits within that file – so step 4 resolves a
+pattern by walking a short chain: a code context carrying phases of its
+own wins; otherwise the file context supplies them; and a file-context
+rule may override what code inside a function definition carries. Only
+<code>R/</code> does, reporting such code as running at no phase.</p>
+<p>That the frames reach step 4 knowing where they came from is why
+<code>patterns</code> carries two extra columns while a scan is running,
+<code>file_rule</code> and <code>segment_context</code>.
+<code><a href="../reference/audit_package.html">audit_package()</a></code> drops them before building the result, so
+the object a caller receives has the columns <code><a href="../reference/audit_package.html">?audit_package</a></code>
+documents and no others.</p>
 </div>
 <div class="section level2">
 <h2 id="two-axes-of-dispatch">Two axes of dispatch<a class="anchor" aria-label="anchor" href="#two-axes-of-dispatch"></a>
@@ -159,10 +171,10 @@ cannot fall behind the code.</p>
 │  │  └─ .empty_phase_cols()
 │  ├─ .error_row()
 │  └─ .relativize()
-├─ .reported_contexts()
+├─ .report_file_contexts()
 ├─ .load_rd_macros()
-├─ .scan_targets()
-│  └─ isTRUE_vec()
+├─ .scan_file_contexts()
+│  └─ .named_contexts()
 ├─ new_source()
 │  └─ .source_class()
 ├─ extract_segments()
@@ -202,6 +214,7 @@ cannot fall behind the code.</p>
 │  │  ├─ parse_code()
 │  │  ├─ .findings()
 │  │  ├─ .error_row()
+│  │  ├─ .applicable_contexts()
 │  │  ├─ find_code_contexts()
 │  │  │  ├─ .empty_code_contexts()
 │  │  │  └─ .xml_find_all_safe()
@@ -240,8 +253,9 @@ cannot fall behind the code.</p>
 │  └─ .phase_lookup()
 │     └─ .empty_phase_cols()
 ├─ .resolve_pattern_phases()
-│  └─ .phase_lookup()
-│     └─ .empty_phase_cols()
+│  ├─ .empty_phase_cols()
+│  ├─ .phase_lookup()
+│  └─ .apply_phase_overrides()
 ├─ .resolve_match_phases()
 │  └─ .empty_phase_cols()
 ├─ hash_manifest()
@@ -310,9 +324,11 @@ about the file.</p>
 the database against its SHA-256 sidecar on every call. The check is
 time-of-check to time-of-use; see “Security considerations” in
 <code><a href="../reference/load_rules.html">?load_rules</a></code>.</p>
-<p><code><a href="../reference/load_rules.html">load_rules()</a></code> also refuses a database missing phases for
-any context a finding could be attributed to, so a rule can never ship
-whose findings would silently carry no phases.</p>
+<p><code><a href="../reference/load_rules.html">load_rules()</a></code> also refuses a database with a gap in its
+phase model: a rule without phases, a file-context rule naming a code
+context that does not exist, or an override attached to something that
+cannot arise. A rule can never ship whose findings would silently carry
+no phases.</p>
 </div>
 <div class="section level3">
 <h3 id="every-rule-is-verified-against-its-own-examples">Every rule is verified against its own examples<a class="anchor" aria-label="anchor" href="#every-rule-is-verified-against-its-own-examples"></a>
@@ -322,13 +338,26 @@ whose findings would silently carry no phases.</p>
 <code>tests/testthat/test-fixtures.R</code> requires every positive to
 match its rule and every negative not to. A rule is trusted because its
 documentation is executable, not because it is documented.</p>
-<p>The same file checks two contracts that would otherwise drift. A
-pattern rule’s <code>functions</code> field – the names it claims for
-<code>do.call("name", ...)</code> – is accepted only if calling that
-name bare would have matched the rule’s own XPath, so an indirect
-finding can never be attributed to a rule that would not have reported
-the direct call. And <code>eval_parse</code>’s source list is required
-to cover every function the capability rules it composes declare.</p>
+<p>For a code-context rule matched on a segment label rather than on the
+parse tree, the examples are help files and the test is a round trip:
+the extractor must stamp the label the rule claims, on a page carrying
+that kind of code and on no other. That is the only thing tying such a
+rule to the extractor, since its label is checked against a fixed
+vocabulary when the database is built but nothing there confirms the
+extractor produces it.</p>
+<p>The same file checks two further contracts that would otherwise
+drift. A pattern rule’s <code>functions</code> field – the names it
+claims for <code>do.call("name", ...)</code> – is accepted only if
+calling that name bare would have matched the rule’s own XPath, so an
+indirect finding can never be attributed to a rule that would not have
+reported the direct call. And <code>eval_parse</code>’s source list is
+required to cover every function the capability rules it composes
+declare.</p>
+<p>Documentation is held to the same standard. The rule set’s vignette
+is generated from the shipped database rather than written alongside it,
+and every rule in that database must be described there, so a rule that
+ships without a description fails the vignette build. Neither that nor a
+failing example can be fixed by editing prose.</p>
 </div>
 </div>
 <div class="section level2">
@@ -348,16 +377,11 @@ model, and the <code>level</code> in SARIF output is a mapping of the
 phase model, not a judgement.</li>
 <li>It does not reach the network, and it writes only where a caller
 sends it.</li>
+<li>It does not trace call graphs. Whether a particular package calls a
+particular function is not something pkgaudit determines, which is why
+the phases of code inside a function definition are a stated reading
+rather than a finding.</li>
 </ul>
-</div>
-<div class="section level2">
-<h2 id="examples-are-tests">Examples are tests<a class="anchor" aria-label="anchor" href="#examples-are-tests"></a>
-</h2>
-<p>Every example in the rule YAML is a fixture, and the rules vignette
-is generated from the shipped database rather than written alongside it.
-A rule that ships without a description fails the vignette build; a rule
-whose examples stop matching fails the test suite. Neither can be fixed
-by editing prose.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

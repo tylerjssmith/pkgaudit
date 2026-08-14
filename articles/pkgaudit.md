@@ -89,9 +89,9 @@ result <- audit_package(pkg)
 print(result)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/RtmpM0TSlU/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/RtmpuuCDKY/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-12 16:09 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-14 12:05 UTC with pkgaudit v0.5.0, rules v0.5.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -108,9 +108,9 @@ the code runs in, with the MITRE ATT&CK techniques the rule carries.
 summary(result)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/RtmpM0TSlU/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/RtmpuuCDKY/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-12 16:09 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-14 12:05 UTC with pkgaudit v0.5.0, rules v0.5.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -166,7 +166,7 @@ output readable.
 result$patterns[, c("rule", "file_context", "line_number", "code_context",
                     "guarded", "indirect", "preview")]
 #>            rule      file_context line_number     code_context guarded indirect
-#> 1 download_file         R/fetch.R           2            Other   FALSE    FALSE
+#> 1 download_file         R/fetch.R           2      in_function   FALSE    FALSE
 #> 2        system           R/zzz.R           2      onLoad_base   FALSE    FALSE
 #> 3 download_file man/fetch_data.Rd          11      Rd_examples   FALSE    FALSE
 #> 4          httr man/fetch_data.Rd           6 Rd_Sexpr_install   FALSE    FALSE
@@ -227,8 +227,12 @@ result$patterns[result$patterns$at_load,
 ```
 
 [`summary()`](https://rdrr.io/r/base/summary.html) takes a `phase`
-argument for the same purpose, including `"none"` for code that ships
-but runs at no phase.
+argument for the same purpose, including `"none"` for findings pkgaudit
+could not attribute to any phase. Under `R/` that is code inside a
+function definition, which the rules report as running nowhere because
+`R/` is dominated by exported functions the lifecycle never calls. It is
+not a claim that this package never calls them: pkgaudit does not trace
+call graphs.
 
 ``` r
 
@@ -236,7 +240,7 @@ summary(result, phase = "at_load", path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-12 16:09 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-14 12:05 UTC with pkgaudit v0.5.0, rules v0.5.0
 #> Phases:    at_load
 #> 
 #> --- R Patterns --------------------------------------------------------------
@@ -367,7 +371,7 @@ substr(sarif, 1, 200)
 #>       "tool": {
 #>         "driver": {
 #>           "name": "pkgaudit",
-#>           "version": "0.4.0",
+#>           "version": "0.5.0",
 #> 
 ```
 
@@ -419,7 +423,7 @@ print(audit_tarball(tarball), path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-12 16:09 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-14 12:05 UTC with pkgaudit v0.5.0, rules v0.5.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -441,12 +445,14 @@ reports the version.
 ``` r
 
 rules_version()
-#> [1] "0.4.0"
+#> [1] "0.5.0"
 
 rules <- load_rules()
 vapply(rules, nrow, integer(1))
-#> file_contexts code_contexts      patterns       matches        phases 
-#>            45             6            21            11            65
+#>   file_contexts   code_contexts        patterns         matches          phases 
+#>              45              10              21              11              55 
+#> phase_overrides 
+#>               3
 ```
 
 A modified database is one way to evade a scanner.
@@ -463,7 +469,7 @@ digest::digest(
   algo = "sha256",
   file = TRUE
 )
-#> [1] "d73ed7f7e41125d89a524e22d82ac467c0ca2a93991781c8b5015f789fcf0127"
+#> [1] "6577865b9b71ca81c3455d114c3caa1dd8fa2af6f4eaa3b8065dcaf2a5e05512"
 ```
 
 The full rule set is documented in [Rule

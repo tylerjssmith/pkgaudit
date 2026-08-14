@@ -9,7 +9,7 @@ make matches for review before an R source package is trusted."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">pkgaudit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -88,9 +88,11 @@ columns.</p></dd>
 columns are the ones a reader skims, and <code>message</code> and <code>attck</code> restate
 the rule rather than the occurrence. <code>guarded</code> and <code>indirect</code> say how
 the code is reached rather than what it is, and are described under
-Details. <code>code_context</code> is where the code sits – the directory or
-file it is in, or the lifecycle hook enclosing it – and is what its
-phases are looked up from. Join to the other tables on <code>file_context</code>.</p></dd>
+Details. <code>code_context</code> is where the code sits <em>within its file</em>:
+<code>top_level</code>, <code>in_function</code>, the lifecycle hook enclosing it, or the
+part of a help file it came from. Where the <em>file</em> sits is
+<code>file_context</code>, and a finding's phases come from the two together.
+Join to the other tables on <code>file_context</code>.</p></dd>
 
 <dt>matches</dt>
 <dd><p><code>rule</code>, <code>file_context</code>, <code>line_number</code>,
@@ -181,12 +183,22 @@ comes from the extracted code, not the <code>.Rd</code> text.</p>
 lifecycle phase – <code>at_autoconf</code>, <code>at_build</code>, <code>at_check</code>, <code>at_install_src</code>,
 <code>at_install_bin</code>, <code>at_load</code>, <code>at_attach</code>, <code>at_unload</code>, and <code>at_detach</code> –
 which is <code>TRUE</code> when that finding's code runs during the phase, so findings
-can be filtered by when they execute. A file or code context takes its phases
-from the rule that matched; a pattern inherits them from its <code>code_context</code>;
-a match inherits them from the file context it was found in. A pattern
-in an ordinary function is <code>FALSE</code> for every phase: it runs only if something
-calls it, and that holds for a function defined in a help-file example too. A
-finding can belong to several phases, so the phase columns do not partition
+can be filtered by when they execute. A file context takes its phases from
+the rule that matched, and a match inherits them from the file context it was
+found in.</p>
+<p>A pattern's phases come from where its file sits and where the code sits
+within it, resolved in that order: a lifecycle hook or a part of a help file
+carries phases of its own; otherwise the code inherits the phases of the file
+context around it, so the same call reports <code>at_check</code> under <code>tests/</code> and
+<code>at_build</code> under <code>data/</code>.</p>
+<p>Code inside a function definition inherits too, with one exception: the rules
+for <code>R/</code> report it as running at no phase. Both readings are measured – a
+function called from top level runs whenever that top-level code does, and one
+nothing calls runs nowhere – and <code>R/</code> reports the second because it is
+dominated by exported functions the lifecycle never calls. Elsewhere the first
+is reported, since a helper in a test file is there to be called. Neither is a
+claim about <em>this</em> package's call graph, which pkgaudit does not trace.</p>
+<p>A finding can belong to several phases, so the phase columns do not partition
 the rows.</p>
 <p>Code from a help file is attributed to one of two computed contexts:
 <code>Rd_examples</code>, which <code>R CMD check</code> runs, and <code>Rd_Sexpr</code>, which is evaluated
@@ -234,7 +246,7 @@ case the directory is hashed with <code><a href="hash_manifest.html">hash_manife
 <span class="r-out co"><span class="r-pr">#&gt;</span> 3     FALSE     FALSE</span>
 <span class="r-in"><span><span class="va">result</span><span class="op">$</span><span class="va">patterns</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>            rule      file_context line_number column_number     code_context</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 download_file         R/fetch.R           2             3            Other</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 download_file         R/fetch.R           2             3      in_function</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2        system           R/zzz.R           2             3      onLoad_base</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 3 download_file man/fetch_data.Rd          11             1      Rd_examples</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 4          httr man/fetch_data.Rd           6            30 Rd_Sexpr_install</span>
@@ -266,9 +278,9 @@ case the directory is hashed with <code><a href="hash_manifest.html">hash_manife
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- pkgaudit ----------------------------------------------------------------</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Package:   untrustedpkg v0.1.0 (source directory)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Path:      /tmp/RtmpuKvdKV/untrustedpkg-example/untrustedpkg</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Path:      /tmp/Rtmpv6nLPc/untrustedpkg-example/untrustedpkg</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Scanned:   2026-08-12 16:09 UTC with pkgaudit v0.4.0, rules v0.4.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Scanned:   2026-08-14 12:05 UTC with pkgaudit v0.5.0, rules v0.5.0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> File contexts:  1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Patterns:       4</span>

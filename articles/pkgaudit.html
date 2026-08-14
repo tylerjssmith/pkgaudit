@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pkgaudit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -142,9 +142,9 @@ by category.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
 <span><span class="co">#&gt; --- pkgaudit ----------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source directory)</span></span>
-<span><span class="co">#&gt; Path:      /tmp/RtmpM0TSlU/untrustedpkg-example/untrustedpkg</span></span>
+<span><span class="co">#&gt; Path:      /tmp/RtmpuuCDKY/untrustedpkg-example/untrustedpkg</span></span>
 <span><span class="co">#&gt; SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-12 16:09 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-14 12:05 UTC with pkgaudit v0.5.0, rules v0.5.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; File contexts:  1</span></span>
 <span><span class="co">#&gt; Patterns:       4</span></span>
@@ -157,9 +157,9 @@ the MITRE ATT&amp;CK techniques the rule carries.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
 <span><span class="co">#&gt; --- pkgaudit Summary --------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source directory)</span></span>
-<span><span class="co">#&gt; Path:      /tmp/RtmpM0TSlU/untrustedpkg-example/untrustedpkg</span></span>
+<span><span class="co">#&gt; Path:      /tmp/RtmpuuCDKY/untrustedpkg-example/untrustedpkg</span></span>
 <span><span class="co">#&gt; SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-12 16:09 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-14 12:05 UTC with pkgaudit v0.5.0, rules v0.5.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- R Patterns --------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; phase            rule            n   attck</span></span>
@@ -207,7 +207,7 @@ are omitted below to keep the output readable.</p>
 <code class="sourceCode R"><span><span class="va">result</span><span class="op">$</span><span class="va">patterns</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rule"</span>, <span class="st">"file_context"</span>, <span class="st">"line_number"</span>, <span class="st">"code_context"</span>,</span>
 <span>                    <span class="st">"guarded"</span>, <span class="st">"indirect"</span>, <span class="st">"preview"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;            rule      file_context line_number     code_context guarded indirect</span></span>
-<span><span class="co">#&gt; 1 download_file         R/fetch.R           2            Other   FALSE    FALSE</span></span>
+<span><span class="co">#&gt; 1 download_file         R/fetch.R           2      in_function   FALSE    FALSE</span></span>
 <span><span class="co">#&gt; 2        system           R/zzz.R           2      onLoad_base   FALSE    FALSE</span></span>
 <span><span class="co">#&gt; 3 download_file man/fetch_data.Rd          11      Rd_examples   FALSE    FALSE</span></span>
 <span><span class="co">#&gt; 4          httr man/fetch_data.Rd           6 Rd_Sexpr_install   FALSE    FALSE</span></span>
@@ -258,14 +258,18 @@ calls it.</p>
 <span><span class="co">#&gt;     rule file_context code_context</span></span>
 <span><span class="co">#&gt; 2 system      R/zzz.R  onLoad_base</span></span></code></pre></div>
 <p><code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> takes a <code>phase</code> argument for the
-same purpose, including <code>"none"</code> for code that ships but runs
-at no phase.</p>
+same purpose, including <code>"none"</code> for findings pkgaudit could
+not attribute to any phase. Under <code>R/</code> that is code inside a
+function definition, which the rules report as running nowhere because
+<code>R/</code> is dominated by exported functions the lifecycle never
+calls. It is not a claim that this package never calls them: pkgaudit
+does not trace call graphs.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span>, phase <span class="op">=</span> <span class="st">"at_load"</span>, path <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="co">#&gt; --- pkgaudit Summary --------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source directory)</span></span>
 <span><span class="co">#&gt; SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-12 16:09 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-14 12:05 UTC with pkgaudit v0.5.0, rules v0.5.0</span></span>
 <span><span class="co">#&gt; Phases:    at_load</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- R Patterns --------------------------------------------------------------</span></span>
@@ -388,7 +392,7 @@ string and writes nothing.</p>
 <span><span class="co">#&gt;       "tool": {</span></span>
 <span><span class="co">#&gt;         "driver": {</span></span>
 <span><span class="co">#&gt;           "name": "pkgaudit",</span></span>
-<span><span class="co">#&gt;           "version": "0.4.0",</span></span>
+<span><span class="co">#&gt;           "version": "0.5.0",</span></span>
 <span><span class="co">#&gt; </span></span></code></pre></div>
 <p>Written to a file and opened in an editor with a SARIF viewer, each
 finding appears on the line it was found. Rule identifiers are
@@ -431,7 +435,7 @@ rather than partially extracted.</p>
 <span><span class="co">#&gt; --- pkgaudit ----------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source tarball)</span></span>
 <span><span class="co">#&gt; SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-12 16:09 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-14 12:05 UTC with pkgaudit v0.5.0, rules v0.5.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; File contexts:  1</span></span>
 <span><span class="co">#&gt; Patterns:       4</span></span>
@@ -448,12 +452,14 @@ package. <code><a href="../reference/load_rules.html">load_rules()</a></code> re
 <code><a href="../reference/rules_version.html">rules_version()</a></code> reports the version.</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rules_version.html">rules_version</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "0.4.0"</span></span>
+<span><span class="co">#&gt; [1] "0.5.0"</span></span>
 <span></span>
 <span><span class="va">rules</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_rules.html">load_rules</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">rules</span>, <span class="va">nrow</span>, <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; file_contexts code_contexts      patterns       matches        phases </span></span>
-<span><span class="co">#&gt;            45             6            21            11            65</span></span></code></pre></div>
+<span><span class="co">#&gt;   file_contexts   code_contexts        patterns         matches          phases </span></span>
+<span><span class="co">#&gt;              45              10              21              11              55 </span></span>
+<span><span class="co">#&gt; phase_overrides </span></span>
+<span><span class="co">#&gt;               3</span></span></code></pre></div>
 <p>A modified database is one way to evade a scanner.
 <code><a href="../reference/load_rules.html">load_rules()</a></code> verifies the database against its bundled
 SHA-256 sidecar on every call and refuses to load a modified one. The
@@ -465,7 +471,7 @@ published in the <a href="https://github.com/tylerjssmith/pkgaudit#database-inte
 <span>  algo <span class="op">=</span> <span class="st">"sha256"</span>,</span>
 <span>  file <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "d73ed7f7e41125d89a524e22d82ac467c0ca2a93991781c8b5015f789fcf0127"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "6577865b9b71ca81c3455d114c3caa1dd8fa2af6f4eaa3b8065dcaf2a5e05512"</span></span></code></pre></div>
 <p>The full rule set is documented in <a href="rules.html">Rule
 Coverage</a>. How pkgaudit works internally is in <a href="internals.html">Internals</a>.</p>
 </div>

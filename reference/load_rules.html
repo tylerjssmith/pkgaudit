@@ -11,7 +11,7 @@ named list suitable for passing to audit_package() or audit_tarball()."></head><
 
     <a class="navbar-brand me-2" href="../index.html">pkgaudit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -66,19 +66,27 @@ with the installed package.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A named list with five data frames:</p><dl><dt>file_contexts</dt>
+    <p>A named list with six data frames:</p><dl><dt>file_contexts</dt>
 <dd><p>Data frame with columns <code>name</code>, <code>version</code>, <code>type</code>,
-<code>message</code>, <code>path</code>, <code>recursive</code>, <code>report</code>, <code>namespace_source</code>,
-<code>filename</code>, <code>code_context</code>. <code>type</code> selects how a matched file is read
-and scanned;
+<code>message</code>, <code>path</code>, <code>recursive</code>, <code>report</code>, <code>filename</code>, <code>code_context</code>.
+<code>type</code> selects how a matched file is read and scanned;
 <code>report</code> is <code>TRUE</code> for a rule whose matches are findings in their own
 right, and <code>FALSE</code> for one that only tells the scanner which files to
-read; <code>namespace_source</code> is <code>TRUE</code> only where R code becomes the
-package namespace, which is where a lifecycle hook can actually run.</p></dd>
+read; <code>code_context</code> names the code-context rules that can apply inside
+the files this rule claims, space-separated – <code>NA</code> where none can, and
+<code>"computed"</code> where only <code>top_level</code> and <code>in_function</code> can. That is what
+confines the lifecycle hooks to the directories whose code becomes the
+namespace, since a <code>.onLoad</code> defined elsewhere never runs.</p></dd>
 
 <dt>code_contexts</dt>
 <dd><p>Data frame with columns <code>name</code>, <code>version</code>,
-<code>language</code>, <code>message</code>, <code>xpath</code>.</p></dd>
+<code>language</code>, <code>message</code>, <code>kind</code>, <code>xpath</code>, <code>segment</code>. <code>kind</code> is <code>"xpath"</code>
+for a rule matched against the parse tree and <code>"segment"</code> for one
+matched against a label the extractor stamped; exactly one of <code>xpath</code>
+and <code>segment</code> is set accordingly. A segment rule exists because the
+distinction it draws is invisible to the parse tree: once a help file
+has yielded R code, nothing in that code says whether it came from
+<code>\\examples</code> or from a <code>\\Sexpr</code>.</p></dd>
 
 <dt>patterns</dt>
 <dd><p>Data frame with columns <code>name</code>, <code>version</code>, <code>language</code>,
@@ -95,9 +103,17 @@ applied to R code.</p></dd>
 
 <dt>phases</dt>
 <dd><p>Data frame with columns <code>context</code>, <code>version</code>, and one
-logical column per lifecycle phase. One row per context code can
-execute in: every file- and code-context rule, plus the computed
-contexts <code>"R"</code> and <code>"Other"</code>.</p></dd>
+logical column per lifecycle phase. One row per rule, file-context and
+code-context alike. The computed contexts <code>top_level</code> and
+<code>in_function</code> have no row and need none: they inherit the phases of the
+file context they sit in.</p></dd>
+
+<dt>phase_overrides</dt>
+<dd><p>Data frame with columns <code>file_context</code>,
+<code>code_context</code>, <code>version</code>, and one logical column per lifecycle phase.
+Where a code context's phases depart from its file context's, which is
+the exception rather than the rule – today only <code>R/</code>, where code inside
+a function definition is reported as running at no phase.</p></dd>
 
 
 </dl><p>The list carries a <code>"provenance"</code> attribute recording the database the
@@ -130,8 +146,10 @@ concurrently. Load from a path only trusted writers control.</p>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">rules</span> <span class="op">&lt;-</span> <span class="fu">load_rules</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">rules</span>, <span class="va">nrow</span>, <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> file_contexts code_contexts      patterns       matches        phases </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>            45             6            21            11            65 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   file_contexts   code_contexts        patterns         matches          phases </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>              45              10              21              11              55 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> phase_overrides </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>               3 </span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

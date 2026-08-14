@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pkgaudit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -68,14 +68,14 @@
 
     
     
-<p>pkgaudit v0.4.0 separates <em>what</em> code does from <em>when</em>
+<p>pkgaudit v0.5.0 separates <em>what</em> code does from <em>when</em>
 it executes. <strong>Patterns</strong> and <strong>matches</strong>
 answer the first, and come first below; <strong>file contexts</strong>
 and <strong>code contexts</strong> answer the second. Each rule is
 defined in a YAML file under <a href="https://github.com/tylerjssmith/pkgaudit/tree/main/inst/rules" class="external-link">inst/rules/</a>
 and compiled into the SQLite database at <code>inst/db/rules.db</code>.
 The Rule columns below link to the defining YAML files.</p>
-<p>This vignette is generated from that database, at rules v0.4.0. Every
+<p>This vignette is generated from that database, at rules v0.5.0. Every
 rule in it must be described here, so a rule that ships without a
 description fails the build rather than appearing unexplained.</p>
 <div class="section level2">
@@ -84,10 +84,11 @@ description fails the build rather than appearing unexplained.</p>
 <p>Patterns are security-relevant function calls. Each pattern finding
 is attributed to the code context it executes in, so a
 <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> call inside <code>.onLoad</code> is distinguished
-from one inside an ordinary function (“Other”) or at top level (“R”).
-Qualified (<code>pkg::fn()</code>) and unqualified (<code>fn()</code>)
-call forms are both detected. Pattern rules carry <a href="https://attack.mitre.org/" class="external-link">MITRE ATT&amp;CK</a> technique
-labels.</p>
+from one inside an ordinary function (<code>in_function</code>) or at
+top level (<code>top_level</code>). Qualified (<code>pkg::fn()</code>)
+and unqualified (<code>fn()</code>) call forms are both detected.
+Pattern rules carry <a href="https://attack.mitre.org/" class="external-link">MITRE
+ATT&amp;CK</a> technique labels.</p>
 <p>A finding also records how the code is <em>reached</em>.
 <code>guarded</code> is <code>TRUE</code> for code that ships but the
 lifecycle does not run – a <code>\dontrun{}</code> or
@@ -96,8 +97,10 @@ lifecycle does not run – a <code>\dontrun{}</code> or
 read as an upper bound. <code>indirect</code> is <code>TRUE</code> where
 the call was made through the function’s name rather than the
 function.</p>
-<p>A pattern rule declares no phases of its own: a pattern inherits them
-from the code context it sits in, listed in the two tables above.</p>
+<p>A pattern rule declares no phases of its own. A pattern takes them
+from the file context it was found in and the code context it sits in,
+resolved as <a href="#lifecycle-phases">Lifecycle Phases</a>
+describes.</p>
 <p>A call made through a function’s name rather than the function –
 <code>do.call("system", ...)</code>, <code><a href="https://rdrr.io/r/base/match.fun.html" class="external-link">match.fun()</a></code>,
 <code>getFunction()</code> – is reported under the rule that owns the
@@ -384,11 +387,9 @@ Make-like files among the file contexts above – those whose Type is
 <code>R</code> is parsed and scanned for patterns instead, and no other
 file in the package is scanned for matches at all. Match rules carry <a href="https://attack.mitre.org/" class="external-link">MITRE ATT&amp;CK</a> technique
 labels.</p>
-<p>Like a pattern rule, a match rule declares no phases of its own: a
-match inherits them from the file context it was found in, listed in the
-File Contexts table above. Where a file matches more than one
-file-context rule, it takes the phases of every rule that matched
-it.</p>
+<p>Like a pattern rule, a match rule declares no phases of its own.
+Where a file matches more than one file-context rule, it takes the
+phases of every rule that matched it.</p>
 <p>Matching text is less precise than matching a parse tree. A match has
 no syntax behind it, so a match inside a comment, a quoted string, or a
 branch that never runs is reported the same as one in a live command. A
@@ -502,10 +503,10 @@ wget         (?&lt;=^|[^[:alnum:]_-])wget(?=(\.exe)?([^[:alnum:]_./-]|$))</code>
 <div class="section level2">
 <h2 id="lifecycle-phases">Lifecycle Phases<a class="anchor" aria-label="anchor" href="#lifecycle-phases"></a>
 </h2>
-<p>Every file and code context declares the phases of the package
-lifecycle in which its code runs. Each finding carries one logical
-column per phase, so findings can be filtered by when they execute, e.g.
-<code>subset(result$patterns, at_install_src)</code>.</p>
+<p>A phase is a property of two things: where a file sits in the
+package, and where the code sits within that file. Each finding carries
+one logical column per phase, so findings can be filtered by when they
+execute, e.g. <code>subset(result$patterns, at_install_src)</code>.</p>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -556,12 +557,25 @@ input</td>
 </tr>
 </tbody>
 </table>
-<p>Phase assignments were established by running
-<code>R CMD build</code>, <code>R CMD check</code>, and
-<code>R CMD INSTALL</code> against instrumented packages rather than
-read from documentation. A rule can belong to several phases, and the
-Phases column below reads <code>none</code> for code that runs at no
-phase at all.</p>
+<p>A match takes the phases of the file context it was found in. A
+pattern resolves them in order: a code context carrying phases of its
+own wins, and otherwise the code inherits the phases of the file context
+around it. So the same <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> call reads
+<code>at_check</code> under <code>tests/</code> and
+<code>at_build</code> under <code>data/</code>.</p>
+<p>Code inside a function definition inherits too, with one exception:
+under <code>R/</code> it is reported as running at no phase. Both
+readings are measured – a function called from top-level code runs
+whenever that code does, and one nothing calls runs nowhere – and
+<code>R/</code> reports the second because it is dominated by exported
+functions the lifecycle never calls. Neither is a claim about any
+particular package’s call graph, which pkgaudit does not trace.</p>
+<p>Every phase value below was established by running instrumented
+packages through <code>R CMD build</code>, <code>R CMD check</code> and
+<code>R CMD INSTALL</code> and recording which sites fired, rather than
+read from documentation. A rule can belong to several phases, and a
+Phases column reads <code>none</code> for code that runs at no phase at
+all.</p>
 </div>
 <div class="section level2">
 <h2 id="file-contexts">File Contexts<a class="anchor" aria-label="anchor" href="#file-contexts"></a>
@@ -1200,23 +1214,33 @@ anyone reads the rendered document.</td>
 <div class="section level2">
 <h2 id="code-contexts">Code Contexts<a class="anchor" aria-label="anchor" href="#code-contexts"></a>
 </h2>
-<p>Code contexts are lifecycle hooks whose bodies run automatically when
-a namespace is loaded, attached, unloaded, or detached. These rules are
-applied only where a package’s R code becomes its namespace –
-<code>R/</code>, <code>R/unix/</code>, <code>R/windows/</code>. A
-<code>.onLoad</code> defined anywhere else ships as an ordinary object
-and is never called, so attributing it to a hook would be a false
-reading rather than a cautious one.</p>
+<p>A code context says where code sits <em>within</em> its file. Every
+pattern carries one, and it is half of what decides the finding’s
+phases.</p>
+<p>Two kinds are rules. A <strong>lifecycle hook</strong> is found by
+matching the parse tree, and applies only where a package’s R code
+becomes its namespace: <code>R/</code>, <code>R/unix/</code>,
+<code>R/windows/</code>. A <code>.onLoad</code> defined anywhere else
+ships as an ordinary object and never fires – measured, not assumed. A
+<strong>part of a help file</strong> is found by matching a label the
+extractor stamped, because the distinction is invisible to the parse
+tree: once an <code>.Rd</code> has yielded R code, nothing in that code
+says whether it came from <code>\examples</code> or from a
+<code>\Sexpr</code>, or which stage.</p>
+<p>Both carry phases of their own, so a finding in one takes them
+directly.</p>
 <table class="table">
 <colgroup>
-<col width="25%">
-<col width="25%">
-<col width="25%">
-<col width="25%">
+<col width="20%">
+<col width="20%">
+<col width="20%">
+<col width="20%">
+<col width="20%">
 </colgroup>
 <thead><tr class="header">
 <th>Rule</th>
 <th>Code Context</th>
+<th>Matched by</th>
 <th>Phases</th>
 <th>Description</th>
 </tr></thead>
@@ -1224,6 +1248,7 @@ reading rather than a cautious one.</p>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_lastlib.yaml" class="external-link">LastLib_base</a></td>
 <td><code>.Last.lib()</code></td>
+<td>parse tree</td>
 <td>
 <code>at_check</code>, <code>at_detach</code>
 </td>
@@ -1236,8 +1261,56 @@ the package while checking that it can be unloaded cleanly, so
 .Last.lib() runs during checking without any call from a user.</td>
 </tr>
 <tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_rd_sexpr_build.yaml" class="external-link">Rd_Sexpr_build</a></td>
+<td><code>\Sexpr[stage=build]</code></td>
+<td>segment label</td>
+<td>
+<code>at_build</code>, <code>at_check</code>,
+<code>at_install_src</code>
+</td>
+<td>is evaluated when R CMD build renders the help page, and when the
+package is installed from a source directory or checked. It is not
+reached when a source tarball is installed: build already evaluated it
+and froze the result into the Rd that shipped.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_rd_sexpr_install.yaml" class="external-link">Rd_Sexpr_install</a></td>
+<td><code>\Sexpr[stage=install]</code></td>
+<td>segment label</td>
+<td>
+<code>at_build</code>, <code>at_check</code>,
+<code>at_install_src</code>
+</td>
+<td>, and an unlabelled , which Writing R Extensions gives install as
+the default for and which measured identically. Evaluated whenever the
+help page is rendered from source: build, either install, and check. Not
+on installation from a binary, whose help ships pre-rendered.</td>
+</tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_rd_sexpr_render.yaml" class="external-link">Rd_Sexpr_render</a></td>
+<td><code>\Sexpr[stage=render]</code></td>
+<td>segment label</td>
+<td>
+<code>at_build</code>, <code>at_check</code>
+</td>
+<td>is evaluated when the page is rendered for display, not when it is
+installed. It fires during R CMD build and R CMD check, and when a user
+calls help(); it does not fire at either install.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_rd_examples.yaml" class="external-link">Rd_examples</a></td>
+<td><code>\examples{}</code></td>
+<td>segment label</td>
+<td><code>at_check</code></td>
+<td>Code in an block of a help file is run by R CMD check, and by a user
+who calls example(). It is not run when the package is built or
+installed: R CMD build and R CMD INSTALL render the help page but never
+evaluate its examples.</td>
+</tr>
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onattach.yaml" class="external-link">onAttach_base</a></td>
 <td><code>.onAttach()</code></td>
+<td>parse tree</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
 <code>at_install_src</code>, <code>at_attach</code>
@@ -1251,6 +1324,7 @@ any call from a user.</td>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_ondetach.yaml" class="external-link">onDetach_base</a></td>
 <td><code>.onDetach()</code></td>
+<td>parse tree</td>
 <td>
 <code>at_check</code>, <code>at_detach</code>
 </td>
@@ -1263,6 +1337,7 @@ during checking without any call from a user.</td>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onload.yaml" class="external-link">onLoad_base</a></td>
 <td><code>.onLoad()</code></td>
+<td>parse tree</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
 <code>at_install_src</code>, <code>at_load</code>
@@ -1276,6 +1351,7 @@ without any call from a user.</td>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onunload.yaml" class="external-link">onUnload_base</a></td>
 <td><code>.onUnload()</code></td>
+<td>parse tree</td>
 <td>
 <code>at_check</code>, <code>at_unload</code>
 </td>
@@ -1288,6 +1364,7 @@ user.</td>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onload_rlang.yaml" class="external-link">on_load_rlang</a></td>
 <td><code><a href="https://rlang.r-lib.org/reference/on_load.html" class="external-link">rlang::on_load()</a></code></td>
+<td>parse tree</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
 <code>at_install_src</code>, <code>at_load</code>
@@ -1301,20 +1378,12 @@ requires .onLoad() to contain rlang::run_on_load().</td>
 </tr>
 </tbody>
 </table>
-</div>
-<div class="section level2">
-<h2 id="computed-contexts">Computed Contexts<a class="anchor" aria-label="anchor" href="#computed-contexts"></a>
-</h2>
-<p>Every pattern is attributed to the code context that contains it.
-Most of those contexts are computed rather than matched by a rule, and
-so have phases but no rule of their own. <code>R</code> and
-<code>Other</code> are computed from where a pattern sits in the parse
-tree. The <code>Rd_</code> contexts come from which part of a help file
-the code was extracted from, one per <code>\Sexpr</code> stage, because
-the stages do not share a phase profile. The rest are named for where
-the file sits – <code>data</code>, <code>tests</code>,
-<code>vignettes</code> – because <code>R</code>’s phases are right for
-<code>R/</code> and wrong everywhere else. They are defined under <a href="https://github.com/tylerjssmith/pkgaudit/tree/main/inst/rules/phases" class="external-link">inst/rules/phases/</a>.</p>
+<p>The remaining two are computed from the parse tree and are the only
+contexts with no phases of their own. They inherit from the file context
+around them, which is why there is no <code>data</code> or
+<code>tests</code> code context: a <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> call at the top
+level of a data script and one in a test file sit in the same place in
+their files, and what differs is when the file runs.</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -1328,125 +1397,18 @@ the file sits – <code>data</code>, <code>tests</code>,
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><code>R</code></td>
-<td>
-<code>at_build</code>, <code>at_check</code>,
-<code>at_install_src</code>
-</td>
-<td>Top-level code in an R script is evaluated once, when the lazy-load
-database is built during installation from source, which R CMD check and
-R CMD build also perform. It is not re-evaluated when the namespace is
-loaded: loading restores the values from that database.</td>
+<td><code>top_level</code></td>
+<td>inherited</td>
+<td>Code outside any function definition. It carries the phases of the
+file context it sits in, so the same call reads at_check under tests/
+and at_build under data/.</td>
 </tr>
 <tr class="even">
-<td><code>Other</code></td>
-<td>none</td>
-<td>Code inside an ordinary function definition runs at no lifecycle
-phase. It executes only if something calls that function, never as a
-consequence of building, installing, checking, or loading the package.
-This holds for a function defined in a help-file example too.</td>
-</tr>
-<tr class="odd">
-<td><code>Rd_examples</code></td>
-<td><code>at_check</code></td>
-<td>Code in an block of a help file is run by R CMD check, and by a user
-who calls example(). Building or installing the package renders the help
-page but never evaluates its examples.</td>
-</tr>
-<tr class="even">
-<td><code>Rd_Sexpr_build</code></td>
-<td>
-<code>at_build</code>, <code>at_check</code>,
-<code>at_install_src</code>
-</td>
-<td>A macro declaring stage=build is evaluated when R CMD build renders
-the help page, and when the package is installed from a source directory
-or checked. It is not reached when a source tarball is installed: build
-already evaluated it and froze the result into the Rd.</td>
-</tr>
-<tr class="odd">
-<td><code>Rd_Sexpr_install</code></td>
-<td>
-<code>at_build</code>, <code>at_check</code>,
-<code>at_install_src</code>
-</td>
-<td>A macro declaring stage=install, or declaring no stage at all, which
-Writing R Extensions gives install as the default for. Evaluated
-whenever the page is rendered from source: build, either install, and
-check. Not when a prebuilt binary is installed.</td>
-</tr>
-<tr class="even">
-<td><code>Rd_Sexpr_render</code></td>
-<td>
-<code>at_build</code>, <code>at_check</code>
-</td>
-<td>A macro declaring stage=render is evaluated when the page is
-rendered for display: during R CMD build and R CMD check, and when a
-user calls help(). It does not run at either install.</td>
-</tr>
-<tr class="odd">
-<td><code>data</code></td>
-<td>
-<code>at_build</code>, <code>at_install_src</code>
-</td>
-<td>A .R file under data/ is evaluated when R CMD build converts data/
-to a lazy-load database, and when the package is installed from a source
-directory. It does not survive into a source tarball: build replaces it
-with the .rda it produced.</td>
-</tr>
-<tr class="even">
-<td><code>demo</code></td>
-<td>none</td>
-<td>A demo runs only when a user calls demo(). No lifecycle command
-reaches it, though it ships in the installed package.</td>
-</tr>
-<tr class="odd">
-<td><code>exec</code></td>
-<td>none</td>
-<td>R code under exec/ runs only when a user invokes the script. R CMD
-INSTALL copies exec/ into the installed package and marks its contents
-executable, but no lifecycle command runs them.</td>
-</tr>
-<tr class="even">
-<td><code>tests</code></td>
-<td><code>at_check</code></td>
-<td>Test code, whether under tests/, tests/testthat/ or inst/tinytest/,
-is run by R CMD check and by nothing else. All three are reached through
-a runner in tests/.</td>
-</tr>
-<tr class="odd">
-<td><code>tools</code></td>
-<td>none</td>
-<td>tools/ holds helper scripts that nothing runs on its own. They are
-reached only if configure or a Makevars invokes them, which is reported
-where that invocation appears.</td>
-</tr>
-<tr class="even">
-<td><code>citation</code></td>
-<td><code>at_check</code></td>
-<td>inst/CITATION is R code that utils::readCitationFile() evaluates. R
-CMD check reads it, as does any user who calls citation(). A plain .R
-file under inst/ is never sourced.</td>
-</tr>
-<tr class="odd">
-<td><code>Rprofile</code></td>
-<td>
-<code>at_build</code>, <code>at_install_src</code>
-</td>
-<td>A .Rprofile at the package root is evaluated whenever a lifecycle
-command starts an R process inside the package: R CMD build, and
-installation from a source directory. It runs before any package is
-loaded.</td>
-</tr>
-<tr class="even">
-<td><code>vignettes</code></td>
-<td>
-<code>at_build</code>, <code>at_check</code>
-</td>
-<td>Vignette code runs when the vignette is rendered: during R CMD
-build, and again under R CMD check, which rebuilds it. Shared by Rmd,
-qmd and Rnw – the format decides how the code is extracted, not when it
-runs.</td>
+<td><code>in_function</code></td>
+<td>inherited</td>
+<td>Code inside a function definition. It inherits the phases of the
+code around it, except under R/, where the rules report it as running at
+no phase.</td>
 </tr>
 </tbody>
 </table>

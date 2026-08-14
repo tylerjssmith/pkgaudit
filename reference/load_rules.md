@@ -22,22 +22,31 @@ load_rules(db_path = .db_path())
 
 ## Value
 
-A named list with five data frames:
+A named list with six data frames:
 
 - file_contexts:
 
   Data frame with columns `name`, `version`, `type`, `message`, `path`,
-  `recursive`, `report`, `namespace_source`, `filename`, `code_context`.
-  `type` selects how a matched file is read and scanned; `report` is
-  `TRUE` for a rule whose matches are findings in their own right, and
-  `FALSE` for one that only tells the scanner which files to read;
-  `namespace_source` is `TRUE` only where R code becomes the package
-  namespace, which is where a lifecycle hook can actually run.
+  `recursive`, `report`, `filename`, `code_context`. `type` selects how
+  a matched file is read and scanned; `report` is `TRUE` for a rule
+  whose matches are findings in their own right, and `FALSE` for one
+  that only tells the scanner which files to read; `code_context` names
+  the code-context rules that can apply inside the files this rule
+  claims, space-separated – `NA` where none can, and `"computed"` where
+  only `top_level` and `in_function` can. That is what confines the
+  lifecycle hooks to the directories whose code becomes the namespace,
+  since a `.onLoad` defined elsewhere never runs.
 
 - code_contexts:
 
   Data frame with columns `name`, `version`, `language`, `message`,
-  `xpath`.
+  `kind`, `xpath`, `segment`. `kind` is `"xpath"` for a rule matched
+  against the parse tree and `"segment"` for one matched against a label
+  the extractor stamped; exactly one of `xpath` and `segment` is set
+  accordingly. A segment rule exists because the distinction it draws is
+  invisible to the parse tree: once a help file has yielded R code,
+  nothing in that code says whether it came from `\\examples` or from a
+  `\\Sexpr`.
 
 - patterns:
 
@@ -58,9 +67,18 @@ A named list with five data frames:
 - phases:
 
   Data frame with columns `context`, `version`, and one logical column
-  per lifecycle phase. One row per context code can execute in: every
-  file- and code-context rule, plus the computed contexts `"R"` and
-  `"Other"`.
+  per lifecycle phase. One row per rule, file-context and code-context
+  alike. The computed contexts `top_level` and `in_function` have no row
+  and need none: they inherit the phases of the file context they sit
+  in.
+
+- phase_overrides:
+
+  Data frame with columns `file_context`, `code_context`, `version`, and
+  one logical column per lifecycle phase. Where a code context's phases
+  depart from its file context's, which is the exception rather than the
+  rule – today only `R/`, where code inside a function definition is
+  reported as running at no phase.
 
 The list carries a `"provenance"` attribute recording the database the
 rules were read from – a list of `db_path`, `version`, and `sha256` –
@@ -94,6 +112,8 @@ path only trusted writers control.
 ``` r
 rules <- load_rules()
 vapply(rules, nrow, integer(1))
-#> file_contexts code_contexts      patterns       matches        phases 
-#>            45             6            21            11            65 
+#>   file_contexts   code_contexts        patterns         matches          phases 
+#>              45              10              21              11              55 
+#> phase_overrides 
+#>               3 
 ```

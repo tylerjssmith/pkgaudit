@@ -1,6 +1,6 @@
 # pkgaudit Rule Coverage
 
-pkgaudit v0.4.0 separates *what* code does from *when* it executes.
+pkgaudit v0.5.0 separates *what* code does from *when* it executes.
 **Patterns** and **matches** answer the first, and come first below;
 **file contexts** and **code contexts** answer the second. Each rule is
 defined in a YAML file under
@@ -8,7 +8,7 @@ defined in a YAML file under
 and compiled into the SQLite database at `inst/db/rules.db`. The Rule
 columns below link to the defining YAML files.
 
-This vignette is generated from that database, at rules v0.4.0. Every
+This vignette is generated from that database, at rules v0.5.0. Every
 rule in it must be described here, so a rule that ships without a
 description fails the build rather than appearing unexplained.
 
@@ -17,9 +17,9 @@ description fails the build rather than appearing unexplained.
 Patterns are security-relevant function calls. Each pattern finding is
 attributed to the code context it executes in, so a
 [`system()`](https://rdrr.io/r/base/system.html) call inside `.onLoad`
-is distinguished from one inside an ordinary function (“Other”) or at
-top level (“R”). Qualified (`pkg::fn()`) and unqualified (`fn()`) call
-forms are both detected. Pattern rules carry [MITRE
+is distinguished from one inside an ordinary function (`in_function`) or
+at top level (`top_level`). Qualified (`pkg::fn()`) and unqualified
+(`fn()`) call forms are both detected. Pattern rules carry [MITRE
 ATT&CK](https://attack.mitre.org/) technique labels.
 
 A finding also records how the code is *reached*. `guarded` is `TRUE`
@@ -29,8 +29,9 @@ still come from its context, so they read as an upper bound. `indirect`
 is `TRUE` where the call was made through the function’s name rather
 than the function.
 
-A pattern rule declares no phases of its own: a pattern inherits them
-from the code context it sits in, listed in the two tables above.
+A pattern rule declares no phases of its own. A pattern takes them from
+the file context it was found in and the code context it sits in,
+resolved as [Lifecycle Phases](#lifecycle-phases) describes.
 
 A call made through a function’s name rather than the function –
 `do.call("system", ...)`,
@@ -79,10 +80,9 @@ patterns instead, and no other file in the package is scanned for
 matches at all. Match rules carry [MITRE
 ATT&CK](https://attack.mitre.org/) technique labels.
 
-Like a pattern rule, a match rule declares no phases of its own: a match
-inherits them from the file context it was found in, listed in the File
-Contexts table above. Where a file matches more than one file-context
-rule, it takes the phases of every rule that matched it.
+Like a pattern rule, a match rule declares no phases of its own. Where a
+file matches more than one file-context rule, it takes the phases of
+every rule that matched it.
 
 Matching text is less precise than matching a parse tree. A match has no
 syntax behind it, so a match inside a comment, a quoted string, or a
@@ -121,10 +121,10 @@ are case-sensitive:
 
 ## Lifecycle Phases
 
-Every file and code context declares the phases of the package lifecycle
-in which its code runs. Each finding carries one logical column per
-phase, so findings can be filtered by when they execute, e.g.
-`subset(result$patterns, at_install_src)`.
+A phase is a property of two things: where a file sits in the package,
+and where the code sits within that file. Each finding carries one
+logical column per phase, so findings can be filtered by when they
+execute, e.g. `subset(result$patterns, at_install_src)`.
 
 | Phase            | Code runs when                                         |
 |------------------|--------------------------------------------------------|
@@ -138,11 +138,25 @@ phase, so findings can be filtered by when they execute, e.g.
 | `at_unload`      | the namespace is unloaded                              |
 | `at_detach`      | the package is detached from the search path           |
 
-Phase assignments were established by running `R CMD build`,
-`R CMD check`, and `R CMD INSTALL` against instrumented packages rather
-than read from documentation. A rule can belong to several phases, and
-the Phases column below reads `none` for code that runs at no phase at
-all.
+A match takes the phases of the file context it was found in. A pattern
+resolves them in order: a code context carrying phases of its own wins,
+and otherwise the code inherits the phases of the file context around
+it. So the same [`system()`](https://rdrr.io/r/base/system.html) call
+reads `at_check` under `tests/` and `at_build` under `data/`.
+
+Code inside a function definition inherits too, with one exception:
+under `R/` it is reported as running at no phase. Both readings are
+measured – a function called from top-level code runs whenever that code
+does, and one nothing calls runs nowhere – and `R/` reports the second
+because it is dominated by exported functions the lifecycle never calls.
+Neither is a claim about any particular package’s call graph, which
+pkgaudit does not trace.
+
+Every phase value below was established by running instrumented packages
+through `R CMD build`, `R CMD check` and `R CMD INSTALL` and recording
+which sites fired, rather than read from documentation. A rule can
+belong to several phases, and a Phases column reads `none` for code that
+runs at no phase at all.
 
 ## File Contexts
 
@@ -228,48 +242,41 @@ anything written in it.
 
 ## Code Contexts
 
-Code contexts are lifecycle hooks whose bodies run automatically when a
-namespace is loaded, attached, unloaded, or detached. These rules are
-applied only where a package’s R code becomes its namespace – `R/`,
-`R/unix/`, `R/windows/`. A `.onLoad` defined anywhere else ships as an
-ordinary object and is never called, so attributing it to a hook would
-be a false reading rather than a cautious one.
+A code context says where code sits *within* its file. Every pattern
+carries one, and it is half of what decides the finding’s phases.
 
-| Rule | Code Context | Phases | Description |
-|----|----|----|----|
-| [LastLib_base](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_lastlib.yaml) | `.Last.lib()` | `at_check`, `at_detach` | .Last.lib() executes arbitrary code when a package is detached from the R search path, e.g., by calling detach(); it does not run on unloadNamespace(). It runs only if the package exports it and does not define .onDetach(), which supersedes it; R CMD check reports “NB: .Last.lib will not be used unless it is exported”. R CMD check detaches the package while checking that it can be unloaded cleanly, so .Last.lib() runs during checking without any call from a user. |
-| [onAttach_base](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onattach.yaml) | `.onAttach()` | `at_build`, `at_check`, `at_install_src`, `at_attach` | .onAttach() executes arbitrary code when a package is attached to the R search path by library() or require(); attach() does not trigger it. R CMD INSTALL, R CMD build, and R CMD check attach the package while testing that it loads, so .onAttach() runs during those phases without any call from a user. |
-| [onDetach_base](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_ondetach.yaml) | `.onDetach()` | `at_check`, `at_detach` | .onDetach() executes arbitrary code when a package is detached from the R search path, e.g., by calling detach(); it takes precedence over .Last.lib() when both are defined. R CMD check detaches the package while checking that it can be unloaded cleanly, so .onDetach() runs during checking without any call from a user. |
-| [onLoad_base](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onload.yaml) | `.onLoad()` | `at_build`, `at_check`, `at_install_src`, `at_load` | .onLoad() executes arbitrary code when a package namespace is loaded, e.g., by calling library(), require(), or loadNamespace(), or by accessing the namespace with ::. R CMD INSTALL, R CMD build, and R CMD check all load the package, so .onLoad() runs during those phases without any call from a user. |
-| [onUnload_base](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onunload.yaml) | `.onUnload()` | `at_check`, `at_unload` | .onUnload() executes arbitrary code when a package namespace is unloaded, e.g., by calling unloadNamespace() or detach(unload=TRUE). R CMD check unloads the namespace while checking that it can be unloaded cleanly, so .onUnload() runs during checking without any call from a user. |
-| [on_load_rlang](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onload_rlang.yaml) | [`rlang::on_load()`](https://rlang.r-lib.org/reference/on_load.html) | `at_build`, `at_check`, `at_install_src`, `at_load` | rlang::on_load() registers arbitrary code to execute when a package namespace is loaded, e.g., by calling library(), require(), or loadNamespace(), or by accessing the namespace with ::. R CMD INSTALL, R CMD build, and R CMD check all load the package, so the registered code runs during those phases without any call from a user. on_load() requires .onLoad() to contain rlang::run_on_load(). |
+Two kinds are rules. A **lifecycle hook** is found by matching the parse
+tree, and applies only where a package’s R code becomes its namespace:
+`R/`, `R/unix/`, `R/windows/`. A `.onLoad` defined anywhere else ships
+as an ordinary object and never fires – measured, not assumed. A **part
+of a help file** is found by matching a label the extractor stamped,
+because the distinction is invisible to the parse tree: once an `.Rd`
+has yielded R code, nothing in that code says whether it came from
+`\examples` or from a `\Sexpr`, or which stage.
 
-## Computed Contexts
+Both carry phases of their own, so a finding in one takes them directly.
 
-Every pattern is attributed to the code context that contains it. Most
-of those contexts are computed rather than matched by a rule, and so
-have phases but no rule of their own. `R` and `Other` are computed from
-where a pattern sits in the parse tree. The `Rd_` contexts come from
-which part of a help file the code was extracted from, one per `\Sexpr`
-stage, because the stages do not share a phase profile. The rest are
-named for where the file sits – `data`, `tests`, `vignettes` – because
-`R`’s phases are right for `R/` and wrong everywhere else. They are
-defined under
-[inst/rules/phases/](https://github.com/tylerjssmith/pkgaudit/tree/main/inst/rules/phases).
+| Rule | Code Context | Matched by | Phases | Description |
+|----|----|----|----|----|
+| [LastLib_base](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_lastlib.yaml) | `.Last.lib()` | parse tree | `at_check`, `at_detach` | .Last.lib() executes arbitrary code when a package is detached from the R search path, e.g., by calling detach(); it does not run on unloadNamespace(). It runs only if the package exports it and does not define .onDetach(), which supersedes it; R CMD check reports “NB: .Last.lib will not be used unless it is exported”. R CMD check detaches the package while checking that it can be unloaded cleanly, so .Last.lib() runs during checking without any call from a user. |
+| [Rd_Sexpr_build](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_rd_sexpr_build.yaml) | `\Sexpr[stage=build]` | segment label | `at_build`, `at_check`, `at_install_src` | is evaluated when R CMD build renders the help page, and when the package is installed from a source directory or checked. It is not reached when a source tarball is installed: build already evaluated it and froze the result into the Rd that shipped. |
+| [Rd_Sexpr_install](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_rd_sexpr_install.yaml) | `\Sexpr[stage=install]` | segment label | `at_build`, `at_check`, `at_install_src` | , and an unlabelled , which Writing R Extensions gives install as the default for and which measured identically. Evaluated whenever the help page is rendered from source: build, either install, and check. Not on installation from a binary, whose help ships pre-rendered. |
+| [Rd_Sexpr_render](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_rd_sexpr_render.yaml) | `\Sexpr[stage=render]` | segment label | `at_build`, `at_check` | is evaluated when the page is rendered for display, not when it is installed. It fires during R CMD build and R CMD check, and when a user calls help(); it does not fire at either install. |
+| [Rd_examples](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_rd_examples.yaml) | `\examples{}` | segment label | `at_check` | Code in an block of a help file is run by R CMD check, and by a user who calls example(). It is not run when the package is built or installed: R CMD build and R CMD INSTALL render the help page but never evaluate its examples. |
+| [onAttach_base](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onattach.yaml) | `.onAttach()` | parse tree | `at_build`, `at_check`, `at_install_src`, `at_attach` | .onAttach() executes arbitrary code when a package is attached to the R search path by library() or require(); attach() does not trigger it. R CMD INSTALL, R CMD build, and R CMD check attach the package while testing that it loads, so .onAttach() runs during those phases without any call from a user. |
+| [onDetach_base](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_ondetach.yaml) | `.onDetach()` | parse tree | `at_check`, `at_detach` | .onDetach() executes arbitrary code when a package is detached from the R search path, e.g., by calling detach(); it takes precedence over .Last.lib() when both are defined. R CMD check detaches the package while checking that it can be unloaded cleanly, so .onDetach() runs during checking without any call from a user. |
+| [onLoad_base](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onload.yaml) | `.onLoad()` | parse tree | `at_build`, `at_check`, `at_install_src`, `at_load` | .onLoad() executes arbitrary code when a package namespace is loaded, e.g., by calling library(), require(), or loadNamespace(), or by accessing the namespace with ::. R CMD INSTALL, R CMD build, and R CMD check all load the package, so .onLoad() runs during those phases without any call from a user. |
+| [onUnload_base](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onunload.yaml) | `.onUnload()` | parse tree | `at_check`, `at_unload` | .onUnload() executes arbitrary code when a package namespace is unloaded, e.g., by calling unloadNamespace() or detach(unload=TRUE). R CMD check unloads the namespace while checking that it can be unloaded cleanly, so .onUnload() runs during checking without any call from a user. |
+| [on_load_rlang](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onload_rlang.yaml) | [`rlang::on_load()`](https://rlang.r-lib.org/reference/on_load.html) | parse tree | `at_build`, `at_check`, `at_install_src`, `at_load` | rlang::on_load() registers arbitrary code to execute when a package namespace is loaded, e.g., by calling library(), require(), or loadNamespace(), or by accessing the namespace with ::. R CMD INSTALL, R CMD build, and R CMD check all load the package, so the registered code runs during those phases without any call from a user. on_load() requires .onLoad() to contain rlang::run_on_load(). |
+
+The remaining two are computed from the parse tree and are the only
+contexts with no phases of their own. They inherit from the file context
+around them, which is why there is no `data` or `tests` code context: a
+[`system()`](https://rdrr.io/r/base/system.html) call at the top level
+of a data script and one in a test file sit in the same place in their
+files, and what differs is when the file runs.
 
 | Context | Phases | Description |
 |----|----|----|
-| `R` | `at_build`, `at_check`, `at_install_src` | Top-level code in an R script is evaluated once, when the lazy-load database is built during installation from source, which R CMD check and R CMD build also perform. It is not re-evaluated when the namespace is loaded: loading restores the values from that database. |
-| `Other` | none | Code inside an ordinary function definition runs at no lifecycle phase. It executes only if something calls that function, never as a consequence of building, installing, checking, or loading the package. This holds for a function defined in a help-file example too. |
-| `Rd_examples` | `at_check` | Code in an block of a help file is run by R CMD check, and by a user who calls example(). Building or installing the package renders the help page but never evaluates its examples. |
-| `Rd_Sexpr_build` | `at_build`, `at_check`, `at_install_src` | A macro declaring stage=build is evaluated when R CMD build renders the help page, and when the package is installed from a source directory or checked. It is not reached when a source tarball is installed: build already evaluated it and froze the result into the Rd. |
-| `Rd_Sexpr_install` | `at_build`, `at_check`, `at_install_src` | A macro declaring stage=install, or declaring no stage at all, which Writing R Extensions gives install as the default for. Evaluated whenever the page is rendered from source: build, either install, and check. Not when a prebuilt binary is installed. |
-| `Rd_Sexpr_render` | `at_build`, `at_check` | A macro declaring stage=render is evaluated when the page is rendered for display: during R CMD build and R CMD check, and when a user calls help(). It does not run at either install. |
-| `data` | `at_build`, `at_install_src` | A .R file under data/ is evaluated when R CMD build converts data/ to a lazy-load database, and when the package is installed from a source directory. It does not survive into a source tarball: build replaces it with the .rda it produced. |
-| `demo` | none | A demo runs only when a user calls demo(). No lifecycle command reaches it, though it ships in the installed package. |
-| `exec` | none | R code under exec/ runs only when a user invokes the script. R CMD INSTALL copies exec/ into the installed package and marks its contents executable, but no lifecycle command runs them. |
-| `tests` | `at_check` | Test code, whether under tests/, tests/testthat/ or inst/tinytest/, is run by R CMD check and by nothing else. All three are reached through a runner in tests/. |
-| `tools` | none | tools/ holds helper scripts that nothing runs on its own. They are reached only if configure or a Makevars invokes them, which is reported where that invocation appears. |
-| `citation` | `at_check` | inst/CITATION is R code that utils::readCitationFile() evaluates. R CMD check reads it, as does any user who calls citation(). A plain .R file under inst/ is never sourced. |
-| `Rprofile` | `at_build`, `at_install_src` | A .Rprofile at the package root is evaluated whenever a lifecycle command starts an R process inside the package: R CMD build, and installation from a source directory. It runs before any package is loaded. |
-| `vignettes` | `at_build`, `at_check` | Vignette code runs when the vignette is rendered: during R CMD build, and again under R CMD check, which rebuilds it. Shared by Rmd, qmd and Rnw – the format decides how the code is extracted, not when it runs. |
+| `top_level` | inherited | Code outside any function definition. It carries the phases of the file context it sits in, so the same call reads at_check under tests/ and at_build under data/. |
+| `in_function` | inherited | Code inside a function definition. It inherits the phases of the code around it, except under R/, where the rules report it as running at no phase. |
