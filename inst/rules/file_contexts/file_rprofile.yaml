@@ -19,6 +19,7 @@ path: "."
 recursive: FALSE
 report: FALSE
 code_context: computed
+assume_called: TRUE
 filename: '^\.Rprofile$'
 positive_examples:
   - .Rprofile

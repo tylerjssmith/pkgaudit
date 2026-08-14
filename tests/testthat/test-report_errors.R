@@ -53,7 +53,7 @@ test_that("the Errors notes separate an unreadable file from a failed match rule
 
 test_that("the Errors notes report an incompletely read help file", {
   obj <- rich_obj(errors = errors_for(
-    .error_row("extract_Rd_code", "man/f.Rd", NA_character_,
+    .error_row("read_Rd_code", "man/f.Rd", NA_character_,
                "unexpected END_OF_INPUT")
   ))
   expect_match(
@@ -93,7 +93,7 @@ test_that("the Errors section counts an unrecognized step rather than dropping i
 notes_text <- function(errors) paste(.error_notes(errors), collapse = " ")
 macro_errors <- function(...) {
   msgs <- c(...)
-  data.frame(step = rep("extract_Rd_code", length(msgs)),
+  data.frame(step = rep("read_Rd_code", length(msgs)),
              script = paste0("man/", seq_along(msgs), ".Rd"),
              rule = NA_character_, error = msgs, stringsAsFactors = FALSE)
 }

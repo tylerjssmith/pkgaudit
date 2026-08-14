@@ -1,12 +1,13 @@
 # load_rules() -----------------------------------------------------------------
-test_that("load_rules() returns six rule data frames with expected columns", {
+test_that("load_rules() returns five rule data frames with expected columns", {
   rules <- load_rules()
   expect_named(rules, c("file_contexts", "code_contexts", "patterns", "matches",
-                        "phases", "phase_overrides"))
+                        "phases"))
 
   expect_named(rules$file_contexts,
                c("name", "version", "type", "message", "path", "recursive",
-                 "report", "filename", "code_context"))
+                 "report", "filename", "code_context", "assume_called"))
+  expect_type(rules$file_contexts$assume_called, "logical")
   expect_type(rules$file_contexts$report, "logical")
   # A file context declares a `type`, the format of the file, which selects how
   # it is read. Every other class declares a `language`, the language of the code
@@ -21,8 +22,6 @@ test_that("load_rules() returns six rule data frames with expected columns", {
   expect_named(rules$matches,
                c("name", "version", "language", "message", "attck", "regex"))
   expect_named(rules$phases, c("context", "version", .phase_columns))
-  expect_named(rules$phase_overrides,
-               c("file_context", "code_context", "version", .phase_columns))
 
   expect_type(rules$file_contexts$recursive, "logical")
   expect_gt(nrow(rules$file_contexts), 0L)
@@ -59,20 +58,19 @@ test_that("load_rules() returns phases as logicals for every context", {
   expect_true(top$at_install_src && top$at_build && top$at_check)
   expect_false(top$at_load)
 
-  # And R/ is where a function body is reported as running at no phase, which is
-  # an override rather than a property of in_function everywhere.
-  over <- rules$phase_overrides[
-    rules$phase_overrides$file_context == "R_scripts" &
-    rules$phase_overrides$code_context == .context_in_function, ]
-  expect_equal(nrow(over), 1L)
-  expect_false(any(unlist(over[, .phase_columns])))
+  # And R/ is where a function body is reported as running at no phase, which
+  # the rule says rather than in_function meaning that everywhere.
+  expect_false(rules$file_contexts$assume_called[
+    rules$file_contexts$name == "R_scripts"])
 })
 
-test_that("only the rules for R/ override the phases of a function body", {
+test_that("only the rules for R/ withhold the assumption that functions run", {
   rules <- load_rules()
-  expect_setequal(unique(rules$phase_overrides$code_context),
-                  .context_in_function)
-  expect_true(all(grepl("^R_scripts", rules$phase_overrides$file_context)))
+  fc     <- rules$file_contexts
+  expect_true(all(grepl("^R_scripts", fc$name[which(!fc$assume_called)])))
+  # Set exactly where code contexts can arise, and nowhere else: a shell script
+  # has no function bodies to decide about.
+  expect_equal(is.na(fc$assume_called), is.na(fc$code_context))
 })
 
 test_that("every code context a file-context rule names is a rule that exists", {
@@ -89,6 +87,36 @@ test_that("every code context a file-context rule names is a rule that exists", 
       any(hooks %in% strsplit(if (is.na(spec)) "" else spec, "[[:space:]]+")[[1L]])
     }, logical(1L))]
   expect_true(all(grepl("^R_scripts", carriers)))
+})
+
+test_that("load_rules() refuses a database that decides assume_called nowhere it applies", {
+  db <- tempfile(fileext = ".db")
+  file.copy(pkgaudit:::.db_path(), db)
+  con <- DBI::dbConnect(RSQLite::SQLite(), db)
+  # R/ has code contexts, so leaving the reading undecided there is a gap.
+  DBI::dbExecute(con, "UPDATE file_contexts SET assume_called = NULL
+                        WHERE name = 'R_scripts'")
+  DBI::dbDisconnect(con)
+  writeLines(digest::digest(db, algo = "sha256", file = TRUE),
+             paste0(db, ".sha256"))
+  on.exit(unlink(c(db, paste0(db, ".sha256"))), add = TRUE)
+
+  expect_error(load_rules(db), "R_scripts")
+})
+
+test_that("load_rules() refuses a database that decides assume_called where it cannot apply", {
+  db <- tempfile(fileext = ".db")
+  file.copy(pkgaudit:::.db_path(), db)
+  con <- DBI::dbConnect(RSQLite::SQLite(), db)
+  # configure is a shell script: it has no function bodies to decide about.
+  DBI::dbExecute(con, "UPDATE file_contexts SET assume_called = 1
+                        WHERE name = 'configure'")
+  DBI::dbDisconnect(con)
+  writeLines(digest::digest(db, algo = "sha256", file = TRUE),
+             paste0(db, ".sha256"))
+  on.exit(unlink(c(db, paste0(db, ".sha256"))), add = TRUE)
+
+  expect_error(load_rules(db), "configure")
 })
 
 test_that("load_rules() refuses a database missing phases for a context", {

@@ -43,11 +43,11 @@
 
 # While a scan is running the frame carries two more columns than the result
 # does: `file_rule`, the file-context rule that claimed the file, and
-# `segment_context`, the label of the segment the code came out of. Resolving a
+# `rd_context`, the label of the segment the code came out of. Resolving a
 # pattern's phases needs both -- a phase depends on where the file sits as well
 # as where the code sits within it -- and audit_package() drops them once the
 # phases are attached, so they never reach the caller.
-.internal_pattern_columns <- c("file_rule", "segment_context")
+.internal_pattern_columns <- c("file_rule", "rd_context")
 
 .empty_patterns <- function(with_phases = TRUE) {
   df <- data.frame(
@@ -67,7 +67,7 @@
     cbind(df, .empty_phase_cols())
   } else {
     df$file_rule       <- character(0L)
-    df$segment_context <- character(0L)
+    df$rd_context <- character(0L)
     df
   }
 }
@@ -133,16 +133,6 @@
     message      = message,
     stringsAsFactors = FALSE
   )
-}
-
-
-# Vectorised isTRUE: NA and NULL entries become FALSE. Used where a missing rule
-# field must fail closed rather than propagate NA into a logical branch.
-isTRUE_vec <- function(x) {
-  if (is.null(x)) return(logical(0L))
-  out <- as.logical(x)
-  out[is.na(out)] <- FALSE
-  out
 }
 
 

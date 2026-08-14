@@ -20,6 +20,7 @@ path: "data"
 recursive: FALSE
 report: FALSE
 code_context: computed
+assume_called: TRUE
 filename: '\.[RrSsq]$'
 positive_examples:
   - data/things.R

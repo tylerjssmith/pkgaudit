@@ -28,10 +28,10 @@ test_that("a file or code context takes the phases of the rule that matched", {
 # A pattern row as the scan builds it, carrying the two columns that say where
 # the file sat and where the segment did.
 scan_pattern <- function(code_context, file_rule = "R_scripts",
-                         segment_context = NA_character_) {
+                         rd_context = NA_character_) {
   pat <- .empty_patterns(with_phases = FALSE)
   pat[1L, ] <- list("system", "R/zzz.R", 1L, 1L, code_context, FALSE, FALSE,
-                    "p", "m", "T1059", file_rule, segment_context)
+                    "p", "m", "T1059", file_rule, rd_context)
   pat
 }
 
@@ -55,14 +55,14 @@ test_that("top-level code takes the phases of the file context it sits in", {
   expect_false(out$at_build[[1L]])
 })
 
-test_that("a function body inherits, except where its file context overrides", {
-  # In R/, reported as running at no phase. Both readings are measured; the
-  # rule for R/ says which one it reports, because R/ is dominated by exported
-  # functions the lifecycle never calls.
+test_that("a function body inherits, unless its file rule withholds that", {
+  # In R/, reported as running at no phase: assume_called is FALSE there. Both
+  # readings are measured; the rule says which one it reports, because R/ is
+  # dominated by exported functions the lifecycle never calls.
   out <- .resolve_pattern_phases(scan_pattern(.context_in_function), rules)
   expect_false(any(unlist(out[1L, .phase_columns])))
 
-  # Under tests/ there is no override, so it inherits: the probe package
+  # Under tests/ the rule assumes called, so it inherits: the probe package
   # measures that a function called from a test file runs when check does.
   out <- .resolve_pattern_phases(
     scan_pattern(.context_in_function, file_rule = "tests_testthat"), rules)
@@ -74,7 +74,7 @@ test_that("a function body in a help file inherits from its segment", {
   # is evaluated only by R CMD check, so the segment is what it takes.
   out <- .resolve_pattern_phases(
     scan_pattern(.context_in_function, file_rule = "man_pages",
-                 segment_context = .context_rd_examples), rules)
+                 rd_context = .context_rd_examples), rules)
   expect_true(out$at_check[[1L]])
   expect_false(out$at_build[[1L]] || out$at_install_src[[1L]])
 })

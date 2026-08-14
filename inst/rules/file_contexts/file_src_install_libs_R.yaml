@@ -3,6 +3,7 @@ version: "0.4.0"
 type: R
 report: TRUE
 code_context: computed
+assume_called: TRUE
 message: >-
   src/install.libs.R is an R script used in some packages to install executable
   programs and other binaries during installation from source, including the

@@ -34,8 +34,11 @@
   on an XPath. Every context a finding can carry is now defined by a rule, with
   its own version, message and examples.
 * A file-context rule names the code-context rules that can apply inside it,
-  replacing the `namespace_source` flag. `load_rules()` returns a sixth element,
-  `phase_overrides`.
+  replacing the `namespace_source` flag, and carries `assume_called`: whether
+  code inside a function definition there is taken to run when the code around
+  it runs. There are exactly two measured answers, so it is a flag rather than a
+  set of phases -- a rule can choose between the two measurements but cannot
+  state a third.
 * Every phase pkgaudit reports is measured by an instrumented probe package,
   including both readings of a function body: one called from top-level code,
   which fires wherever that code does, and one nothing calls, which fires

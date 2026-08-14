@@ -18,6 +18,7 @@ path: "inst/unitTests"
 recursive: FALSE
 report: FALSE
 code_context: computed
+assume_called: TRUE
 filename: '\.[RrSsq]$'
 positive_examples:
   - inst/unitTests/runit.audit.R

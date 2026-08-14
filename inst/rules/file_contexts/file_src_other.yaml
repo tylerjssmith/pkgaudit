@@ -18,6 +18,7 @@ path: "src"
 recursive: TRUE
 report: FALSE
 code_context: ~
+assume_called: ~
 filename: '.'
 positive_examples:
   - src/vendor/odd.zz

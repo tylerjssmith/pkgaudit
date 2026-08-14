@@ -18,6 +18,7 @@ path: "vignettes"
 recursive: FALSE
 report: FALSE
 code_context: computed
+assume_called: TRUE
 filename: '\.qmd$'
 positive_examples:
   - vignettes/intro.qmd

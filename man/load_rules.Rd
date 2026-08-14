@@ -11,14 +11,18 @@ load_rules(db_path = .db_path())
 with the installed package.}
 }
 \value{
-A named list with six data frames:
+A named list with five data frames:
 \describe{
 \item{file_contexts}{Data frame with columns \code{name}, \code{version}, \code{type},
 \code{message}, \code{path}, \code{recursive}, \code{report}, \code{filename}, \code{code_context}.
 \code{type} selects how a matched file is read and scanned;
 \code{report} is \code{TRUE} for a rule whose matches are findings in their own
 right, and \code{FALSE} for one that only tells the scanner which files to
-read; \code{code_context} names the code-context rules that can apply inside
+read; \code{assume_called} is \code{TRUE} where code inside a function definition
+is taken to run when the code around it runs, and \code{FALSE} where it is
+reported as running at no phase -- the two readings the probe package
+measures, \code{NA} where no code contexts apply;
+\code{code_context} names the code-context rules that can apply inside
 the files this rule claims, space-separated -- \code{NA} where none can, and
 \code{"computed"} where only \code{top_level} and \code{in_function} can. That is what
 confines the lifecycle hooks to the directories whose code becomes the
@@ -45,11 +49,6 @@ logical column per lifecycle phase. One row per rule, file-context and
 code-context alike. The computed contexts \code{top_level} and
 \code{in_function} have no row and need none: they inherit the phases of the
 file context they sit in.}
-\item{phase_overrides}{Data frame with columns \code{file_context},
-\code{code_context}, \code{version}, and one logical column per lifecycle phase.
-Where a code context's phases depart from its file context's, which is
-the exception rather than the rule -- today only \verb{R/}, where code inside
-a function definition is reported as running at no phase.}
 }
 The list carries a \code{"provenance"} attribute recording the database the
 rules were read from -- a list of \code{db_path}, \code{version}, and \code{sha256} --

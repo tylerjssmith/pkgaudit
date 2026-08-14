@@ -1,7 +1,7 @@
 # Extraction for R source files: R/, and every other place a package carries
 # plain R that something evaluates.
 #
-# The R segments this produces are analysed in language_R.R -- as are the R
+# The R segments this produces are analysed in analyze_R.R -- as are the R
 # segments an .Rd, .Rmd, .Rnw or .rsp yields. Reading a file and analysing what
 # comes out dispatch on different axes, so they live in different files.
 

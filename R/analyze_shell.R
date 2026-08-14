@@ -1,6 +1,6 @@
 # Analysis of shell code, whatever file it came out of: a configure script, a
 # Makevars, a {bash} chunk in a vignette. Dispatch is on the segment's language;
-# the extractors that produce them live in type_*.R.
+# the extractors that produce them live in extract_*.R.
 
 #' @export
 analyze_segment.shell <- function(segment, rules) {

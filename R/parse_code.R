@@ -18,7 +18,7 @@
 #' @details
 #' Code is taken as text rather than read from a path so that one parser serves
 #' both an R script, whose lines are the file itself, and a help file, whose R
-#' code is extracted from `\examples{}` and `\Sexpr{}` by [extract_Rd_code()].
+#' code is extracted from `\examples{}` and `\Sexpr{}` by [read_Rd_code()].
 #'
 #' `parse()` numbers lines from the start of what it is given, so a caller that
 #' keeps its lines aligned to the file they came from gets source references

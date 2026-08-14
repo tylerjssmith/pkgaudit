@@ -19,6 +19,7 @@ path: "inst"
 recursive: TRUE
 report: FALSE
 code_context: ~
+assume_called: ~
 filename: '\.(js|mjs|ts)$'
 positive_examples:
   - inst/htmlwidgets/w.js

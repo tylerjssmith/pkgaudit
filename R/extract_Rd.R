@@ -1,15 +1,15 @@
 # Extraction for help files. An .Rd yields a segment per kind of code that runs
 # at its own time: the \examples, and one per \Sexpr stage. All are R, and are
-# analysed by the methods in language_R.R.
+# analysed by the methods in analyze_R.R.
 
 #' @export
 extract_segments.Rd <- function(source) {
-  rd <- extract_Rd_code(source$path, macros = source$macros)
+  rd <- read_Rd_code(source$path, macros = source$macros)
 
   errors <- .empty_errors()
   if (!is.null(rd$error)) {
     errors <- .error_row(
-      step = "extract_Rd_code", file_context = source$file_context,
+      step = "read_Rd_code", file_context = source$file_context,
       message = rd$error
     )
     # Whatever was recovered is still scanned; the error records that the

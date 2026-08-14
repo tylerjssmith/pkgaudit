@@ -33,13 +33,6 @@ test_that(".error_row fills the fields a step does not set", {
   expect_true(is.na(row$file_context))
 })
 
-test_that("isTRUE_vec fails closed on NA and NULL", {
-  # Used where a missing rule field must not propagate NA into a branch.
-  expect_equal(isTRUE_vec(c(TRUE, FALSE, NA)), c(TRUE, FALSE, FALSE))
-  expect_equal(isTRUE_vec(NULL), logical(0L))
-  expect_equal(isTRUE_vec(c(1L, 0L)), c(TRUE, FALSE))
-})
-
 test_that(".relativize strips the root and leaves anything outside it alone", {
   root <- tempfile("root"); dir.create(file.path(root, "R"), recursive = TRUE)
   on.exit(unlink(root, recursive = TRUE), add = TRUE)

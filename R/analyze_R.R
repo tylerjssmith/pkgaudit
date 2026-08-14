@@ -1,6 +1,6 @@
 # Analysis of R code, whatever file it came out of: an .R script, a help file's
 # \examples and \Sexpr, a vignette's chunks and inline code. Dispatch is on the
-# segment's language; the extractors that produce them live in type_*.R.
+# segment's language; the extractors that produce them live in extract_*.R.
 
 #' @export
 analyze_segment.R <- function(segment, rules) {
@@ -73,7 +73,7 @@ analyze_segment.R <- function(segment, rules) {
 
   # Where the code sat, which resolving its phases needs alongside where it is.
   pat$file_rule       <- rep(segment$file_rule, nrow(pat))
-  pat$segment_context <- rep(segment$context, nrow(pat))
+  pat$rd_context <- rep(segment$context, nrow(pat))
 
   .findings(patterns = pat, errors = errors)
 }

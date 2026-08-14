@@ -60,7 +60,7 @@
   # Two different failures. An unexpandable macro means the file was read but
   # the code inside the macro was not; a parse warning means the file itself was
   # recovered only in part.
-  extract_Rd_code = function(rows) {
+  read_Rd_code = function(rows) {
     macro <- .macro_rows(rows)
     notes <- character(0L)
 

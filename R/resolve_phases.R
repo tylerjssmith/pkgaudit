@@ -1,8 +1,8 @@
-# This script attaches lifecycle phases to the findings frames. Phases are a
-# property of a context, not of an individual finding: a file context and a code
-# context each get theirs from the rule that matched, a pattern inherits them
-# from the code context it sits in, and a match inherits them from the
-# file context it was found in.
+# This script attaches lifecycle phases to the findings frames.
+#
+# Phases are determined by contexts: file contexts and code contexts have phases
+# defined in their rule files. Patterns inherit phases from their file and code
+# contexts. Matches inherit them from their file contexts.
 
 # Look up phases for a vector of context keys, returning one row per key.
 #
@@ -24,7 +24,7 @@
 }
 
 
-# Attach phase columns to a file- or code-contexts frame, keyed by its rule.
+# Attach phase columns to a file-contexts or coverage frame, keyed by its rule.
 .attach_phases <- function(df, phases) {
   cbind(df, .phase_lookup(df$rule, phases))
 }
@@ -32,71 +32,64 @@
 
 # Attach phase columns to the patterns frame.
 #
-# A phase is a property of both where the file sits and where the code sits
-# within it, so resolving one walks a chain, first match winning:
+# The phases of a pattern depend on its file and code contexts. Phases are
+# resolved based on the first of the following that applies:
 #
-#   1. the code context is a rule -- a lifecycle hook, or a part of a help file
-#      -- and carries phases of its own.
-#   2. the file context overrides `in_function`, and says so outright.
-#   3. the code is inside a function definition, and takes the phases of the
-#      segment around it.
-#   4. otherwise it is top-level code, and takes the file context's phases.
+#   if the code is located in a named code context
+#     -> the phases of the code context
 #
-# Steps 3 and 4 are the same lookup: code inherits from where it sits. They are
-# written apart because only 3 can be overridden, and because the distinction is
-# what the override is choosing between. Both readings are measured -- a
-# function called from top level fires wherever that top-level code does, and
-# one nothing calls fires nowhere -- so a rule that overrides is choosing which
-# measurement to report, not asserting something unmeasured.
+#   else if the code is located at the top level of its file context
+#     -> the phases of the file context
 #
-# `file_rule` and `segment_context` are carried on the frame for this and
-# dropped before the result is built; they are how a pattern knows where it sat.
+#   else if the code is inside a function definition, and the file's rule
+#        assumes its functions are called (assume_called: TRUE)
+#     -> the phases of whatever encloses it: the Rd_examples or Rd_Sexpr_* block
+#        it was lifted out of, or the file context
+#
+#   else
+#     -> no phases at all.
+#
+# `file_rule` and `rd_context` ride along on the frame for this and are
+# dropped before the result is built; they are how a finding knows where it sat.
 .resolve_pattern_phases <- function(patterns, rules) {
   out <- .empty_phase_cols(nrow(patterns))
   if (nrow(patterns) == 0L) return(cbind(patterns, out))
 
-  # Where a pattern inherits from: the segment's own context where it has one,
-  # as a help file's \examples does, and the file context otherwise.
-  inherited <- ifelse(is.na(patterns$segment_context),
-                      patterns$file_rule, patterns$segment_context)
+  # What a computed context inherits from: the help-page block it came out of
+  # where there is one, and the file otherwise.
+  inherited <- ifelse(is.na(patterns$rd_context),
+                      patterns$file_rule, patterns$rd_context)
 
   computed <- patterns$code_context %in% .computed_contexts
   keys     <- ifelse(computed, inherited, patterns$code_context)
+  out      <- .phase_lookup(keys, rules$phases)
 
-  out <- .phase_lookup(keys, rules$phases)
-  .apply_phase_overrides(out, patterns, rules$phase_overrides)
-}
-
-
-# Replace the phases of any row a file context overrides for its code context.
-#
-# Applied after the chain rather than inside it so that an override is visibly
-# the last word: whatever the row would have inherited, this is what the rule
-# says it carries.
-.apply_phase_overrides <- function(out, patterns, overrides) {
-  if (is.null(overrides) || nrow(overrides) == 0L) return(cbind(patterns, out))
-
-  hit <- match(paste(patterns$file_rule, patterns$code_context, sep = "\r"),
-               paste(overrides$file_context, overrides$code_context, sep = "\r"))
-  for (phase in .phase_columns) {
-    out[[phase]][!is.na(hit)] <- as.logical(overrides[[phase]][hit[!is.na(hit)]])
+  # A rules list assembled by hand may not carry the flag. Unstated, the
+  # assumption is made: phases are an upper bound, and withholding them would
+  # report code as running nowhere on the strength of a rule that said nothing.
+  # The shipped rules always carry it, and load_rules() refuses a database that
+  # leaves it out where code contexts can arise.
+  assume_called <- rules$file_contexts$assume_called
+  assumed <- if (is.null(assume_called)) {
+    rep(TRUE, nrow(patterns))
+  } else {
+    flag <- assume_called[match(patterns$file_rule, rules$file_contexts$name)]
+    is.na(flag) | flag
   }
+
+  silent <- patterns$code_context == .context_in_function & !assumed
+  for (phase in .phase_columns) out[[phase]][silent] <- FALSE
+
   cbind(patterns, out)
 }
 
 
 # Attach phase columns to the matches frame.
 #
-# An match is found in a shell script or Make-like file, which has no code
-# context, so its phases are those of the file context it sits in. That key is a
-# path rather than a rule name, and one path ca match more than one
-# file-context rule, so the phases are the union across every rule that matched
-# it: the file is executed whenever any of those rules says it is.
-#
-# file_contexts must already carry its phase columns. A path with no row there
-# resolves to no phases, which cannot arise from a scan -- matches are only
-# sought in files that are file contexts -- and is a floor for a hand-built
-# frame rather than the mechanism relied upon.
+# A match is found in a shell script or Make-like file, which has no code
+# context, so its phases are those of the file context it sits in. Since one
+# path can match more than one file-context rule, the phases are the union
+# across every rule that matched it.
 .resolve_match_phases <- function(matches, file_contexts) {
   out <- .empty_phase_cols(nrow(matches))
   if (nrow(matches) == 0L || nrow(file_contexts) == 0L) {

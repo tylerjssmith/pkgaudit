@@ -1,5 +1,5 @@
 # Extraction from help files. An .Rd yields a segment per kind of code that runs
-# at its own time. What the extraction itself does is test-extract_Rd_code.R.
+# at its own time. What the extraction itself does is test-read_Rd_code.R.
 
 rd_pkg <- function(lines) {
   make_pkg(files = stats::setNames(list(lines), "man/f.Rd"))
@@ -62,5 +62,5 @@ test_that("what could be recovered is still scanned when parsing fails", {
   # The error records that the account of the file is incomplete; it does not
   # discard the code that was recovered.
   expect_gt(nrow(out$errors), 0L)
-  expect_equal(out$errors$step, "extract_Rd_code")
+  expect_equal(out$errors$step, "read_Rd_code")
 })

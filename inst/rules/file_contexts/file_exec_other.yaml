@@ -18,6 +18,7 @@ path: "exec"
 recursive: FALSE
 report: FALSE
 code_context: ~
+assume_called: ~
 filename: '\.(py|pl|rb|bat|ps1|tcl|lua)$'
 positive_examples:
   - exec/build.py

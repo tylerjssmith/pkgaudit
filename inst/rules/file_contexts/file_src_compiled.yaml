@@ -21,6 +21,7 @@ path: "src"
 recursive: TRUE
 report: FALSE
 code_context: ~
+assume_called: ~
 filename: '\.(c|cc|cpp|cxx|C|h|hpp|hxx|ipp|f|f90|f95|f03|f77|for|m|mm|rs|java)$'
 positive_examples:
   - src/rcpp_hello.cpp

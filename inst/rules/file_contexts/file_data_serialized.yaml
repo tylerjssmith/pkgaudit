@@ -19,6 +19,7 @@ path: "data"
 recursive: FALSE
 report: FALSE
 code_context: ~
+assume_called: ~
 filename: '\.(rda|RData|Rdata|rdata|rds|RDS|Rds)$'
 positive_examples:
   - data/cities.rda

@@ -3,6 +3,7 @@ version: "0.4.0"
 type: shell
 report: TRUE
 code_context: ~
+assume_called: ~
 message: >-
   configure.ac is an Autoconf input file that does not itself execute; it is
   processed by Autoconf to generate the configure script, which executes shell

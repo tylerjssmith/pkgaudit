@@ -21,6 +21,7 @@ path: "exec"
 recursive: FALSE
 report: FALSE
 code_context: ~
+assume_called: ~
 filename: '\.(sh|bash|ksh|zsh|csh)$'
 positive_examples:
   - exec/compileAttr.sh

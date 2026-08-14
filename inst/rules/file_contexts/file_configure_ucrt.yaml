@@ -3,6 +3,7 @@ version: "0.4.0"
 type: shell
 report: TRUE
 code_context: ~
+assume_called: ~
 message: >-
   configure.ucrt is a shell script for system-dependent configuration on the
   Windows UCRT toolchain, executed when a package is installed from source,

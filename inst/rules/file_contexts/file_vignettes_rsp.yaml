@@ -19,6 +19,7 @@ path: "vignettes"
 recursive: FALSE
 report: FALSE
 code_context: computed
+assume_called: TRUE
 filename: '\.rsp$'
 positive_examples:
   - vignettes/intro.md.rsp

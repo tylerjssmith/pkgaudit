@@ -27,7 +27,7 @@ a recoverable error rather than aborting the audit.
 \details{
 Code is taken as text rather than read from a path so that one parser serves
 both an R script, whose lines are the file itself, and a help file, whose R
-code is extracted from \verb{\\examples\{\}} and \verb{\\Sexpr\{\}} by \code{\link[=extract_Rd_code]{extract_Rd_code()}}.
+code is extracted from \verb{\\examples\{\}} and \verb{\\Sexpr\{\}} by \code{\link[=read_Rd_code]{read_Rd_code()}}.
 
 \code{parse()} numbers lines from the start of what it is given, so a caller that
 keeps its lines aligned to the file they came from gets source references

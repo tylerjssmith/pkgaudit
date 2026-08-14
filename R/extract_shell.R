@@ -5,7 +5,7 @@
 # Makefile is not a shell script, but reading them is identical and both yield
 # shell segments, so one method serves both.
 #
-# The shell segments this produces are analysed in language_shell.R, as are the
+# The shell segments this produces are analysed in analyze_shell.R, as are the
 # {bash} and {sh} chunks a vignette yields.
 
 #' @export

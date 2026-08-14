@@ -79,14 +79,14 @@ test_that("audit_package() executes nothing in the package it scans", {
   expect_true(any(res$patterns$code_context == "Rd_Sexpr_install"))
 })
 
-test_that("extract_Rd_code() executes nothing, with or without macros", {
+test_that("read_Rd_code() executes nothing, with or without macros", {
   dir <- markers_dir()
   pkg <- make_marker_pkg(dir)
   on.exit(unlink(c(dir, pkg), recursive = TRUE), add = TRUE)
   page <- file.path(pkg, "man", "f.Rd")
 
-  extract_Rd_code(page)
-  extract_Rd_code(page, macros = tools::loadPkgRdMacros(pkg))
+  read_Rd_code(page)
+  read_Rd_code(page, macros = tools::loadPkgRdMacros(pkg))
   expect_equal(list.files(dir), character(0L))
 })
 
@@ -95,7 +95,7 @@ test_that("parsing extracted code executes nothing", {
   pkg <- make_marker_pkg(dir)
   on.exit(unlink(c(dir, pkg), recursive = TRUE), add = TRUE)
 
-  code <- extract_Rd_code(file.path(pkg, "man", "f.Rd"),
+  code <- read_Rd_code(file.path(pkg, "man", "f.Rd"),
                           macros = tools::loadPkgRdMacros(pkg))
   parse_code(strsplit(code$examples, "\n", fixed = TRUE)[[1L]])
   for (stage in code$sexpr) {

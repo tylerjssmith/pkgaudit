@@ -19,6 +19,7 @@ path: "inst"
 recursive: FALSE
 report: FALSE
 code_context: computed
+assume_called: TRUE
 filename: '^CITATION$'
 positive_examples:
   - inst/CITATION

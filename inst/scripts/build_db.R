@@ -51,11 +51,11 @@
 
 # The computed code contexts, which no rule defines.
 #
-# They need no phases of their own: top-level code carries the phases of the
-# file context it sits in, and code inside a function definition carries them
-# too unless that file context overrides in_function. Both readings are measured
-# -- see the execution_surface probe -- and the override is how a rule says which
-# of the two it reports.
+# They need no phases of their own. Top-level code carries the phases of the
+# file context it sits in, and code inside a function definition carries the
+# phases of whatever encloses it -- unless that file context sets
+# `assume_called: FALSE`, in which case it carries none. Both readings are
+# measured; see the execution_surface probe.
 .context_top_level <- "top_level"
 .context_in_function <- "in_function"
 
@@ -257,30 +257,34 @@
   spec
 }
 
-# Validate a file-context rule's optional `in_function` block, which overrides
-# the phases code inside a function definition carries.
+# Validate a file-context rule's `assume_called`: whether code inside a function
+# definition in these files is taken to run when the code around it runs.
 #
-# Without it, such code inherits the phases of the context around it: the probe
-# package measures that a function called from top level fires wherever that
-# top-level code does. The override is how a rule reports the other measured
-# bound instead -- that a function nothing calls fires nowhere -- and it is
-# needed only where the first reading would drown the signal.
-.validate_phase_override <- function(rule, path) {
-  if (is.null(rule$in_function)) return(NULL)
-  over <- rule$in_function
-  if (!is.list(over)) {
-    stop("Field 'in_function' must be a block of the nine phase fields in: ",
-         path)
+# There are exactly two measured answers, so this is a flag rather than a set of
+# phases. The probe package establishes both: a function called from top level
+# fires wherever that top-level code does, and one nothing calls fires nowhere.
+# A rule choosing between them is choosing which measurement to report; it
+# cannot invent a third, which a free-form block of phases would allow.
+#
+# Null exactly where `code_context` is null. A shell script or a file that is
+# never read has no function bodies to decide about, and saying something about
+# them anyway would be noise the reader has to dismiss.
+.validate_assume_called <- function(rule, path) {
+  value    <- rule$assume_called
+  needs_it <- !is.null(rule$code_context)
+
+  if (!needs_it) {
+    if (!is.null(value)) {
+      stop("Field 'assume_called' must be null where 'code_context' is, in: ",
+           path, "\n  No code contexts apply here, so there are no function ",
+           "bodies to decide about.")
+    }
+    return(NULL)
   }
-  missing_fields <- setdiff(.phase_fields, names(over))
-  if (length(missing_fields) > 0L) {
-    stop("Field 'in_function' is missing phase fields in: ", path, "\n  ",
-         paste(missing_fields, collapse = ", "),
-         "\n  An override states all nine, so a partial one cannot be read as ",
-         "inheriting the rest.")
+  if (!is.logical(value) || length(value) != 1L || is.na(value)) {
+    stop("Field 'assume_called' must be TRUE or FALSE in: ", path)
   }
-  .validate_phases(over, path)
-  over
+  value
 }
 
 
@@ -295,8 +299,8 @@ read_file_context_yaml <- function(path) {
   rule <- yaml::read_yaml(path)
 
   expected <- c(.file_context_scalars, "recursive", "report", "code_context",
-                .phase_fields, .example_fields)
-  .check_fields(rule, expected, path, optional = "in_function")
+                "assume_called", .phase_fields, .example_fields)
+  .check_fields(rule, expected, path)
   .validate_common(rule, path, .file_context_scalars, "file_context")
   .validate_phases(rule, path)
 
@@ -311,8 +315,8 @@ read_file_context_yaml <- function(path) {
   }
   .validate_regex(rule$filename, path)
 
-  rule$code_context <- .validate_code_context_spec(rule, path)
-  rule$in_function  <- .validate_phase_override(rule, path)
+  rule$code_context  <- .validate_code_context_spec(rule, path)
+  rule$assume_called <- .validate_assume_called(rule, path)
 
   rule$positive_examples <- unlist(rule$positive_examples)
   rule$negative_examples <- unlist(rule$negative_examples)
@@ -479,7 +483,14 @@ init_db <- function(
       -- confines the lifecycle hooks to the directories whose code becomes the
       -- namespace, which the probe package measures: a .onLoad defined in data/
       -- or tests/ never fires.
-      code_context TEXT
+      code_context TEXT,
+      -- Whether code inside a function definition here is taken to run when the
+      -- code around it runs. Both readings are measured -- a function called
+      -- from top level fires wherever that code does, one nothing calls fires
+      -- nowhere -- so this selects between them and cannot state a third.
+      -- Null exactly where code_context is: no code contexts, no function
+      -- bodies to decide about.
+      assume_called INTEGER
     )")
 
   DBI::dbExecute(con, "
@@ -536,24 +547,6 @@ init_db <- function(
     )", paste(sprintf("%s INTEGER NOT NULL", .phase_fields),
               collapse = ",\n      ")))
 
-  # Where a code context's phases depart from the file context's.
-  #
-  # A phase is a property of both -- where the file sits, and where the code
-  # sits within it -- but the two agree almost everywhere, so this table holds
-  # only the disagreements. Today that is R/, where a function body is reported
-  # as running at no phase: both readings are measured, and R/ is the one place
-  # where reporting the other would mark every package's whole codebase as
-  # executing at install.
-  DBI::dbExecute(con, sprintf("
-    CREATE TABLE phase_overrides (
-      file_context TEXT NOT NULL REFERENCES file_contexts(name),
-      code_context TEXT NOT NULL,
-      version      TEXT NOT NULL REFERENCES rule_versions(version),
-      %s,
-      PRIMARY KEY (file_context, code_context)
-    )", paste(sprintf("%s INTEGER NOT NULL", .phase_fields),
-              collapse = ",\n      ")))
-
   for (v in versions) {
     DBI::dbExecute(
       con,
@@ -580,19 +573,17 @@ load_file_context <- function(rule, con, path) {
   .assert_version(con, rule$version, path)
   DBI::dbExecute(
     con,
-    "INSERT INTO file_contexts (name, version, type, message, path, recursive, report, filename, code_context)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO file_contexts (name, version, type, message, path, recursive, report, filename, code_context, assume_called)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     params = list(rule$name, rule$version, rule$type, trimws(rule$message),
                   trimws(rule$path), as.integer(rule$recursive),
                   as.integer(rule$report), trimws(rule$filename),
                   # Stored space-separated, as `functions` and `attck` are.
                   if (is.null(rule$code_context)) NA_character_
-                  else paste(rule$code_context, collapse = " "))
+                  else paste(rule$code_context, collapse = " "),
+                  if (is.null(rule$assume_called)) NA_integer_
+                  else as.integer(rule$assume_called))
   )
-  if (!is.null(rule$in_function)) {
-    load_phase_override(rule$name, .context_in_function, rule$version,
-                        rule$in_function, con, path)
-  }
   invisible(rule$name)
 }
 
@@ -608,24 +599,6 @@ load_code_context <- function(rule, con, path) {
                   if (is.null(rule$segment)) NA_character_ else rule$segment)
   )
   invisible(rule$name)
-}
-
-# Insert one phase-override row: the phases a code context carries inside the
-# files a given file-context rule claims, where they differ from that rule's own.
-load_phase_override <- function(file_context, code_context, version, values,
-                                con, path) {
-  .assert_version(con, version, path)
-  sql <- sprintf(
-    "INSERT INTO phase_overrides (file_context, code_context, version, %s)
-     VALUES (%s)",
-    paste(.phase_fields, collapse = ", "),
-    paste(rep("?", length(.phase_fields) + 3L), collapse = ", ")
-  )
-  DBI::dbExecute(con, sql, params = c(
-    list(file_context, code_context, version),
-    lapply(.phase_fields, function(field) as.integer(values[[field]]))
-  ))
-  invisible(file_context)
 }
 
 # Insert one phases row, hoisted out of a file- or code-context rule.

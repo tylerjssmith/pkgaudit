@@ -3,6 +3,7 @@ version: "0.4.0"
 type: make
 report: TRUE
 code_context: ~
+assume_called: ~
 message: >-
   src/Makevars.win sets make variables used to compile code in src/ on Windows
   when a package is installed from source, including the installs performed by

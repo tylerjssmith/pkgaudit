@@ -127,12 +127,14 @@
 #' context around it, so the same call reports `at_check` under `tests/` and
 #' `at_build` under `data/`.
 #'
-#' Code inside a function definition inherits too, with one exception: the rules
-#' for `R/` report it as running at no phase. Both readings are measured -- a
+#' Code inside a function definition inherits too, unless the rule for its file
+#' sets `assume_called = FALSE`, in which case it is reported as running at no
+#' phase. Only the rules for `R/` set it. Both readings are measured -- a
 #' function called from top level runs whenever that top-level code does, and one
-#' nothing calls runs nowhere -- and `R/` reports the second because it is
-#' dominated by exported functions the lifecycle never calls. Elsewhere the first
-#' is reported, since a helper in a test file is there to be called. Neither is a
+#' nothing calls runs nowhere -- so a rule chooses which measurement to report
+#' rather than stating a third. `R/` reports the second because it is dominated
+#' by exported functions the lifecycle never calls; elsewhere the first is
+#' reported, since a helper in a test file is there to be called. Neither is a
 #' claim about *this* package's call graph, which pkgaudit does not trace.
 #'
 #' A finding can belong to several phases, so the phase columns do not partition

@@ -3,6 +3,7 @@ version: "0.4.0"
 type: make
 report: TRUE
 code_context: ~
+assume_called: ~
 message: >-
   src/Makevars.in is a template that does not itself execute; it is processed by
   the configure script to generate src/Makevars, whose contents are then read by

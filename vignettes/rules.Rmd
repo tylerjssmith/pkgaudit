@@ -358,12 +358,13 @@ them in order: a code context carrying phases of its own wins, and otherwise the
 code inherits the phases of the file context around it. So the same `system()`
 call reads `at_check` under `tests/` and `at_build` under `data/`.
 
-Code inside a function definition inherits too, with one exception: under `R/` it
-is reported as running at no phase. Both readings are measured -- a function
-called from top-level code runs whenever that code does, and one nothing calls
-runs nowhere -- and `R/` reports the second because it is dominated by exported
-functions the lifecycle never calls. Neither is a claim about any particular
-package's call graph, which pkgaudit does not trace.
+Code inside a function definition inherits too, unless its file's rule sets
+`assume_called: FALSE`, in which case it is reported as running at no phase.
+Only the rules for `R/` set it. Both readings are measured -- a function called
+from top-level code runs whenever that code does, and one nothing calls runs
+nowhere -- so a rule is choosing which measurement to report, and cannot state a
+third. Neither is a claim about any particular package's call graph, which
+pkgaudit does not trace.
 
 Every phase value below was established by running instrumented packages through
 `R CMD build`, `R CMD check` and `R CMD INSTALL` and recording which sites fired,

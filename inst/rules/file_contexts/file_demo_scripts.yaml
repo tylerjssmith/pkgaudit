@@ -18,6 +18,7 @@ path: "demo"
 recursive: FALSE
 report: FALSE
 code_context: computed
+assume_called: TRUE
 filename: '\.[RrSsq]$'
 positive_examples:
   - demo/intro.R

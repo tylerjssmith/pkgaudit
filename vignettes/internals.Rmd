@@ -51,13 +51,13 @@ once in step 4. Nothing before it knows about phases.
 A phase is a property of two things -- where the file sits in the package, and
 where the code sits within that file -- so step 4 resolves a pattern by walking
 a short chain: a code context carrying phases of its own wins; otherwise the
-file context supplies them; and a file-context rule may override what code
-inside a function definition carries. Only `R/` does, reporting such code as
-running at no phase.
+code takes the phases of whatever encloses it. Code inside a function
+definition takes them too, unless the file's rule sets `assume_called: FALSE`,
+in which case it carries none. Only the rules for `R/` do.
 
 That the frames reach step 4 knowing where they came from is why `patterns`
 carries two extra columns while a scan is running, `file_rule` and
-`segment_context`. `audit_package()` drops them before building the result, so
+`rd_context`. `audit_package()` drops them before building the result, so
 the object a caller receives has the columns `?audit_package` documents and no
 others.
 
@@ -66,9 +66,9 @@ others.
 Steps 2 and 3 are both S3 generics, and they dispatch on different things.
 
 - `extract_segments()` dispatches on the file-context rule's **`type`** -- how
-  the file is read. Methods live one per file in `R/type_*.R`.
+  the file is read. Methods live one per file in `R/extract_*.R`.
 - `analyze_segment()` dispatches on the segment's **`language`** -- how the code
-  is analysed. Methods live in `R/language_*.R`.
+  is analysed. Methods live in `R/analyze_*.R`.
 
 They cannot be one axis, because one file can yield code in more than one
 language: an `.Rmd` yields an R segment for each `{r}` chunk and a shell segment
@@ -82,8 +82,8 @@ a language with no analyser yields no findings and no error, and records a
 coverage row instead, so an unhandled chunk engine is accounted for rather than
 silently dropped.
 
-Adding a file format is one new `R/type_*.R` plus a rule. Adding a language is
-one new `R/language_*.R` plus rules carrying that language. Neither touches
+Adding a file format is one new `R/extract_*.R` plus a rule. Adding a language is
+one new `R/analyze_*.R` plus rules carrying that language. Neither touches
 `audit_package()`, and neither touches the other.
 
 ## The call graph
@@ -191,8 +191,9 @@ The check is time-of-check to time-of-use; see "Security considerations" in
 
 `load_rules()` also refuses a database with a gap in its phase model: a rule
 without phases, a file-context rule naming a code context that does not exist,
-or an override attached to something that cannot arise. A rule can never ship
-whose findings would silently carry no phases.
+or one that leaves `assume_called` undecided where code contexts can arise --
+or decides it where they cannot. A rule can never ship whose findings would
+silently carry no phases.
 
 ### Every rule is verified against its own examples
 

@@ -18,6 +18,7 @@ path: "."
 recursive: FALSE
 report: FALSE
 code_context: ~
+assume_called: ~
 filename: '^DESCRIPTION$'
 positive_examples:
   - DESCRIPTION

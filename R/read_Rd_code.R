@@ -96,7 +96,7 @@
 #' wired into a scan.
 #'
 #' @keywords internal
-extract_Rd_code <- function(path, macros = NULL) {
+read_Rd_code <- function(path, macros = NULL) {
   stopifnot(is.character(path), length(path) == 1L, !is.na(path))
   if (!file.exists(path) || dir.exists(path)) {
     return(.empty_Rd_code(paste0("not a readable file: ", path)))

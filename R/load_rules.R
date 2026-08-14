@@ -10,14 +10,18 @@
 #' @param db_path Path to the rules database. Defaults to the database bundled
 #'   with the installed package.
 #'
-#' @return A named list with six data frames:
+#' @return A named list with five data frames:
 #'   \describe{
 #'     \item{file_contexts}{Data frame with columns `name`, `version`, `type`,
 #'       `message`, `path`, `recursive`, `report`, `filename`, `code_context`.
 #'       `type` selects how a matched file is read and scanned;
 #'       `report` is `TRUE` for a rule whose matches are findings in their own
 #'       right, and `FALSE` for one that only tells the scanner which files to
-#'       read; `code_context` names the code-context rules that can apply inside
+#'       read; `assume_called` is `TRUE` where code inside a function definition
+#'       is taken to run when the code around it runs, and `FALSE` where it is
+#'       reported as running at no phase -- the two readings the probe package
+#'       measures, `NA` where no code contexts apply;
+#'       `code_context` names the code-context rules that can apply inside
 #'       the files this rule claims, space-separated -- `NA` where none can, and
 #'       `"computed"` where only `top_level` and `in_function` can. That is what
 #'       confines the lifecycle hooks to the directories whose code becomes the
@@ -44,11 +48,6 @@
 #'       code-context alike. The computed contexts `top_level` and
 #'       `in_function` have no row and need none: they inherit the phases of the
 #'       file context they sit in.}
-#'     \item{phase_overrides}{Data frame with columns `file_context`,
-#'       `code_context`, `version`, and one logical column per lifecycle phase.
-#'       Where a code context's phases depart from its file context's, which is
-#'       the exception rather than the rule -- today only `R/`, where code inside
-#'       a function definition is reported as running at no phase.}
 #'   }
 #'   The list carries a `"provenance"` attribute recording the database the
 #'   rules were read from -- a list of `db_path`, `version`, and `sha256` --
@@ -81,13 +80,14 @@ load_rules <- function(db_path = .db_path()) {
     file_contexts <- DBI::dbGetQuery(
       con,
       "SELECT name, version, type, message, path, recursive, report,
-              filename, code_context
+              filename, code_context, assume_called
          FROM file_contexts
         ORDER BY name"
     )
-    # SQLite has no native logical type; both flags are stored as 0/1.
-    file_contexts$recursive <- as.logical(file_contexts$recursive)
-    file_contexts$report    <- as.logical(file_contexts$report)
+    # SQLite has no native logical type; the flags are stored as 0/1.
+    file_contexts$recursive     <- as.logical(file_contexts$recursive)
+    file_contexts$report        <- as.logical(file_contexts$report)
+    file_contexts$assume_called <- as.logical(file_contexts$assume_called)
 
     code_contexts <- DBI::dbGetQuery(
       con,
@@ -121,18 +121,6 @@ load_rules <- function(db_path = .db_path()) {
       phases[[phase]] <- as.logical(phases[[phase]])
     }
 
-    # Where a code context's phases depart from its file context's. Almost
-    # nowhere, which is why this is a table of exceptions rather than of pairs.
-    phase_overrides <- DBI::dbGetQuery(
-      con,
-      sprintf("SELECT file_context, code_context, version, %s
-                 FROM phase_overrides
-                ORDER BY file_context, code_context",
-              paste(.phase_columns, collapse = ", "))
-    )
-    for (phase in .phase_columns) {
-      phase_overrides[[phase]] <- as.logical(phase_overrides[[phase]])
-    }
 
     if (nrow(file_contexts) == 0L &&
         nrow(code_contexts) == 0L &&
@@ -141,8 +129,7 @@ load_rules <- function(db_path = .db_path()) {
       stop("No rules found in rules database: ", db_path, call. = FALSE)
     }
 
-    .validate_phase_coverage(file_contexts, code_contexts, phases,
-                             phase_overrides, db_path)
+    .validate_phase_coverage(file_contexts, code_contexts, phases, db_path)
 
     # Record which database these rules came from. A scan reports the rules it
     # actually used, and without this it could only report whichever database
@@ -153,8 +140,7 @@ load_rules <- function(db_path = .db_path()) {
         code_contexts = code_contexts,
         patterns        = patterns,
         matches         = matches,
-        phases          = phases,
-        phase_overrides = phase_overrides
+        phases          = phases
       ),
       provenance = list(
         db_path = db_path,
@@ -171,9 +157,9 @@ load_rules <- function(db_path = .db_path()) {
 # resolving to no phases somewhere downstream, where a finding that runs at
 # install would be reported as running at nothing.
 .validate_phase_coverage <- function(file_contexts, code_contexts, phases,
-                                     phase_overrides, db_path) {
+                                     db_path) {
   # Every rule needs its own phases row. The computed contexts need none: they
-  # take the file context's, or an override.
+  # take the file context's, or none at all.
   missing <- setdiff(c(file_contexts$name, code_contexts$name), phases$context)
   if (length(missing) > 0L) {
     stop("Rules database is missing phases for: ",
@@ -193,22 +179,16 @@ load_rules <- function(db_path = .db_path()) {
          call. = FALSE)
   }
 
-  # An override must attach to a real file context and name a context that can
-  # actually arise there, or it would sit in the database never firing.
-  if (nrow(phase_overrides) > 0L) {
-    bad_file <- setdiff(phase_overrides$file_context, file_contexts$name)
-    if (length(bad_file) > 0L) {
-      stop("Rules database has phase overrides for unknown file contexts: ",
-           paste(bad_file, collapse = ", "), "\n  Database: ", db_path,
-           call. = FALSE)
-    }
-    bad_code <- setdiff(phase_overrides$code_context,
-                        c(.computed_contexts, code_contexts$name))
-    if (length(bad_code) > 0L) {
-      stop("Rules database has phase overrides for unknown code contexts: ",
-           paste(bad_code, collapse = ", "), "\n  Database: ", db_path,
-           call. = FALSE)
-    }
+  # A rule says whether functions defined in its files are assumed called
+  # exactly where code contexts can arise there. Saying it elsewhere would be
+  # noise; omitting it where it matters would leave the reading undecided.
+  decided <- !is.na(file_contexts$assume_called)
+  applies <- !is.na(file_contexts$code_context)
+  if (any(decided != applies)) {
+    bad <- file_contexts$name[decided != applies]
+    stop("Rules database sets 'assume_called' where no code contexts apply, ",
+         "or omits it where they do: ", paste(bad, collapse = ", "),
+         "\n  Database: ", db_path, call. = FALSE)
   }
 
   invisible(TRUE)

@@ -124,7 +124,7 @@ new_pkgaudit <- function(
 # indistinguishable from a package that has none -- so it is refused rather
 # than run.
 .rule_classes <- c("file_contexts", "code_contexts", "patterns", "matches",
-                   "phases", "phase_overrides")
+                   "phases")
 
 
 # Expected columns for each result data frame. `rule` names the rule that

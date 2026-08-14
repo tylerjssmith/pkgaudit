@@ -1,5 +1,5 @@
 # Analysis of R code, whatever file it came out of. Dispatch is on the segment's
-# language; what produced the segment is test-type_*.R.
+# language; what produced the segment is test-extract_*.R.
 
 rules <- load_rules()
 
