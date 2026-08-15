@@ -6,10 +6,11 @@ message: >-
   .Last.lib() executes arbitrary code when a package is detached from the R
   search path, e.g., by calling detach(); it does not run on unloadNamespace().
   It runs only if the package exports it and does not define .onDetach(), which
-  supersedes it; R CMD check reports "NB: .Last.lib will not be used unless it
-  is exported". R CMD check detaches the package while checking that it can be
+  supersedes it. R CMD check detaches the package while checking that it can be
   unloaded cleanly, so .Last.lib() runs during checking without any call from a
   user.
+# Measured with a probe package whose every hook writes a marker: it fired at
+# check only when exported and no .onDetach was defined.
 at_autoconf: FALSE
 at_build: FALSE
 at_check: TRUE

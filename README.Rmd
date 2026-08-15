@@ -81,7 +81,7 @@ for example, are often legitimate. pkgaudit helps to identify what deserves
 reviewer attention, not what is malicious.
 
 For why this matters, see
-[R Package Security](https://tylerjssmith.github.io/pkgaudit/articles/r-package-security.html).
+[R Package Security](https://tylerjssmith.github.io/pkgaudit/articles/security.html).
 For the rule set, see
 [Rule Coverage](https://tylerjssmith.github.io/pkgaudit/articles/rules.html).
 

@@ -65,7 +65,7 @@ tools, for example, are often legitimate. pkgaudit helps to identify
 what deserves reviewer attention, not what is malicious.
 
 For why this matters, see [R Package
-Security](https://tylerjssmith.github.io/pkgaudit/articles/r-package-security.html).
+Security](https://tylerjssmith.github.io/pkgaudit/articles/security.html).
 For the rule set, see [Rule
 Coverage](https://tylerjssmith.github.io/pkgaudit/articles/rules.html).
 
@@ -95,7 +95,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-14 16:10 UTC with pkgaudit v0.5.0, rules v0.5.0
+#> Scanned:   2026-08-14 23:27 UTC with pkgaudit v0.5.0, rules v0.5.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -168,7 +168,7 @@ digest::digest(
 ```
 
 Expected SHA-256:
-`6a0c3370efe7b5a746281f271eaf25cf44f200e44666eb34a10cab443adece5a`
+`1fc9f5dd4e628640a1f95d7fc85d3ae4220c603af86a8e33b4bacfcf799eb7c6`
 
 ## Security
 

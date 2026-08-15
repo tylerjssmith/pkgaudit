@@ -8,6 +8,8 @@ message: >-
   when both are defined. R CMD check detaches the package while checking that it
   can be unloaded cleanly, so .onDetach() runs during checking without any call
   from a user.
+# Measured with a probe package whose every hook writes a marker: R CMD check
+# was the only command that reached it.
 at_autoconf: FALSE
 at_build: FALSE
 at_check: TRUE

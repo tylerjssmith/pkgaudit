@@ -7,6 +7,8 @@ message: >-
   e.g., by calling unloadNamespace() or detach(unload=TRUE). R CMD check unloads
   the namespace while checking that it can be unloaded cleanly, so .onUnload()
   runs during checking without any call from a user.
+# Measured with a probe package whose every hook writes a marker: R CMD check
+# was the only command that reached it.
 at_autoconf: FALSE
 at_build: FALSE
 at_check: TRUE

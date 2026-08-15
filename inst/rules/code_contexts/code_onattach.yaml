@@ -4,9 +4,12 @@ language: R
 kind: xpath
 message: >-
   .onAttach() executes arbitrary code when a package is attached to the R search
-  path by library() or require(); attach() does not trigger it. R CMD INSTALL,
-  R CMD build, and R CMD check attach the package while testing that it loads,
-  so .onAttach() runs during those phases without any call from a user.
+  path, e.g., by calling library() or require(); attach() does not trigger it.
+  R CMD INSTALL and R CMD check attach the package while testing that it loads,
+  as does R CMD build when the package has vignettes, so .onAttach() runs during
+  those phases without any call from a user.
+# Measured with a probe package whose every hook writes a marker: at_build
+# holds because build installs the package to render vignettes.
 at_autoconf: FALSE
 at_build: TRUE
 at_check: TRUE

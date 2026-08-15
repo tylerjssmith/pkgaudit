@@ -7,7 +7,8 @@ message: >-
   Code in an \examples{} block of a help file is run by R CMD check, and by a
   user who calls example(). It is not run when the package is built or
   installed: R CMD build and R CMD INSTALL render the help page but never
-  evaluate its examples.
+  evaluate its examples. Code under \dontrun{} is scanned but marked guarded:
+  it ships in the package, but no example run reaches it.
 # Established by running an instrumented package -- one whose every Rd
 # execution site writes a marker file -- through R CMD build, R CMD INSTALL
 # from both source and binary, R CMD check, loadNamespace(), and

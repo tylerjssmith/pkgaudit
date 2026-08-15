@@ -4,10 +4,9 @@ language: R
 kind: segment
 segment: Rd_Sexpr_install
 message: >-
-  \Sexpr[stage=install], and an unlabelled \Sexpr, which Writing R Extensions
-  gives install as the default for and which measured identically. Evaluated
-  whenever the help page is rendered from source: build, either install, and
-  check. Not on installation from a binary, whose help ships pre-rendered.
+  \Sexpr[stage=install] is evaluated whenever the help page is rendered from
+  source: R CMD build, either kind of source install, and R CMD check. Not on
+  installation from a binary, whose help ships pre-rendered.
 # Established with an instrumented probe package carrying one \Sexpr per stage,
 # run through R CMD build, R CMD INSTALL from a directory, a source tarball and
 # a binary, R CMD check, and help().
