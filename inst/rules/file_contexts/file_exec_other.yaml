@@ -2,9 +2,10 @@ name: exec_other
 version: "0.4.0"
 type: other
 message: >-
-  A script under exec/ in a language pkgaudit does not read. R installs
-  exec/ verbatim and marks its contents executable, so this ships as a
-  runnable program, but nothing runs it during a lifecycle phase.
+  A script under exec/ in a language pkgaudit does not read ships in the
+  installed package and is marked executable. A lifecycle command does not
+  necessarily run it, but it executes with the user's privileges when invoked.
+  Only certain file extensions are covered by this rule.
 at_autoconf: FALSE
 at_build: FALSE
 at_check: FALSE

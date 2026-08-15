@@ -2,9 +2,10 @@ name: vignettes_rmd
 version: "0.4.0"
 type: Rmd
 message: >-
-  An R Markdown vignette carries executable chunks. Vignette code runs when the vignette is rendered: during R CMD build,
-  and again under R CMD check, which rebuilds it. It executes arbitrary R with
-  the package loaded, before anyone reads the rendered document.
+  An R Markdown vignette carries executable chunks. Vignette code runs when the
+  vignette is rendered: during R CMD build, and again under R CMD check, which
+  rebuilds it. It executes arbitrary R with the package loaded, before anyone
+  reads the rendered document.
 at_autoconf: FALSE
 at_build: TRUE
 at_check: TRUE

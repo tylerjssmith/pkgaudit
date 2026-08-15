@@ -2,9 +2,9 @@ name: src_other
 version: "0.4.0"
 type: other
 message: >-
-  A file under src/ in no language pkgaudit recognises. Everything in src/ is
-  handed to the compiler, so an extension nobody listed is still part of what
-  gets built; the row exists so it is accounted for rather than passed over.
+  A file under src/. Everything there is part of what gets built, so this rule
+  claims every extension -- alongside any other rule that matches -- and a file
+  no language rule recognises is accounted for rather than passed over.
 at_autoconf: FALSE
 at_build: FALSE
 at_check: TRUE

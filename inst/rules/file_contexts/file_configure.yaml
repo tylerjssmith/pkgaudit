@@ -5,8 +5,8 @@ report: TRUE
 code_context: ~
 assume_called: ~
 message: >-
-  configure is a shell script used for system-dependent configuration when
-  packages are installed from source, including the installs performed by
+  configure is a shell script used for system-dependent configuration when a
+  package is installed from source, including the installs performed by
   R CMD check and by R CMD build when a package has vignettes. It can execute
   arbitrary shell commands.
 at_autoconf: FALSE

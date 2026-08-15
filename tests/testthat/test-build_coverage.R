@@ -109,13 +109,19 @@ test_that("serialized objects are executable surface, not inert data", {
   }
 })
 
-test_that("DESCRIPTION is reported, since Authors@R is evaluated", {
+test_that("DESCRIPTION is accounted for, and claims no lifecycle phase", {
+  # Authors@R is R code, but build, check and INSTALL all refuse to evaluate
+  # anything outside person/as.person/c/list/paste/paste0 -- measured, not
+  # assumed. What does evaluate it unguarded is developer tooling reading a
+  # source tree, which is no phase of the lifecycle. The row still says the
+  # file can execute and was not examined.
   pkg <- make_pkg()
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
 
   d <- cov_of(pkg)
   d <- d[d$file_context == "DESCRIPTION", ]
-  expect_true(d$at_build && d$at_check)
+  expect_equal(d$status, "unexamined")
+  expect_false(any(unlist(d[, .phase_columns])))
 })
 
 test_that("a file a rule claimed but nothing reads is not blamed on the rules", {

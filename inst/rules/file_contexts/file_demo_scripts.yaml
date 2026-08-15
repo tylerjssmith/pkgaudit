@@ -2,8 +2,8 @@ name: demo_scripts
 version: "0.4.0"
 type: R
 message: >-
-  A demo runs when a user calls demo(). No build, check or install command
-  reaches it, but it ships in the installed package and runs with the user's
+  A demo runs when a user calls demo(), and R CMD check runs it under
+  --run-demo. It ships in the installed package and runs with the user's
   privileges when invoked.
 at_autoconf: FALSE
 at_build: FALSE

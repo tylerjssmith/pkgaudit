@@ -3,9 +3,9 @@ version: "0.4.0"
 type: R
 message: >-
   R evaluates a .Rprofile found in the working directory when it starts, so a
-  .Rprofile at the package root runs whenever a lifecycle command starts an R
-  process inside the package. It runs before any package is loaded, earlier than
-  any other R in the package.
+  .Rprofile at the package root runs before any package is loaded, earlier than
+  any other R in the package. It does not survive into a source tarball: R CMD
+  build excludes it, so a check of a built package never sees it.
 at_autoconf: FALSE
 at_build: TRUE
 at_check: FALSE

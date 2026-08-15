@@ -3,11 +3,9 @@ version: "0.4.0"
 type: shell
 message: >-
   Shell scripts under exec/ ship in the installed package and are marked
-  executable. No lifecycle command runs them, but they execute arbitrary shell
-  with the user's privileges when invoked. Only sh-family extensions are
-  claimed; exec/ also holds Perl, Python, batch and other files this rule does
-  not match, and extensionless scripts whose language is known only from a
-  shebang.
+  executable. A lifecycle command does not necessarily run them, but they
+  execute arbitrary shell with the user's privileges when invoked. Only
+  sh-family extensions are covered by this rule.
 at_autoconf: FALSE
 at_build: FALSE
 at_check: FALSE

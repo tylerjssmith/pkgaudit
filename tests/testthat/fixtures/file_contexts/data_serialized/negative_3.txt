@@ -1,1 +1,1 @@
-inst/extdata/m.rds
+data/small.Rdata

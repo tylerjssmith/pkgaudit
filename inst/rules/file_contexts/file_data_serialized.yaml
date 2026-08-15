@@ -2,8 +2,9 @@ name: data_serialized
 version: "0.4.0"
 type: other
 message: >-
-  A serialized R object under data/ is restored when the package's data is
-  loaded. Deserializing an .rda or .rds can execute arbitrary code, and
+  A serialized R object under data/. With LazyData it is deserialized at
+  installation and restored when the namespace loads; R CMD check deserializes
+  it either way. Deserializing an .rda or .rds can execute arbitrary code, and
   pkgaudit cannot inspect one, so it is recorded rather than passed over as
   inert data.
 at_autoconf: FALSE
@@ -20,7 +21,7 @@ recursive: FALSE
 report: FALSE
 code_context: ~
 assume_called: ~
-filename: '\.(rda|RData|Rdata|rdata|rds|RDS|Rds)$'
+filename: '\.(rda|RData|rdata|rds)$'
 positive_examples:
   - data/cities.rda
   - data/small.RData
@@ -28,4 +29,5 @@ positive_examples:
 negative_examples:
   - data/things.R
   - data/notes.csv
+  - data/small.Rdata
   - inst/extdata/m.rds

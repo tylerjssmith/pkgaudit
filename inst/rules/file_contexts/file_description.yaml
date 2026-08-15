@@ -2,12 +2,16 @@ name: description
 version: "0.4.0"
 type: other
 message: >-
-  DESCRIPTION is not inert. Its Authors@R field is R code, which R parses
-  and evaluates when the package is built and checked. pkgaudit does not
-  read the file, so the row records that it executes and was not examined.
+  DESCRIPTION is not inert. Its Authors@R field is R code. R CMD build, check
+  and INSTALL refuse to evaluate anything outside person, as.person, c, list,
+  paste and paste0, so they are not the exposure. Developer tooling pointed at
+  an unpacked source tree is: desc evaluates the field with no allowlist, so
+  reading the authors -- or printing a desc object -- runs whatever it holds.
+  That is not a lifecycle phase, so this rule declares none. pkgaudit does not
+  read the file, so the row records that it can execute and was not examined.
 at_autoconf: FALSE
-at_build: TRUE
-at_check: TRUE
+at_build: FALSE
+at_check: FALSE
 at_install_src: FALSE
 at_install_bin: FALSE
 at_load: FALSE

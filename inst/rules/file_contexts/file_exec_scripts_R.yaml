@@ -3,9 +3,8 @@ version: "0.4.0"
 type: R
 message: >-
   R scripts under exec/ ship in the installed package and are marked executable.
-  No lifecycle command runs them, but they execute with the user's privileges
-  when invoked. Over half the files CRAN packages put in exec/ are R, so they
-  are parsed rather than matched as text.
+  A lifecycle command does not necessarily run them, but they execute with the
+  user's privileges when invoked.
 at_autoconf: FALSE
 at_build: FALSE
 at_check: FALSE

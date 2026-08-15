@@ -7,7 +7,8 @@ assume_called: ~
 message: >-
   configure.win is a shell script for system-dependent configuration on Windows,
   executed when a package is installed from source, including the installs
-  performed by R CMD check and by R CMD build when a package has vignettes.
+  performed by R CMD check and by R CMD build when a package has vignettes. It
+  can execute arbitrary shell commands.
 at_autoconf: FALSE
 at_build: TRUE
 at_check: TRUE

@@ -7,9 +7,10 @@ assume_called: ~
 message: >-
   src/Makefile.ucrt is a makefile used to compile code in src/ on the Windows
   UCRT toolchain when a package is installed from source, replacing R's default
-  make rules; the installs performed by R CMD check and by R CMD build also use
-  it, and R CMD build runs its clean target. It is read by make and its recipes
-  execute arbitrary shell commands.
+  make rules; it takes precedence over Makefile.win when present, the installs
+  performed by R CMD check and by R CMD build also use it, and R CMD build runs
+  its clean target. It is read by make and its recipes execute arbitrary shell
+  commands.
 at_autoconf: FALSE
 at_build: TRUE
 at_check: TRUE

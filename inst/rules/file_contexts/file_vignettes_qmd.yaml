@@ -2,7 +2,8 @@ name: vignettes_qmd
 version: "0.4.0"
 type: qmd
 message: >-
-  A Quarto vignette carries executable chunks, in the same fenced syntax as R Markdown. Vignette code runs when the vignette is rendered: during R CMD build,
+  A Quarto vignette carries executable chunks, in the same fenced syntax as R
+  Markdown. Vignette code runs when the vignette is rendered: during R CMD build,
   and again under R CMD check, which rebuilds it. It executes arbitrary R with
   the package loaded, before anyone reads the rendered document.
 at_autoconf: FALSE
