@@ -10,8 +10,9 @@
 #' @param db_path Path to the rules database. Defaults to the database bundled
 #'   with the installed package.
 #'
-#' @return A named list of five data frames, each row a rule. Common columns are
-#'   `name` and `version`; `message` is what a finding reports.
+#' @return A named list of five data frames. In the four rule frames each row
+#'   is a rule, the common columns are `name` and `version`, and `message` is
+#'   what a finding reports; `phases` is keyed by `context` instead.
 #'   \describe{
 #'     \item{file_contexts}{`name`, `version`, `type`, `message`, `path`,
 #'       `recursive`, `report`, `filename`, `code_context`, `assume_called`.
@@ -34,8 +35,9 @@
 #'     \item{matches}{`name`, `version`, `language`, `message`, `attck`, `regex`.
 #'       A match rule is evaluated only against code in its `language`.}
 #'     \item{phases}{`context`, `version`, and one logical column per lifecycle
-#'       phase. One row per rule. The computed contexts `top_level` and
-#'       `in_function` have none, and need none: they inherit.}
+#'       phase. One row per file-context or code-context rule -- pattern and
+#'       match rules carry no phases of their own. The computed contexts
+#'       `top_level` and `in_function` have none, and need none: they inherit.}
 #'   }
 #'   The list carries a `"provenance"` attribute -- `db_path`, `version` and
 #'   `sha256` -- which [audit_package()] reports in a scan's `metadata`. The

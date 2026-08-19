@@ -109,6 +109,7 @@ code_labels <- c(
 )
 
 pattern_labels <- c(
+  chmod = "`Sys.chmod()`, `Sys.umask()`",
   credentials = paste(
     "a path or environment variable that only holds a secret: `~/.ssh/`,",
     "`~/.aws/`, `.netrc`, `id_rsa`, `~/.gnupg/`, and `Sys.getenv()` of a name",
@@ -133,6 +134,7 @@ pattern_labels <- c(
     "subprocess or a file read -- every function the rules for those already",
     "cover, plus `readLines()`, `scan()`, `readBin()` and `rawToChar()`"
   ),
+  fs   = "`file_chmod()`, `file_chown()`",
   httr = paste(
     "`GET()`, `POST()`, `PUT()`, `PATCH()`, `DELETE()`, `HEAD()`, `VERB()`"
   ),
@@ -297,7 +299,8 @@ emit_table(
 ## Matches
 
 Matches are regular-expression matches in the shell scripts and Make-like
-files among the file contexts above -- those whose Type is `shell` or `make`.
+files among the [file contexts](#file-contexts) below -- those whose Type is
+`shell` or `make`.
 A file context typed `R` is parsed and scanned for patterns instead, and no
 other file in the package is scanned for matches at all. Match rules
 carry [MITRE ATT&CK](https://attack.mitre.org/) technique labels.

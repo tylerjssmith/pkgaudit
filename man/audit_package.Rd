@@ -38,7 +38,9 @@ so the three columns \code{patterns} derives from one -- \code{code_context},
 \code{guarded} and \code{indirect} -- are absent rather than empty.}
 \item{coverage}{\code{file_context}, \code{language}, \code{status}, \code{reason},
 \code{first_line}, \code{last_line}, \code{lines}, \code{bytes}, \code{rule}. One row per file
-the package carries that is, or could be, code.}
+the package carries that is, or could be, code, plus one per span of
+an unanalysed language inside a literate file -- a \code{python} chunk in a
+vignette is its own row.}
 \item{errors}{\code{step}, \code{file_context}, \code{rule}, \code{message}. Recoverable
 failures, collected rather than aborting the scan.}
 \item{metadata}{\code{pkg_name}, \code{pkg_version}, \code{pkg_path}, \code{pkg_is_tarball},

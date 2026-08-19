@@ -1,1 +1,1 @@
-chmod 777 /tmp/staging
+chmod 6755 $(DESTDIR)/bin/helper

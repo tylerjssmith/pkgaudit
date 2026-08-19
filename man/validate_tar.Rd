@@ -44,7 +44,9 @@ containing backslashes or control characters, empty paths, unparseable size
 fields, and archives that do not extract to exactly one top-level directory.
 It also enforces the entry-count, uncompressed-size, and expansion-ratio caps
 applied while reading (\code{max_entries}, \code{max_bytes}, \code{max_ratio}). No CRAN
-source tarball trips any of these. Reads gzip and uncompressed tar only.
+source tarball trips any of these. Reads gzip and uncompressed tar only,
+judged by the file's magic bytes rather than its name: a bzip2, xz, zstd or
+compress stream is refused whatever it is called.
 
 A refusal is signaled as a \code{pkgaudit_invalid_tarball} condition (a subclass
 of \code{error}), so it stops by default but can be caught by class.

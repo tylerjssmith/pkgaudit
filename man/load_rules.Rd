@@ -11,8 +11,9 @@ load_rules(db_path = .db_path())
 with the installed package.}
 }
 \value{
-A named list of five data frames, each row a rule. Common columns are
-\code{name} and \code{version}; \code{message} is what a finding reports.
+A named list of five data frames. In the four rule frames each row
+is a rule, the common columns are \code{name} and \code{version}, and \code{message} is
+what a finding reports; \code{phases} is keyed by \code{context} instead.
 \describe{
 \item{file_contexts}{\code{name}, \code{version}, \code{type}, \code{message}, \code{path},
 \code{recursive}, \code{report}, \code{filename}, \code{code_context}, \code{assume_called}.
@@ -35,8 +36,9 @@ callee.}
 \item{matches}{\code{name}, \code{version}, \code{language}, \code{message}, \code{attck}, \code{regex}.
 A match rule is evaluated only against code in its \code{language}.}
 \item{phases}{\code{context}, \code{version}, and one logical column per lifecycle
-phase. One row per rule. The computed contexts \code{top_level} and
-\code{in_function} have none, and need none: they inherit.}
+phase. One row per file-context or code-context rule -- pattern and
+match rules carry no phases of their own. The computed contexts
+\code{top_level} and \code{in_function} have none, and need none: they inherit.}
 }
 The list carries a \code{"provenance"} attribute -- \code{db_path}, \code{version} and
 \code{sha256} -- which \code{\link[=audit_package]{audit_package()}} reports in a scan's \code{metadata}. The

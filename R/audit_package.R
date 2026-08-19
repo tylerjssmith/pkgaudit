@@ -31,7 +31,9 @@
 #'       `guarded` and `indirect` -- are absent rather than empty.}
 #'     \item{coverage}{`file_context`, `language`, `status`, `reason`,
 #'       `first_line`, `last_line`, `lines`, `bytes`, `rule`. One row per file
-#'       the package carries that is, or could be, code.}
+#'       the package carries that is, or could be, code, plus one per span of
+#'       an unanalysed language inside a literate file -- a `python` chunk in a
+#'       vignette is its own row.}
 #'     \item{errors}{`step`, `file_context`, `rule`, `message`. Recoverable
 #'       failures, collected rather than aborting the scan.}
 #'     \item{metadata}{`pkg_name`, `pkg_version`, `pkg_path`, `pkg_is_tarball`,

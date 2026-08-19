@@ -36,6 +36,7 @@ reports what it finds; nothing in a scan is ever run.
 # labelled "python", reporting each line that calls eval().
 analyze_segment.python <- function(segment, rules) {
   at <- grep("\\\\beval\\\\(", segment$lines)
+  if (length(at) == 0L) return(new_findings())
   new_findings(matches = data.frame(
     rule = "py_eval", file_context = segment$file_context,
     line_number = at, column_number = NA_integer_,

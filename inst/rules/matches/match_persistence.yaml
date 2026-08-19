@@ -2,7 +2,7 @@ name: persistence
 version: "0.1.0"
 language: shell
 attck:
-  - T1546.004
+  - T1546
   - T1053.003
 message: >-
   A build script touching a startup file or a scheduler is arranging to run

@@ -36,6 +36,11 @@ A rule whose directory is absent contributes nothing and reports nothing --
 most packages have no \verb{R/unix/}, and that is a clean result. \code{pkg} itself is
 checked so that a root that does not exist is refused rather than joining
 that silence as a package with nothing to scan.
+
+A symlinked file is never claimed: following it would attribute findings to
+the target's path rather than the one the package ships. It is reported in
+\code{coverage} as \code{unexamined} with reason \code{symlink}, so skipping it is stated
+rather than silent.
 }
 
 \keyword{internal}

@@ -2,7 +2,7 @@
 # tarballs.
 
 # The caps and refusals below come from a survey of every CRAN source package as
-# of 7 July 2026 (n = 24,216); see dev/survey_tarballs.R. Not one archive
+# of 7 July 2026 (n = 24,216); see dev/cran_survey/. Not one archive
 # carried a link entry, a non-standard typeflag, a traversal, absolute,
 # backslash, control-character or empty path, an unparseable size, or more than
 # one top-level directory, so refusing all of them rejects no legitimate
@@ -21,7 +21,9 @@
 #' fields, and archives that do not extract to exactly one top-level directory.
 #' It also enforces the entry-count, uncompressed-size, and expansion-ratio caps
 #' applied while reading (`max_entries`, `max_bytes`, `max_ratio`). No CRAN
-#' source tarball trips any of these. Reads gzip and uncompressed tar only.
+#' source tarball trips any of these. Reads gzip and uncompressed tar only,
+#' judged by the file's magic bytes rather than its name: a bzip2, xz, zstd or
+#' compress stream is refused whatever it is called.
 #'
 #' A refusal is signaled as a `pkgaudit_invalid_tarball` condition (a subclass
 #' of `error`), so it stops by default but can be caught by class.
@@ -119,8 +121,11 @@ validate_tar <- function(tarfile,
 #'
 #' Reads headers only: entry data is skipped, never written to disk. Note that
 #' reaching entry N's header still requires decompressing everything before it.
-#' Reads gzip and uncompressed tar via [base::gzfile()]; bzip2/xz are not
-#' decompressed and will be refused as malformed.
+#' Reads gzip and uncompressed tar via [base::gzfile()], which would silently
+#' decompress bzip2, xz and zstd as well, so those streams -- and compress --
+#' are refused first, by magic bytes rather than filename. Only gzip's ~1032:1
+#' per-layer ceiling keeps `max_ratio` a meaningful decompression-bomb bound;
+#' xz can compress far past it.
 #'
 #' @keywords internal
 tar_entries <- function(tarfile,
@@ -134,6 +139,8 @@ tar_entries <- function(tarfile,
   stopifnot(is.numeric(max_bytes), length(max_bytes) == 1L, max_bytes > 0)
   stopifnot(is.numeric(max_ratio), length(max_ratio) == 1L, max_ratio > 0)
   stopifnot(is.numeric(chunk), length(chunk) == 1L, chunk > 0)
+
+  .check_tar_magic(tarfile)
 
   compressed <- file.size(tarfile)
 
@@ -233,6 +240,33 @@ tar_entries <- function(tarfile,
   }
 
   do.call(rbind, out)
+}
+
+
+# gzfile() decompresses whatever it recognizes -- gzip, bzip2, xz, zstd --
+# regardless of the file's name, so accepting its output would silently widen
+# the documented gzip-or-plain contract and void the max_ratio bound. The
+# known non-gzip magics are refused before the stream is opened.
+.compression_magics <- list(
+  bzip2    = as.raw(c(0x42, 0x5A, 0x68)),
+  xz       = as.raw(c(0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00)),
+  zstd     = as.raw(c(0x28, 0xB5, 0x2F, 0xFD)),
+  compress = as.raw(c(0x1F, 0x9D))
+)
+
+.check_tar_magic <- function(tarfile) {
+  con <- file(tarfile, open = "rb")
+  on.exit(close(con), add = TRUE)
+  lead <- readBin(con, "raw", 6L)
+  for (format in names(.compression_magics)) {
+    magic <- .compression_magics[[format]]
+    if (length(lead) >= length(magic) &&
+        identical(lead[seq_along(magic)], magic)) {
+      .refuse_tar("Refusing archive '", basename(tarfile), "': ", format,
+                  "-compressed; only gzip and uncompressed tar are read.")
+    }
+  }
+  invisible(NULL)
 }
 
 

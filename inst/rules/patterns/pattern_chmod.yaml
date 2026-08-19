@@ -1,0 +1,43 @@
+name: chmod
+version: "0.1.0"
+language: R
+attck:
+  - T1222
+message: >-
+  Sys.chmod() sets a file's permission bits from R, and Sys.umask() sets the
+  mask applied to everything created afterwards. Making a file executable, or
+  setting its setuid or setgid bit, turns something the package shipped as data
+  into something that can be run -- in the setuid case, with the privileges of
+  whoever owns it rather than whoever runs it. Every call is matched, whatever
+  mode it sets.
+functions:
+  - Sys.chmod
+  - Sys.umask
+xpath: >-
+  //SYMBOL_FUNCTION_CALL[
+    (text() = 'Sys.chmod' or text() = 'Sys.umask')
+    and not(preceding-sibling::OP-DOLLAR)
+    and not(preceding-sibling::OP-AT)
+  ]
+positive_examples:
+  - |
+    Sys.chmod("tools/prepare.sh", mode = "0755")
+  - |
+    Sys.chmod(file.path(dest, "helper"), "4755")
+  - |
+    Sys.chmod(target, mode)
+  - |
+    base::Sys.chmod(p, m)
+  - |
+    Sys.umask("0022")
+  - |
+    base::Sys.umask(m)
+negative_examples:
+  - |
+    foo$Sys.chmod("x")
+  - |
+    foo@Sys.chmod("x")
+  - |
+    foo$Sys.umask("x")
+  - |
+    file.access(p, 1)

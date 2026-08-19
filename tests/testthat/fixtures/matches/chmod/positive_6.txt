@@ -1,0 +1,1 @@
+chmod -R +x inst/scripts

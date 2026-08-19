@@ -170,6 +170,21 @@ test_that("new_findings() drops a column an analyser had no business returning",
   expect_equal(nrow(out$matches), 1L)
 })
 
+test_that("new_findings() accepts a patterns frame with just the documented columns", {
+  # The extension contract promises the documented columns suffice; the two
+  # internal bookkeeping columns are pkgaudit's own and are filled here.
+  documented <- .empty_patterns(with_phases = FALSE)
+  documented[.internal_pattern_columns] <- NULL
+  documented[1L, ] <- list("py_eval", "vignettes/v.Rmd", 3L, NA_integer_,
+                           "top_level", FALSE, FALSE, "eval(x)", "m", NA_character_)
+
+  out <- new_findings(patterns = documented)
+  expect_named(out$patterns, names(.empty_patterns(FALSE)))
+  expect_equal(nrow(out$patterns), 1L)
+  expect_true(is.na(out$patterns$file_rule))
+  expect_true(is.na(out$patterns$rd_context))
+})
+
 test_that("a shell rule is never evaluated against another language", {
   r <- rules
   r$matches$language <- "python"

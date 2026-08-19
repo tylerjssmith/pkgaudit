@@ -6,8 +6,7 @@
 # ------------------------------------------------------------------------------
 # Reads the file-context, code-context, pattern, and match rule YAML files,
 # validates them, writes them to a fresh SQLite database, records a SHA-256
-# sidecar, and regenerates the test fixtures from the positive/negative
-# examples.
+# sidecar, and regenerates the test fixtures from the examples.
 #
 # Run from the package root with:  Rscript inst/scripts/build_db.R
 #
@@ -59,15 +58,15 @@
 .context_top_level <- "top_level"
 .context_in_function <- "in_function"
 
-# The two axes a rule can name, and neither is a severity: severity is a property
-# of a pattern together with the context it was found in, which a rule is in no
-# position to know.
+# The two axes a rule can name, and neither is a severity: severity is a
+# property of a pattern together with the context it was found in, which a rule
+# is in no position to know.
 #
-# A file context declares a `type`, the format of the file, and it is
-# load-bearing: it selects how the file is read. "R" is read verbatim and
-# parsed; "Rd" has its \examples and \Sexpr code extracted first; "Rmd", "qmd",
-# "Rnw" and "rsp" have their chunks, inline code or templated code extracted; "shell" and "make" are
-# matched line by line; "other" is reported but never read.
+# A file context declares a `type`, the format of the file, which selects how
+# the file is read. "R" is read verbatim and parsed; "Rd" has its \examples and
+# \Sexpr code extracted first; "Rmd", "qmd", "Rnw" and "rsp" have their chunks,
+# inline code or templated code extracted; "shell" and "make" are matched line
+# by line; "other" is reported but never read.
 #
 # Every other class declares a `language`, the language of the code it is
 # evaluated against. One file can yield code in more than one language, so this
@@ -138,8 +137,10 @@
 .validate_xpath <- function(xpath, path) {
   tryCatch(
     xml2::xml_find_all(xml2::read_xml("<exprlist/>"), trimws(xpath)),
-    warning = function(w) stop("Invalid XPath in: ", path, "\n  ", conditionMessage(w)),
-    error   = function(e) stop("Invalid XPath in: ", path, "\n  ", conditionMessage(e))
+    warning = function(w) stop("Invalid XPath in: ", path, "\n  ",
+      conditionMessage(w)),
+    error   = function(e) stop("Invalid XPath in: ", path, "\n  ",
+      conditionMessage(e))
   )
   invisible(TRUE)
 }
@@ -438,13 +439,17 @@ read_match_yaml <- function(path) {
 # load a rule whose version has no row, so a bumped rule cannot slip in without
 # its release being recorded. Rows are inserted in order, and rules_version()
 # reports the last one, so the newest release goes last.
+#
+# Each entry carries its release date rather than reading the build clock:
+# rebuilding from unchanged sources must reproduce the shipped database
+# byte-for-byte, or the published SHA-256 would churn with every rebuild.
 init_db <- function(
   db_path  = file.path("inst", "db", "rules.db"),
   versions = list(
-    c("0.1.0", "Initial release"),
-    c("0.2.0", "Expanded pattern rule coverage"),
-    c("0.3.0", "Phase metadata and corrected context messages"),
-    c("0.4.0", "Regex rules for shell scripts and Make-like files")
+    c("0.1.0", "2026-06-26", "Initial release"),
+    c("0.2.0", "2026-07-15", "Expanded pattern rule coverage"),
+    c("0.3.0", "2026-08-02", "Phase metadata and corrected context messages"),
+    c("0.4.0", "2026-08-19", "Regex rules for shell scripts and Make-like files")
   )
 ) {
   db_dir <- dirname(db_path)
@@ -462,11 +467,6 @@ init_db <- function(
       notes       TEXT
     )")
 
-  # `report` separates discovery from reporting. Every rule is used to find
-  # files to scan; only a rule with report = 1 contributes a row to the
-  # file_contexts findings frame. Without it, adding rules for R/ and man/ --
-  # which exist to be scanned, not flagged -- would turn that frame from a short
-  # list of security-relevant files into a full inventory of the package.
   DBI::dbExecute(con, "
     CREATE TABLE file_contexts (
       name      TEXT PRIMARY KEY,
@@ -479,17 +479,10 @@ init_db <- function(
       filename  TEXT NOT NULL,
       -- Which code contexts can apply inside the files this rule claims: NULL
       -- for none, 'computed' for the computed ones only, or a space-separated
-      -- list of code-context rule names tried before them. The list is what
-      -- confines the lifecycle hooks to the directories whose code becomes the
-      -- namespace, which the probe package measures: a .onLoad defined in data/
-      -- or tests/ never fires.
+      -- list of code-context rule names tried before them.
       code_context TEXT,
       -- Whether code inside a function definition here is taken to run when the
-      -- code around it runs. Both readings are measured -- a function called
-      -- from top level fires wherever that code does, one nothing calls fires
-      -- nowhere -- so this selects between them and cannot state a third.
-      -- Null exactly where code_context is: no code contexts, no function
-      -- bodies to decide about.
+      -- top-level code around it runs.
       assume_called INTEGER
     )")
 
@@ -501,7 +494,7 @@ init_db <- function(
       message  TEXT NOT NULL,
       -- How the rule decides it applies: 'xpath' against the R parse tree, or
       -- 'segment' against the label the extractor stamped. Exactly one of the
-      -- two columns below is set, according to this.
+      -- two columns below it (xpath or segment) is set, according to this.
       kind     TEXT NOT NULL,
       xpath    TEXT,
       segment  TEXT
@@ -515,15 +508,13 @@ init_db <- function(
       message TEXT NOT NULL,
       attck   TEXT NOT NULL,
       -- Space-separated names this rule matches as a bare call, which is what
-      -- lets find_indirect() attribute do.call(\"name\", ...) back to it. May be
-      -- empty, unlike attck: a rule matching on more than the callee has no
-      -- name it can claim.
+      -- lets find_indirect() attribute do.call(\"name\", ...) back to it. May
+      -- be empty, unlike attck: a rule matching on more than the callee has
+      -- no name it can claim.
       functions TEXT NOT NULL,
       xpath   TEXT NOT NULL
     )")
 
-  # A match rule is evaluated against every segment in its language, which is
-  # how it stays scoped: a shell rule is never applied to R code.
   DBI::dbExecute(con, "
     CREATE TABLE matches (
       name     TEXT PRIMARY KEY,
@@ -534,11 +525,6 @@ init_db <- function(
       regex    TEXT NOT NULL
     )")
 
-  # One row per rule, file-context and code-context alike, keyed by rule name.
-  #
-  # The computed contexts have no row and need none. Top-level code carries the
-  # phases of the file context it sits in, and code inside a function definition
-  # carries them too, unless that file context overrides it below.
   DBI::dbExecute(con, sprintf("
     CREATE TABLE phases (
       context TEXT PRIMARY KEY,
@@ -551,7 +537,7 @@ init_db <- function(
     DBI::dbExecute(
       con,
       "INSERT INTO rule_versions (version, released_at, notes) VALUES (?, ?, ?)",
-      params = list(v[[1L]], as.character(Sys.Date()), v[[2L]])
+      params = list(v[[1L]], v[[2L]], v[[3L]])
     )
   }
 

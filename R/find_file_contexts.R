@@ -26,6 +26,11 @@
 #' checked so that a root that does not exist is refused rather than joining
 #' that silence as a package with nothing to scan.
 #'
+#' A symlinked file is never claimed: following it would attribute findings to
+#' the target's path rather than the one the package ships. It is reported in
+#' `coverage` as `unexamined` with reason `symlink`, so skipping it is stated
+#' rather than silent.
+#'
 #' @keywords internal
 find_file_contexts <- function(pkg, file_context_rules) {
   stopifnot(is.character(pkg), length(pkg) == 1L, dir.exists(pkg))
@@ -54,7 +59,15 @@ find_file_contexts <- function(pkg, file_context_rules) {
         )
         # list.files() can return directories whose names match; keep only
         # regular files that actually exist.
-        matches[file.exists(matches) & !dir.exists(matches)]
+        matches <- matches[file.exists(matches) & !dir.exists(matches)]
+        # A symlink is skipped, never followed: scanning it would attribute
+        # its target's code to the target's path, which no rule claims -- or,
+        # for a target outside the package, to a path the scan cannot even
+        # re-read. build_coverage() reports it as unexamined/symlink instead.
+        # Sys.readlink() is NA where symlinks cannot be read (Windows), which
+        # keeps the file: no symlink can exist there to follow.
+        link <- Sys.readlink(matches)
+        matches[is.na(link) | !nzchar(link)]
       },
       error = function(e) e
     )

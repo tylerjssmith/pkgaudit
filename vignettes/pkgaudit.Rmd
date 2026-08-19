@@ -98,8 +98,8 @@ Both methods accept `path = FALSE`, which omits the local filesystem path. This
 matters when sharing results, since the path may reveal a username or directory
 layout.
 
-A `pkgaudit` object is a named list of ordinary data frames, so findings can be
-filtered, joined and reported on directly.
+A `pkgaudit` object is a named list of ordinary data frames, plus scan
+metadata, so findings can be filtered, joined and reported on directly.
 
 ```{r names}
 names(result)
@@ -187,8 +187,9 @@ URL. Examples are meant to run, and a reviewer would weigh this as documentation
 that reaches the network rather than as an attack.
 
 **`system()` in `R/zzz.R` runs on `library()`.** `.onLoad()` is called when the
-namespace loads, so `system("uname -a")` executes on attach, and again at build,
-check, and installation from source, each of which loads the package. Nobody
+namespace loads, so `system("uname -a")` executes on `library()` -- which loads
+before it attaches -- and again at build, check, and installation from source,
+each of which loads the package. Nobody
 asked for it. The command itself is reconnaissance rather than damage, but the
 capability is arbitrary shell execution at load time.
 
@@ -312,7 +313,7 @@ A modified database is one way to evade a scanner. `load_rules()` verifies the
 database against its bundled SHA-256 sidecar on every call and refuses to load
 a modified one. The hash of an installed copy can also be checked against the
 value published in the
-[README](https://github.com/tylerjssmith/pkgaudit#database-integrity):
+[README](https://github.com/tylerjssmith/pkgaudit#rule-database-integrity):
 
 ```{r hash}
 digest::digest(

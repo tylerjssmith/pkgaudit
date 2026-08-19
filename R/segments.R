@@ -48,9 +48,10 @@ new_source <- function(path, file_context, type, macros = NULL,
 #'   help file the code came from.
 #' @param file_rule The file-context rule that claimed the file.
 #' @param code_contexts The code-context rules that can apply, from the source.
-#' @param guarded_lines Lines whose code ships but the lifecycle does not run --
-#'   a `\dontrun{}` block, or a chunk marked `eval=FALSE`. Phases still come from
-#'   the context, so they are an upper bound.
+#' @param guarded_lines Integer vector of line numbers whose code ships but the
+#'   lifecycle does not run -- a `\dontrun{}` block, or a chunk marked
+#'   `eval=FALSE`. Phases still come from the context, so they are an upper
+#'   bound.
 #'
 #' @return A `pkgaudit_segment` object.
 #'
@@ -79,7 +80,11 @@ new_segment <- function(language, lines, file_context,
 #' Dispatches on the file-context rule's `type`, which is the only place a new
 #' variety of file is named.
 #'
-#' @param source A `pkgaudit_source` from `new_source()`.
+#' @param source A `pkgaudit_source`: a list with the file's `path`, its
+#'   package-root-relative `file_context`, the claiming rule in `file_rule`,
+#'   the applicable `code_contexts`, and `macros`. Sources are built inside
+#'   [audit_package()], one per claimed file; a method receives them and never
+#'   constructs one.
 #'
 #' @return A list of two elements:
 #'   \describe{
@@ -158,6 +163,7 @@ extract_segments.default <- function(source) {
 #' # labelled "python", reporting each line that calls eval().
 #' analyze_segment.python <- function(segment, rules) {
 #'   at <- grep("\\beval\\(", segment$lines)
+#'   if (length(at) == 0L) return(new_findings())
 #'   new_findings(matches = data.frame(
 #'     rule = "py_eval", file_context = segment$file_context,
 #'     line_number = at, column_number = NA_integer_,
@@ -224,7 +230,14 @@ analyze_segment.default <- function(segment, rules) {
 new_findings <- function(patterns = NULL, matches = NULL, coverage = NULL,
                       errors = .empty_errors()) {
   conform <- function(df, template) {
-    if (is.null(df)) template else df[, names(template), drop = FALSE]
+    if (is.null(df)) return(template)
+    # The internal bookkeeping columns are pkgaudit's own, not part of the
+    # documented contract, so a method that omits them is conformed rather
+    # than refused.
+    absent <- intersect(setdiff(names(template), names(df)),
+                        .internal_pattern_columns)
+    df[absent] <- NA_character_
+    df[, names(template), drop = FALSE]
   }
   list(
     patterns      = conform(patterns,      .empty_patterns(FALSE)),

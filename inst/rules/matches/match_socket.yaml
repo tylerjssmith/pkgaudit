@@ -2,8 +2,8 @@ name: socket
 version: "0.1.0"
 language: shell
 attck:
-  - T1095
   - T1041
+  - T1095
 message: >-
   Opening a socket from a build script moves data to or from a remote host
   without an HTTP client, which is both a way to fetch a payload and a way to

@@ -64,7 +64,7 @@ find_code_contexts <- function(tree, code_context_rules, file_context) {
   }
 
   code_contexts <- if (length(found) == 0L) {
-    .empty_code_contexts()
+    .empty_code_contexts(with_phases = FALSE)
   } else {
     do.call(rbind, found)
   }

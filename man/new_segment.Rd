@@ -30,9 +30,10 @@ help file the code came from.}
 
 \item{code_contexts}{The code-context rules that can apply, from the source.}
 
-\item{guarded_lines}{Lines whose code ships but the lifecycle does not run --
-a \verb{\dontrun{}} block, or a chunk marked \code{eval=FALSE}. Phases still come from
-the context, so they are an upper bound.}
+\item{guarded_lines}{Integer vector of line numbers whose code ships but the
+lifecycle does not run -- a \verb{\dontrun{}} block, or a chunk marked
+\code{eval=FALSE}. Phases still come from the context, so they are an upper
+bound.}
 }
 \value{
 A \code{pkgaudit_segment} object.

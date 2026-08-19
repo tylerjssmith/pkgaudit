@@ -1,0 +1,40 @@
+name: fs
+version: "0.1.0"
+language: R
+attck:
+  - T1222
+message: >-
+  fs::file_chmod() sets a file's permission bits, and fs::file_chown() changes
+  its owner. Making a file executable, or setting its setuid or setgid bit,
+  turns something the package shipped as data into something that can be run
+  -- in the setuid case, with the privileges of whoever owns it rather than
+  whoever runs it. Every call is matched, whatever mode or owner it sets.
+functions:
+  - file_chmod
+  - file_chown
+xpath: >-
+  //SYMBOL_FUNCTION_CALL[
+    (text() = 'file_chmod' or text() = 'file_chown')
+    and not(preceding-sibling::OP-DOLLAR)
+    and not(preceding-sibling::OP-AT)
+  ]
+positive_examples:
+  - |
+    file_chmod("tools/prepare.sh", "u+x")
+  - |
+    fs::file_chmod(file.path(dest, "helper"), "4755")
+  - |
+    file_chmod(target, mode)
+  - |
+    file_chown("inst/helper", user_id = "root")
+  - |
+    fs::file_chown(p, group_id = grp)
+negative_examples:
+  - |
+    foo$file_chmod("x")
+  - |
+    foo@file_chmod("x")
+  - |
+    foo$file_chown("x")
+  - |
+    file_copy(src, dest)

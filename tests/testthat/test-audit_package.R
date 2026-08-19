@@ -121,6 +121,34 @@ test_that("audit_package() reports relative-path parse errors and continues", {
   expect_true("R/good.R" %in% res$patterns$file_context)
 })
 
+test_that("a symlinked source file is recorded as skipped, not mis-scanned", {
+  skip_on_os("windows")
+  # A symlink under R/ used to be scanned under its resolved target's path:
+  # findings and coverage claimed a path no rule owns, and a target outside
+  # the package could not be re-read at all. It is now skipped and said so.
+  outside <- tempfile("outside", fileext = ".R")
+  writeLines("system('outside')", outside)
+  on.exit(unlink(outside), add = TRUE)
+  pkg <- make_pkg(files = list(
+    "R/good.R"      = "system('id')",
+    "inst/hidden.R" = "system('hidden')"
+  ))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+  file.symlink(file.path(pkg, "inst", "hidden.R"), file.path(pkg, "R", "inner.R"))
+  file.symlink(outside, file.path(pkg, "R", "outer.R"))
+
+  res <- audit_package(pkg, rules)
+  # No finding under the links or their targets; the real file still audits.
+  expect_equal(res$patterns$file_context, "R/good.R")
+  expect_equal(nrow(res$errors), 0L)
+  # The record: each skipped link is a coverage row naming why.
+  skipped <- res$coverage[res$coverage$reason %in% "symlink", ]
+  expect_setequal(skipped$file_context, c("R/inner.R", "R/outer.R"))
+  expect_true(all(skipped$status == "unexamined"))
+  # No absolute path leaks into the result.
+  expect_false(any(startsWith(res$coverage$file_context, "/")))
+})
+
 test_that("audit_package() on a package with no scannable content is empty", {
   pkg <- make_pkg()
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)

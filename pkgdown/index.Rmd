@@ -32,6 +32,9 @@ A finding is not an accusation. `configure` scripts and calls to system tools,
 for example, are often legitimate. pkgaudit helps to identify what deserves
 reviewer attention, not what is malicious.
 
+For why this matters, see [R Package Security](articles/security.html). For the
+rule set, see [Rule Coverage](articles/rules.html).
+
 ## Installation
 
 ``` r

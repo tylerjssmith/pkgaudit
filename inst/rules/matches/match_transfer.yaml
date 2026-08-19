@@ -2,8 +2,8 @@ name: transfer
 version: "0.1.0"
 language: shell
 attck:
-  - T1105
   - T1041
+  - T1105
 message: >-
   A file-transfer command moves a file between the build machine and a remote
   host. Unlike an HTTP fetch it often carries credentials of its own, and it

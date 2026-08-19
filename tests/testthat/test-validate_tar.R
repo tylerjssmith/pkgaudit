@@ -70,6 +70,29 @@ test_that("validate_tar() refuses an archive whose expansion ratio exceeds max_r
   expect_match(conditionMessage(err), "ratio exceeds")
 })
 
+test_that("a non-gzip compressed archive is refused by magic bytes, not name", {
+  # gzfile() transparently decompresses bzip2 and xz too, so without this
+  # check a stream named .tar.gz would be read anyway -- and xz compresses
+  # far past the gzip ceiling that makes max_ratio a meaningful bomb bound.
+  tb <- build_archive(list(foo = list("DESCRIPTION" = "Package: foo")))
+  on.exit(unlink(tb), add = TRUE)
+  plain <- gzfile(tb, open = "rb")
+  bytes <- readBin(plain, "raw", 10L * file.size(tb) + 10240L)
+  close(plain)
+
+  for (compressor in list(bzip2 = bzfile, xz = xzfile)) {
+    lying <- tempfile(fileext = ".tar.gz")
+    con   <- compressor(lying, open = "wb")
+    writeBin(bytes, con)
+    close(con)
+
+    err <- tryCatch(validate_tar(lying), error = function(e) e)
+    expect_s3_class(err, "pkgaudit_invalid_tarball")
+    expect_match(conditionMessage(err), "only gzip and uncompressed tar")
+    unlink(lying)
+  }
+})
+
 test_that("validate_tar() refuses an entry with an unparseable size field", {
   # A raw tar header whose size field is not valid octal. A base-256 or garbage
   # size read as 0 would desync this parser from the extractor.

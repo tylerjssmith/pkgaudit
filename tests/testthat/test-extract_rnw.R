@@ -34,6 +34,29 @@ test_that("two inline \\Sexpr on one line both report, at their own columns", {
   expect_setequal(res$patterns$column_number, c(5L, 29L))
 })
 
+test_that("an @ followed by text still ends a chunk", {
+  # Sweave ends a chunk at any line starting with @ and whitespace, and itself
+  # emits `@ %def x` lines. Reading past one swallowed every later chunk: the
+  # segment stopped parsing and the whole file reported nothing.
+  pkg <- vignette_pkg("v.Rnw", c(
+    "\\begin{document}",   # 1
+    "<<a>>=",              # 2
+    "x <- 1",              # 3
+    "@ %def x",            # 4
+    "Some prose.",         # 5
+    "<<b>>=",              # 6
+    "system('id')",        # 7
+    "@",                   # 8
+    "\\end{document}"      # 9
+  ))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  expect_equal(res$patterns$rule, "system")
+  expect_equal(res$patterns$line_number, 7L)
+  expect_equal(nrow(res$errors), 0L)
+})
+
 test_that("an Rnw chunk marked eval=FALSE is guarded", {
   pkg <- vignette_pkg("v.Rnw", c("\\begin{document}", "<<a, eval=FALSE>>=",
                             "system('id')", "@", "\\end{document}"))

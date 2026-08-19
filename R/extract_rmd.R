@@ -16,7 +16,8 @@ extract_segments.Rmd <- function(source) {
   )
   if (is.null(read$lines)) return(list(segments = list(), errors = errors))
 
-  chunks <- .rmd_chunks(read$lines)
+  found  <- .rmd_chunks(read$lines)
+  chunks <- found$chunks
   n      <- length(read$lines)
 
   segments <- lapply(chunks, function(ch) {
@@ -24,7 +25,7 @@ extract_segments.Rmd <- function(source) {
       language     = ch$language,
       # Line-aligned to the source, as every other extractor is, so a finding's
       # line_number points into the .Rmd with no offset to apply.
-      lines        = .blank_except(n, ch$first:ch$last, read$lines),
+      lines        = .blank_except(n, ch$first:ch$last, found$lines),
       file_context  = source$file_context,
       # No label of its own: a chunk belongs to the file context it sits in.
       context       = NA_character_,
@@ -57,18 +58,22 @@ extract_segments.Rmd <- function(source) {
 }
 
 
-# Split lines into fenced chunks: list(language, first, last, eval), where first
-# and last bound the chunk's code, excluding its fences.
+# Split lines into fenced chunks. Returns list(chunks, lines): each chunk is
+# list(language, first, last, eval), where first and last bound the chunk's
+# code excluding its fences, and `lines` is the source with any blockquote
+# markers inside chunk bodies turned to spaces.
 #
 # Fences are matched at the start of a line, allowing the leading whitespace a
-# chunk inside a list item carries. A chunk with no closing fence runs to the
-# end of the file rather than being dropped: truncated input should cost
-# formatting, not coverage.
+# chunk inside a list item carries and the `>` a blockquoted chunk carries --
+# knitr evaluates both. A chunk with no closing fence runs to the end of the
+# file rather than being dropped: truncated input should cost formatting, not
+# coverage.
 .rmd_chunks <- function(lines) {
-  open  <- grepl("^[[:space:]]*```+[[:space:]]*\\{", lines)
-  fence <- grepl("^[[:space:]]*```+[[:space:]]*$", lines)
+  open  <- grepl("^[[:space:]>]*```+[[:space:]]*\\{", lines)
+  fence <- grepl("^[[:space:]>]*```+[[:space:]]*$", lines)
 
   chunks <- list()
+  out <- lines
   i <- 1L
   n <- length(lines)
   while (i <= n) {
@@ -79,15 +84,31 @@ extract_segments.Rmd <- function(source) {
     last   <- if (length(close)) close[[1L]] - 1L else n
     if (last >= i + 1L && !is.null(header$language)) {
       body <- (i + 1L):last
+      # knitr strips the blockquote markers before evaluating, so the body of a
+      # quoted chunk is code, not prose. They become spaces rather than being
+      # removed, so every column keeps its position in the source line.
+      if (grepl(">", sub("```.*$", "", lines[[i]]), fixed = TRUE)) {
+        out[body] <- .unquote_lines(out[body])
+      }
       chunks[[length(chunks) + 1L]] <- list(
         language = header$language, first = i + 1L, last = last,
         # Either syntax can suppress a chunk, so either is enough to guard it.
-        eval = header$eval && .rmd_pipe_eval(lines[body])
+        eval = header$eval && .rmd_pipe_eval(out[body])
       )
     }
     i <- if (length(close)) close[[1L]] + 1L else n + 1L
   }
-  chunks
+  list(chunks = chunks, lines = out)
+}
+
+
+# Turn the blockquote markers at the start of each line into spaces of the same
+# width. Only the leading run of `>`, spaces and tabs is touched, so a `>` in
+# the code itself is left alone.
+.unquote_lines <- function(lines) {
+  at <- regexpr("^[> \t]*", lines)
+  regmatches(lines, at) <- chartr(">", " ", regmatches(lines, at))
+  lines
 }
 
 
@@ -104,7 +125,7 @@ extract_segments.Rmd <- function(source) {
 # contents are printed rather than run. Such a block has no language, so it
 # yields no segment.
 .rmd_header <- function(line) {
-  inside <- sub("^[[:space:]]*```+[[:space:]]*\\{", "", line)
+  inside <- sub("^[[:space:]>]*```+[[:space:]]*\\{", "", line)
   inside <- sub("\\}[[:space:]]*$", "", inside)
 
   engine <- tolower(trimws(sub("[,[:space:]].*$", "", inside)))
@@ -121,11 +142,11 @@ extract_segments.Rmd <- function(source) {
 # Quarto does. Returns list(lines, keep) in the shape .blank_except() wants,
 # with each expression sitting at the column it occupies in the source.
 #
-# Three kinds of line are skipped. A line inside a fenced chunk is already a
-# segment of its own, and reading it again would report its code twice. The YAML
-# front matter is configuration rather than prose, and knitr does not evaluate
-# inline code there. A span written with doubled backticks -- `` `r x` `` -- is
-# how a document displays inline code without running it.
+# Two kinds of line are skipped. A line inside a fenced chunk is already a
+# segment of its own, and reading it again would report its code twice. A span
+# written with doubled backticks -- `` `r x` `` -- is how a document displays
+# inline code without running it. The YAML front matter is not skipped: knitr
+# evaluates inline code there too, so a title can run code at render.
 .rmd_inline <- function(lines, chunks) {
   n    <- length(lines)
   out  <- lines
@@ -134,8 +155,7 @@ extract_segments.Rmd <- function(source) {
   skip <- logical(n)
   for (ch in chunks) skip[ch$first:ch$last] <- TRUE
   # Fence lines themselves sit outside every chunk's body but carry no prose.
-  skip <- skip | grepl("^[[:space:]]*```", lines)
-  skip[.rmd_front_matter(lines)] <- TRUE
+  skip <- skip | grepl("^[[:space:]>]*```", lines)
 
   for (i in seq_len(n)) {
     if (skip[[i]]) next
@@ -167,23 +187,12 @@ extract_segments.Rmd <- function(source) {
 
 
 # One inline expression, in either syntax, and the code inside it. Neither form
-# may contain a backtick, so neither runs past its own closing one.
-.rmd_inline_pattern <- "`(?:\\{r\\}|r)[ \t][^`]*`"
+# may contain a backtick, so neither runs past its own closing one. knitr
+# accepts `#` in place of the space after the r, so `r#expr` is read too.
+.rmd_inline_pattern <- "`(?:\\{r\\}|r)[ \t#][^`]*`"
 
 .rmd_inline_code <- function(macro) {
-  sub("^`(\\{r\\}|r)[ \t]", "", sub("`$", "", macro))
-}
-
-
-# The lines of the YAML front matter, if the document opens with one: the ---
-# fence on line 1, its closing fence, and everything between.
-.rmd_front_matter <- function(lines) {
-  if (length(lines) == 0L || !grepl("^---[[:space:]]*$", lines[[1L]])) {
-    return(integer(0L))
-  }
-  close <- which(grepl("^(---|\\.\\.\\.)[[:space:]]*$", lines) & seq_along(lines) > 1L)
-  if (length(close) == 0L) return(integer(0L))
-  1L:close[[1L]]
+  sub("^`(\\{r\\}|r)[ \t#]", "", sub("`$", "", macro))
 }
 
 

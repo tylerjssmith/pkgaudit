@@ -31,6 +31,29 @@ test_that("all three accessors are read, named or positional", {
   }
 })
 
+test_that("argument order does not decide whether a target is read", {
+  # R binds these to `what` regardless of where they sit in the call, so a
+  # one-token rearrangement must not become an evasion.
+  for (code in c('do.call(args = list("id"), what = "system")',
+                 'do.call(args = list("id"), "system")',
+                 'do.call( # comment\n  "system", list("id"))',
+                 'getFunction(name = "system")')) {
+    pat <- found(code)
+    expect_equal(nrow(pat), 1L, info = code)
+    expect_equal(pat$rule, "system", info = code)
+  }
+})
+
+test_that("a literal named for some other parameter is not reported", {
+  # do.call has no FUN and match.fun has no what; these never resolve a
+  # function, so reporting them would attribute a call that cannot happen.
+  for (code in c('do.call(FUN = "system", args = list())',
+                 'match.fun(what = "system")',
+                 'getFunction(FUN = "system")')) {
+    expect_equal(nrow(found(code)), 0L, info = code)
+  }
+})
+
 test_that("the position points at the literal, not at the accessor", {
   pat <- found('do.call("system", list("id"))')
 

@@ -20,6 +20,15 @@ reference:
   contents:
   - emit_sarif
   - export_unscanned
+- title: "Extending pkgaudit"
+  desc: >
+    The two axes of dispatch, so a file format or a language can be added
+    from another package.
+  contents:
+  - extract_segments
+  - analyze_segment
+  - new_segment
+  - new_findings
 - title: "Rules"
   desc: >
     The rules are data, not code, and ship in a hash-verified database.
@@ -36,6 +45,6 @@ articles:
   navbar: ~
   contents:
   - pkgaudit
-  - r-package-security
+  - security
   - rules
   - internals

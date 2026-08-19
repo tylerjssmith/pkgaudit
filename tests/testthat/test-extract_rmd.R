@@ -133,14 +133,51 @@ test_that("inline code shown verbatim in doubled backticks is not run", {
   expect_equal(nrow(audit_package(pkg, rules)$patterns), 0L)
 })
 
-test_that("inline code is not read from front matter or inside a chunk", {
-  # A chunk's code is a segment already; reading it again would double-count it,
-  # and knitr does not evaluate inline code in the YAML header.
-  pkg <- vignette_pkg("v.Rmd", c("---", "title: \"`r system('yaml')`\"", "---",
+test_that("inline code is not read from inside a chunk", {
+  # A chunk's code is a segment already; reading it again would double-count it.
+  pkg <- vignette_pkg("v.Rmd", c("---", "title: V", "---",
                                  "```{r}", "x <- \"`r system('chunk')`\"", "```"))
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
 
   expect_equal(nrow(audit_package(pkg, rules)$patterns), 0L)
+})
+
+test_that("inline code in the YAML front matter is read: knitr evaluates it", {
+  pkg <- vignette_pkg("v.Rmd", c("---",                          # 1
+                                 "title: \"`r system('id')`\"",  # 2
+                                 "---"))                         # 3
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  expect_equal(res$patterns$rule, "system")
+  expect_equal(res$patterns$line_number, 2L)
+  expect_equal(res$patterns$column_number, 9L)
+})
+
+test_that("the hash spelling of inline code is read", {
+  # knitr accepts `r#expr` as well as `r expr`.
+  pkg <- vignette_pkg("v.Rmd", c("---", "title: V", "---",
+                                 "Inline `r#system('id')` here."))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  expect_equal(res$patterns$rule, "system")
+  expect_equal(res$patterns$line_number, 4L)
+})
+
+test_that("a blockquoted chunk is extracted: knitr evaluates it", {
+  pkg <- vignette_pkg("v.Rmd", c("---", "title: V", "---",  # 1-3
+                                 "> ```{r}",                 # 4
+                                 "> system('id')",           # 5
+                                 "> ```"))                   # 6
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+
+  res <- audit_package(pkg, rules)
+  expect_equal(res$patterns$rule, "system")
+  expect_equal(res$patterns$line_number, 5L)
+  # The blockquote marker becomes a space, so the column is the source one.
+  expect_equal(res$patterns$column_number, 3L)
+  expect_equal(nrow(res$errors), 0L)
 })
 
 test_that("a vignette whose only code is inline is still read", {

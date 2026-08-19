@@ -22,6 +22,9 @@ A finding is not an accusation. `configure` scripts and calls to system
 tools, for example, are often legitimate. pkgaudit helps to identify
 what deserves reviewer attention, not what is malicious.
 
+For why this matters, see [R Package Security](articles/security.html).
+For the rule set, see [Rule Coverage](articles/rules.html).
+
 ## Installation
 
 ``` r
@@ -48,7 +51,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-12 16:06 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-19 22:34 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -61,6 +64,10 @@ summary(result, path = FALSE)
 #> at_install_src   system          1   T1059.003 T1059.004
 #> at_load          system          1   T1059.003 T1059.004
 #> none             download_file   1   T1105
+#> 
+#> none: reported at no phase because nothing in the package was seen to call
+#> it. Code under R/ is read this way by rule; a caller elsewhere, or a user,
+#> can still reach it. See vignette("rules").
 #> 
 #> --- Shell / Make Matches ----------------------------------------------------
 #> phase            rule            n   attck

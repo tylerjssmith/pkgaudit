@@ -9,28 +9,45 @@
   pointed at, blank-padded so line numbers still point into the original file.
 * `emit_sarif()` renders a result as SARIF 2.1.0, so findings open on the line
   they were found in any editor or code-scanning platform that reads it.
+* The `description` rule no longer claims `at_build` and `at_check`. Measured
+  against R 4.6.1, `R CMD build`, `check` and `INSTALL` all refuse an `Authors@R`
+  field containing anything outside `person`, `as.person`, `c`, `list`, `paste`
+  and `paste0`, and the check recurses into arguments, so none of the seventeen
+  expressions tried executed. The field is still not inert: `desc` evaluates it
+  with no allowlist, so reading a package's authors -- or printing a `desc`
+  object -- runs whatever it holds. That is developer tooling rather than a
+  lifecycle phase, so the rule now declares no phases and says why.
+* The `data_serialized` rule no longer claims `.Rdata`, `.RDS` and `.Rds` files
+  under `data/`. Measured against R 4.6.1, a file with one of those extensions
+  is never deserialized: `R CMD INSTALL` copies it into the installed package
+  untouched rather than moving it into the lazy-load database, no object from it
+  is reachable once the namespace loads, and `R CMD check` reports it under
+  "Files not of a type allowed in a 'data' directory".
 * Inline R in an `.Rmd` or `.qmd` -- `` `r system("id")` ``, and Quarto's
   `` `{r} system("id")` `` -- is now read. It runs when the vignette is
   rendered, at `R CMD build` and again under `R CMD check`, and was previously
   skipped without being reported as skipped. Findings carry the line and column
   the expression occupies in the source. The same rewrite fixed the Sweave
-  extractor, which read only the first `\Sexpr{}` on a line.
+  extractor, which read only the first `\Sexpr{}` on a line. Everywhere knitr
+  evaluates is read: inline R in the YAML front matter, the `` `r#expr` ``
+  spelling, chunks inside blockquotes, and Sweave chunks ended by an
+  `@ %def x` line, which previously swallowed the rest of the file.
 * Quarto chunk options are honoured: a chunk suppressed with `#| eval: false`
   is marked `guarded`, as one marked `eval=FALSE` in its header already was.
   A document-wide `execute: eval: false` is still not read.
-* The two axes of dispatch are exported, so a file format or a language can be
-  added from another package rather than only by editing this one:
-  `extract_segments()` and `analyze_segment()`, with `new_segment()` and
-  `new_findings()` to build what a method returns.
-* The four entry points report a bad argument by naming it. Passing a path that
-  does not exist now says ``` `path` is not an existing directory ``` rather
-  than `dir.exists(path) is not TRUE`.
 * Extraction and analysis dispatch on two independent axes: a file's *type*
   decides how it is read, a segment's *language* decides how it is analysed.
-  Adding a file format and adding a language are now separate, additive
-  changes.
+  Both axes are exported -- `extract_segments()` and `analyze_segment()`, with
+  `new_segment()` and `new_findings()` to build what a method returns -- so a
+  file format or a language can be added from another package rather than only
+  by editing this one.
+* `audit_package()`, `audit_tarball()`, `emit_sarif()` and `export_unscanned()`
+  report a bad argument by naming it. Passing a path that does not exist now
+  says ``` `path` is not an existing directory ``` rather than
+  `dir.exists(path) is not TRUE`.
 * Rules reach parity across R and shell, and the rule set roughly doubles:
   decoding, interpreters, software installation, sockets, credential files,
+  file-permission changes -- `Sys.chmod()`, `fs::file_chmod()`, `chmod` --
   and persistence via startup files are now caught in both.
 * A finding's phases are resolved from both the file context it sits in and the
   code context within that file, rather than from one flattened namespace.
@@ -67,7 +84,16 @@
   `\testonly{}` run under any example run, and `\donttest{}` runs under
   `R CMD check --as-cran`.
 * Indirect calls are attributed to the rule that owns the name, so
-  `do.call("system", ...)` reports as a `system` finding.
+  `do.call("system", ...)` reports as a `system` finding -- including when the
+  target is passed by name, as in `do.call(args = list("id"), what = "system")`.
+* A symlinked file is never followed. Scanning it would attribute its target's
+  code to a path the package does not ship, so it is reported in `coverage` as
+  `unexamined` with reason `symlink` instead. `audit_tarball()` already refused
+  archives carrying symlinks; directory scans now state what they skipped.
+* `validate_tar()` refuses bzip2-, xz-, zstd- and compress-compressed archives
+  by their magic bytes, whatever the filename says. `gzfile()` would otherwise
+  decompress them silently, and only gzip's bounded expansion keeps the
+  decompression-bomb ratio cap meaningful.
 * Four vignettes, one audience each: getting started, R package security,
   rule coverage, and internals -- the last with a call graph derived from
   pkgaudit's own parse trees, so it cannot fall behind the code.

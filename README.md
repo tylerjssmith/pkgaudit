@@ -95,7 +95,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-14 23:27 UTC with pkgaudit v0.5.0, rules v0.5.0
+#> Scanned:   2026-08-19 22:34 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -108,6 +108,10 @@ summary(result, path = FALSE)
 #> at_install_src   system          1   T1059.003 T1059.004
 #> at_load          system          1   T1059.003 T1059.004
 #> none             download_file   1   T1105
+#> 
+#> none: reported at no phase because nothing in the package was seen to call
+#> it. Code under R/ is read this way by rule; a caller elsewhere, or a user,
+#> can still reach it. See vignette("rules").
 #> 
 #> --- Shell / Make Matches ----------------------------------------------------
 #> phase            rule            n   attck
@@ -168,7 +172,7 @@ digest::digest(
 ```
 
 Expected SHA-256:
-`1fc9f5dd4e628640a1f95d7fc85d3ae4220c603af86a8e33b4bacfcf799eb7c6`
+`e751d759c0399048fef6108795174f386b1592c3bf79dd7746a6280aef3b3124`
 
 ## Security
 

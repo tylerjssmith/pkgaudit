@@ -32,6 +32,10 @@ The cost is that contributing is less convenient than opening a PR. If you would
 rather work in a branch, say so in the issue — the YAML is the contribution
 either way, and the discussion is what the process is actually for.
 
+Code contributions — a bug fix or an improvement to the scanner itself, rather
+than a rule — are welcome as ordinary pull requests. The
+[Testing](#testing) checklist below is what a code change is reviewed against.
+
 ## Proposing a new or revised rule
 
 ### 1. Open an issue
@@ -83,7 +87,8 @@ pkgaudit aims for **precision above 0.95** and **prevalence below 0.05**, so
 that a finding is worth a reviewer's attention. A rule that misses these targets
 is not automatically rejected, but it needs a reason.
 
-[dev/](../dev/) contains the functions used for these runs: `download_cran()`
+[dev/cran_survey/scripts/](../dev/cran_survey/scripts/) contains the functions
+used for these runs: `download_cran()`
 to fetch source tarballs and `survey_cran()` to audit them in bulk. The 
 maintainer will use them to evaluate proposed rules. If you run them yourself, 
 please read [dev/README.md](../dev/README.md) first — it asks you to rate-limit 
@@ -107,11 +112,12 @@ vignette lists every shipped rule with the phases it carries, and
 describes how a rule is used during a scan.
 
 **Categories.** A rule is a file context (a file R reads or executes during
-build, check, install, or load), a code context (a lifecycle hook whose body
-runs when a namespace is loaded, attached, unloaded, or detached), a pattern (a
-security-relevant construct in R, matched against the parse tree), or a match (a
-regular expression matched against the text of a shell script or Make-like
-file).
+build, check, install, or load), a code context (a place inside a file where
+code runs at a known moment: a lifecycle hook such as `.onLoad()`, or a
+labelled part of a help file such as `\examples{}` or an `\Sexpr{}` stage), a
+pattern (a security-relevant construct in R, matched against the parse tree),
+or a match (a regular expression matched against the text of a shell script or
+Make-like file).
 
 **Names.** The YAML file name is prefixed with the rule's category —
 `file_`, `code_`, `pattern_`, or `match_` — but the `name` field inside it is
@@ -122,6 +128,12 @@ that defines it, joined by an underscore, following their own capitalization and
 separators (`onLoad_base`, `on_load_rlang`). A pattern that covers one package's
 functions carries that package's name (`system_callr`), so a finding points at
 the calls behind it.
+
+**Versions.** Each rule carries its own `version`, independent of the rule-set
+and package versions. A new rule is always `"0.1.0"`. Revising a rule that has
+shipped in a tagged release bumps its version; revising one that has not yet
+shipped leaves it alone. The rule-set and package versions are the maintainer's
+to manage — a contribution never touches them.
 
 **Fields.** Every rule has `name`, `version`, `message`,
 `positive_examples`, and `negative_examples`. Beyond those:
@@ -155,8 +167,10 @@ cannot know, so no rule declares one.
 each of the nine lifecycle phases in which its code runs: `at_autoconf`,
 `at_build`, `at_check`, `at_install_src`, `at_install_bin`, `at_load`,
 `at_attach`, `at_unload`, and `at_detach`. All nine are required, and the
-database will not build without them. A pattern rule declares none: a pattern
-inherits the phases of the code context it sits in.
+database will not build without them. A pattern or match rule declares none: a
+pattern's phases are resolved from the file context the finding sits in
+together with the code context within that file, and a match's from its file
+context alone.
 
 Claim a phase only where the behavior has been observed. The existing
 assignments were established by running `R CMD build`, `R CMD check`, and

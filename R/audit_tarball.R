@@ -4,8 +4,9 @@
 #' make matches for review before an R source package tarball is trusted.
 #'
 #' @param path Path to a gzip-compressed or uncompressed R source package
-#'   tarball (`.tar.gz`, `.tgz`, or `.tar`). bzip2/xz archives are not
-#'   supported.
+#'   tarball (`.tar.gz`, `.tgz`, or `.tar`). A bzip2-, xz-, zstd- or
+#'   compress-compressed archive is refused by its magic bytes, whatever its
+#'   filename says.
 #' @param rules Named list of rules. Defaults to the rules bundled with the
 #'   package as returned by [load_rules()].
 #' @param temp_dir Directory used for extraction. A unique subdirectory is
@@ -35,9 +36,10 @@
 #'
 #' The audited `DESCRIPTION` is then checked against the tarball filename: if
 #' the `Package` name or `Version` disagrees with the name and version implied
-#' by the filename (`foo` and `0.1.0` for `foo_0.1.0.tar.gz`), a warning is
-#' issued. The `DESCRIPTION` values are authoritative and are what the returned
-#' object reports.
+#' by the filename (`foo` and `0.1.0` for `foo_0.1.0.tar.gz`), a
+#' `pkgaudit_provenance_mismatch` warning is issued, which a caller can catch
+#' by class. The `DESCRIPTION` values are authoritative and are what the
+#' returned object reports.
 #'
 #' @examples
 #' # untrustedpkg is a small package shipped with pkgaudit to be scanned.

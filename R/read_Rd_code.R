@@ -219,10 +219,9 @@ read_Rd_code <- function(path, macros = NULL) {
     }
     if (is.list(node)) {
       inside  <- in_examples || identical(tag, "\\examples")
-      # \dontrun and \donttest are not run by R CMD check; \dontshow and
-      # \testonly are. Code under the first two is still scanned -- it ships in
-      # the package -- but flagged, so the phases it carries are read as an
-      # upper bound.
+      # Code under a wrapper no example run reaches is still scanned -- it
+      # ships in the package -- but flagged, so the phases it carries are read
+      # as an upper bound.
       guarded_here <- is_guarded ||
         (!is.null(tag) && tag %in% .Rd_unrun_wrappers)
       for (child in node) visit(child, inside, guarded_here)

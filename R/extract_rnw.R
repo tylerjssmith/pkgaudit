@@ -1,5 +1,7 @@
 # Extraction for Sweave and knitr .Rnw vignettes. Code sits between <<options>>=
-# and a line holding only @; both flavours share those delimiters.
+# and a terminator: a line holding @ alone or followed by whitespace, since
+# anything after the @ is documentation -- Sweave itself emits `@ %def x` lines.
+# Both flavours share those delimiters.
 #
 # Inline \Sexpr{} runs at the same time as the chunks around it, so it joins the
 # same segment rather than earning one of its own.
@@ -40,7 +42,7 @@ extract_segments.Rnw <- function(source) {
 .rnw_code <- function(lines) {
   n     <- length(lines)
   open  <- grepl("^[[:space:]]*<<.*>>=", lines)
-  close <- grepl("^[[:space:]]*@[[:space:]]*$", lines)
+  close <- grepl("^[[:space:]]*@([[:space:]].*)?$", lines)
 
   keep    <- integer(0L)
   guarded <- integer(0L)

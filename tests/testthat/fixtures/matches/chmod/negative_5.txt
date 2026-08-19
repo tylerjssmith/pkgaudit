@@ -1,0 +1,1 @@
+umask -S u=rwx,g=rx,o=rx

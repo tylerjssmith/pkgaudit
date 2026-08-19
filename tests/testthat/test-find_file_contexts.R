@@ -89,6 +89,22 @@ test_that("find_file_contexts() does not match directories", {
 # A missing rule directory is a clean result -- most packages have no R/unix/ --
 # so list.files() staying silent there is deliberate. That silence would
 # otherwise hide a root that does not exist, which is the opposite conclusion.
+test_that("find_file_contexts() never claims a symlinked file", {
+  skip_on_os("windows")
+  # Following the link would attribute its target's code to the target's path,
+  # which no rule claims -- or, outside the package, to a path the scan cannot
+  # re-read. build_coverage() reports the skip as unexamined/symlink.
+  pkg <- make_pkg(files = list("inst/hidden.R" = "system('id')"))
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+  dir.create(file.path(pkg, "R"))
+  file.symlink(file.path(pkg, "inst", "hidden.R"), file.path(pkg, "R", "evil.R"))
+
+  res <- find_file_contexts(pkg, rules$file_contexts)
+  expect_false("R/evil.R" %in% res$file_contexts$file_context)
+  expect_false("inst/hidden.R" %in% res$file_contexts$file_context)
+  expect_equal(nrow(res$errors), 0L)
+})
+
 test_that("find_file_contexts() refuses a root that is not a directory", {
   expect_error(find_file_contexts(file.path(tempfile(), "nope"),
                                   rules$file_contexts), "dir.exists")

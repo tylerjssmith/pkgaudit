@@ -15,8 +15,9 @@ audit_tarball(
 }
 \arguments{
 \item{path}{Path to a gzip-compressed or uncompressed R source package
-tarball (\code{.tar.gz}, \code{.tgz}, or \code{.tar}). bzip2/xz archives are not
-supported.}
+tarball (\code{.tar.gz}, \code{.tgz}, or \code{.tar}). A bzip2-, xz-, zstd- or
+compress-compressed archive is refused by its magic bytes, whatever its
+filename says.}
 
 \item{rules}{Named list of rules. Defaults to the rules bundled with the
 package as returned by \code{\link[=load_rules]{load_rules()}}.}
@@ -66,9 +67,10 @@ otherwise the tarball is rejected.
 
 The audited \code{DESCRIPTION} is then checked against the tarball filename: if
 the \code{Package} name or \code{Version} disagrees with the name and version implied
-by the filename (\code{foo} and \verb{0.1.0} for \code{foo_0.1.0.tar.gz}), a warning is
-issued. The \code{DESCRIPTION} values are authoritative and are what the returned
-object reports.
+by the filename (\code{foo} and \verb{0.1.0} for \code{foo_0.1.0.tar.gz}), a
+\code{pkgaudit_provenance_mismatch} warning is issued, which a caller can catch
+by class. The \code{DESCRIPTION} values are authoritative and are what the
+returned object reports.
 }
 \examples{
 # untrustedpkg is a small package shipped with pkgaudit to be scanned.

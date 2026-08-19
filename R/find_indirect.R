@@ -1,31 +1,50 @@
 # This script finds calls made through a function's name rather than the
 # function, and attributes them to the rule that owns the name.
 
-# Calls that resolve a function from a string. do.call() and match.fun() take
-# the name as their first argument, as getFunction() does; all three run, or
-# hand back, whatever that string names.
+# Calls that resolve a function from a string, each paired with the parameter
+# that names the target: do.call(what), match.fun(FUN), getFunction(name). All
+# three run, or hand back, whatever that string names.
 #
 # This is mechanism rather than a rule: it carries no message and no ATT&CK
 # technique of its own, and every finding it produces is reported under another
 # rule. That is why the XPath lives here instead of in inst/rules/.
-#
-# The literal must sit in the first argument position, so do.call(fn, "system")
-# -- where the string is data passed to some other function -- does not match.
-.indirect_xpath <- paste(
-  "//expr[",
-  "  expr/SYMBOL_FUNCTION_CALL[",
-  "    (text() = 'do.call' or text() = 'match.fun'",
-  "      or text() = 'getFunction')",
-  "    and not(preceding-sibling::OP-DOLLAR)",
-  "    and not(preceding-sibling::OP-AT)",
-  "  ]",
-  "  and expr[preceding-sibling::OP-LEFT-PAREN][1]/STR_CONST",
-  "]",
-  collapse = " "
+.indirect_calls <- c(do.call = "what", match.fun = "FUN", getFunction = "name")
+
+# The literal must name the target: either the first unnamed argument, which is
+# what R binds to the first parameter, or an argument named for it explicitly.
+# do.call(fn, "system") -- where the string is data passed to some other
+# parameter -- does not match. Comment nodes are stepped over, so a comment
+# between the parenthesis and the literal does not break adjacency.
+.indirect_positional <- paste0(
+  "expr[preceding-sibling::*[not(self::COMMENT)][1]",
+  "[self::OP-LEFT-PAREN or self::OP-COMMA]][1]/STR_CONST"
 )
 
-# The literal naming the target, relative to a matched call.
-.indirect_target_xpath <- "./expr[preceding-sibling::OP-LEFT-PAREN][1]/STR_CONST"
+.indirect_named <- function(parameter) paste0(
+  "expr[preceding-sibling::*[not(self::COMMENT)][1][self::EQ_SUB]",
+  " and preceding-sibling::*[not(self::COMMENT)][2]",
+  "[self::SYMBOL_SUB and text() = '", parameter, "']]/STR_CONST"
+)
+
+.indirect_xpath <- paste(
+  vapply(names(.indirect_calls), function(fn) paste0(
+    "//expr[",
+    "expr/SYMBOL_FUNCTION_CALL[text() = '", fn, "'",
+    " and not(preceding-sibling::OP-DOLLAR)",
+    " and not(preceding-sibling::OP-AT)]",
+    " and (", .indirect_positional,
+    " or ", .indirect_named(.indirect_calls[[fn]]), ")]"
+  ), character(1L)),
+  collapse = " | "
+)
+
+# The literal naming the target, relative to a matched call. The named branch
+# accepts any of the three parameter names, since the match above has already
+# paired the call with its own; document order puts the real target first.
+.indirect_target_xpath <- paste0(
+  "./", .indirect_positional,
+  " | ", paste0("./", .indirect_named(.indirect_calls), collapse = " | ")
+)
 
 
 #' Find calls made through a function's name

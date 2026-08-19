@@ -7,7 +7,11 @@
 extract_segments(source)
 }
 \arguments{
-\item{source}{A \code{pkgaudit_source} from \code{new_source()}.}
+\item{source}{A \code{pkgaudit_source}: a list with the file's \code{path}, its
+package-root-relative \code{file_context}, the claiming rule in \code{file_rule},
+the applicable \code{code_contexts}, and \code{macros}. Sources are built inside
+\code{\link[=audit_package]{audit_package()}}, one per claimed file; a method receives them and never
+constructs one.}
 }
 \value{
 A list of two elements:

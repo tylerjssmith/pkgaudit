@@ -1,1 +1,1 @@
-chmod -R +x inst/scripts
+chmod 777 /tmp/staging
