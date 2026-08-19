@@ -5,7 +5,7 @@
 - [Getting Started with
   pkgaudit](https://tylerjssmith.github.io/pkgaudit/articles/pkgaudit.md):
 - [R Package
-  Security](https://tylerjssmith.github.io/pkgaudit/articles/r-package-security.md):
+  Security](https://tylerjssmith.github.io/pkgaudit/articles/security.md):
 - [pkgaudit Rule
   Coverage](https://tylerjssmith.github.io/pkgaudit/articles/rules.md):
 - [pkgaudit

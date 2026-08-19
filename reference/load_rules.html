@@ -23,7 +23,7 @@ named list suitable for passing to audit_package() or audit_tarball()."></head><
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/r-package-security.html">R Package Security</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/security.html">R Package Security</a></li>
     <li><a class="dropdown-item" href="../articles/rules.html">pkgaudit Rule Coverage</a></li>
     <li><a class="dropdown-item" href="../articles/internals.html">pkgaudit Internals</a></li>
   </ul></li>
@@ -66,90 +66,79 @@ with the installed package.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A named list with six data frames:</p><dl><dt>file_contexts</dt>
-<dd><p>Data frame with columns <code>name</code>, <code>version</code>, <code>type</code>,
-<code>message</code>, <code>path</code>, <code>recursive</code>, <code>report</code>, <code>filename</code>, <code>code_context</code>.
-<code>type</code> selects how a matched file is read and scanned;
-<code>report</code> is <code>TRUE</code> for a rule whose matches are findings in their own
-right, and <code>FALSE</code> for one that only tells the scanner which files to
-read; <code>code_context</code> names the code-context rules that can apply inside
-the files this rule claims, space-separated – <code>NA</code> where none can, and
-<code>"computed"</code> where only <code>top_level</code> and <code>in_function</code> can. That is what
-confines the lifecycle hooks to the directories whose code becomes the
-namespace, since a <code>.onLoad</code> defined elsewhere never runs.</p></dd>
+    <p>A named list of five data frames. In the four rule frames each row
+is a rule, the common columns are <code>name</code> and <code>version</code>, and <code>message</code> is
+what a finding reports; <code>phases</code> is keyed by <code>context</code> instead.</p><dl><dt>file_contexts</dt>
+<dd><p><code>name</code>, <code>version</code>, <code>type</code>, <code>message</code>, <code>path</code>,
+<code>recursive</code>, <code>report</code>, <code>filename</code>, <code>code_context</code>, <code>assume_called</code>.
+<code>type</code> selects how a matched file is read. <code>report</code> is <code>TRUE</code> for a rule
+whose matches are findings in their own right. <code>code_context</code> names the
+code-context rules that can apply inside these files, space-separated –
+<code>NA</code> where none can, <code>"computed"</code> where only <code>top_level</code> and
+<code>in_function</code> can. <code>assume_called</code> says whether code inside a function
+definition is taken to run when the code around it runs, and is <code>NA</code>
+wherever <code>code_context</code> is.</p></dd>
 
 <dt>code_contexts</dt>
-<dd><p>Data frame with columns <code>name</code>, <code>version</code>,
-<code>language</code>, <code>message</code>, <code>kind</code>, <code>xpath</code>, <code>segment</code>. <code>kind</code> is <code>"xpath"</code>
-for a rule matched against the parse tree and <code>"segment"</code> for one
-matched against a label the extractor stamped; exactly one of <code>xpath</code>
-and <code>segment</code> is set accordingly. A segment rule exists because the
-distinction it draws is invisible to the parse tree: once a help file
-has yielded R code, nothing in that code says whether it came from
-<code>\\examples</code> or from a <code>\\Sexpr</code>.</p></dd>
+<dd><p><code>name</code>, <code>version</code>, <code>language</code>, <code>message</code>, <code>kind</code>,
+<code>xpath</code>, <code>segment</code>. <code>kind</code> is <code>"xpath"</code> for a rule matched against the
+parse tree and <code>"segment"</code> for one matched against a label the extractor
+stamped; exactly one of the two columns is set accordingly.</p></dd>
 
 <dt>patterns</dt>
-<dd><p>Data frame with columns <code>name</code>, <code>version</code>, <code>language</code>,
-<code>message</code>, <code>attck</code>, <code>functions</code>, <code>xpath</code>. <code>functions</code> is the
-space-separated names the rule matches as a bare call, which is how
-<code><a href="find_indirect.html">find_indirect()</a></code> attributes an indirect call back to it; it is empty
-for a rule that matches on more than the callee.</p></dd>
+<dd><p><code>name</code>, <code>version</code>, <code>language</code>, <code>message</code>, <code>attck</code>,
+<code>functions</code>, <code>xpath</code>. <code>functions</code> is the space-separated names the rule
+matches as a bare call, which is how <code><a href="find_indirect.html">find_indirect()</a></code> attributes an
+indirect call back to it; empty for a rule matching on more than the
+callee.</p></dd>
 
 <dt>matches</dt>
-<dd><p>Data frame with columns <code>name</code>, <code>version</code>, <code>language</code>,
-<code>message</code>, <code>attck</code>, <code>regex</code>. A match rule is evaluated against every
-segment in its <code>language</code>, which is what keeps a shell rule from being
-applied to R code.</p></dd>
+<dd><p><code>name</code>, <code>version</code>, <code>language</code>, <code>message</code>, <code>attck</code>, <code>regex</code>.
+A match rule is evaluated only against code in its <code>language</code>.</p></dd>
 
 <dt>phases</dt>
-<dd><p>Data frame with columns <code>context</code>, <code>version</code>, and one
-logical column per lifecycle phase. One row per rule, file-context and
-code-context alike. The computed contexts <code>top_level</code> and
-<code>in_function</code> have no row and need none: they inherit the phases of the
-file context they sit in.</p></dd>
-
-<dt>phase_overrides</dt>
-<dd><p>Data frame with columns <code>file_context</code>,
-<code>code_context</code>, <code>version</code>, and one logical column per lifecycle phase.
-Where a code context's phases depart from its file context's, which is
-the exception rather than the rule – today only <code>R/</code>, where code inside
-a function definition is reported as running at no phase.</p></dd>
+<dd><p><code>context</code>, <code>version</code>, and one logical column per lifecycle
+phase. One row per file-context or code-context rule – pattern and
+match rules carry no phases of their own. The computed contexts
+<code>top_level</code> and <code>in_function</code> have none, and need none: they inherit.</p></dd>
 
 
-</dl><p>The list carries a <code>"provenance"</code> attribute recording the database the
-rules were read from – a list of <code>db_path</code>, <code>version</code>, and <code>sha256</code> –
-which <code><a href="audit_package.html">audit_package()</a></code> reports in a scan's <code>metadata</code>. The <code>sha256</code> is the
-hash computed from the database during verification, not a value re-read
-from the sidecar afterwards, so it records what this call measured.</p>
+</dl><p>The list carries a <code>"provenance"</code> attribute – <code>db_path</code>, <code>version</code> and
+<code>sha256</code> – which <code><a href="audit_package.html">audit_package()</a></code> reports in a scan's <code>metadata</code>. The
+<code>sha256</code> is the hash computed during verification, not re-read from the
+sidecar afterwards, so it records what this call measured.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Before reading, the database is verified against its SHA-256 sidecar so that
-a tampered or corrupted rules file is rejected rather than silently trusted.</p>
+    <p>Before reading, the database is verified against its SHA-256 sidecar so that a
+tampered or corrupted rules file is rejected rather than silently trusted.</p>
     </div>
     <div class="section level2">
     <h2 id="security-considerations">Security considerations<a class="anchor" aria-label="anchor" href="#security-considerations"></a></h2>
 
 
-<p>Verification is time-of-check to time-of-use (TOCTOU): the database is hashed
-and then re-opened by path to query it, so a file swapped in the interval
-between the two is not detected. This does not weaken the bundled default –
-an attacker able to win that race already has write access to the installed
-package and could replace the sidecar or this package's code outright. If
-loading rules from a path other parties can write, treat the SHA-256 check as
-protection against accidental corruption or a substituted database given an
-authentic sidecar – not against an attacker who can modify the file
-concurrently. Load from a path only trusted writers control.</p>
+<p>The sidecar ships beside the database, so anyone who can rewrite one can
+rewrite the other. It is an integrity check, not an authenticity check: it
+catches a corrupted download or a database swapped for another, and it cannot
+catch a deliberate edit of an installed copy. The out-of-band anchor is the
+hash published in the README, which is compared against the shipped database
+on every commit; checking an installed copy against that is what detects a
+tampered install, and <code><a href="rules_version.html">rules_version()</a></code> reports what a scan actually used.</p>
+<p>Verification is time-of-check to time-of-use: the database is hashed and then
+re-opened by path to query it, so a file swapped in between is not detected.
+That does not weaken the bundled default, since an attacker able to win the
+race already has write access to the installed package. When loading rules
+from a path other parties can write, treat the check as protection against
+corruption or a substituted database given an authentic sidecar, not against
+an attacker modifying the file concurrently.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">rules</span> <span class="op">&lt;-</span> <span class="fu">load_rules</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">rules</span>, <span class="va">nrow</span>, <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   file_contexts   code_contexts        patterns         matches          phases </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>              45              10              21              11              55 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> phase_overrides </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>               3 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> file_contexts code_contexts      patterns       matches        phases </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            45            10            23            11            55 </span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

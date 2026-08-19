@@ -21,7 +21,7 @@ eval(parse()), an outbound HTTP call)."></head><body>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/r-package-security.html">R Package Security</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/security.html">R Package Security</a></li>
     <li><a class="dropdown-item" href="../articles/rules.html">pkgaudit Rule Coverage</a></li>
     <li><a class="dropdown-item" href="../articles/internals.html">pkgaudit Internals</a></li>
   </ul></li>
@@ -89,14 +89,12 @@ assigned.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>For each pattern rule, this function evaluates the rule's XPath against the
-parse tree with <code>.xml_find_all_safe()</code>. Every matching node is a pattern
-found. A failing or invalid XPath (including one that libxml2 reports only as
-a warning) comes back as a condition, which is recorded in the errors data
-frame before the loop moves on to the next rule.</p>
-<p>The returned data frame carries the matched XML nodes as a <code>"nodes"</code>
-attribute, aligned row-for-row, so <code><a href="determine_code_contexts.html">determine_code_contexts()</a></code> can test
-containment by node identity without re-running the pattern XPaths.</p>
+    <p>Each rule's XPath is evaluated with <code>.xml_find_all_safe()</code>, so an invalid one
+– including one libxml2 reports only as a warning – is recorded in <code>errors</code>
+and the scan moves on.</p>
+<p>The <code>"nodes"</code> attribute holds the matched XML nodes aligned row-for-row, so
+<code><a href="determine_code_contexts.html">determine_code_contexts()</a></code> can test containment by node identity without
+re-running the pattern XPaths.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

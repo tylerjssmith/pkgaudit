@@ -23,7 +23,7 @@ the check audit_tarball() runs before extracting an untrusted tarball."></head><
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/r-package-security.html">R Package Security</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/security.html">R Package Security</a></li>
     <li><a class="dropdown-item" href="../articles/rules.html">pkgaudit Rule Coverage</a></li>
     <li><a class="dropdown-item" href="../articles/internals.html">pkgaudit Internals</a></li>
   </ul></li>
@@ -100,9 +100,10 @@ long-name, PAX), path traversal, absolute and drive-qualified paths, paths
 containing backslashes or control characters, empty paths, unparseable size
 fields, and archives that do not extract to exactly one top-level directory.
 It also enforces the entry-count, uncompressed-size, and expansion-ratio caps
-applied while reading (<code>max_entries</code>, <code>max_bytes</code>, <code>max_ratio</code>). A survey of
-all CRAN source tarballs found none of the structural problems, so the rules
-cost nothing on legitimate packages. Reads gzip and uncompressed tar only.</p>
+applied while reading (<code>max_entries</code>, <code>max_bytes</code>, <code>max_ratio</code>). No CRAN
+source tarball trips any of these. Reads gzip and uncompressed tar only,
+judged by the file's magic bytes rather than its name: a bzip2, xz, zstd or
+compress stream is refused whatever it is called.</p>
 <p>A refusal is signaled as a <code>pkgaudit_invalid_tarball</code> condition (a subclass
 of <code>error</code>), so it stops by default but can be caught by class.</p>
     </div>

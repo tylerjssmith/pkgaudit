@@ -21,7 +21,7 @@ variety of file is named."></head><body>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/r-package-security.html">R Package Security</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/security.html">R Package Security</a></li>
     <li><a class="dropdown-item" href="../articles/rules.html">pkgaudit Rule Coverage</a></li>
     <li><a class="dropdown-item" href="../articles/internals.html">pkgaudit Internals</a></li>
   </ul></li>
@@ -57,13 +57,17 @@ variety of file is named.</p>
 
 
 <dl><dt id="arg-source">source<a class="anchor" aria-label="anchor" href="#arg-source"></a></dt>
-<dd><p>A <code>pkgaudit_source</code> from <code>new_source()</code>.</p></dd>
+<dd><p>A <code>pkgaudit_source</code>: a list with the file's <code>path</code>, its
+package-root-relative <code>file_context</code>, the claiming rule in <code>file_rule</code>,
+the applicable <code>code_contexts</code>, and <code>macros</code>. Sources are built inside
+<code><a href="audit_package.html">audit_package()</a></code>, one per claimed file; a method receives them and never
+constructs one.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A list of two elements:</p><dl><dt>segments</dt>
-<dd><p>List of segments from <code>new_segment()</code>, each holding
+<dd><p>List of segments from <code><a href="new_segment.html">new_segment()</a></code>, each holding
 <code>lines</code> aligned to the lines of the source file.</p></dd>
 
 <dt>errors</dt>
@@ -78,8 +82,28 @@ variety of file is named.</p>
 
 <p>The scanning size limit is enforced here, before dispatch, so no method can
 skip it. A method must not re-implement it.</p>
+<p>A method reads untrusted bytes and must never evaluate them. Return the code
+as text in a segment; deciding what it means is <code><a href="analyze_segment.html">analyze_segment()</a></code>'s job.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p><code><a href="analyze_segment.html">analyze_segment()</a></code>, the other axis of dispatch, and
+<code><a href="../articles/internals.html">vignette("internals")</a></code>.</p></div>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Adding a file format outside pkgaudit: a method for a new rule `type`,</span></span></span>
+<span class="r-in"><span><span class="co"># here one that treats a .txt file as if it held R code.</span></span></span>
+<span class="r-in"><span><span class="va">extract_segments.txt</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">source</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>segments <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="new_segment.html">new_segment</a></span><span class="op">(</span>language <span class="op">=</span> <span class="st">"R"</span>,</span></span>
+<span class="r-in"><span>                                   lines <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="va">source</span><span class="op">$</span><span class="va">path</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                                   file_context <span class="op">=</span> <span class="va">source</span><span class="op">$</span><span class="va">file_context</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>       errors <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/ns-internal.html" class="external-link">registerS3method</a></span><span class="op">(</span><span class="st">"extract_segments"</span>, <span class="st">"txt"</span>, <span class="va">extract_segments.txt</span><span class="op">)</span></span></span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

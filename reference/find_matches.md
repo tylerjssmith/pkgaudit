@@ -46,20 +46,15 @@ A list with two data frames:
 ## Details
 
 Each rule's regular expression is evaluated against every line with
-[`base::gregexpr()`](https://rdrr.io/r/base/grep.html) using
-`perl = TRUE`, `ignore.case = FALSE`, and `useBytes = FALSE`. Every hit
-is a match found, reported at the line it occurs on and the character
-position it starts at; a line matched more than once yields one row per
-match. A failing regular expression (including one R reports only as a
-warning) is recorded in the errors data frame before the loop moves on
-to the next rule.
+`base::gregexpr(perl = TRUE)`, case-sensitively; a line matched more
+than once yields one row per match. A failing expression is recorded in
+`errors` and the scan moves on.
 
-Matching text is inherently less precise than matching a parse tree: a
-match has no syntactic structure behind it, so one inside a comment, a
-quoted string, or a branch that never runs is reported the same as a
-live command. Findings are candidates for review, not confirmed
-behavior.
+Matching text is less precise than matching a parse tree: a match has no
+syntax behind it, so one inside a comment, a quoted string, or a branch
+that never runs is reported the same as a live command. Findings are
+candidates for review, not confirmed behaviour.
 
-Reading the file, and the limits that protect against hostile input, are
+Reading the file, and the limits protecting against hostile input, are
 [`read_code()`](https://tylerjssmith.github.io/pkgaudit/reference/read_code.md)'s
-responsibility rather than this function's.
+responsibility.

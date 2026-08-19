@@ -23,7 +23,7 @@ src/Makevars, src/install.libs.R)."></head><body>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/r-package-security.html">R Package Security</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/security.html">R Package Security</a></li>
     <li><a class="dropdown-item" href="../articles/rules.html">pkgaudit Rule Coverage</a></li>
     <li><a class="dropdown-item" href="../articles/internals.html">pkgaudit Internals</a></li>
   </ul></li>
@@ -92,6 +92,10 @@ attaches them from the rules database.</p></dd>
 most packages have no <code>R/unix/</code>, and that is a clean result. <code>pkg</code> itself is
 checked so that a root that does not exist is refused rather than joining
 that silence as a package with nothing to scan.</p>
+<p>A symlinked file is never claimed: following it would attribute findings to
+the target's path rather than the one the package ships. It is reported in
+<code>coverage</code> as <code>unexamined</code> with reason <code>symlink</code>, so skipping it is stated
+rather than silent.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

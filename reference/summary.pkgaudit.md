@@ -27,10 +27,10 @@ print(x, path = x$path, ...)
 - path:
 
   Logical; if `TRUE` (default) include the `Path:` line showing the
-  local filesystem location scanned. Set `FALSE` to omit local paths.
-  `summary.pkgaudit()` records the choice in the object it returns;
-  `print.summary.pkgaudit()` uses that recorded value unless given its
-  own.
+  local filesystem location scanned, with the home directory written as
+  `~`. Set `FALSE` to omit the line. `summary.pkgaudit()` records the
+  choice in the object it returns; `print.summary.pkgaudit()` uses that
+  recorded value unless given its own.
 
 - phase:
 
@@ -49,8 +49,12 @@ print(x, path = x$path, ...)
 ## Value
 
 `summary.pkgaudit()` returns a `summary.pkgaudit` object: a named list
-of four summary data frames, the errors, the scan `metadata`, and the
-recorded `path`.
+of five summary data frames, the scan `metadata`, the recorded `path`,
+and the recorded `phase` – the phases the frames were filtered to, or
+`NULL` for an unfiltered summary.
+[`print()`](https://rdrr.io/r/base/print.html) reads it to head the
+report with the phases asked for, so an empty section is not mistaken
+for a clean scan.
 
 - file_contexts:
 
@@ -58,31 +62,24 @@ recorded `path`.
 
 - patterns:
 
-  `phase`, `rule`, `n`, `attck`: how often each pattern rule was
-  matched, split by the lifecycle phase its code executes in, with the
-  ATT&CK techniques the rule carries. The code context a finding sits in
-  is how its phases were derived rather than a finding of its own, so it
-  stays on the object's `patterns` frame and out of the report.
+  `phase`, `rule`, `n`, `attck`: how often each pattern rule matched,
+  split by the phase its code executes in.
 
 - matches:
 
-  `phase`, `rule`, `n`, `attck`: how often each match rule was matched
-  across the shell scripts and Make-like files, split by the lifecycle
-  phase those files execute in. Shaped as `patterns` is; which file each
-  match sits in is on the object's `matches` frame.
+  `phase`, `rule`, `n`, `attck`: as `patterns`, across the shell and
+  Make-like files.
 
 - coverage:
 
   `status`, `top_level`, `type`, `files`, `lines`: how much of the
-  package pkgaudit read, grouped by where the files sit and what kind
-  they are. `type` is what a file was read as where a rule read it, and
-  its extension otherwise.
+  package was read, grouped by where the files sit and what kind they
+  are. `type` is what a file was read as, or its extension.
 
 - errors:
 
-  `step`, `file_context`, `rule`, `error`: the rows of the object's
-  `errors` data frame, renamed for display. The report shows only `step`
-  and `file_context`; the notes are built from the other two.
+  `step`, `file_context`, `rule`, `error`: the object's `errors` rows,
+  renamed for display.
 
 `print.summary.pkgaudit()` returns `x` invisibly.
 
@@ -90,39 +87,27 @@ recorded `path`.
 
 The report opens with the same metadata block as
 [`print.pkgaudit()`](https://tylerjssmith.github.io/pkgaudit/reference/format.pkgaudit.md),
-then gives the `R Patterns`, `Shell / Make Matches`, `Coverage`, and
-`Errors` sections. A section with nothing to report says so. The
+then gives the `R Patterns`, `Shell / Make Matches`, `Coverage` and
+`Errors` sections; a section with nothing to report says so. The
 `file_contexts` summary is returned for programmatic use but is not part
 of the report.
 
-`Coverage` is counts with reasons, and deliberately no percentage.
-Nothing in a package is assumed inert, so coverage never reaches 100%
-and a ratio would only ever flatter; what a reader needs is which files
-went unexamined and whether they execute. Which files those are is in
-the object's own `coverage` frame; the report gives the shape of the
-package, not the list.
-
-A pattern occurrence executes in every phase its code context does, and
-a match in every phase its file context does, so each contributes one
-row per phase and the `n` column sums to more than the number of
-occurrences. Occurrences that execute in no phase at all are gathered
-under `none`.
-
 Both findings tables are grouped by phase and rule alone. Where a
-finding sits – the code context of a pattern, the file of a match – is
-on the object's own frames; the report answers what runs, and when.
+finding sits is on the object's own frames; the report answers what
+runs, and when. An occurrence executes in every phase its context does,
+so it contributes one row per phase and `n` sums to more than the number
+of occurrences. Those executing in no phase are gathered under `none`.
 
-`phase` restricts the report to the phases named. It is the only way to
+`Coverage` is counts with reasons and deliberately no percentage:
+coverage never reaches 100%, so a ratio would only flatter. Which files
+went unexamined is in the object's `coverage` frame.
+
+## Filtering by phase
+
+`phase` restricts the report to the phases named, and is the only way to
 narrow it: the summary has already been expanded by phase, so it cannot
-be subset afterwards. The default reports every phase, and a filtered
-report names its phases in the header, so it cannot be mistaken for a
-full scan.
-
-The `Errors` section lists every error by step and file context, and is
-followed by one note per step stating what scan coverage was lost. The
-rule and the message are left out of the table – a message is often long
-enough to wrap the report on its own – and are in `s$errors` for a
-caller who wants them.
+be subset afterwards. A filtered report names its phases in the header,
+so it cannot be mistaken for a full scan.
 
 ## See also
 
@@ -142,9 +127,9 @@ result <- audit_tarball(tarball)
 summary(result)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
-#> Path:      /home/runner/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
+#> Path:      ~/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -157,6 +142,10 @@ summary(result)
 #> at_install_src   system          1   T1059.003 T1059.004
 #> at_load          system          1   T1059.003 T1059.004
 #> none             download_file   1   T1105
+#> 
+#> none: reported at no phase because nothing in the package was seen to call
+#> it. Code under R/ is read this way by rule; a caller elsewhere, or a user,
+#> can still reach it. See vignette("rules").
 #> 
 #> --- Shell / Make Matches ----------------------------------------------------
 #> phase            rule            n   attck
@@ -177,7 +166,7 @@ summary(result, path = FALSE)       # omit the local Path: line for sharing
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -190,6 +179,10 @@ summary(result, path = FALSE)       # omit the local Path: line for sharing
 #> at_install_src   system          1   T1059.003 T1059.004
 #> at_load          system          1   T1059.003 T1059.004
 #> none             download_file   1   T1105
+#> 
+#> none: reported at no phase because nothing in the package was seen to call
+#> it. Code under R/ is read this way by rule; a caller elsewhere, or a user,
+#> can still reach it. See vignette("rules").
 #> 
 #> --- Shell / Make Matches ----------------------------------------------------
 #> phase            rule            n   attck
@@ -209,9 +202,9 @@ summary(result, path = FALSE)       # omit the local Path: line for sharing
 summary(result, phase = "at_load")  # only what runs when the package loads
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
-#> Path:      /home/runner/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
+#> Path:      ~/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> Phases:    at_load
 #> 
 #> --- R Patterns --------------------------------------------------------------
@@ -229,20 +222,25 @@ summary(result, phase = "at_load")  # only what runs when the package loads
 summary(result, phase = "none")     # ships, but runs at no phase
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
-#> Path:      /home/runner/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
+#> Path:      ~/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> Phases:    none
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase   rule            n   attck
 #> none    download_file   1   T1105
 #> 
+#> none: reported at no phase because nothing in the package was seen to call
+#> it. Code under R/ is read this way by rule; a caller elsewhere, or a user,
+#> can still reach it. See vignette("rules").
+#> 
 #> --- Shell / Make Matches ----------------------------------------------------
 #> No matches were found.
 #> 
 #> --- Coverage ----------------------------------------------------------------
-#> No files were found.
+#> status       top_level   type          files   lines
+#> unexamined   .           DESCRIPTION       1
 #> 
 #> --- Errors ------------------------------------------------------------------
 #> No exceptions were raised.

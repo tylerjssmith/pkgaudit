@@ -43,8 +43,11 @@ export_unscanned(
 
 - max_bytes:
 
-  Largest file to copy, in bytes. A larger one is recorded in the
-  manifest and left behind.
+  Largest file to copy, in bytes; defaults to 64 MB. A larger one is
+  recorded in the manifest and left behind. This is a separate limit
+  from the 10 MB one
+  [`audit_package()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md)
+  scans under: copying a file costs far less than parsing it.
 
 ## Value
 
@@ -66,16 +69,22 @@ account of what it could not read is the single source of truth.
 
 ## Security considerations
 
-This is the only function in pkgaudit that writes. Both the content and
-the file names come from an untrusted package, so: every target path is
-resolved and must lie under `dir`; a path component that is `.`, `..`,
-or that contains a separator or a NUL byte is refused; symlinks are
-never followed, and content is read and rewritten rather than copied, so
-a link pointing out of the package cannot pull a file in; nothing is
-written executable; and nothing is removed. A refused span is recorded
-in the manifest rather than dropped, since a file that cannot be
-exported safely is one worth knowing about.
+This is the only function in pkgaudit that writes, and both the content
+and the file names come from an untrusted package. Therefore:
 
+- every target path is resolved and must lie under `dir`;
+
+- a path component that is `.`, `..`, or that contains a separator or a
+  NUL byte is refused;
+
+- symlinks are never followed, and content is read and rewritten rather
+  than copied, so a link pointing out of the package cannot pull a file
+  in;
+
+- nothing is written executable, and nothing is removed.
+
+A refused span is recorded in the manifest rather than dropped, since a
+file that cannot be exported safely is one worth knowing about.
 Exporting still executes nothing.
 
 ## Examples

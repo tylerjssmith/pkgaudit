@@ -22,7 +22,9 @@ audit_tarball(
 - path:
 
   Path to a gzip-compressed or uncompressed R source package tarball
-  (`.tar.gz`, `.tgz`, or `.tar`). bzip2/xz archives are not supported.
+  (`.tar.gz`, `.tgz`, or `.tar`). A bzip2-, xz-, zstd- or
+  compress-compressed archive is refused by its magic bytes, whatever
+  its filename says.
 
 - rules:
 
@@ -86,8 +88,9 @@ top-level directory it produced (e.g. `foo_0.1.0.tar.gz` must extract to
 The audited `DESCRIPTION` is then checked against the tarball filename:
 if the `Package` name or `Version` disagrees with the name and version
 implied by the filename (`foo` and `0.1.0` for `foo_0.1.0.tar.gz`), a
-warning is issued. The `DESCRIPTION` values are authoritative and are
-what the returned object reports.
+`pkgaudit_provenance_mismatch` warning is issued, which a caller can
+catch by class. The `DESCRIPTION` values are authoritative and are what
+the returned object reports.
 
 ## Examples
 
@@ -102,9 +105,9 @@ result <- audit_tarball(tarball)
 print(result)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
-#> Path:      /home/runner/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
+#> Path:      ~/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4

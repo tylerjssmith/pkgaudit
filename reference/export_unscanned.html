@@ -23,7 +23,7 @@ into a directory another static analyser can be pointed at."></head><body>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/r-package-security.html">R Package Security</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/security.html">R Package Security</a></li>
     <li><a class="dropdown-item" href="../articles/rules.html">pkgaudit Rule Coverage</a></li>
     <li><a class="dropdown-item" href="../articles/internals.html">pkgaudit Internals</a></li>
   </ul></li>
@@ -88,8 +88,10 @@ the same file. Nothing is ever deleted either way.</p></dd>
 
 
 <dt id="arg-max-bytes">max_bytes<a class="anchor" aria-label="anchor" href="#arg-max-bytes"></a></dt>
-<dd><p>Largest file to copy, in bytes. A larger one is recorded in
-the manifest and left behind.</p></dd>
+<dd><p>Largest file to copy, in bytes; defaults to 64 MB. A larger
+one is recorded in the manifest and left behind. This is a separate limit
+from the 10 MB one <code><a href="audit_package.html">audit_package()</a></code> scans under: copying a file costs far
+less than parsing it.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -113,16 +115,16 @@ account of what it could not read is the single source of truth.</p>
     <h2 id="security-considerations">Security considerations<a class="anchor" aria-label="anchor" href="#security-considerations"></a></h2>
 
 
-<p>This is the only function in pkgaudit that writes. Both the content and the
-file names come from an untrusted package, so: every target path is resolved
-and must lie under <code>dir</code>; a path component that is <code>.</code>, <code>..</code>, or that
-contains a separator or a NUL byte is refused; symlinks are never followed,
-and content is read and rewritten rather than copied, so a link pointing out
-of the package cannot pull a file in; nothing is written executable; and
-nothing is removed. A refused span is recorded in the manifest
-rather than dropped, since a file that cannot be exported safely is one worth
-knowing about.</p>
-<p>Exporting still executes nothing.</p>
+<p>This is the only function in pkgaudit that writes, and both the content and
+the file names come from an untrusted package. Therefore:</p><ul><li><p>every target path is resolved and must lie under <code>dir</code>;</p></li>
+<li><p>a path component that is <code>.</code>, <code>..</code>, or that contains a separator or a
+NUL byte is refused;</p></li>
+<li><p>symlinks are never followed, and content is read and rewritten rather
+than copied, so a link pointing out of the package cannot pull a file in;</p></li>
+<li><p>nothing is written executable, and nothing is removed.</p></li>
+</ul><p>A refused span is recorded in the manifest rather than dropped, since a file
+that cannot be exported safely is one worth knowing about. Exporting still
+executes nothing.</p>
     </div>
 
     <div class="section level2">

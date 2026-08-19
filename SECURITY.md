@@ -47,13 +47,15 @@ in; nothing is written executable; and nothing is deleted or replaced
 unless `overwrite = TRUE`. A refused file is recorded in the returned
 manifest rather than dropped.
 
-Untrusted tarballs are validated fail-closed *before* extraction: link
-entries, path traversal, absolute and drive-qualified paths,
-control-character and empty paths, decompression bombs (entry-count,
-size, and expansion-ratio caps), unparseable size fields, and archives
-without exactly one top-level directory are refused rather than
-partially extracted. After extraction the directory is re-checked for
-symlinks as defense in depth.
+Untrusted tarballs are validated fail-closed *before* extraction:
+non-gzip compression (bzip2, xz, zstd, compress — judged by magic bytes,
+not filename), link entries, GNU long-name and PAX typeflags, path
+traversal, absolute and drive-qualified paths, paths containing
+backslashes or control characters, empty paths, decompression bombs
+(entry-count, size, and expansion-ratio caps), unparseable size fields,
+and archives without exactly one top-level directory are refused rather
+than partially extracted. After extraction the directory is re-checked
+for symlinks as defense in depth.
 
 ## Operating on sensitive data
 

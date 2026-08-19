@@ -23,7 +23,8 @@ print(x, path = TRUE, ...)
 - path:
 
   Logical; if `TRUE` (default) include the `Path:` line showing the
-  local filesystem location scanned. Set `FALSE` to omit local paths.
+  local filesystem location scanned, with the home directory written as
+  `~`. Set `FALSE` to omit the line.
 
 - ...:
 
@@ -53,9 +54,9 @@ result <- audit_tarball(tarball)
 print(result)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
-#> Path:      /home/runner/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
+#> Path:      ~/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -65,7 +66,7 @@ print(result, path = FALSE)   # omit the local Path: line for sharing
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4

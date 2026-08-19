@@ -19,7 +19,7 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/r-package-security.html">R Package Security</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/security.html">R Package Security</a></li>
     <li><a class="dropdown-item" href="../articles/rules.html">pkgaudit Rule Coverage</a></li>
     <li><a class="dropdown-item" href="../articles/internals.html">pkgaudit Internals</a></li>
   </ul></li>
@@ -101,8 +101,11 @@ recover each entry's typeflag and linkname, which are used to refuse link
 entries before extracting an untrusted archive.</p>
 <p>Reads headers only: entry data is skipped, never written to disk. Note that
 reaching entry N's header still requires decompressing everything before it.
-Reads gzip and uncompressed tar via <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">base::gzfile()</a></code>; bzip2/xz are not
-decompressed and will be refused as malformed.</p>
+Reads gzip and uncompressed tar via <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">base::gzfile()</a></code>, which would silently
+decompress bzip2, xz and zstd as well, so those streams – and compress –
+are refused first, by magic bytes rather than filename. Only gzip's ~1032:1
+per-layer ceiling keeps <code>max_ratio</code> a meaningful decompression-bomb bound;
+xz can compress far past it.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

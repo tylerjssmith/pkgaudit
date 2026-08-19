@@ -44,13 +44,14 @@ joined once in step 4. Nothing before it knows about phases.
 A phase is a property of two things – where the file sits in the
 package, and where the code sits within that file – so step 4 resolves a
 pattern by walking a short chain: a code context carrying phases of its
-own wins; otherwise the file context supplies them; and a file-context
-rule may override what code inside a function definition carries. Only
-`R/` does, reporting such code as running at no phase.
+own wins; otherwise the code takes the phases of whatever encloses it.
+Code inside a function definition takes them too, unless the file’s rule
+sets `assume_called: FALSE`, in which case it carries none. Only the
+rules for `R/` do.
 
 That the frames reach step 4 knowing where they came from is why
 `patterns` carries two extra columns while a scan is running,
-`file_rule` and `segment_context`.
+`file_rule` and `rd_context`.
 [`audit_package()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md)
 drops them before building the result, so the object a caller receives
 has the columns
@@ -64,10 +65,10 @@ things.
 
 - [`extract_segments()`](https://tylerjssmith.github.io/pkgaudit/reference/extract_segments.md)
   dispatches on the file-context rule’s **`type`** – how the file is
-  read. Methods live one per file in `R/type_*.R`.
+  read. Methods live one per file in `R/extract_*.R`.
 - [`analyze_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/analyze_segment.md)
   dispatches on the segment’s **`language`** – how the code is analysed.
-  Methods live in `R/language_*.R`.
+  Methods live in `R/analyze_*.R`.
 
 They cannot be one axis, because one file can yield code in more than
 one language: an `.Rmd` yields an R segment for each `{r}` chunk and a
@@ -82,11 +83,20 @@ language with no analyser yields no findings and no error, and records a
 coverage row instead, so an unhandled chunk engine is accounted for
 rather than silently dropped.
 
-Adding a file format is one new `R/type_*.R` plus a rule. Adding a
-language is one new `R/language_*.R` plus rules carrying that language.
+Adding a file format is one new `R/extract_*.R` plus a rule. Adding a
+language is one new `R/analyze_*.R` plus rules carrying that language.
 Neither touches
 [`audit_package()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md),
 and neither touches the other.
+
+Both generics are exported, along with
+[`new_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/new_segment.md)
+and
+[`new_findings()`](https://tylerjssmith.github.io/pkgaudit/reference/new_findings.md),
+which build what a method returns. A method can therefore be registered
+from another package rather than only by editing this one – though the
+rule that points the scan at the new files still has to reach the rules
+database, which means the issue thread `CONTRIBUTING.md` describes.
 
 ## The call graph
 
@@ -95,6 +105,10 @@ with the same parser the scan uses. It is not maintained by hand and
 cannot fall behind the code.
 
     audit_package()
+    ├─ .check_path()
+    │  └─ .stop_arg()
+    ├─ .check_rules()
+    │  └─ .stop_arg()
     ├─ .validate_origin()
     ├─ .empty_patterns()
     │  └─ .empty_phase_cols()
@@ -117,12 +131,11 @@ cannot fall behind the code.
     ├─ extract_segments()
     │  ├─ .over_scan_limit()
     │  ├─ .error_row()
-    │  ├─ extract_segments.default()
     │  ├─ extract_segments.R()
     │  │  ├─ read_code()
     │  │  └─ new_segment()
     │  ├─ extract_segments.Rd()
-    │  │  ├─ extract_Rd_code()
+    │  │  ├─ read_Rd_code()
     │  │  │  ├─ .empty_Rd_code()
     │  │  │  ├─ .parse_Rd_safe()
     │  │  │  └─ .Rd_fragments()
@@ -130,12 +143,18 @@ cannot fall behind the code.
     │  ├─ extract_segments.Rmd()
     │  │  ├─ read_code()
     │  │  ├─ .rmd_chunks()
-    │  │  │  └─ .rmd_header()
+    │  │  │  ├─ .rmd_header()
+    │  │  │  ├─ .unquote_lines()
+    │  │  │  └─ .rmd_pipe_eval()
     │  │  ├─ new_segment()
-    │  │  └─ .blank_except()
+    │  │  ├─ .blank_except()
+    │  │  └─ .rmd_inline()
+    │  │     ├─ .inline_code()
+    │  │     └─ .mask_verbatim()
     │  ├─ extract_segments.Rnw()
     │  │  ├─ read_code()
     │  │  ├─ .rnw_code()
+    │  │  │  └─ .inline_code()
     │  │  ├─ new_segment()
     │  │  └─ .blank_except()
     │  ├─ extract_segments.rsp()
@@ -143,19 +162,21 @@ cannot fall behind the code.
     │  │  ├─ .rsp_code()
     │  │  │  └─ .fixed_positions()
     │  │  └─ new_segment()
-    │  └─ extract_segments.shell()
-    │     ├─ read_code()
-    │     └─ new_segment()
+    │  ├─ extract_segments.shell()
+    │  │  ├─ read_code()
+    │  │  └─ new_segment()
+    │  └─ extract_segments.default()
     ├─ analyze_segment()
     │  ├─ analyze_segment.R()
     │  │  ├─ parse_code()
-    │  │  ├─ .findings()
+    │  │  ├─ new_findings()
     │  │  ├─ .error_row()
     │  │  ├─ .applicable_contexts()
     │  │  ├─ find_code_contexts()
     │  │  │  ├─ .empty_code_contexts()
     │  │  │  └─ .xml_find_all_safe()
     │  │  ├─ find_patterns()
+    │  │  │  ├─ .empty_found()
     │  │  │  └─ .xml_find_all_safe()
     │  │  ├─ find_indirect()
     │  │  │  ├─ .empty_indirect()
@@ -174,9 +195,9 @@ cannot fall behind the code.
     │  │  │  └─ .error_row()
     │  │  ├─ .rules_for()
     │  │  ├─ .preview()
-    │  │  └─ .findings()
+    │  │  └─ new_findings()
     │  └─ analyze_segment.default()
-    │     ├─ .findings()
+    │     ├─ new_findings()
     │     └─ .segment_coverage()
     ├─ .merge_coverage()
     ├─ build_coverage()
@@ -191,8 +212,7 @@ cannot fall behind the code.
     │     └─ .empty_phase_cols()
     ├─ .resolve_pattern_phases()
     │  ├─ .empty_phase_cols()
-    │  ├─ .phase_lookup()
-    │  └─ .apply_phase_overrides()
+    │  └─ .phase_lookup()
     ├─ .resolve_match_phases()
     │  └─ .empty_phase_cols()
     ├─ hash_manifest()
@@ -264,8 +284,9 @@ check is time-of-check to time-of-use; see “Security considerations” in
 [`load_rules()`](https://tylerjssmith.github.io/pkgaudit/reference/load_rules.md)
 also refuses a database with a gap in its phase model: a rule without
 phases, a file-context rule naming a code context that does not exist,
-or an override attached to something that cannot arise. A rule can never
-ship whose findings would silently carry no phases.
+or one that leaves `assume_called` undecided where code contexts can
+arise – or decides it where they cannot. A rule can never ship whose
+findings would silently carry no phases.
 
 ### Every rule is verified against its own examples
 
@@ -316,3 +337,8 @@ failing example can be fixed by editing prose.
   particular function is not something pkgaudit determines, which is why
   the phases of code inside a function definition are a stated reading
   rather than a finding.
+- It does not identify a file by its contents, only by its name. An
+  extensionless script – `tools/build` opening `#!/bin/sh` – earns no
+  coverage row: 434 such files across 134 of CRAN’s 24,216 packages.
+  Admitting a file on a leading `#!` would close this and is a candidate
+  for a later release.

@@ -31,7 +31,7 @@ returns the object invisibly."></head><body>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/r-package-security.html">R Package Security</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/security.html">R Package Security</a></li>
     <li><a class="dropdown-item" href="../articles/rules.html">pkgaudit Rule Coverage</a></li>
     <li><a class="dropdown-item" href="../articles/internals.html">pkgaudit Internals</a></li>
   </ul></li>
@@ -81,7 +81,8 @@ returns the object invisibly.</p>
 
 <dt id="arg-path">path<a class="anchor" aria-label="anchor" href="#arg-path"></a></dt>
 <dd><p>Logical; if <code>TRUE</code> (default) include the <code>Path:</code> line showing the
-local filesystem location scanned. Set <code>FALSE</code> to omit local paths.
+local filesystem location scanned, with the home directory written as <code>~</code>.
+Set <code>FALSE</code> to omit the line.
 <code>summary.pkgaudit()</code> records the choice in the object it returns;
 <code>print.summary.pkgaudit()</code> uses that recorded value unless given its own.</p></dd>
 
@@ -103,34 +104,28 @@ local filesystem location scanned. Set <code>FALSE</code> to omit local paths.
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>summary.pkgaudit()</code> returns a <code>summary.pkgaudit</code> object: a named list
-of four summary data frames, the errors, the scan <code>metadata</code>, and the
-recorded <code>path</code>.</p><dl><dt>file_contexts</dt>
+of five summary data frames, the scan <code>metadata</code>, the recorded <code>path</code>, and
+the recorded <code>phase</code> – the phases the frames were filtered to, or <code>NULL</code>
+for an unfiltered summary. <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> reads it to head the report with the
+phases asked for, so an empty section is not mistaken for a clean scan.</p><dl><dt>file_contexts</dt>
 <dd><p><code>file_context</code>: each file context found, once.</p></dd>
 
 <dt>patterns</dt>
-<dd><p><code>phase</code>, <code>rule</code>, <code>n</code>, <code>attck</code>: how often each pattern
-rule was matched, split by the lifecycle phase its code executes in,
-with the ATT&amp;CK techniques the rule carries. The code context a finding
-sits in is how its phases were derived rather than a finding of its
-own, so it stays on the object's <code>patterns</code> frame and out of the
-report.</p></dd>
+<dd><p><code>phase</code>, <code>rule</code>, <code>n</code>, <code>attck</code>: how often each pattern rule
+matched, split by the phase its code executes in.</p></dd>
 
 <dt>matches</dt>
-<dd><p><code>phase</code>, <code>rule</code>, <code>n</code>, <code>attck</code>: how often each match rule
-was matched across the shell scripts and Make-like files, split by the
-lifecycle phase those files execute in. Shaped as <code>patterns</code> is; which
-file each match sits in is on the object's <code>matches</code> frame.</p></dd>
+<dd><p><code>phase</code>, <code>rule</code>, <code>n</code>, <code>attck</code>: as <code>patterns</code>, across the
+shell and Make-like files.</p></dd>
 
 <dt>coverage</dt>
 <dd><p><code>status</code>, <code>top_level</code>, <code>type</code>, <code>files</code>, <code>lines</code>: how much
-of the package pkgaudit read, grouped by where the files sit and what
-kind they are. <code>type</code> is what a file was read as where a rule read it,
-and its extension otherwise.</p></dd>
+of the package was read, grouped by where the files sit and what kind
+they are. <code>type</code> is what a file was read as, or its extension.</p></dd>
 
 <dt>errors</dt>
-<dd><p><code>step</code>, <code>file_context</code>, <code>rule</code>, <code>error</code>: the rows of the
-object's <code>errors</code> data frame, renamed for display. The report shows
-only <code>step</code> and <code>file_context</code>; the notes are built from the other two.</p></dd>
+<dd><p><code>step</code>, <code>file_context</code>, <code>rule</code>, <code>error</code>: the object's
+<code>errors</code> rows, renamed for display.</p></dd>
 
 
 </dl><p><code>print.summary.pkgaudit()</code> returns <code>x</code> invisibly.</p>
@@ -138,30 +133,26 @@ only <code>step</code> and <code>file_context</code>; the notes are built from t
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The report opens with the same metadata block as <code><a href="format.pkgaudit.html">print.pkgaudit()</a></code>, then
-gives the <code>R Patterns</code>, <code>Shell / Make Matches</code>, <code>Coverage</code>, and <code>Errors</code>
-sections. A section with nothing to report says so. The <code>file_contexts</code>
+gives the <code>R Patterns</code>, <code>Shell / Make Matches</code>, <code>Coverage</code> and <code>Errors</code>
+sections; a section with nothing to report says so. The <code>file_contexts</code>
 summary is returned for programmatic use but is not part of the report.</p>
-<p><code>Coverage</code> is counts with reasons, and deliberately no percentage. Nothing in
-a package is assumed inert, so coverage never reaches 100% and a ratio would
-only ever flatter; what a reader needs is which files went unexamined and
-whether they execute. Which files those are is in the object's own
-<code>coverage</code> frame; the report gives the shape of the package, not the list.</p>
-<p>A pattern occurrence executes in every phase its code context does, and a
-match in every phase its file context does, so each contributes one row per
-phase and the <code>n</code> column sums to more than the number of occurrences.
-Occurrences that execute in no phase at all are gathered under <code>none</code>.</p>
 <p>Both findings tables are grouped by phase and rule alone. Where a finding
-sits – the code context of a pattern, the file of a match – is on the
-object's own frames; the report answers what runs, and when.</p>
-<p><code>phase</code> restricts the report to the phases named. It is the only way to
+sits is on the object's own frames; the report answers what runs, and when.
+An occurrence executes in every phase its context does, so it contributes one
+row per phase and <code>n</code> sums to more than the number of occurrences. Those
+executing in no phase are gathered under <code>none</code>.</p>
+<p><code>Coverage</code> is counts with reasons and deliberately no percentage: coverage
+never reaches 100%, so a ratio would only flatter. Which files went
+unexamined is in the object's <code>coverage</code> frame.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="filtering-by-phase">Filtering by phase<a class="anchor" aria-label="anchor" href="#filtering-by-phase"></a></h2>
+
+
+<p><code>phase</code> restricts the report to the phases named, and is the only way to
 narrow it: the summary has already been expanded by phase, so it cannot be
-subset afterwards. The default reports every phase, and a filtered report
-names its phases in the header, so it cannot be mistaken for a full scan.</p>
-<p>The <code>Errors</code> section lists every error by step and file context, and is
-followed by
-one note per step stating what scan coverage was lost. The rule and the
-message are left out of the table – a message is often long enough to wrap
-the report on its own – and are in <code>s$errors</code> for a caller who wants them.</p>
+subset afterwards. A filtered report names its phases in the header, so it
+cannot be mistaken for a full scan.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -180,9 +171,9 @@ the report on its own – and are in <code>s$errors</code> for a caller who want
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- pkgaudit Summary --------------------------------------------------------</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Package:   untrustedpkg v0.1.0 (source tarball)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Path:      /home/runner/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Path:      ~/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- R Patterns --------------------------------------------------------------</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> phase            rule            n   attck</span>
@@ -195,6 +186,10 @@ the report on its own – and are in <code>s$errors</code> for a caller who want
 <span class="r-out co"><span class="r-pr">#&gt;</span> at_install_src   system          1   T1059.003 T1059.004</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> at_load          system          1   T1059.003 T1059.004</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> none             download_file   1   T1105</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> none: reported at no phase because nothing in the package was seen to call</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> it. Code under R/ is read this way by rule; a caller elsewhere, or a user,</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> can still reach it. See vignette("rules").</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- Shell / Make Matches ----------------------------------------------------</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> phase            rule            n   attck</span>
@@ -215,7 +210,7 @@ the report on its own – and are in <code>s$errors</code> for a caller who want
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- pkgaudit Summary --------------------------------------------------------</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Package:   untrustedpkg v0.1.0 (source tarball)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- R Patterns --------------------------------------------------------------</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> phase            rule            n   attck</span>
@@ -228,6 +223,10 @@ the report on its own – and are in <code>s$errors</code> for a caller who want
 <span class="r-out co"><span class="r-pr">#&gt;</span> at_install_src   system          1   T1059.003 T1059.004</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> at_load          system          1   T1059.003 T1059.004</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> none             download_file   1   T1105</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> none: reported at no phase because nothing in the package was seen to call</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> it. Code under R/ is read this way by rule; a caller elsewhere, or a user,</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> can still reach it. See vignette("rules").</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- Shell / Make Matches ----------------------------------------------------</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> phase            rule            n   attck</span>
@@ -247,9 +246,9 @@ the report on its own – and are in <code>s$errors</code> for a caller who want
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span>, phase <span class="op">=</span> <span class="st">"at_load"</span><span class="op">)</span>  <span class="co"># only what runs when the package loads</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- pkgaudit Summary --------------------------------------------------------</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Package:   untrustedpkg v0.1.0 (source tarball)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Path:      /home/runner/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Path:      ~/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Phases:    at_load</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- R Patterns --------------------------------------------------------------</span>
@@ -267,20 +266,25 @@ the report on its own – and are in <code>s$errors</code> for a caller who want
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span>, phase <span class="op">=</span> <span class="st">"none"</span><span class="op">)</span>     <span class="co"># ships, but runs at no phase</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- pkgaudit Summary --------------------------------------------------------</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Package:   untrustedpkg v0.1.0 (source tarball)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Path:      /home/runner/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Path:      ~/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Scanned:   2026-08-14 12:15 UTC with pkgaudit v0.4.0, rules v0.4.0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Phases:    none</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- R Patterns --------------------------------------------------------------</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> phase   rule            n   attck</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> none    download_file   1   T1105</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> none: reported at no phase because nothing in the package was seen to call</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> it. Code under R/ is read this way by rule; a caller elsewhere, or a user,</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> can still reach it. See vignette("rules").</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- Shell / Make Matches ----------------------------------------------------</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> No matches were found.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- Coverage ----------------------------------------------------------------</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> No files were found.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> status       top_level   type          files   lines</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> unexamined   .           DESCRIPTION       1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- Errors ------------------------------------------------------------------</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> No exceptions were raised.</span>

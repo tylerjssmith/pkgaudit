@@ -19,7 +19,7 @@
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/r-package-security.html">R Package Security</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/security.html">R Package Security</a></li>
     <li><a class="dropdown-item" href="articles/rules.html">pkgaudit Rule Coverage</a></li>
     <li><a class="dropdown-item" href="articles/internals.html">pkgaudit Internals</a></li>
   </ul></li>
@@ -60,7 +60,7 @@
 <li>
 <code><a href="reference/export_unscanned.html">export_unscanned()</a></code> writes the code pkgaudit cannot read – C, C++, Fortran, Rust, Python, JavaScript, and vignette chunks in those languages – into a directory the caller names, for a scanner that reads them. It has no default directory: naming one is how the caller consents.</li>
 </ul><p>Both the content and the file names written by <code><a href="reference/export_unscanned.html">export_unscanned()</a></code> come from the package under audit, so every target path is resolved and required to lie under the named directory; a path component that is <code>.</code>, <code>..</code>, or that contains a separator or a control character is refused; symlinks are never followed, and content is read and rewritten rather than copied, so a link pointing out of the package cannot pull a file in; nothing is written executable; and nothing is deleted or replaced unless <code>overwrite = TRUE</code>. A refused file is recorded in the returned manifest rather than dropped.</p>
-<p>Untrusted tarballs are validated fail-closed <em>before</em> extraction: link entries, path traversal, absolute and drive-qualified paths, control-character and empty paths, decompression bombs (entry-count, size, and expansion-ratio caps), unparseable size fields, and archives without exactly one top-level directory are refused rather than partially extracted. After extraction the directory is re-checked for symlinks as defense in depth.</p>
+<p>Untrusted tarballs are validated fail-closed <em>before</em> extraction: non-gzip compression (bzip2, xz, zstd, compress — judged by magic bytes, not filename), link entries, GNU long-name and PAX typeflags, path traversal, absolute and drive-qualified paths, paths containing backslashes or control characters, empty paths, decompression bombs (entry-count, size, and expansion-ratio caps), unparseable size fields, and archives without exactly one top-level directory are refused rather than partially extracted. After extraction the directory is re-checked for symlinks as defense in depth.</p>
 </div>
 <div class="section level2">
 <h2 id="operating-on-sensitive-data">Operating on sensitive data<a class="anchor" aria-label="anchor" href="#operating-on-sensitive-data"></a></h2>

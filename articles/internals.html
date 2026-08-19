@@ -34,7 +34,7 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/r-package-security.html">R Package Security</a></li>
+<li><a class="dropdown-item" href="../articles/security.html">R Package Security</a></li>
     <li><a class="dropdown-item" href="../articles/rules.html">pkgaudit Rule Coverage</a></li>
     <li><a class="dropdown-item" href="../articles/internals.html">pkgaudit Internals</a></li>
   </ul>
@@ -110,12 +110,13 @@ phases.</p>
 <p>A phase is a property of two things – where the file sits in the
 package, and where the code sits within that file – so step 4 resolves a
 pattern by walking a short chain: a code context carrying phases of its
-own wins; otherwise the file context supplies them; and a file-context
-rule may override what code inside a function definition carries. Only
-<code>R/</code> does, reporting such code as running at no phase.</p>
+own wins; otherwise the code takes the phases of whatever encloses it.
+Code inside a function definition takes them too, unless the file’s rule
+sets <code>assume_called: FALSE</code>, in which case it carries none.
+Only the rules for <code>R/</code> do.</p>
 <p>That the frames reach step 4 knowing where they came from is why
 <code>patterns</code> carries two extra columns while a scan is running,
-<code>file_rule</code> and <code>segment_context</code>.
+<code>file_rule</code> and <code>rd_context</code>.
 <code><a href="../reference/audit_package.html">audit_package()</a></code> drops them before building the result, so
 the object a caller receives has the columns <code><a href="../reference/audit_package.html">?audit_package</a></code>
 documents and no others.</p>
@@ -129,11 +130,11 @@ things.</p>
 <li>
 <code><a href="../reference/extract_segments.html">extract_segments()</a></code> dispatches on the file-context
 rule’s <strong><code>type</code></strong> – how the file is read.
-Methods live one per file in <code>R/type_*.R</code>.</li>
+Methods live one per file in <code>R/extract_*.R</code>.</li>
 <li>
 <code><a href="../reference/analyze_segment.html">analyze_segment()</a></code> dispatches on the segment’s
 <strong><code>language</code></strong> – how the code is analysed.
-Methods live in <code>R/language_*.R</code>.</li>
+Methods live in <code>R/analyze_*.R</code>.</li>
 </ul>
 <p>They cannot be one axis, because one file can yield code in more than
 one language: an <code>.Rmd</code> yields an R segment for each
@@ -146,10 +147,16 @@ repeating a method: <code>make</code> inherits <code>shell</code>, and
 a language with no analyser yields no findings and no error, and records
 a coverage row instead, so an unhandled chunk engine is accounted for
 rather than silently dropped.</p>
-<p>Adding a file format is one new <code>R/type_*.R</code> plus a rule.
-Adding a language is one new <code>R/language_*.R</code> plus rules
+<p>Adding a file format is one new <code>R/extract_*.R</code> plus a
+rule. Adding a language is one new <code>R/analyze_*.R</code> plus rules
 carrying that language. Neither touches <code><a href="../reference/audit_package.html">audit_package()</a></code>,
 and neither touches the other.</p>
+<p>Both generics are exported, along with <code><a href="../reference/new_segment.html">new_segment()</a></code> and
+<code><a href="../reference/new_findings.html">new_findings()</a></code>, which build what a method returns. A method
+can therefore be registered from another package rather than only by
+editing this one – though the rule that points the scan at the new files
+still has to reach the rules database, which means the issue thread
+<code>CONTRIBUTING.md</code> describes.</p>
 </div>
 <div class="section level2">
 <h2 id="the-call-graph">The call graph<a class="anchor" aria-label="anchor" href="#the-call-graph"></a>
@@ -158,6 +165,10 @@ and neither touches the other.</p>
 with the same parser the scan uses. It is not maintained by hand and
 cannot fall behind the code.</p>
 <pre><code>audit_package()
+├─ .check_path()
+│  └─ .stop_arg()
+├─ .check_rules()
+│  └─ .stop_arg()
 ├─ .validate_origin()
 ├─ .empty_patterns()
 │  └─ .empty_phase_cols()
@@ -180,12 +191,11 @@ cannot fall behind the code.</p>
 ├─ extract_segments()
 │  ├─ .over_scan_limit()
 │  ├─ .error_row()
-│  ├─ extract_segments.default()
 │  ├─ extract_segments.R()
 │  │  ├─ read_code()
 │  │  └─ new_segment()
 │  ├─ extract_segments.Rd()
-│  │  ├─ extract_Rd_code()
+│  │  ├─ read_Rd_code()
 │  │  │  ├─ .empty_Rd_code()
 │  │  │  ├─ .parse_Rd_safe()
 │  │  │  └─ .Rd_fragments()
@@ -193,12 +203,18 @@ cannot fall behind the code.</p>
 │  ├─ extract_segments.Rmd()
 │  │  ├─ read_code()
 │  │  ├─ .rmd_chunks()
-│  │  │  └─ .rmd_header()
+│  │  │  ├─ .rmd_header()
+│  │  │  ├─ .unquote_lines()
+│  │  │  └─ .rmd_pipe_eval()
 │  │  ├─ new_segment()
-│  │  └─ .blank_except()
+│  │  ├─ .blank_except()
+│  │  └─ .rmd_inline()
+│  │     ├─ .inline_code()
+│  │     └─ .mask_verbatim()
 │  ├─ extract_segments.Rnw()
 │  │  ├─ read_code()
 │  │  ├─ .rnw_code()
+│  │  │  └─ .inline_code()
 │  │  ├─ new_segment()
 │  │  └─ .blank_except()
 │  ├─ extract_segments.rsp()
@@ -206,19 +222,21 @@ cannot fall behind the code.</p>
 │  │  ├─ .rsp_code()
 │  │  │  └─ .fixed_positions()
 │  │  └─ new_segment()
-│  └─ extract_segments.shell()
-│     ├─ read_code()
-│     └─ new_segment()
+│  ├─ extract_segments.shell()
+│  │  ├─ read_code()
+│  │  └─ new_segment()
+│  └─ extract_segments.default()
 ├─ analyze_segment()
 │  ├─ analyze_segment.R()
 │  │  ├─ parse_code()
-│  │  ├─ .findings()
+│  │  ├─ new_findings()
 │  │  ├─ .error_row()
 │  │  ├─ .applicable_contexts()
 │  │  ├─ find_code_contexts()
 │  │  │  ├─ .empty_code_contexts()
 │  │  │  └─ .xml_find_all_safe()
 │  │  ├─ find_patterns()
+│  │  │  ├─ .empty_found()
 │  │  │  └─ .xml_find_all_safe()
 │  │  ├─ find_indirect()
 │  │  │  ├─ .empty_indirect()
@@ -237,9 +255,9 @@ cannot fall behind the code.</p>
 │  │  │  └─ .error_row()
 │  │  ├─ .rules_for()
 │  │  ├─ .preview()
-│  │  └─ .findings()
+│  │  └─ new_findings()
 │  └─ analyze_segment.default()
-│     ├─ .findings()
+│     ├─ new_findings()
 │     └─ .segment_coverage()
 ├─ .merge_coverage()
 ├─ build_coverage()
@@ -254,8 +272,7 @@ cannot fall behind the code.</p>
 │     └─ .empty_phase_cols()
 ├─ .resolve_pattern_phases()
 │  ├─ .empty_phase_cols()
-│  ├─ .phase_lookup()
-│  └─ .apply_phase_overrides()
+│  └─ .phase_lookup()
 ├─ .resolve_match_phases()
 │  └─ .empty_phase_cols()
 ├─ hash_manifest()
@@ -326,9 +343,10 @@ time-of-check to time-of-use; see “Security considerations” in
 <code><a href="../reference/load_rules.html">?load_rules</a></code>.</p>
 <p><code><a href="../reference/load_rules.html">load_rules()</a></code> also refuses a database with a gap in its
 phase model: a rule without phases, a file-context rule naming a code
-context that does not exist, or an override attached to something that
-cannot arise. A rule can never ship whose findings would silently carry
-no phases.</p>
+context that does not exist, or one that leaves
+<code>assume_called</code> undecided where code contexts can arise – or
+decides it where they cannot. A rule can never ship whose findings would
+silently carry no phases.</p>
 </div>
 <div class="section level3">
 <h3 id="every-rule-is-verified-against-its-own-examples">Every rule is verified against its own examples<a class="anchor" aria-label="anchor" href="#every-rule-is-verified-against-its-own-examples"></a>
@@ -381,6 +399,12 @@ sends it.</li>
 particular function is not something pkgaudit determines, which is why
 the phases of code inside a function definition are a stated reading
 rather than a finding.</li>
+<li>It does not identify a file by its contents, only by its name. An
+extensionless script – <code>tools/build</code> opening
+<code>#!/bin/sh</code> – earns no coverage row: 434 such files across
+134 of CRAN’s 24,216 packages. Admitting a file on a leading
+<code>#!</code> would close this and is a candidate for a later
+release.</li>
 </ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

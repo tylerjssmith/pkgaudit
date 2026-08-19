@@ -21,7 +21,7 @@ file's relative path and SHA-256 content hash."></head><body>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/r-package-security.html">R Package Security</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/security.html">R Package Security</a></li>
     <li><a class="dropdown-item" href="../articles/rules.html">pkgaudit Rule Coverage</a></li>
     <li><a class="dropdown-item" href="../articles/internals.html">pkgaudit Internals</a></li>
   </ul></li>
@@ -94,17 +94,13 @@ the manifest (character).</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Directories, unlike tarballs, have no single canonical byte stream to hash.
-This function instead hashes a manifest: a canonically ordered list of
-every included file's relative path and SHA-256 content hash. The manifest is
-returned alongside the hash so that two disagreeing scans can be diffed to
-identify which file differs.</p>
-<p>A directory hash is a weaker provenance claim than a tarball hash, because
-its scope depends on <code>exclude</code>: two directories that differ only in excluded
-paths hash identically. The exclusion patterns are returned so the caller
-can record them. Empty directories and symlinks are likewise not represented
-in the manifest, so two trees differing only in those also hash identically.
-For vetting untrusted code, prefer hashing the tarball.</p>
+    <p>A directory, unlike a tarball, has no single canonical byte stream to hash.
+The manifest is returned alongside the hash so two disagreeing scans can be
+diffed to find which file differs.</p>
+<p>A directory hash is a weaker provenance claim than a tarball hash: its scope
+depends on <code>exclude</code>, and empty directories and symlinks are not represented,
+so trees differing only in those hash identically. For vetting untrusted
+code, prefer hashing the tarball.</p>
     </div>
 
     <div class="section level2">

@@ -34,7 +34,7 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/r-package-security.html">R Package Security</a></li>
+<li><a class="dropdown-item" href="../articles/security.html">R Package Security</a></li>
     <li><a class="dropdown-item" href="../articles/rules.html">pkgaudit Rule Coverage</a></li>
     <li><a class="dropdown-item" href="../articles/internals.html">pkgaudit Internals</a></li>
   </ul>
@@ -91,12 +91,14 @@ Pattern rules carry <a href="https://attack.mitre.org/" class="external-link">MI
 ATT&amp;CK</a> technique labels.</p>
 <p>A finding also records how the code is <em>reached</em>.
 <code>guarded</code> is <code>TRUE</code> for code that ships but the
-lifecycle does not run – a <code>\dontrun{}</code> or
-<code>\donttest{}</code> block, or a vignette chunk marked
-<code>eval=FALSE</code>; its phases still come from its context, so they
-read as an upper bound. <code>indirect</code> is <code>TRUE</code> where
-the call was made through the function’s name rather than the
-function.</p>
+lifecycle does not run – a <code>\dontrun{}</code> block, or a vignette
+chunk suppressed by <code>eval=FALSE</code> or
+<code>#| eval: false</code>; its phases still come from its context, so
+they read as an upper bound. A <code>\donttest{}</code> block is not
+guarded: a plain <code>R CMD check</code> skips it, but
+<code>--as-cran</code> runs it. <code>indirect</code> is
+<code>TRUE</code> where the call was made through the function’s name
+rather than the function.</p>
 <p>A pattern rule declares no phases of its own. A pattern takes them
 from the file context it was found in and the code context it sits in,
 resolved as <a href="#lifecycle-phases">Lifecycle Phases</a>
@@ -107,13 +109,17 @@ describes.</p>
 name, with the <code>indirect</code> column set. Each rule declares the
 names it claims, and a name is only accepted if calling it bare would
 have matched that same rule, so an indirect finding can never be
-attributed to a rule that would not have reported the direct call. Three
-rules claim no names: <code>eval_parse</code>,
-<code>options_repos</code> and <code>system_processx</code> each match
-on more than the callee – a nested call, a named argument, a package
-qualifier – and none of that survives the trip through
-<code><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call()</a></code>. A name assembled at runtime is not resolved
-either, since pkgaudit evaluates nothing.</p>
+attributed to a rule that would not have reported the direct call.</p>
+<p>5 rules claim no names – <code>credentials</code>,
+<code>eval_parse</code>, <code>options_repos</code>,
+<code>persistence</code>, and <code>system_processx</code> – for two
+different reasons. <code>eval_parse</code>, <code>options_repos</code>
+and <code>system_processx</code> match on more than the callee: a nested
+call, a named argument, a package qualifier, none of which survives the
+trip through <code><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call()</a></code>. <code>credentials</code> and
+<code>persistence</code> match string constants rather than calls, so
+there is no callee to claim in the first place. A name assembled at
+runtime is not resolved either, since pkgaudit evaluates nothing.</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -127,6 +133,18 @@ either, since pkgaudit evaluates nothing.</p>
 </tr></thead>
 <tbody>
 <tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_chmod.yaml" class="external-link">chmod</a></td>
+<td>
+<code><a href="https://rdrr.io/r/base/files2.html" class="external-link">Sys.chmod()</a></code>, <code><a href="https://rdrr.io/r/base/files2.html" class="external-link">Sys.umask()</a></code>
+</td>
+<td>Sys.chmod() sets a file’s permission bits from R, and Sys.umask()
+sets the mask applied to everything created afterwards. Making a file
+executable, or setting its setuid or setgid bit, turns something the
+package shipped as data into something that can be run – in the setuid
+case, with the privileges of whoever owns it rather than whoever runs
+it. Every call is matched, whatever mode it sets.</td>
+</tr>
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_credentials.yaml" class="external-link">credentials</a></td>
 <td>a path or environment variable that only holds a secret:
 <code>~/.ssh/</code>, <code>~/.aws/</code>, <code>.netrc</code>,
@@ -142,7 +160,7 @@ sentence, since prose that merely mentions ~/.ssh is not a package
 reading it – but naming one is still not proof it is read, so read the
 line.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_curl.yaml" class="external-link">curl</a></td>
 <td>
 <code>curl()</code>, <code>curl_fetch_memory()</code>,
@@ -155,7 +173,7 @@ line.</td>
 connection to a remote host. A request may be used to exfiltrate
 credentials or other data, or to fetch a remote payload.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_decoding.yaml" class="external-link">decoding</a></td>
 <td>
 <code>base64decode()</code>, <code>base64_dec()</code>,
@@ -165,7 +183,7 @@ credentials or other data, or to fetch a remote payload.</td>
 <td>These functions decode or decompress data. Payloads may be encoded
 (e.g., as base64) to evade static detection and decoded at runtime.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_deserialization.yaml" class="external-link">deserialization</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS()</a></code>, <code><a href="https://rdrr.io/r/base/load.html" class="external-link">load()</a></code>,
@@ -175,7 +193,7 @@ credentials or other data, or to fetch a remote payload.</td>
 or code, which can enable arbitrary code execution (CVE-2024-27322 for
 RDS).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_download_file.yaml" class="external-link">download_file</a></td>
 <td>
 <code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file()</a></code>, <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">url()</a></code>
@@ -184,7 +202,7 @@ RDS).</td>
 resource. This can stage a payload for execution via source() or
 system() in a two-stage attack.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_dynload.yaml" class="external-link">dynload</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/dynload.html" class="external-link">dyn.load()</a></code>, <code><a href="https://rdrr.io/r/base/library.dynam.html" class="external-link">library.dynam()</a></code>
@@ -192,7 +210,7 @@ system() in a two-stage attack.</td>
 <td>dyn.load() and library.dynam() load compiled code from a shared
 object, which executes outside the visible R source.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_eval_parse.yaml" class="external-link">eval_parse</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/eval.html" class="external-link">eval()</a></code>/<code><a href="https://rdrr.io/r/base/eval.html" class="external-link">evalq()</a></code> over <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">parse()</a></code>,
@@ -208,6 +226,18 @@ one expression they are a payload being assembled and run. The inner set
 is every function the rules for fetching, decoding, deserializing,
 running a subprocess and running Python already cover, plus the file
 reads no rule covers on its own.</td>
+</tr>
+<tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_fs.yaml" class="external-link">fs</a></td>
+<td>
+<code>file_chmod()</code>, <code>file_chown()</code>
+</td>
+<td>fs::file_chmod() sets a file’s permission bits, and fs::file_chown()
+changes its owner. Making a file executable, or setting its setuid or
+setgid bit, turns something the package shipped as data into something
+that can be run – in the setuid case, with the privileges of whoever
+owns it rather than whoever runs it. Every call is matched, whatever
+mode or owner it sets.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_httr.yaml" class="external-link">httr</a></td>
@@ -382,11 +412,12 @@ session outside the visible R source.</td>
 <h2 id="matches">Matches<a class="anchor" aria-label="anchor" href="#matches"></a>
 </h2>
 <p>Matches are regular-expression matches in the shell scripts and
-Make-like files among the file contexts above – those whose Type is
-<code>shell</code> or <code>make</code>. A file context typed
-<code>R</code> is parsed and scanned for patterns instead, and no other
-file in the package is scanned for matches at all. Match rules carry <a href="https://attack.mitre.org/" class="external-link">MITRE ATT&amp;CK</a> technique
-labels.</p>
+Make-like files among the <a href="#file-contexts">file contexts</a>
+below – those whose Type is <code>shell</code> or <code>make</code>. A
+file context typed <code>R</code> is parsed and scanned for patterns
+instead, and no other file in the package is scanned for matches at all.
+Match rules carry <a href="https://attack.mitre.org/" class="external-link">MITRE
+ATT&amp;CK</a> technique labels.</p>
 <p>Like a pattern rule, a match rule declares no phases of its own.
 Where a file matches more than one file-context rule, it takes the
 phases of every rule that matched it.</p>
@@ -410,7 +441,9 @@ warrants reading the file itself more than a pattern finding does.</p>
 <td>Making a file executable, or setting its setuid or setgid bit,
 during a build turns something the package shipped as data into
 something that can be run – in the setuid case, with the privileges of
-whoever owns it rather than whoever runs it.</td>
+whoever owns it rather than whoever runs it. A fully permissive umask is
+matched too: it withholds nothing, so everything the build creates
+afterwards is world-writable.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/matches/match_credentials.yaml" class="external-link">credentials</a></td>
@@ -488,7 +521,7 @@ exfiltrate credentials or other data.</td>
 </table>
 <p>The regular expressions themselves are matched with
 <code>perl = TRUE</code> and are case-sensitive:</p>
-<pre><code>chmod        (?&lt;=^|[^[:alnum:]_-])chmod(?=[^[:alnum:]_./-]|$)[^|;&amp;\n]{0,40}?([+][xs]|[24][0-7]{3}|777)
+<pre><code>chmod        (?&lt;=^|[^[:alnum:]_-])(chmod(?=[^[:alnum:]_./-]|$)[^|;&amp;\n]{0,40}?([+][rwXst]*[xs]|[246][0-7]{3}|777)|umask(?=[^[:alnum:]_./-]|$)[[:space:]]+(-S[[:space:]]+)?(0+(?![0-7])|a=rwx|u=rwx,g=rwx,o=rwx))
 credentials  (\.ssh/|\.aws/|\.netrc|\.pgpass|\.docker/config\.json|\.config/gcloud|\.kube/config|id_rsa|id_dsa|id_ecdsa|id_ed25519|\.gnupg/|credentials\.json)|[A-Z][A-Z0-9_]*(TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|PRIVATE_KEY)
 curl         (?&lt;=^|[^[:alnum:]_-])curl(?=(\.exe)?([^[:alnum:]_./-]|$))
 decoding     (?&lt;=^|[^[:alnum:]_-])(base64[^|;&amp;\n]{0,40}(--decode|-[dD])|openssl[[:space:]]+enc[^|;&amp;\n]{0,60}-d|xxd[^|;&amp;\n]{0,20}-r|uudecode)
@@ -563,13 +596,14 @@ own wins, and otherwise the code inherits the phases of the file context
 around it. So the same <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> call reads
 <code>at_check</code> under <code>tests/</code> and
 <code>at_build</code> under <code>data/</code>.</p>
-<p>Code inside a function definition inherits too, with one exception:
-under <code>R/</code> it is reported as running at no phase. Both
-readings are measured – a function called from top-level code runs
-whenever that code does, and one nothing calls runs nowhere – and
-<code>R/</code> reports the second because it is dominated by exported
-functions the lifecycle never calls. Neither is a claim about any
-particular package’s call graph, which pkgaudit does not trace.</p>
+<p>Code inside a function definition inherits too, unless its file’s
+rule sets <code>assume_called: FALSE</code>, in which case it is
+reported as running at no phase. Only the rules for <code>R/</code> set
+it. Both readings are measured – a function called from top-level code
+runs whenever that code does, and one nothing calls runs nowhere – so a
+rule is choosing which measurement to report, and cannot state a third.
+Neither is a claim about any particular package’s call graph, which
+pkgaudit does not trace.</p>
 <p>Every phase value below was established by running instrumented
 packages through <code>R CMD build</code>, <code>R CMD check</code> and
 <code>R CMD INSTALL</code> and recording which sites fired, rather than
@@ -708,7 +742,7 @@ build, and during installation from source only under R CMD INSTALL
 <code>at_install_src</code>
 </td>
 <td>configure is a shell script used for system-dependent configuration
-when packages are installed from source, including the installs
+when a package is installed from source, including the installs
 performed by R CMD check and by R CMD build when a package has
 vignettes. It can execute arbitrary shell commands.</td>
 </tr>
@@ -746,7 +780,8 @@ source.</td>
 on the Windows UCRT toolchain, executed when a package is installed from
 source, including the installs performed by R CMD check and by R CMD
 build when a package has vignettes; it takes precedence over
-configure.win when present.</td>
+configure.win when present. It can execute arbitrary shell
+commands.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure_win.yaml" class="external-link">configure_win</a></td>
@@ -760,7 +795,7 @@ configure.win when present.</td>
 <td>configure.win is a shell script for system-dependent configuration
 on Windows, executed when a package is installed from source, including
 the installs performed by R CMD check and by R CMD build when a package
-has vignettes.</td>
+has vignettes. It can execute arbitrary shell commands.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_data_scripts.yaml" class="external-link">data_scripts</a></td>
@@ -778,17 +813,18 @@ a source tarball: build replaces it with its own output.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_data_serialized.yaml" class="external-link">data_serialized</a></td>
-<td><code>data/*.(rda\|RData\|Rdata\|rdata\|rds\|RDS\|Rds)</code></td>
+<td><code>data/*.(rda\|RData\|rdata\|rds)</code></td>
 <td><code>other</code></td>
 <td>no</td>
 <td>
 <code>at_check</code>, <code>at_install_src</code>,
 <code>at_load</code>
 </td>
-<td>A serialized R object under data/ is restored when the package’s
-data is loaded. Deserializing an .rda or .rds can execute arbitrary
-code, and pkgaudit cannot inspect one, so it is recorded rather than
-passed over as inert data.</td>
+<td>A serialized R object under data/. With LazyData it is deserialized
+at installation and restored when the namespace loads; R CMD check
+deserializes it either way. Deserializing an .rda or .rds can execute
+arbitrary code, and pkgaudit cannot inspect one, so it is recorded
+rather than passed over as inert data.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_demo_scripts.yaml" class="external-link">demo_scripts</a></td>
@@ -796,21 +832,24 @@ passed over as inert data.</td>
 <td><code>R</code></td>
 <td>no</td>
 <td>none</td>
-<td>A demo runs when a user calls demo(). No build, check or install
-command reaches it, but it ships in the installed package and runs with
-the user’s privileges when invoked.</td>
+<td>A demo runs when a user calls demo(), and R CMD check runs it under
+–run-demo. It ships in the installed package and runs with the user’s
+privileges when invoked.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_description.yaml" class="external-link">description</a></td>
 <td><code>DESCRIPTION</code></td>
 <td><code>other</code></td>
 <td>no</td>
-<td>
-<code>at_build</code>, <code>at_check</code>
-</td>
-<td>DESCRIPTION is not inert. Its <a href="mailto:Authors@R" class="email">Authors@R</a> field is R code, which R parses and
-evaluates when the package is built and checked. pkgaudit does not read
-the file, so the row records that it executes and was not examined.</td>
+<td>none</td>
+<td>DESCRIPTION is not inert. Its <a href="mailto:Authors@R" class="email">Authors@R</a> field is R code. R CMD build, check and
+INSTALL refuse to evaluate anything outside person, as.person, c, list,
+paste and paste0, so they are not the exposure. Developer tooling
+pointed at an unpacked source tree is: desc evaluates the field with no
+allowlist, so reading the authors – or printing a desc object – runs
+whatever it holds. That is not a lifecycle phase, so this rule declares
+none. pkgaudit does not read the file, so the row records that it can
+execute and was not examined.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_exec_other.yaml" class="external-link">exec_other</a></td>
@@ -818,10 +857,10 @@ the file, so the row records that it executes and was not examined.</td>
 <td><code>other</code></td>
 <td>no</td>
 <td>none</td>
-<td>A script under exec/ in a language pkgaudit does not read. R
-installs exec/ verbatim and marks its contents executable, so this ships
-as a runnable program, but nothing runs it during a lifecycle
-phase.</td>
+<td>A script under exec/ in a language pkgaudit does not read ships in
+the installed package and is marked executable. A lifecycle command does
+not necessarily run it, but it executes with the user’s privileges when
+invoked. Only certain file extensions are covered by this rule.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_exec_scripts_R.yaml" class="external-link">exec_scripts_R</a></td>
@@ -830,9 +869,8 @@ phase.</td>
 <td>no</td>
 <td>none</td>
 <td>R scripts under exec/ ship in the installed package and are marked
-executable. No lifecycle command runs them, but they execute with the
-user’s privileges when invoked. Over half the files CRAN packages put in
-exec/ are R, so they are parsed rather than matched as text.</td>
+executable. A lifecycle command does not necessarily run them, but they
+execute with the user’s privileges when invoked.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_exec_scripts_shell.yaml" class="external-link">exec_scripts_shell</a></td>
@@ -841,11 +879,9 @@ exec/ are R, so they are parsed rather than matched as text.</td>
 <td>no</td>
 <td>none</td>
 <td>Shell scripts under exec/ ship in the installed package and are
-marked executable. No lifecycle command runs them, but they execute
-arbitrary shell with the user’s privileges when invoked. Only sh-family
-extensions are claimed; exec/ also holds Perl, Python, batch and other
-files this rule does not match, and extensionless scripts whose language
-is known only from a shebang.</td>
+marked executable. A lifecycle command does not necessarily run them,
+but they execute arbitrary shell with the user’s privileges when
+invoked. Only sh-family extensions are covered by this rule.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_citation.yaml" class="external-link">inst_citation</a></td>
@@ -855,8 +891,7 @@ is known only from a shebang.</td>
 <td><code>at_check</code></td>
 <td>inst/CITATION is R code that utils::readCitationFile() evaluates. R
 CMD check reads it, and so does any user who calls citation() on the
-installed package. A plain .R file under inst/ is never sourced, so this
-is specific to the CITATION filename.</td>
+installed package.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_tests.yaml" class="external-link">inst_tests</a></td>
@@ -967,9 +1002,10 @@ arbitrary code, and pkgaudit cannot inspect it.</td>
 <code>at_build</code>, <code>at_install_src</code>
 </td>
 <td>R evaluates a .Rprofile found in the working directory when it
-starts, so a .Rprofile at the package root runs whenever a lifecycle
-command starts an R process inside the package. It runs before any
-package is loaded, earlier than any other R in the package.</td>
+starts, so a .Rprofile at the package root runs before any package is
+loaded, earlier than any other R in the package. It does not survive
+into a source tarball: R CMD build excludes it, so a check of a built
+package never sees it.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_compiled.yaml" class="external-link">src_compiled</a></td>
@@ -1027,10 +1063,10 @@ execute arbitrary shell commands.</td>
 </td>
 <td>src/Makefile.ucrt is a makefile used to compile code in src/ on the
 Windows UCRT toolchain when a package is installed from source,
-replacing R’s default make rules; the installs performed by R CMD check
-and by R CMD build also use it, and R CMD build runs its clean target.
-It is read by make and its recipes execute arbitrary shell
-commands.</td>
+replacing R’s default make rules; it takes precedence over Makefile.win
+when present, the installs performed by R CMD check and by R CMD build
+also use it, and R CMD build runs its clean target. It is read by make
+and its recipes execute arbitrary shell commands.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makefile_win.yaml" class="external-link">src_makefile_win</a></td>
@@ -1117,10 +1153,10 @@ constructs such as $(shell …).</td>
 <code>at_check</code>, <code>at_install_src</code>,
 <code>at_load</code>
 </td>
-<td>A file under src/ in no language pkgaudit recognises. Everything in
-src/ is handed to the compiler, so an extension nobody listed is still
-part of what gets built; the row exists so it is accounted for rather
-than passed over.</td>
+<td>A file under src/. Everything there is part of what gets built, so
+this rule claims every extension – alongside any other rule that matches
+– and a file no language rule recognises is accounted for rather than
+passed over.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_tests_scripts.yaml" class="external-link">tests_scripts</a></td>
@@ -1255,10 +1291,9 @@ directly.</p>
 <td>.Last.lib() executes arbitrary code when a package is detached from
 the R search path, e.g., by calling detach(); it does not run on
 unloadNamespace(). It runs only if the package exports it and does not
-define .onDetach(), which supersedes it; R CMD check reports “NB:
-.Last.lib will not be used unless it is exported”. R CMD check detaches
-the package while checking that it can be unloaded cleanly, so
-.Last.lib() runs during checking without any call from a user.</td>
+define .onDetach(), which supersedes it. R CMD check detaches the
+package while checking that it can be unloaded cleanly, so .Last.lib()
+runs during checking without any call from a user.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_rd_sexpr_build.yaml" class="external-link">Rd_Sexpr_build</a></td>
@@ -1271,7 +1306,8 @@ the package while checking that it can be unloaded cleanly, so
 <td>is evaluated when R CMD build renders the help page, and when the
 package is installed from a source directory or checked. It is not
 reached when a source tarball is installed: build already evaluated it
-and froze the result into the Rd that shipped.</td>
+and froze the result into the Rd that shipped. The install phase does
+not distinguish the two, so it is declared either way.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_rd_sexpr_install.yaml" class="external-link">Rd_Sexpr_install</a></td>
@@ -1281,10 +1317,9 @@ and froze the result into the Rd that shipped.</td>
 <code>at_build</code>, <code>at_check</code>,
 <code>at_install_src</code>
 </td>
-<td>, and an unlabelled , which Writing R Extensions gives install as
-the default for and which measured identically. Evaluated whenever the
-help page is rendered from source: build, either install, and check. Not
-on installation from a binary, whose help ships pre-rendered.</td>
+<td>is evaluated whenever the help page is rendered from source: R CMD
+build, either kind of source install, and R CMD check. Not on
+installation from a binary, whose help ships pre-rendered.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_rd_sexpr_render.yaml" class="external-link">Rd_Sexpr_render</a></td>
@@ -1305,7 +1340,8 @@ calls help(); it does not fire at either install.</td>
 <td>Code in an block of a help file is run by R CMD check, and by a user
 who calls example(). It is not run when the package is built or
 installed: R CMD build and R CMD INSTALL render the help page but never
-evaluate its examples.</td>
+evaluate its examples. Code under is scanned but marked guarded: it
+ships in the package, but no example run reaches it.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onattach.yaml" class="external-link">onAttach_base</a></td>
@@ -1316,10 +1352,11 @@ evaluate its examples.</td>
 <code>at_install_src</code>, <code>at_attach</code>
 </td>
 <td>.onAttach() executes arbitrary code when a package is attached to
-the R search path by library() or require(); attach() does not trigger
-it. R CMD INSTALL, R CMD build, and R CMD check attach the package while
-testing that it loads, so .onAttach() runs during those phases without
-any call from a user.</td>
+the R search path, e.g., by calling library() or require(); attach()
+does not trigger it. R CMD INSTALL and R CMD check attach the package
+while testing that it loads, as does R CMD build when the package has
+vignettes, so .onAttach() runs during those phases without any call from
+a user.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_ondetach.yaml" class="external-link">onDetach_base</a></td>
@@ -1344,9 +1381,9 @@ during checking without any call from a user.</td>
 </td>
 <td>.onLoad() executes arbitrary code when a package namespace is
 loaded, e.g., by calling library(), require(), or loadNamespace(), or by
-accessing the namespace with ::. R CMD INSTALL, R CMD build, and R CMD
-check all load the package, so .onLoad() runs during those phases
-without any call from a user.</td>
+accessing the namespace with ::. R CMD INSTALL and R CMD check load the
+package, as does R CMD build when the package has vignettes, so
+.onLoad() runs during those phases without any call from a user.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onunload.yaml" class="external-link">onUnload_base</a></td>
@@ -1371,10 +1408,11 @@ user.</td>
 </td>
 <td>rlang::on_load() registers arbitrary code to execute when a package
 namespace is loaded, e.g., by calling library(), require(), or
-loadNamespace(), or by accessing the namespace with ::. R CMD INSTALL, R
-CMD build, and R CMD check all load the package, so the registered code
-runs during those phases without any call from a user. on_load()
-requires .onLoad() to contain rlang::run_on_load().</td>
+loadNamespace(), or by accessing the namespace with ::. R CMD INSTALL
+and R CMD check load the package, as does R CMD build when the package
+has vignettes, so the registered code runs during those phases without
+any call from a user. on_load() requires .onLoad() to contain
+rlang::run_on_load().</td>
 </tr>
 </tbody>
 </table>

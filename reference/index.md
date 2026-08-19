@@ -28,6 +28,27 @@ R is parsed and shell is matched as text; everything else is handed on.
 - [`export_unscanned()`](https://tylerjssmith.github.io/pkgaudit/reference/export_unscanned.md)
   : Export the code pkgaudit could not read
 
+## Extending pkgaudit
+
+The two axes of dispatch, so a file format or a language can be added
+from another package.
+
+- [`extract_segments()`](https://tylerjssmith.github.io/pkgaudit/reference/extract_segments.md)
+  : Read one source file into the code segments it contains
+
+- [`analyze_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/analyze_segment.md)
+  : Find code contexts, patterns and matches in one segment
+
+- [`new_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/new_segment.md)
+  : Build one code segment
+
+- [`new_findings()`](https://tylerjssmith.github.io/pkgaudit/reference/new_findings.md)
+  :
+
+  Build the return value of an
+  [`analyze_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/analyze_segment.md)
+  method
+
 ## Rules
 
 The rules are data, not code, and ship in a hash-verified database.

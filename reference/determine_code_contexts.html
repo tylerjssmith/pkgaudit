@@ -21,7 +21,7 @@ execute in."></head><body>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/r-package-security.html">R Package Security</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/security.html">R Package Security</a></li>
     <li><a class="dropdown-item" href="../articles/rules.html">pkgaudit Rule Coverage</a></li>
     <li><a class="dropdown-item" href="../articles/internals.html">pkgaudit Internals</a></li>
   </ul></li>
@@ -73,22 +73,20 @@ in the <code>"nodes"</code> attribute aligned to the rows.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code>patterns</code> with an added <code>code_context</code> column (a named context,
-<code>"R"</code>, or <code>"Other"</code>; never <code>NA</code>). The <code>"nodes"</code> attribute is
+    <p><code>patterns</code> with an added <code>code_context</code> column – a named context,
+<code>"top_level"</code> or <code>"in_function"</code>, never <code>NA</code>. The <code>"nodes"</code> attribute is
 dropped from the result.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Named contexts are defined by <code>rules$code_contexts</code>: a pattern occurs in a
-named context iff its node is a descendant of that context's node. When a
-pattern sits inside more than one named context, the most-specific
-(innermost) one wins.</p>
-<p><code>"R"</code> and <code>"Other"</code> are not rule-matched; they are computed here as
-fallbacks for a pattern in no named context. <code>"R"</code> is assigned when
-the pattern has no function-definition ancestor; <code>"Other"</code> when it has one.</p>
-<p>Containment is tested by exact XML path identity, never by path-prefix
-comparison (sibling paths such as <code>expr[1]</code> and <code>expr[12]</code> would
-false-match).</p>
+    <p>A pattern occurs in a named context iff its node is a descendant of that
+context's node; where it sits inside more than one, the innermost wins.
+Containment is tested by exact XML path identity, never by path-prefix
+comparison, since sibling paths such as <code>expr[1]</code> and <code>expr[12]</code> would
+false-match.</p>
+<p><code>"top_level"</code> and <code>"in_function"</code> are not rule-matched. They are computed
+here for a pattern in no named context: <code>"in_function"</code> when it has a
+function-definition ancestor, <code>"top_level"</code> when it does not.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

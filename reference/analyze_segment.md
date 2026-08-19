@@ -14,7 +14,8 @@ analyze_segment(segment, rules)
 
 - segment:
 
-  A `pkgaudit_segment` from `new_segment()`.
+  A `pkgaudit_segment` from
+  [`new_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/new_segment.md).
 
 - rules:
 
@@ -30,7 +31,36 @@ documents, less the phase columns.
 
 ## Method contract
 
-A method must build its return value with `.findings()`, which holds
-every analyser to the same frame shape.
+A method must build its return value with
+[`new_findings()`](https://tylerjssmith.github.io/pkgaudit/reference/new_findings.md),
+which holds every analyser to the same frame shape.
 [`UseMethod()`](https://rdrr.io/r/base/UseMethod.html) ends the generic,
 so this cannot be enforced after dispatch.
+
+A method must not evaluate the code it is given. It reads untrusted text
+and reports what it finds; nothing in a scan is ever run.
+
+## See also
+
+[`extract_segments()`](https://tylerjssmith.github.io/pkgaudit/reference/extract_segments.md),
+the other axis of dispatch,
+[`new_findings()`](https://tylerjssmith.github.io/pkgaudit/reference/new_findings.md),
+and
+[`vignette("internals")`](https://tylerjssmith.github.io/pkgaudit/articles/internals.md).
+
+## Examples
+
+``` r
+# Adding a language outside pkgaudit: a method for segments the extractor
+# labelled "python", reporting each line that calls eval().
+analyze_segment.python <- function(segment, rules) {
+  at <- grep("\\beval\\(", segment$lines)
+  if (length(at) == 0L) return(new_findings())
+  new_findings(matches = data.frame(
+    rule = "py_eval", file_context = segment$file_context,
+    line_number = at, column_number = NA_integer_,
+    preview = trimws(segment$lines[at]),
+    message = "eval() in Python code", attck = NA_character_))
+}
+registerS3method("analyze_segment", "python", analyze_segment.python)
+```

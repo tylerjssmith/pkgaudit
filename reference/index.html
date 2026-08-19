@@ -19,7 +19,7 @@
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/r-package-security.html">R Package Security</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/security.html">R Package Security</a></li>
     <li><a class="dropdown-item" href="../articles/rules.html">pkgaudit Rule Coverage</a></li>
     <li><a class="dropdown-item" href="../articles/internals.html">pkgaudit Internals</a></li>
   </ul></li>
@@ -107,6 +107,43 @@
 
         </dt>
         <dd>Export the code pkgaudit could not read</dd>
+      </dl></div><div class="section level2">
+      <h2 id="extending-pkgaudit">Extending pkgaudit<a class="anchor" aria-label="anchor" href="#extending-pkgaudit"></a></h2>
+
+      <div class="section-desc"><p>The two axes of dispatch, so a file format or a language can be added from another package.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="extract_segments.html">extract_segments()</a></code>
+
+        </dt>
+        <dd>Read one source file into the code segments it contains</dd>
+
+        <dt>
+
+          <code><a href="analyze_segment.html">analyze_segment()</a></code>
+
+        </dt>
+        <dd>Find code contexts, patterns and matches in one segment</dd>
+
+        <dt>
+
+          <code><a href="new_segment.html">new_segment()</a></code>
+
+        </dt>
+        <dd>Build one code segment</dd>
+
+        <dt>
+
+          <code><a href="new_findings.html">new_findings()</a></code>
+
+        </dt>
+        <dd>Build the return value of an <code><a href="../reference/analyze_segment.html">analyze_segment()</a></code> method</dd>
       </dl></div><div class="section level2">
       <h2 id="rules">Rules<a class="anchor" aria-label="anchor" href="#rules"></a></h2>
 

@@ -21,7 +21,7 @@ a shell or through make (e.g., configure, src/Makevars)."></head><body>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/r-package-security.html">R Package Security</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/security.html">R Package Security</a></li>
     <li><a class="dropdown-item" href="../articles/rules.html">pkgaudit Rule Coverage</a></li>
     <li><a class="dropdown-item" href="../articles/internals.html">pkgaudit Internals</a></li>
   </ul></li>
@@ -88,18 +88,15 @@ them from the file context the file belongs to.</p></dd>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Each rule's regular expression is evaluated against every line with
-<code><a href="https://rdrr.io/r/base/grep.html" class="external-link">base::gregexpr()</a></code> using <code>perl = TRUE</code>, <code>ignore.case = FALSE</code>, and
-<code>useBytes = FALSE</code>. Every hit is a match found, reported at the line it occurs
-on and the character position it starts at; a line matched more than once
-yields one row per match. A failing regular expression (including one R
-reports only as a warning) is recorded in the errors data frame before the
-loop moves on to the next rule.</p>
-<p>Matching text is inherently less precise than matching a parse tree: a match
-has no syntactic structure behind it, so one inside a comment,
-a quoted string, or a branch that never runs is reported the same as a live
-command. Findings are candidates for review, not confirmed behavior.</p>
-<p>Reading the file, and the limits that protect against hostile input, are
-<code><a href="read_code.html">read_code()</a></code>'s responsibility rather than this function's.</p>
+<code>base::gregexpr(perl = TRUE)</code>, case-sensitively; a line matched more than once
+yields one row per match. A failing expression is recorded in <code>errors</code> and the
+scan moves on.</p>
+<p>Matching text is less precise than matching a parse tree: a match has no
+syntax behind it, so one inside a comment, a quoted string, or a branch that
+never runs is reported the same as a live command. Findings are candidates for
+review, not confirmed behaviour.</p>
+<p>Reading the file, and the limits protecting against hostile input, are
+<code><a href="read_code.html">read_code()</a></code>'s responsibility.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

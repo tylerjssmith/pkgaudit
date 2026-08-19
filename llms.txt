@@ -20,6 +20,11 @@ A finding is not an accusation. `configure` scripts and calls to system
 tools, for example, are often legitimate. pkgaudit helps to identify
 what deserves reviewer attention, not what is malicious.
 
+For why this matters, see [R Package
+Security](https://tylerjssmith.github.io/pkgaudit/articles/security.md).
+For the rule set, see [Rule
+Coverage](https://tylerjssmith.github.io/pkgaudit/articles/rules.md).
+
 ## Installation
 
 ``` r
@@ -48,7 +53,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-12 16:06 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-19 22:34 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -61,6 +66,10 @@ summary(result, path = FALSE)
 #> at_install_src   system          1   T1059.003 T1059.004
 #> at_load          system          1   T1059.003 T1059.004
 #> none             download_file   1   T1105
+#> 
+#> none: reported at no phase because nothing in the package was seen to call
+#> it. Code under R/ is read this way by rule; a caller elsewhere, or a user,
+#> can still reach it. See vignette("rules").
 #> 
 #> --- Shell / Make Matches ----------------------------------------------------
 #> phase            rule            n   attck
@@ -146,6 +155,27 @@ R is parsed and shell is matched as text; everything else is handed on.
 - [`export_unscanned()`](https://tylerjssmith.github.io/pkgaudit/reference/export_unscanned.md)
   : Export the code pkgaudit could not read
 
+## Extending pkgaudit
+
+The two axes of dispatch, so a file format or a language can be added
+from another package.
+
+- [`extract_segments()`](https://tylerjssmith.github.io/pkgaudit/reference/extract_segments.md)
+  : Read one source file into the code segments it contains
+
+- [`analyze_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/analyze_segment.md)
+  : Find code contexts, patterns and matches in one segment
+
+- [`new_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/new_segment.md)
+  : Build one code segment
+
+- [`new_findings()`](https://tylerjssmith.github.io/pkgaudit/reference/new_findings.md)
+  :
+
+  Build the return value of an
+  [`analyze_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/analyze_segment.md)
+  method
+
 ## Rules
 
 The rules are data, not code, and ship in a hash-verified database.
@@ -169,7 +199,7 @@ The rules are data, not code, and ship in a hash-verified database.
 - [Getting Started with
   pkgaudit](https://tylerjssmith.github.io/pkgaudit/articles/pkgaudit.md):
 - [R Package
-  Security](https://tylerjssmith.github.io/pkgaudit/articles/r-package-security.md):
+  Security](https://tylerjssmith.github.io/pkgaudit/articles/security.md):
 - [pkgaudit Rule
   Coverage](https://tylerjssmith.github.io/pkgaudit/articles/rules.md):
 - [pkgaudit
