@@ -1,0 +1,12 @@
+Package: foo
+Version: 0.1.0
+Title: Instrumented Probe Package for Mapping the Execution Surface
+Description: Appends a marker line to the log named by the FOO_LOG environment
+    variable each time one of its instrumented execution sites runs. Used by
+    run_foo.sh to establish which lifecycle phase reaches which site.
+Author: Tyler Smith
+Maintainer: Tyler Smith <tylerjssmith@gmail.com>
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+Suggests: testthat, tinytest, RUnit

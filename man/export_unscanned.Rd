@@ -38,13 +38,13 @@ Invisibly, a manifest data frame with one row per exportable span:
 \code{language}, \code{first_line}, \code{last_line}, \code{written}, and \code{note}.
 }
 \description{
-Writes the parts of a package that pkgaudit does not analyse -- C, C++,
+Writes the parts of a package that pkgaudit does not analyze -- C, C++,
 Fortran, Rust, Python, JavaScript, and the vignette chunks written in them --
-into a directory another static analyser can be pointed at.
+into a directory another static analyzer can be pointed at.
 }
 \details{
 A whole file is copied verbatim. A span -- a vignette chunk in a language
-with no analyser -- is written into a file of its own, blank-padded so its
+with no analyzer -- is written into a file of its own, blank-padded so its
 code sits at the same line numbers it occupies in the source. A finding
 another tool reports at line 40 of \code{intro.python.py} is therefore at line 40
 of \code{intro.Rmd}, with no offset to apply. All spans of one language in one

@@ -24,7 +24,7 @@ R segments, and one literate file can yield several languages.
 \section{Method contract}{
 
 A method must build its return value with \code{\link[=new_findings]{new_findings()}}, which holds every
-analyser to the same frame shape. \code{UseMethod()} ends the generic, so this
+analyzer to the same frame shape. \code{UseMethod()} ends the generic, so this
 cannot be enforced after dispatch.
 
 A method must not evaluate the code it is given. It reads untrusted text and
@@ -33,7 +33,7 @@ reports what it finds; nothing in a scan is ever run.
 
 \examples{
 # Adding a language outside pkgaudit: a method for segments the extractor
-# labelled "python", reporting each line that calls eval().
+# labeled "python", reporting each line that calls eval().
 analyze_segment.python <- function(segment, rules) {
   at <- grep("\\\\beval\\\\(", segment$lines)
   if (length(at) == 0L) return(new_findings())

@@ -1,0 +1,25 @@
+# command:  R CMD INSTALL foo_0.1.0.tar.gz
+# started:  2026-08-21 15:06:02
+# workdir:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/build
+# library:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/lib
+# log:      /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/logs/install_tarball.log
+# pdflatex: /Users/smitht61/Library/TinyTeX/bin/universal-darwin/pdflatex
+15:06:02	configure	61680
+15:06:02	makevars	61683
+15:06:02	makevars	61693
+15:06:02.937	install_libs	60937
+15:06:02.937	install_libs_fn_called	60937
+15:06:03.048	top_level	61702
+15:06:03.049	r_fn_called	61702
+15:06:03.049	r_unix	61702
+15:06:03.049	r_unix_fn_called	61702
+2026-08-21 15:06:03	rd_sexpr_install	60937
+2026-08-21 15:06:03	rd_sexpr_install_fn_called	60937
+2026-08-21 15:06:03	rd_sexpr_nostage	60937
+2026-08-21 15:06:03	rd_unix_sexpr_nostage	60937
+15:06:03.306	onLoad	61718
+15:06:03.307	onAttach	61718
+15:06:03.507	onLoad	61751
+15:06:03.508	onAttach	61751
+# exit:     0
+# finished: 2026-08-21 15:06:03

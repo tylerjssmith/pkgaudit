@@ -3,6 +3,8 @@
 
 # pkgaudit
 
+[![Project Status:
+Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 [![R-CMD-check](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml)
 [![coverage](https://raw.githubusercontent.com/tylerjssmith/pkgaudit/badges/coverage.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/test-coverage.yaml)
 [![osv-scanner](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml)
@@ -97,7 +99,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-21 21:00 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-21 21:44 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -174,10 +176,16 @@ digest::digest(
 ```
 
 Expected SHA-256:
-`e751d759c0399048fef6108795174f386b1592c3bf79dd7746a6280aef3b3124`
+`5fc1ec8e93232517679fb03df0f08020d844912e701615de7827666be2f6a7cd`
 
 ## Security
 
 pkgaudit’s own security model, and how to report a vulnerability in it,
 are in [SECURITY.md](.github/SECURITY.md). To propose or revise a rule,
 see [CONTRIBUTING.md](.github/CONTRIBUTING.md).
+
+## Citation
+
+``` r
+citation("pkgaudit")
+```

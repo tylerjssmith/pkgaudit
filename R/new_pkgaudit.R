@@ -144,7 +144,7 @@ new_pkgaudit <- function(
 # about the file. `reason` says what stood in the way, NA where nothing did.
 .coverage_statuses <- c("parsed", "matched", "exportable", "unexamined",
                         "error")
-.coverage_reasons <- c("no_analyser", "no_extractor", "serialized", "binary",
+.coverage_reasons <- c("no_analyzer", "no_extractor", "serialized", "binary",
                        "no_rule", "symlink", "too_large", "unreadable",
                        "unparseable")
 

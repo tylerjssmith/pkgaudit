@@ -28,7 +28,7 @@ Each frame is reduced to its canonical columns and an omitted one is empty.
 malformed frame out of the result.
 }
 \examples{
-# An analyser that found nothing still returns all four frames.
+# An analyzer that found nothing still returns all four frames.
 str(new_findings(), max.level = 1)
 }
 \seealso{

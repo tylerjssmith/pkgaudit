@@ -1,0 +1,200 @@
+---
+output:
+  github_document:
+    html_preview: false
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>"
+)
+```
+
+```{r load, message = FALSE}
+library(tidyverse)
+library(pkgaudit)
+
+source("scripts/download_cran.R")
+source("scripts/survey_cran.R")
+source("scripts/survey_tarballs.R")
+
+SNAPSHOT_DIR = "../../../snapshot"
+```
+
+# Survey of R Packages on CRAN
+
+## Download CRAN
+
+The following code obtain a list of available packages.
+
+```{r available, eval = FALSE}
+available = available.packages("https://cran.rstudio.com/src/contrib")
+available = as.data.frame(available[, c("Package","Version","MD5sum")])
+available = available[!duplicated(available), ]
+write_csv(available, "results/available_packages.csv")
+```
+
+The following code loads the list of available packages we obtained.
+
+```{r available_saved}
+available_saved = read_csv("results/available_packages.csv",
+  show_col_types = FALSE)
+head(available_saved)
+```
+
+The following code downloads the available packages as source tarballs. It
+confirms that the MD5 hash claimed by the mirror matches the MD5 hash of the
+downloaded file, and adds the more secure (collision-resistant) SHA-256 hash.
+
+The snapshot is large (~18 GB) and was saved outside of the package directory at
+the path stored in `SNAPSHOT_DIR`.
+
+```{r download, eval = FALSE, message = FALSE}
+downloaded = download_cran(
+  pkgs       = available[sample(1:nrow(available), 20), ], 
+  dir        = SNAPSHOT_DIR, 
+  check_md5  = TRUE, 
+  add_sha256 = TRUE,
+  pause = 0
+)
+write_csv(downloaded, "results/downloaded_packages.csv")
+```
+
+The following code loads the list of downloaded packages.
+
+```{r download_saved}
+downloaded_saved = read_csv("results/downloaded_packages.csv",
+  show_col_types = FALSE)
+head(downloaded_saved[, c("package","version","md5_matches","sha256_local")])
+```
+
+## Survey CRAN
+
+The following code runs `pkgaudit::audit_tarball` on every downloaded package,
+combines the `pkgaudit` data frames across packages, and adds `package` and
+`version` columns to distinguish the results.
+
+```{r cran, eval = FALSE}
+findings = survey_cran(SNAPSHOT_DIR, rules = pkgaudit::load_rules())
+write_rds(findings, "results/findings.rds", compress = "gz")
+```
+
+The following code loads the survey results, extracts the data frames, defines
+the total number of tarballs surveyed as the denominator, and defines two
+functions used to summarize the results.
+
+```{r setup_results}
+# Load Saved Results
+saved_findings = read_rds("results/findings.rds")
+
+file_contexts = saved_findings$file_contexts
+patterns      = saved_findings$patterns
+matches       = saved_findings$matches
+coverage      = saved_findings$coverage
+errors        = saved_findings$errors
+provenance    = saved_findings$provenance
+
+# Get Denominator
+N = length(list.files(SNAPSHOT_DIR, pattern = "\\.tar\\.gz$"))
+
+# Define Summary Functions
+get_proportion_hits <- function(data, x) {
+  data %>%
+    count({{ x }}) %>%
+    mutate(p = n / sum(n) * 100) %>%
+    arrange(desc(n))
+}
+
+get_proportion_pkgs <- function(data, x) {
+  data %>%
+    group_by({{ x }}) %>%
+    summarise(n = n_distinct(package)) %>%
+    mutate(p = n / N * 100) %>%
+    rename(!!sym(paste0("n/", N)) := p) %>%
+    arrange(desc(n))
+}
+```
+
+### File Contexts
+
+```{r file_contexts}
+file_contexts %>%
+  get_proportion_hits(file_context)
+file_contexts %>%
+  get_proportion_pkgs(file_context)
+```
+
+### Shell/Make-like Matches
+
+```{r matches}
+matches %>%
+  get_proportion_hits(rule)
+matches %>%
+  get_proportion_pkgs(rule)
+```
+
+### R Patterns
+
+```{r patterns}
+patterns %>%
+  get_proportion_hits(rule)
+patterns %>%
+  get_proportion_pkgs(rule)
+```
+
+## Tarballs
+
+The following code runs `survey_structure()` and `survey_expansion()` on every
+downloaded package.
+
+```{r tarball, eval = FALSE}
+structure <- survey_dir(SNAPSHOT_DIR, survey_structure)
+expansion <- survey_dir(SNAPSHOT_DIR, survey_expansion)
+```
+
+The defaults `max_entries = 100000L` and `max_bytes = 2 * 1024^3` (2 GB) provide
+considerable room above the empirical maxima.
+
+```{r}
+# max_entries
+quantile(structure$n_entries,  c(.5, .9, .99, .999, 1))
+
+# max_bytes
+quantile(structure$bytes_read, c(.5, .9, .99, .999, 1))
+```
+
+The default `max_ratio = 256` likewise provides considerable room above the
+empirical maximum. 
+
+```{r}
+# exclude capped and errored rows, if present, as ratios are lower bounds
+ok <- subset(expansion, !cap_hit & is.na(error))
+round(nrow(ok) / nrow(expansion) * 100, 4)
+
+# max_ratio
+quantile(ok$ratio, c(.5, .9, .99, .999, 1))
+```
+
+We can confirm the absence of various threat indicators in CRAN packages such
+that the presence of any one justifies failing closed.
+
+```{r}
+sum(structure$n_symlink > 0)
+sum(structure$n_hardlink > 0)
+sum(structure$n_other_type > 0)
+sum(structure$n_traversal > 0)
+sum(structure$n_absolute > 0)
+table(structure$n_toplevel)
+sum(structure$n_backslash > 0)
+sum(structure$n_control > 0)
+sum(structure$n_empty > 0)
+sum(structure$n_bad_size > 0)
+```
+
+```{r}
+subset(structure, truncated | !is.na(error))
+subset(expansion, cap_hit | !is.na(error))
+```
+
+

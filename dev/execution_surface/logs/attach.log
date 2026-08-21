@@ -1,0 +1,10 @@
+# command:  Rscript -e 'library(foo)'
+# started:  2026-08-21 15:06:51
+# workdir:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/build
+# library:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/lib
+# log:      /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/logs/attach.log
+# pdflatex: /Users/smitht61/Library/TinyTeX/bin/universal-darwin/pdflatex
+15:06:51.722	onLoad	66014
+15:06:51.723	onAttach	66014
+# exit:     0
+# finished: 2026-08-21 15:06:51

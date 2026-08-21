@@ -1,0 +1,3 @@
+# .Last.lib is looked up in the package environment rather than the namespace,
+# so it only runs on detach if it is exported.
+export(.Last.lib)

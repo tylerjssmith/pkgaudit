@@ -156,7 +156,7 @@
 #
 # Keyed by macro name, never by the audited package's `RdMacros` field: that
 # field is attacker-controlled, and pkgaudit must not be made to advise
-# installing a package of the audited package's choosing. An unrecognised macro
+# installing a package of the audited package's choosing. An unrecognized macro
 # is still counted as lost coverage, just without a suggestion.
 .rd_macro_providers <- c(
   insertAllCited = "Rdpack",   insertCite   = "Rdpack", insertCited = "Rdpack",
@@ -176,7 +176,7 @@
 }
 
 # The known providers of the macros named in these messages, in a stable order.
-# A macro this does not recognise contributes nothing rather than a guess.
+# A macro this does not recognize contributes nothing rather than a guess.
 .macro_providers <- function(messages) {
   named <- unlist(regmatches(
     messages, gregexpr("unknown macro '\\\\[A-Za-z]+'", messages)

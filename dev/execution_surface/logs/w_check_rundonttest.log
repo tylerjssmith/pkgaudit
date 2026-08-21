@@ -1,0 +1,99 @@
+# command:  R CMD check --no-manual --run-donttest foo_0.1.0.tar.gz
+# started:  2026-08-14 12:39:12
+# workdir:  /Users/smitht61/Security/packages/execution_surface/build
+# library:  /Users/smitht61/Security/packages/execution_surface/lib
+# log:      /Users/smitht61/Security/packages/execution_surface/logs/w_check_rundonttest.log
+# pdflatex: /Users/smitht61/Library/TinyTeX/bin/universal-darwin/pdflatex
+12:39:15	configure	7715
+12:39:15	makevars	7718
+12:39:15	makevars	7728
+12:39:15	makevars	7737
+12:39:16.002	install_libs	6973
+12:39:16.002	install_libs_fn_called	6973
+12:39:16.131	top_level	7753
+12:39:16.131	r_fn_called	7753
+12:39:16.131	r_unix	7753
+12:39:16.132	r_unix_fn_called	7753
+2026-08-14 12:39:16	rd_sexpr_install	6973
+2026-08-14 12:39:16	rd_sexpr_install_fn_called	6973
+2026-08-14 12:39:16	rd_sexpr_nostage	6973
+2026-08-14 12:39:16	rd_unix_sexpr_nostage	6973
+12:39:16.402	onLoad	7769
+12:39:16.403	onAttach	7769
+12:39:16.619	onLoad	7803
+12:39:16.621	onAttach	7803
+12:39:17.136	citation	7858
+12:39:17.137	citation_fn_called	7858
+12:39:17.318	onLoad	7872
+12:39:17.319	onAttach	7872
+12:39:17.355	onLoad	7880
+12:39:17.356	onAttach	7880
+12:39:17.391	onLoad	7883
+12:39:17.392	onAttach	7883
+12:39:17.393	onDetach	7883
+12:39:17.432	onLoad	7886
+12:39:17.541	onLoad	7889
+12:39:17.542	onUnload	7889
+12:39:17.645	onLoad	7899
+12:39:17.646	onAttach	7899
+12:39:17.752	onLoad	7907
+12:39:17.854	onLoad	7915
+12:39:17.855	onAttach	7915
+12:39:17.895	onLoad	7923
+12:39:17.990	onLoad	7931
+12:39:18.109	onLoad	7939
+12:39:18.190	onLoad	7947
+12:39:18.566	onLoad	7977
+12:39:18.739	onLoad	7985
+2026-08-14 12:39:18	rd_sexpr_build	7993
+2026-08-14 12:39:18	rd_sexpr_build_fn_called	7993
+2026-08-14 12:39:18	rd_sexpr_install	7993
+2026-08-14 12:39:18	rd_sexpr_install_fn_called	7993
+2026-08-14 12:39:18	rd_sexpr_nostage	7993
+2026-08-14 12:39:18	rd_sexpr_render	7993
+2026-08-14 12:39:18	rd_sexpr_render_fn_called	7993
+2026-08-14 12:39:18	rd_unix_sexpr_nostage	7993
+2026-08-14 12:39:18	rd_windows_sexpr_nostage	7993
+12:39:19.086	onLoad	8012
+12:39:19.087	onAttach	8012
+12:39:19.169	onLoad	8020
+12:39:19.170	onAttach	8020
+12:39:19.254	onLoad	8028
+12:39:19.255	onAttach	8028
+12:39:19.334	onLoad	8036
+12:39:19.339	onAttach	8036
+12:39:19.491	onLoad	8052
+2026-08-14 12:39:19	rd_sexpr_render	8068
+2026-08-14 12:39:19	rd_sexpr_render_fn_called	8068
+12:39:19	makevars	8095
+2026-08-14 12:39:20	rd_sexpr_render	8151
+2026-08-14 12:39:20	rd_sexpr_render_fn_called	8151
+12:39:20.604	onLoad	8159
+12:39:20.606	onAttach	8159
+2026-08-14 12:39:20	rd_examples	8159
+2026-08-14 12:39:20	rd_examples_fn_called	8159
+2026-08-14 12:39:20	rd_unix_examples	8159
+2026-08-14 12:39:20	rd_unwrapped	8159
+2026-08-14 12:39:20	rd_dontshow	8159
+2026-08-14 12:39:20	rd_donttest	8159
+2026-08-14 12:39:20	rd_testonly	8159
+12:39:20.906	tests_R	8184
+12:39:20.916	tests_fn_called	8184
+12:39:21.033	runit_test	8200
+12:39:21.034	runit_fn_called	8200
+12:39:21.035	runit_fn_framework_called	8200
+12:39:21.218	onLoad	8216
+12:39:21.219	onAttach	8216
+12:39:21.240	testthat_helper	8216
+12:39:21.241	testthat_helper_fn_called	8216
+12:39:21.249	testthat_test	8216
+12:39:21.249	testthat_fn_called	8216
+12:39:21.249	testthat_in_test_that	8216
+12:39:21.404	onLoad	8232
+12:39:21.405	onAttach	8232
+12:39:21.425	tinytest_test	8232
+12:39:21.425	tinytest_fn_called	8232
+12:39:21.756	vignette	8263
+12:39:21.759	vignette_fn_called	8263
+# exit:     0
+# finished: 2026-08-14 12:39:22

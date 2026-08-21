@@ -185,7 +185,7 @@ test_that("a symlinked source file is refused even where coverage calls it expor
   res <- audit_package(pkg, rules)
   at  <- res$coverage$file_context == "src/sneak.c"
   res$coverage$status[at] <- "exportable"
-  res$coverage$reason[at] <- "no_analyser"
+  res$coverage$reason[at] <- "no_analyzer"
   res$coverage$bytes[at]  <- 6L
 
   man   <- export_unscanned(res, out, source = pkg)

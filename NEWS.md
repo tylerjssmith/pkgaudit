@@ -8,7 +8,9 @@
   Rust, Python, JavaScript -- into a directory a scanner such as Semgrep can be
   pointed at, blank-padded so line numbers still point into the original file.
 * `emit_sarif()` renders a result as SARIF 2.1.0, so findings open on the line
-  they were found in any editor or code-scanning platform that reads it.
+  they were found in any editor or code-scanning platform that reads it. Every
+  result carries `level` `note`: pkgaudit does not rank findings, and when a
+  finding's code runs is carried in `properties.phases`.
 * The `description` rule no longer claims `at_build` and `at_check`. Measured
   against R 4.6.1, `R CMD build`, `check` and `INSTALL` all refuse an `Authors@R`
   field containing anything outside `person`, `as.person`, `c`, `list`, `paste`

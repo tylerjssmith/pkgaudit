@@ -1,6 +1,6 @@
 # Extraction for help files. An .Rd yields a segment per kind of code that runs
 # at its own time: the \examples, and one per \Sexpr stage. All are R, and are
-# analysed by the methods in analyze_R.R.
+# analyzed by the methods in analyze_R.R.
 
 #' @export
 extract_segments.Rd <- function(source) {

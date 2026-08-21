@@ -1,0 +1,15 @@
+# Instrumented probe site: src/Makevars.
+#
+# Appends one marker line to the log named by FOO_LOG, in the same
+# <time>\t<site>\t<pid> form the other sites use, and records nothing when
+# FOO_LOG is unset.
+#
+# Assigned with := so make evaluates it while parsing this file, which happens
+# on every make invocation whether or not anything actually needs rebuilding.
+# The variable itself is never used; the side effect is the whole point. This is
+# the same $(shell ...) shape pkgaudit's regex rules are written to catch.
+#
+# The doubled dollars are make escaping: $$FOO_LOG reaches the shell as
+# $FOO_LOG, and $$$$ reaches it as $$, the subshell's pid.
+
+FOO_MARK := $(shell if [ -n "$$FOO_LOG" ]; then printf '%s\t%s\t%s\n' "$$(date '+%H:%M:%S')" "makevars" "$$$$" >> "$$FOO_LOG"; fi)

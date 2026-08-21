@@ -40,15 +40,10 @@
 #' are namespaced by the kind of rule -- `pattern/curl`, `match/curl`,
 #' `file/configure` -- because a rule name is unique only within its kind.
 #'
-#' `level` is `warning` for a pattern or match whose code executes during at
-#' least one lifecycle phase, and `note` for everything else. That is a mapping
-#' of pkgaudit's phase model onto SARIF's severity field, not a severity
-#' judgement: pkgaudit does not rank findings, and the line it can draw honestly
-#' is between code that runs on its own and code that runs only when called.
-#'
-#' A file context is always a `note`: it says a file exists and will execute
-#' rather than making a claim about its code. Read it as pkgaudit pointing at
-#' something it could only grep, not as a minor finding.
+#' `level` is `note` for every result: pkgaudit does not rank findings, so
+#' nothing is mapped onto SARIF's severity field. When a finding's code
+#' executes is carried in `properties.phases`, and a `note` is never a claim
+#' that a finding is minor.
 #'
 #' `partialFingerprints` identifies a finding by its rule, its file, the code
 #' context it sits in, and the text of the line -- not by line number, which
@@ -109,14 +104,13 @@ emit_sarif <- function(object, pretty = TRUE) {
 #
 # The three findings frames differ in what locates a finding -- a file context
 # is a whole file, a match has a line, a pattern has a line and a code context
-# -- so they are normalised here rather than in three near-identical loops.
+# -- so they are normalized here rather than in three near-identical loops.
 .sarif_findings <- function(object) {
   rows <- lapply(names(.sarif_kinds), function(frame) {
     df <- object[[frame]]
     if (is.null(df) || nrow(df) == 0L) return(NULL)
     data.frame(
       id           = paste0(.sarif_kinds[[frame]], "/", df$rule),
-      kind         = .sarif_kinds[[frame]],
       rule         = df$rule,
       file_context = df$file_context,
       line         = if (is.null(df$line_number)) NA_integer_ else df$line_number,
@@ -131,20 +125,18 @@ emit_sarif <- function(object, pretty = TRUE) {
       attck        = if (is.null(df$attck)) NA_character_ else df$attck,
       phases       = apply(df[, .phase_columns], 1L, function(on)
                        paste(.phase_columns[as.logical(on)], collapse = " ")),
-      runs         = .runs_automatically(df),
       stringsAsFactors = FALSE
     )
   })
   out <- do.call(rbind, Filter(Negate(is.null), rows))
   if (is.null(out)) {
-    return(data.frame(id = character(0L), kind = character(0L),
-                      rule = character(0L),
+    return(data.frame(id = character(0L), rule = character(0L),
                       file_context = character(0L), line = integer(0L),
                       column = integer(0L), code_context = character(0L),
                       guarded = logical(0L), indirect = logical(0L),
                       preview = character(0L), message = character(0L),
                       attck = character(0L), phases = character(0L),
-                      runs = logical(0L), fingerprint = character(0L),
+                      fingerprint = character(0L),
                       stringsAsFactors = FALSE))
   }
   # Deterministic, so two runs over the same package produce the same document,
@@ -206,28 +198,14 @@ emit_sarif <- function(object, pretty = TRUE) {
 
     list(
       ruleId  = found$id[[i]],
-      level   = .sarif_level(found$kind[[i]], found$runs[[i]]),
+      # Always note: pkgaudit does not rank findings, so no severity is mapped.
+      level   = "note",
       message = list(text = found$message[[i]]),
       locations = list(location),
       partialFingerprints = list(pkgauditFindingV1 = found$fingerprint[[i]]),
       properties = properties
     )
   }))
-}
-
-
-# Warning for a finding about code that runs on its own; note for everything
-# else. Not a severity ranking, which pkgaudit does not make.
-#
-# A file context is always a note, whatever its phases. It is not a claim about
-# code -- it says a file exists and will execute -- and most packages that build
-# native code have one, so alerting on its presence is inventory rather than a
-# finding. That does mean a note can be the only thing said about a script
-# pkgaudit could not read: in a CRAN-scale scan, 78% of reported file contexts
-# contained no match at all. A note here is pkgaudit pointing, not shrugging.
-.sarif_level <- function(kind, runs) {
-  if (identical(kind, "file")) return("note")
-  if (isTRUE(runs)) "warning" else "note"
 }
 
 

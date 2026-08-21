@@ -3,7 +3,7 @@
 #
 # Engine-agnostic by design: a segment is emitted for every chunk, tagged with
 # the language its header names, never filtered to `r`. A `bash` chunk is shell
-# that runs when the vignette is built; a language with no analyser falls
+# that runs when the vignette is built; a language with no analyzer falls
 # through to analyze_segment.default() and finds nothing.
 
 #' @export
@@ -220,12 +220,12 @@ extract_segments.Rmd <- function(source) {
 }
 
 
-# The analyser language a chunk engine feeds. knitr engine names are lowercase,
-# while the analysers are classed "R" and "shell", so the two have to be mapped.
+# The analyzer language a chunk engine feeds. knitr engine names are lowercase,
+# while the analyzers are classed "R" and "shell", so the two have to be mapped.
 #
 # An engine with no entry keeps its own name and falls through to
 # analyze_segment.default(): no findings, no error. Adding a language later is
-# an entry here plus an analyser, and touches nothing else.
+# an entry here plus an analyzer, and touches nothing else.
 .chunk_engines <- c(r = "R", bash = "shell", sh = "shell", zsh = "shell")
 
 .chunk_language <- function(engine) {

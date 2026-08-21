@@ -15,7 +15,7 @@
 #'       `\dontrun{}`, which no example run reaches.}
 #'     \item{sexpr}{Named list of three length-one strings -- `build`, `install`
 #'       and `render` -- holding each `\Sexpr{}` macro's code by the stage it
-#'       runs at. An unlabelled macro counts as `install`.}
+#'       runs at. An unlabeled macro counts as `install`.}
 #'     \item{error}{`NULL` when the file parsed cleanly, otherwise a message. The
 #'       code strings are `""` when nothing was read, and may be incomplete when
 #'       the file parsed with a warning, so a non-`NULL` `error` means the
@@ -242,7 +242,7 @@ read_Rd_code <- function(path, macros = NULL) {
 
 # The stage a \Sexpr runs at, from its option string. Writing R Extensions gives
 # install as the default when no stage is named, and an instrumented probe
-# package confirms an unlabelled \Sexpr behaves identically to stage=install.
+# package confirms an unlabeled \Sexpr behaves identically to stage=install.
 #
 # tools::parse_Rd() rejects a stage that is not one of the three, so this is
 # never asked about an invalid one -- the file fails to parse first and the
@@ -267,7 +267,7 @@ read_Rd_code <- function(path, macros = NULL) {
 # Each fragment is written at its own line and column, with blank padding
 # elsewhere, so a parse of the result reports positions in the original file.
 # separator is placed between two fragments that share a line, for the kind
-# where neighbouring fragments are separate matches rather than pieces of
+# where neighboring fragments are separate matches rather than pieces of
 # one.
 .assemble_lines <- function(frags, separator = "") {
   if (length(frags) == 0L) return("")

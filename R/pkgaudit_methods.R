@@ -85,7 +85,7 @@ print.pkgaudit <- function(x, path = TRUE, ...) {
 #'   `print.summary.pkgaudit()` uses that recorded value unless given its own.
 #' @param phase Character vector of lifecycle phases to report, e.g.
 #'   `"at_load"`, or `"none"` for occurrences that execute in no phase.
-#'   `NULL` (default) reports every phase. An unrecognised name is an error.
+#'   `NULL` (default) reports every phase. An unrecognized name is an error.
 #' @param ... Ignored, for S3 compatibility.
 #'
 #' @return `summary.pkgaudit()` returns a `summary.pkgaudit` object: a named list
@@ -178,7 +178,7 @@ print.summary.pkgaudit <- function(x, path = x$path, ...) {
 }
 
 
-# The phases a summary was asked for, or NULL for all of them. An unrecognised
+# The phases a summary was asked for, or NULL for all of them. An unrecognized
 # name is refused rather than matching nothing: a report that silently covered
 # no phase would read as a package with no findings.
 .check_phases <- function(phase) {

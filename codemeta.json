@@ -1,0 +1,218 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "identifier": "pkgaudit",
+  "description": "A static analysis tool that flags security-relevant files and code in R source packages for human review without executing anything it scans. Models package lifecycle execution semantics -- it reports not just what a package does, but when it runs, so code that executes on install or load is distinguishable from code that runs only when called. Reads every surface a package can execute, including 'configure' scripts, help-file macros, and vignettes, and states what it could not read, so a clean result can be checked rather than trusted. Detection rules are data, shipped in a versioned and hash-verified 'SQLite' database.",
+  "name": "pkgaudit: Static Analysis Security Testing (SAST) for R Packages",
+  "relatedLink": "https://tylerjssmith.github.io/pkgaudit/",
+  "codeRepository": "https://github.com/tylerjssmith/pkgaudit",
+  "issueTracker": "https://github.com/tylerjssmith/pkgaudit/issues",
+  "license": "Apache License 2",
+  "version": "0.4.0",
+  "programmingLanguage": {
+    "@type": "ComputerLanguage",
+    "name": "R",
+    "url": "https://r-project.org"
+  },
+  "runtimePlatform": "R version 4.6.1 (2026-06-24)",
+  "author": [
+    {
+      "@type": "Person",
+      "givenName": "Tyler",
+      "familyName": "Smith",
+      "email": "tylerjssmith@gmail.com",
+      "@id": "https://orcid.org/0000-0003-4692-2206"
+    }
+  ],
+  "maintainer": [
+    {
+      "@type": "Person",
+      "givenName": "Tyler",
+      "familyName": "Smith",
+      "email": "tylerjssmith@gmail.com",
+      "@id": "https://orcid.org/0000-0003-4692-2206"
+    }
+  ],
+  "softwareSuggestions": [
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "covr",
+      "name": "covr",
+      "provider": {
+        "@id": "https://cran.r-project.org",
+        "@type": "Organization",
+        "name": "Comprehensive R Archive Network (CRAN)",
+        "url": "https://cran.r-project.org"
+      },
+      "sameAs": "https://CRAN.R-project.org/package=covr"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "jsonlite",
+      "name": "jsonlite",
+      "provider": {
+        "@id": "https://cran.r-project.org",
+        "@type": "Organization",
+        "name": "Comprehensive R Archive Network (CRAN)",
+        "url": "https://cran.r-project.org"
+      },
+      "sameAs": "https://CRAN.R-project.org/package=jsonlite"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "knitr",
+      "name": "knitr",
+      "provider": {
+        "@id": "https://cran.r-project.org",
+        "@type": "Organization",
+        "name": "Comprehensive R Archive Network (CRAN)",
+        "url": "https://cran.r-project.org"
+      },
+      "sameAs": "https://CRAN.R-project.org/package=knitr"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "rmarkdown",
+      "name": "rmarkdown",
+      "provider": {
+        "@id": "https://cran.r-project.org",
+        "@type": "Organization",
+        "name": "Comprehensive R Archive Network (CRAN)",
+        "url": "https://cran.r-project.org"
+      },
+      "sameAs": "https://CRAN.R-project.org/package=rmarkdown"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "testthat",
+      "name": "testthat",
+      "version": ">= 3.0.0",
+      "provider": {
+        "@id": "https://cran.r-project.org",
+        "@type": "Organization",
+        "name": "Comprehensive R Archive Network (CRAN)",
+        "url": "https://cran.r-project.org"
+      },
+      "sameAs": "https://CRAN.R-project.org/package=testthat"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "yaml",
+      "name": "yaml",
+      "provider": {
+        "@id": "https://cran.r-project.org",
+        "@type": "Organization",
+        "name": "Comprehensive R Archive Network (CRAN)",
+        "url": "https://cran.r-project.org"
+      },
+      "sameAs": "https://CRAN.R-project.org/package=yaml"
+    }
+  ],
+  "softwareRequirements": {
+    "1": {
+      "@type": "SoftwareApplication",
+      "identifier": "R",
+      "name": "R",
+      "version": ">= 4.1"
+    },
+    "2": {
+      "@type": "SoftwareApplication",
+      "identifier": "DBI",
+      "name": "DBI",
+      "provider": {
+        "@id": "https://cran.r-project.org",
+        "@type": "Organization",
+        "name": "Comprehensive R Archive Network (CRAN)",
+        "url": "https://cran.r-project.org"
+      },
+      "sameAs": "https://CRAN.R-project.org/package=DBI"
+    },
+    "3": {
+      "@type": "SoftwareApplication",
+      "identifier": "digest",
+      "name": "digest",
+      "provider": {
+        "@id": "https://cran.r-project.org",
+        "@type": "Organization",
+        "name": "Comprehensive R Archive Network (CRAN)",
+        "url": "https://cran.r-project.org"
+      },
+      "sameAs": "https://CRAN.R-project.org/package=digest"
+    },
+    "4": {
+      "@type": "SoftwareApplication",
+      "identifier": "RSQLite",
+      "name": "RSQLite",
+      "provider": {
+        "@id": "https://cran.r-project.org",
+        "@type": "Organization",
+        "name": "Comprehensive R Archive Network (CRAN)",
+        "url": "https://cran.r-project.org"
+      },
+      "sameAs": "https://CRAN.R-project.org/package=RSQLite"
+    },
+    "5": {
+      "@type": "SoftwareApplication",
+      "identifier": "stats",
+      "name": "stats"
+    },
+    "6": {
+      "@type": "SoftwareApplication",
+      "identifier": "tools",
+      "name": "tools"
+    },
+    "7": {
+      "@type": "SoftwareApplication",
+      "identifier": "utils",
+      "name": "utils"
+    },
+    "8": {
+      "@type": "SoftwareApplication",
+      "identifier": "xml2",
+      "name": "xml2",
+      "provider": {
+        "@id": "https://cran.r-project.org",
+        "@type": "Organization",
+        "name": "Comprehensive R Archive Network (CRAN)",
+        "url": "https://cran.r-project.org"
+      },
+      "sameAs": "https://CRAN.R-project.org/package=xml2"
+    },
+    "9": {
+      "@type": "SoftwareApplication",
+      "identifier": "xmlparsedata",
+      "name": "xmlparsedata",
+      "provider": {
+        "@id": "https://cran.r-project.org",
+        "@type": "Organization",
+        "name": "Comprehensive R Archive Network (CRAN)",
+        "url": "https://cran.r-project.org"
+      },
+      "sameAs": "https://CRAN.R-project.org/package=xmlparsedata"
+    },
+    "SystemRequirements": null
+  },
+  "fileSize": "866.663KB",
+  "citation": [
+    {
+      "@type": "SoftwareSourceCode",
+      "datePublished": "2026",
+      "author": [
+        {
+          "@type": "Person",
+          "givenName": "Tyler",
+          "familyName": "Smith",
+          "@id": "https://orcid.org/0000-0003-4692-2206"
+        }
+      ],
+      "name": "pkgaudit: Static Analysis Security Testing (SAST) for R Packages",
+      "url": "https://github.com/tylerjssmith/pkgaudit",
+      "description": "R package version 0.4.0"
+    }
+  ],
+  "releaseNotes": "https://github.com/tylerjssmith/pkgaudit/blob/main/NEWS.md",
+  "readme": "https://github.com/tylerjssmith/pkgaudit/blob/main/README.md",
+  "contIntegration": ["https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml", "https://github.com/tylerjssmith/pkgaudit/actions/workflows/test-coverage.yaml", "https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml"],
+  "developmentStatus": "https://www.repostatus.org/#active",
+  "keywords": ["r", "security", "static-code-analysis", "static-code-analyzer", "supply-chain-security"]
+}

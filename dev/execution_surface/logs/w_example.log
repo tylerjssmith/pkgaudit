@@ -1,0 +1,8 @@
+# command:  Rscript -e 'example(probe_wrappers, package="foo", character.only=FALSE, ask=FALSE)'
+# started:  2026-08-14 12:39:22
+# workdir:  /Users/smitht61/Security/packages/execution_surface/build
+# library:  /Users/smitht61/Security/packages/execution_surface/lib
+# log:      /Users/smitht61/Security/packages/execution_surface/logs/w_example.log
+# pdflatex: /Users/smitht61/Library/TinyTeX/bin/universal-darwin/pdflatex
+# exit:     0
+# finished: 2026-08-14 12:39:22

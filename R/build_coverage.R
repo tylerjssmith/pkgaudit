@@ -28,9 +28,9 @@
   java = "java", pl = "perl", pm = "perl", rb = "ruby", lua = "lua"
 )
 
-# Languages pkgaudit analyses itself. Everything else with a known language is
+# Languages pkgaudit analyzes itself. Everything else with a known language is
 # text another tool can read, and is therefore exportable.
-.coverage_analysed <- c("R", "Rd", "Rmd", "qmd", "Rnw", "rsp", "shell")
+.coverage_analyzed <- c("R", "Rd", "Rmd", "qmd", "Rnw", "rsp", "shell")
 
 # R's serialization formats. Deserializing one of these can execute arbitrary
 # code, and data/*.rda and R/sysdata.rda are loaded when the package loads, so
@@ -130,8 +130,8 @@ build_coverage <- function(path, found, file_context_rules,
     if (ext[[i]] %in% .coverage_binary) {
       status[[i]] <- "unexamined"; reason[[i]] <- "binary"; next
     }
-    if (!is.na(lang[[i]]) && !lang[[i]] %in% .coverage_analysed) {
-      status[[i]] <- "exportable"; reason[[i]] <- "no_analyser"; next
+    if (!is.na(lang[[i]]) && !lang[[i]] %in% .coverage_analyzed) {
+      status[[i]] <- "exportable"; reason[[i]] <- "no_analyzer"; next
     }
     # Nothing read the file. Either a rule claimed it and that rule's type has
     # no extractor -- DESCRIPTION is accounted for, not parsed -- or no rule
@@ -177,7 +177,7 @@ build_coverage <- function(path, found, file_context_rules,
 }
 
 
-# Combine the tree walk with the spans the analysers reported. A file can appear
+# Combine the tree walk with the spans the analyzers reported. A file can appear
 # in both: an .Rmd is parsed for its R chunks, and each chunk in a language
 # nothing reads is a span of its own. Span rows carry no rule, so they take the
 # phases of the file they sit in.

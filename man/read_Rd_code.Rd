@@ -21,7 +21,7 @@ A named list:
 \verb{\dontrun{}}, which no example run reaches.}
 \item{sexpr}{Named list of three length-one strings -- \code{build}, \code{install}
 and \code{render} -- holding each \verb{\\Sexpr\{\}} macro's code by the stage it
-runs at. An unlabelled macro counts as \code{install}.}
+runs at. An unlabeled macro counts as \code{install}.}
 \item{error}{\code{NULL} when the file parsed cleanly, otherwise a message. The
 code strings are \code{""} when nothing was read, and may be incomplete when
 the file parsed with a warning, so a non-\code{NULL} \code{error} means the

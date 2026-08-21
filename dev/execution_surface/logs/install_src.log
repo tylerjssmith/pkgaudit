@@ -1,0 +1,39 @@
+# command:  R CMD INSTALL foo/
+# started:  2026-08-21 15:06:00
+# workdir:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/build
+# library:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/lib
+# log:      /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/logs/install_src.log
+# pdflatex: /Users/smitht61/Library/TinyTeX/bin/universal-darwin/pdflatex
+15:06:01	configure	60839
+15:06:01	makevars	60842
+15:06:01	makevars	60852
+15:06:01.436	install_libs	60096
+15:06:01.436	install_libs_fn_called	60096
+15:06:01.440	data_R	60096
+15:06:01.440	data_fn_called	60096
+15:06:01.441	data_R	60096
+15:06:01.441	data_fn_called	60096
+15:06:01.481	rprofile	60856
+15:06:01.482	rprofile_fn_called	60856
+15:06:01.542	top_level	60856
+15:06:01.542	r_fn_called	60856
+15:06:01.543	r_unix	60856
+15:06:01.543	r_unix_fn_called	60856
+2026-08-21 15:06:01	rd_sexpr_build	60096
+2026-08-21 15:06:01	rd_sexpr_build_fn_called	60096
+2026-08-21 15:06:01	rd_sexpr_install	60096
+2026-08-21 15:06:01	rd_sexpr_install_fn_called	60096
+2026-08-21 15:06:01	rd_sexpr_nostage	60096
+2026-08-21 15:06:01	rd_unix_sexpr_nostage	60096
+15:06:01.627	rprofile	60864
+15:06:01.628	rprofile_fn_called	60864
+15:06:01.737	rprofile	60872
+15:06:01.738	rprofile_fn_called	60872
+15:06:01.796	onLoad	60872
+15:06:01.796	onAttach	60872
+15:06:01.937	rprofile	60905
+15:06:01.937	rprofile_fn_called	60905
+15:06:01.995	onLoad	60905
+15:06:01.996	onAttach	60905
+# exit:     0
+# finished: 2026-08-21 15:06:02

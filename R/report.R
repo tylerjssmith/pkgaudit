@@ -127,7 +127,7 @@
 .count_label_width    <- 16L
 
 
-# Render one labelled line, padding the label to the given field width.
+# Render one labeled line, padding the label to the given field width.
 .field <- function(label, value, width = .metadata_label_width) {
   sprintf("%-*s%s", width, label, as.character(value))
 }

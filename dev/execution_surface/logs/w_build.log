@@ -1,0 +1,58 @@
+# command:  R CMD build foo/
+# started:  2026-08-14 12:38:38
+# workdir:  /Users/smitht61/Security/packages/execution_surface/build
+# library:  /Users/smitht61/Security/packages/execution_surface/lib
+# log:      /Users/smitht61/Security/packages/execution_surface/logs/w_build.log
+# pdflatex: /Users/smitht61/Library/TinyTeX/bin/universal-darwin/pdflatex
+12:38:38	makevars	2363
+12:38:38	cleanup	2367
+12:38:38.798	rprofile	2373
+12:38:38.800	rprofile_fn_called	2373
+12:38:39	configure	3117
+12:38:39	makevars	3120
+12:38:39	makevars	3130
+12:38:39.989	install_libs	2373
+12:38:39.989	install_libs_fn_called	2373
+12:38:39.993	data_R	2373
+12:38:39.994	data_fn_called	2373
+12:38:39.994	data_R	2373
+12:38:39.994	data_fn_called	2373
+12:38:40.044	rprofile	3139
+12:38:40.044	rprofile_fn_called	3139
+12:38:40.110	top_level	3139
+12:38:40.110	r_fn_called	3139
+12:38:40.110	r_unix	3139
+12:38:40.111	r_unix_fn_called	3139
+2026-08-14 12:38:40	rd_sexpr_build	2373
+2026-08-14 12:38:40	rd_sexpr_build_fn_called	2373
+2026-08-14 12:38:40	rd_sexpr_install	2373
+2026-08-14 12:38:40	rd_sexpr_install_fn_called	2373
+2026-08-14 12:38:40	rd_sexpr_nostage	2373
+2026-08-14 12:38:40	rd_unix_sexpr_nostage	2373
+12:38:40.200	rprofile	3147
+12:38:40.201	rprofile_fn_called	3147
+12:38:40.320	rprofile	3155
+12:38:40.321	rprofile_fn_called	3155
+12:38:40.381	onLoad	3155
+12:38:40.382	onAttach	3155
+12:38:40.549	rprofile	3188
+12:38:40.550	rprofile_fn_called	3188
+12:38:40.614	onLoad	3188
+12:38:40.615	onAttach	3188
+2026-08-14 12:38:40	rd_sexpr_build	2352
+2026-08-14 12:38:40	rd_sexpr_build_fn_called	2352
+2026-08-14 12:38:40	rd_sexpr_install	2352
+2026-08-14 12:38:40	rd_sexpr_install_fn_called	2352
+2026-08-14 12:38:40	rd_sexpr_nostage	2352
+2026-08-14 12:38:40	rd_sexpr_render	2352
+2026-08-14 12:38:40	rd_sexpr_render_fn_called	2352
+2026-08-14 12:38:40	rd_unix_sexpr_nostage	2352
+2026-08-14 12:38:40	rd_windows_sexpr_nostage	2352
+12:38:40.785	vignette	3197
+12:38:40.788	vignette_fn_called	3197
+12:38:41	makevars	3495
+12:38:41	cleanup	3499
+12:38:41.605	data_R	2352
+12:38:41.605	data_fn_called	2352
+# exit:     0
+# finished: 2026-08-14 12:38:41

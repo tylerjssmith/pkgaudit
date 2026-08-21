@@ -20,7 +20,7 @@ Set \code{FALSE} to omit the line.
 
 \item{phase}{Character vector of lifecycle phases to report, e.g.
 \code{"at_load"}, or \code{"none"} for occurrences that execute in no phase.
-\code{NULL} (default) reports every phase. An unrecognised name is an error.}
+\code{NULL} (default) reports every phase. An unrecognized name is an error.}
 
 \item{...}{Ignored, for S3 compatibility.}
 

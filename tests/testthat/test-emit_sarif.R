@@ -1,6 +1,6 @@
 # emit_sarif() renders a scan for any SARIF consumer. The document is a
 # contract, so most of these tests are about the parts a consumer relies on:
-# stable ids, stable fingerprints, and a level that means what it says.
+# stable ids, stable fingerprints, and a level that never ranks.
 
 rules <- load_rules()
 
@@ -46,34 +46,26 @@ test_that("rule ids are namespaced by the kind of rule", {
   expect_true("match/curl"   %in% ids)
 })
 
-test_that("level says whether the code runs on its own, not how bad it is", {
+test_that("every result is a note, whatever its phases", {
+  # pkgaudit does not rank findings, so no severity is mapped onto level. The
+  # fixture covers the cases that could tempt a ranking: a hook pattern whose
+  # code runs at load, a pattern that runs at no phase, a match, and a file
+  # context that runs at build, check and install.
   pkg <- sarif_pkg()
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
   results <- sarif_of(audit_package(pkg, rules))$runs[[1L]]$results
 
-  by_level <- vapply(results, function(r) {
-    paste(r$ruleId, r$level, length(r$properties$phases) > 0L)
-  }, character(1L))
+  ids <- vapply(results, function(r) r$ruleId, character(1L))
+  expect_true(any(startsWith(ids, "pattern/")))
+  expect_true(any(startsWith(ids, "match/")))
+  expect_true(any(startsWith(ids, "file/")))
 
-  # The hook's system() runs at load; the source() in an ordinary function runs
-  # only if something calls it.
-  expect_true(any(grepl("^pattern/system warning TRUE$", by_level)))
-  expect_true(any(grepl("^pattern/source note FALSE$", by_level)))
-})
+  phased <- vapply(results, function(r) length(r$properties$phases) > 0L,
+                   logical(1L))
+  expect_true(any(phased) && !all(phased))
 
-test_that("a file context is a note however many phases it runs in", {
-  # It is not a claim about code -- it says a file exists and will execute --
-  # and most packages that build native code have one, so alerting on its
-  # presence is inventory. The note still means pkgaudit could only grep it.
-  pkg <- sarif_pkg()
-  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
-  results <- sarif_of(audit_package(pkg, rules))$runs[[1L]]$results
-
-  fc <- Filter(function(r) startsWith(r$ruleId, "file/"), results)
-  expect_gt(length(fc), 0L)
-  expect_true(all(vapply(fc, function(r) r$level, character(1L)) == "note"))
-  # ... even though configure runs at build, check and install.
-  expect_gt(length(fc[[1L]]$properties$phases), 0L)
+  expect_true(all(vapply(results, function(r) r$level, character(1L)) ==
+                    "note"))
 })
 
 test_that("a fingerprint survives a line-number shift", {

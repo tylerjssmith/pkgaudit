@@ -15,7 +15,7 @@ new_segment(
 )
 }
 \arguments{
-\item{language}{The language of the code, which selects the analyser.}
+\item{language}{The language of the code, which selects the analyzer.}
 
 \item{lines}{Character vector of the segment's lines, blank-padded to the
 line numbers they occupy in the file so a finding's line is the real one.}

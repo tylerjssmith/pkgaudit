@@ -120,10 +120,10 @@ survey_structure <- function(path,
       if (!nzchar(name))              n_empty <- n_empty + 1L
       if (length(parts) > 0L) toplevel <- c(toplevel, parts[1L])
 
-      if      (tf == 50L) n_sym  <- n_sym  + 1L          # '2' symlink
-      else if (tf == 49L) n_hard <- n_hard + 1L          # '1' hard link
+      if      (tf == 50L) n_sym  <- n_sym  + 1L                   # '2' symlink
+      else if (tf == 49L) n_hard <- n_hard + 1L                   # '1' hard link
       else if (!tf %in% c(48L, 0L, 53L)) n_other <- n_other + 1L  # not '0',NUL,'5'
-      if (tf == 0L) n_nul <- n_nul + 1L                  # legacy NUL regular file
+      if (tf == 0L) n_nul <- n_nul + 1L                           # legacy NUL regular file
 
       skip <- ceiling(size / 512) * 512
       while (skip > 0) {

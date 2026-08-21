@@ -257,14 +257,13 @@ substr(sarif, 1, 200)
 Written to a file and opened in an editor with a SARIF viewer, each finding
 appears on the line it was found. Rule identifiers are namespaced by the kind of
 rule -- `pattern/curl`, `match/curl` -- because a rule name is unique only
-within its kind. `level` is `warning` for a pattern or match whose code executes
-during at least one lifecycle phase and `note` for everything else. That is a
-mapping of pkgaudit's phase model onto SARIF's severity field, not a severity
-ranking, which pkgaudit does not make.
+within its kind. `level` is `note` for every result: pkgaudit does not rank
+findings, so nothing is mapped onto SARIF's severity field, and when a finding's
+code executes is carried in the result's `properties.phases`.
 
 `export_unscanned()` writes the code pkgaudit cannot read into a directory a
 scanner such as Semgrep can be pointed at. A whole file is copied verbatim; a
-vignette chunk in a language with no analyser is written into a file of its own,
+vignette chunk in a language with no analyzer is written into a file of its own,
 blank-padded so that its code sits at the same line numbers it occupies in the
 source. A finding another tool reports at line 40 of `intro.python.py` is
 therefore at line 40 of `intro.Rmd`.
@@ -297,7 +296,7 @@ print(audit_tarball(tarball), path = FALSE)
 The result is a `pkgaudit` object like any other, so everything above applies to
 it unchanged.
 
-## Rule Database Integrity
+## Rule database integrity
 
 The rules live in a versioned SQLite database shipped with the package.
 `load_rules()` reads it; `rules_version()` reports the version.

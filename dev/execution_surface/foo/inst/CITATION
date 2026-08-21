@@ -1,0 +1,27 @@
+# Instrumented probe sites: inst/CITATION, which utils::readCitationFile()
+# evaluates as R code when citation() is called.
+
+.foo_mark_citation <- function(site) {
+  p <- Sys.getenv("FOO_LOG")
+  if (nzchar(p)) {
+    cat(sprintf("%s\t%s\t%d\n", format(Sys.time(), "%H:%M:%OS3"),
+                site, Sys.getpid()),
+        file = p, append = TRUE)
+  }
+  invisible(NULL)
+}
+
+.foo_mark_citation("citation")
+
+citation_fn_called <- function() .foo_mark_citation("citation_fn_called")
+citation_fn_called()
+
+citation_fn_uncalled <- function() .foo_mark_citation("citation_fn_uncalled")
+
+bibentry(
+  bibtype = "Manual",
+  title   = "foo: Instrumented Probe Package",
+  author  = person("Tyler", "Smith"),
+  year    = "2026",
+  note    = "Probe package for mapping the execution surface"
+)

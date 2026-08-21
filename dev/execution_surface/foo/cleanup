@@ -1,0 +1,19 @@
+#!/bin/sh
+#
+# Instrumented probe site: cleanup.
+#
+# Appends one marker line to the log named by FOO_LOG, in the same
+# <time>\t<site>\t<pid> form the R sites in R/foo.R use, and records nothing
+# when FOO_LOG is unset so the package stays inert outside the harness.
+#
+# Seconds precision here rather than the milliseconds the R sites record: BSD
+# date has no %N, and cleanup runs once at a coarse point regardless.
+#
+# Must exit 0. A cleanup script that fails aborts the installation, which
+# would cost the markers from every site that runs after it.
+
+if [ -n "${FOO_LOG:-}" ]; then
+  printf '%s\t%s\t%s\n' "$(date '+%H:%M:%S')" "cleanup" "$$" >> "$FOO_LOG"
+fi
+
+exit 0

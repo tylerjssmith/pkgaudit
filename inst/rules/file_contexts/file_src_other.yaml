@@ -4,7 +4,7 @@ type: other
 message: >-
   A file under src/. Everything there is part of what gets built, so this rule
   claims every extension -- alongside any other rule that matches -- and a file
-  no language rule recognises is accounted for rather than passed over.
+  no language rule recognizes is accounted for rather than passed over.
 at_autoconf: FALSE
 at_build: FALSE
 at_check: TRUE

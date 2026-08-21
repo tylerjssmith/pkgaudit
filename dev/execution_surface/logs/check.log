@@ -1,0 +1,98 @@
+# command:  R CMD check --no-manual foo_0.1.0.tar.gz
+# started:  2026-08-21 15:06:03
+# workdir:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/build
+# library:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/lib
+# log:      /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/logs/check.log
+# pdflatex: /Users/smitht61/Library/TinyTeX/bin/universal-darwin/pdflatex
+15:06:08	configure	62549
+15:06:08	makevars	62552
+15:06:08	makevars	62562
+15:06:08	makevars	62571
+15:06:08.889	install_libs	61807
+15:06:08.889	install_libs_fn_called	61807
+15:06:09.008	top_level	62587
+15:06:09.009	r_fn_called	62587
+15:06:09.009	r_unix	62587
+15:06:09.010	r_unix_fn_called	62587
+2026-08-21 15:06:09	rd_sexpr_install	61807
+2026-08-21 15:06:09	rd_sexpr_install_fn_called	61807
+2026-08-21 15:06:09	rd_sexpr_nostage	61807
+2026-08-21 15:06:09	rd_unix_sexpr_nostage	61807
+15:06:09.259	onLoad	62603
+15:06:09.261	onAttach	62603
+15:06:09.464	onLoad	62636
+15:06:09.465	onAttach	62636
+15:06:09.784	citation	62670
+15:06:09.785	citation_fn_called	62670
+15:06:09.951	onLoad	62684
+15:06:09.952	onAttach	62684
+15:06:09.985	onLoad	62692
+15:06:09.986	onAttach	62692
+15:06:10.018	onLoad	62695
+15:06:10.019	onAttach	62695
+15:06:10.020	onDetach	62695
+15:06:10.054	onLoad	62698
+15:06:10.150	onLoad	62701
+15:06:10.151	onUnload	62701
+15:06:10.250	onLoad	62709
+15:06:10.251	onAttach	62709
+15:06:10.358	onLoad	62717
+15:06:10.456	onLoad	62725
+15:06:10.457	onAttach	62725
+15:06:10.495	onLoad	62733
+15:06:10.582	onLoad	62741
+15:06:10.691	onLoad	62749
+15:06:10.767	onLoad	62757
+15:06:11.113	onLoad	62787
+15:06:11.277	onLoad	62795
+2026-08-21 15:06:11	rd_sexpr_build	62803
+2026-08-21 15:06:11	rd_sexpr_build_fn_called	62803
+2026-08-21 15:06:11	rd_sexpr_install	62803
+2026-08-21 15:06:11	rd_sexpr_install_fn_called	62803
+2026-08-21 15:06:11	rd_sexpr_nostage	62803
+2026-08-21 15:06:11	rd_sexpr_render	62803
+2026-08-21 15:06:11	rd_sexpr_render_fn_called	62803
+2026-08-21 15:06:11	rd_unix_sexpr_nostage	62803
+2026-08-21 15:06:11	rd_windows_sexpr_nostage	62803
+15:06:11.605	onLoad	62822
+15:06:11.606	onAttach	62822
+15:06:11.680	onLoad	62830
+15:06:11.681	onAttach	62830
+15:06:11.758	onLoad	62838
+15:06:11.759	onAttach	62838
+15:06:11.829	onLoad	62846
+15:06:11.833	onAttach	62846
+15:06:11.974	onLoad	62862
+2026-08-21 15:06:12	rd_sexpr_render	62878
+2026-08-21 15:06:12	rd_sexpr_render_fn_called	62878
+15:06:12	makevars	62905
+2026-08-21 15:06:12	rd_sexpr_render	62946
+2026-08-21 15:06:12	rd_sexpr_render_fn_called	62946
+15:06:12.861	onLoad	62954
+15:06:12.862	onAttach	62954
+2026-08-21 15:06:12	rd_examples	62954
+2026-08-21 15:06:12	rd_examples_fn_called	62954
+2026-08-21 15:06:12	rd_unix_examples	62954
+2026-08-21 15:06:12	rd_unwrapped	62954
+2026-08-21 15:06:12	rd_dontshow	62954
+2026-08-21 15:06:12	rd_testonly	62954
+15:06:13.141	tests_R	62979
+15:06:13.150	tests_fn_called	62979
+15:06:13.264	runit_test	62995
+15:06:13.265	runit_fn_called	62995
+15:06:13.266	runit_fn_framework_called	62995
+15:06:13.451	onLoad	63011
+15:06:13.452	onAttach	63011
+15:06:13.472	testthat_helper	63011
+15:06:13.472	testthat_helper_fn_called	63011
+15:06:13.480	testthat_test	63011
+15:06:13.480	testthat_fn_called	63011
+15:06:13.480	testthat_in_test_that	63011
+15:06:13.628	onLoad	63027
+15:06:13.630	onAttach	63027
+15:06:13.648	tinytest_test	63027
+15:06:13.649	tinytest_fn_called	63027
+15:06:13.914	vignette	63053
+15:06:13.917	vignette_fn_called	63053
+# exit:     0
+# finished: 2026-08-21 15:06:14

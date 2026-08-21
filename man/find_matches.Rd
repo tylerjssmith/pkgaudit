@@ -40,7 +40,7 @@ scan moves on.
 Matching text is less precise than matching a parse tree: a match has no
 syntax behind it, so one inside a comment, a quoted string, or a branch that
 never runs is reported the same as a live command. Findings are candidates for
-review, not confirmed behaviour.
+review, not confirmed behavior.
 
 Reading the file, and the limits protecting against hostile input, are
 \code{\link[=read_code]{read_code()}}'s responsibility.

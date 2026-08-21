@@ -1,6 +1,6 @@
 # The two extension points of the scan, dispatching on two axes. A source's
 # class -- the rule's `type` -- selects how a file is read; a segment's class --
-# the language of the code that came out -- selects how it is analysed. One file
+# the language of the code that came out -- selects how it is analyzed. One file
 # can yield segments in more than one language, so neither class serves for both.
 #
 # A new variety of file needs a script of methods and a file-context rule.
@@ -39,7 +39,7 @@ new_source <- function(path, file_context, type, macros = NULL,
 #' language so [analyze_segment()] can dispatch on it. An [extract_segments()]
 #' method returns these.
 #'
-#' @param language The language of the code, which selects the analyser.
+#' @param language The language of the code, which selects the analyzer.
 #' @param lines Character vector of the segment's lines, blank-padded to the
 #'   line numbers they occupy in the file so a finding's line is the real one.
 #' @param file_context Package-root-relative path of the file it came from.
@@ -126,7 +126,7 @@ extract_segments <- function(source) {
 }
 
 # A type with no reader yields no segment: how "other" is reported but never
-# read, and how an unrecognised type fails closed.
+# read, and how an unrecognized type fails closed.
 #' @export
 extract_segments.default <- function(source) {
   list(segments = list(), errors = .empty_errors())
@@ -150,7 +150,7 @@ extract_segments.default <- function(source) {
 #'
 #' @section Method contract:
 #' A method must build its return value with [new_findings()], which holds every
-#' analyser to the same frame shape. `UseMethod()` ends the generic, so this
+#' analyzer to the same frame shape. `UseMethod()` ends the generic, so this
 #' cannot be enforced after dispatch.
 #'
 #' A method must not evaluate the code it is given. It reads untrusted text and
@@ -160,7 +160,7 @@ extract_segments.default <- function(source) {
 #'   and `vignette("internals")`.
 #' @examples
 #' # Adding a language outside pkgaudit: a method for segments the extractor
-#' # labelled "python", reporting each line that calls eval().
+#' # labeled "python", reporting each line that calls eval().
 #' analyze_segment.python <- function(segment, rules) {
 #'   at <- grep("\\beval\\(", segment$lines)
 #'   if (length(at) == 0L) return(new_findings())
@@ -174,7 +174,7 @@ extract_segments.default <- function(source) {
 #' @export
 analyze_segment <- function(segment, rules) UseMethod("analyze_segment")
 
-# A language with no analyser yields no findings and no error -- but it does
+# A language with no analyzer yields no findings and no error -- but it does
 # yield a coverage row, so a {python} chunk in a vignette is accounted for
 # rather than silently absent. An unhandled engine is a segment nothing
 # matches, not a forgotten branch.
@@ -184,7 +184,7 @@ analyze_segment.default <- function(segment, rules) {
 }
 
 
-# The coverage row for a segment no analyser read: the span it occupies in its
+# The coverage row for a segment no analyzer read: the span it occupies in its
 # source file, in the language it is written in.
 #
 # Segments are blank-padded to the length of the file they came from, so the
@@ -197,7 +197,7 @@ analyze_segment.default <- function(segment, rules) {
     file_context = segment$file_context,
     language     = class(segment)[[1L]],
     status       = "exportable",
-    reason       = "no_analyser",
+    reason       = "no_analyzer",
     first_line   = min(at),
     last_line    = max(at),
     lines        = length(at),
@@ -224,7 +224,7 @@ analyze_segment.default <- function(segment, rules) {
 #'
 #' @seealso [analyze_segment()], whose methods return this.
 #' @examples
-#' # An analyser that found nothing still returns all four frames.
+#' # An analyzer that found nothing still returns all four frames.
 #' str(new_findings(), max.level = 1)
 #' @export
 new_findings <- function(patterns = NULL, matches = NULL, coverage = NULL,

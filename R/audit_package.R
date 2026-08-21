@@ -32,7 +32,7 @@
 #'     \item{coverage}{`file_context`, `language`, `status`, `reason`,
 #'       `first_line`, `last_line`, `lines`, `bytes`, `rule`. One row per file
 #'       the package carries that is, or could be, code, plus one per span of
-#'       an unanalysed language inside a literate file -- a `python` chunk in a
+#'       an unanalyzed language inside a literate file -- a `python` chunk in a
 #'       vignette is its own row.}
 #'     \item{errors}{`step`, `file_context`, `rule`, `message`. Recoverable
 #'       failures, collected rather than aborting the scan.}
@@ -60,7 +60,7 @@
 #' to read the first and could not read the second.
 #'
 #' `reason` is `NA` where nothing stood in the way, and otherwise one of:
-#' `no_analyser` (pkgaudit does not read that language), `no_extractor` (a rule
+#' `no_analyzer` (pkgaudit does not read that language), `no_extractor` (a rule
 #' claimed the file but nothing reads that kind of file, as for `DESCRIPTION`),
 #' `no_rule` (no rule looks where it sits), `serialized`, `binary`, `symlink`,
 #' `too_large` (over the 10 MB scanning limit), `unreadable`, or `unparseable`.

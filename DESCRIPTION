@@ -2,7 +2,8 @@ Package: pkgaudit
 Title: Static Analysis Security Testing (SAST) for R Packages
 Version: 0.4.0
 Authors@R:
-    person("Tyler", "Smith", , "tylerjssmith@gmail.com", role = c("aut", "cre"))
+    person("Tyler", "Smith", , "tylerjssmith@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0003-4692-2206"))
 Description: A static analysis tool that flags security-relevant files and code
   in R source packages for human review without executing anything it scans.
   Models package lifecycle execution semantics -- it reports not just what a
@@ -17,7 +18,10 @@ URL: https://github.com/tylerjssmith/pkgaudit,
     https://tylerjssmith.github.io/pkgaudit/
 BugReports: https://github.com/tylerjssmith/pkgaudit/issues
 Encoding: UTF-8
+Language: en-US
 Roxygen: list(markdown = TRUE)
+Depends:
+    R (>= 4.1)
 Imports:
     DBI,
     digest,
@@ -28,6 +32,7 @@ Imports:
     xml2,
     xmlparsedata
 Suggests:
+    covr,
     jsonlite,
     knitr,
     rmarkdown,
@@ -36,3 +41,5 @@ Suggests:
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.1.0
+Config/Needs/website: pkgdown
+Config/Needs/coverage: covr

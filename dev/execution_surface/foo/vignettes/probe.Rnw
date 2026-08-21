@@ -1,0 +1,19 @@
+\documentclass{article}
+%\VignetteIndexEntry{Probe}
+\begin{document}
+<<mark>>=
+.foo_mark_vignette <- function(site) {
+  p <- Sys.getenv("FOO_LOG")
+  if (nzchar(p)) cat(sprintf("%s\t%s\t%d\n", format(Sys.time(), "%H:%M:%OS3"),
+                             site, Sys.getpid()), file = p, append = TRUE)
+  invisible(NULL)
+}
+
+.foo_mark_vignette("vignette")
+
+vignette_fn_called <- function() .foo_mark_vignette("vignette_fn_called")
+vignette_fn_called()
+
+vignette_fn_uncalled <- function() .foo_mark_vignette("vignette_fn_uncalled")
+@
+\end{document}

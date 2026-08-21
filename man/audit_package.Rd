@@ -39,7 +39,7 @@ so the three columns \code{patterns} derives from one -- \code{code_context},
 \item{coverage}{\code{file_context}, \code{language}, \code{status}, \code{reason},
 \code{first_line}, \code{last_line}, \code{lines}, \code{bytes}, \code{rule}. One row per file
 the package carries that is, or could be, code, plus one per span of
-an unanalysed language inside a literate file -- a \code{python} chunk in a
+an unanalyzed language inside a literate file -- a \code{python} chunk in a
 vignette is its own row.}
 \item{errors}{\code{step}, \code{file_context}, \code{rule}, \code{message}. Recoverable
 failures, collected rather than aborting the scan.}
@@ -72,7 +72,7 @@ the way. \code{unexamined} and \code{error} are different claims: pkgaudit never
 to read the first and could not read the second.
 
 \code{reason} is \code{NA} where nothing stood in the way, and otherwise one of:
-\code{no_analyser} (pkgaudit does not read that language), \code{no_extractor} (a rule
+\code{no_analyzer} (pkgaudit does not read that language), \code{no_extractor} (a rule
 claimed the file but nothing reads that kind of file, as for \code{DESCRIPTION}),
 \code{no_rule} (no rule looks where it sits), \code{serialized}, \code{binary}, \code{symlink},
 \code{too_large} (over the 10 MB scanning limit), \code{unreadable}, or \code{unparseable}.

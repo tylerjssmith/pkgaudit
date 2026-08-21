@@ -1,0 +1,11 @@
+# command:  Rscript -e 'library(foo); detach(package:foo)'
+# started:  2026-08-21 15:06:51
+# workdir:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/build
+# library:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/lib
+# log:      /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/logs/detach.log
+# pdflatex: /Users/smitht61/Library/TinyTeX/bin/universal-darwin/pdflatex
+15:06:51.853	onLoad	66050
+15:06:51.855	onAttach	66050
+15:06:51.855	onDetach	66050
+# exit:     0
+# finished: 2026-08-21 15:06:51
