@@ -14,45 +14,26 @@ description fails the build rather than appearing unexplained.
 
 ## Patterns
 
-Patterns are security-relevant function calls. Each pattern finding is
-attributed to the code context it executes in, so a
-[`system()`](https://rdrr.io/r/base/system.html) call inside `.onLoad`
-is distinguished from one inside an ordinary function (`in_function`) or
-at top level (`top_level`). Qualified (`pkg::fn()`) and unqualified
-(`fn()`) call forms are both detected. Pattern rules carry [MITRE
-ATT&CK](https://attack.mitre.org/) technique labels.
+Patterns are security-relevant function calls, such as
+[`system()`](https://rdrr.io/r/base/system.html). Pattern rules also
+flag calls made through a function’s name – `do.call("system", ...)`,
+`match.fun("system")`, and `getFunction("system")`.
 
-A finding also records how the code is *reached*. `guarded` is `TRUE`
-for code that ships but the lifecycle does not run – a `\dontrun{}`
-block, or a vignette chunk suppressed by `eval=FALSE` or
-`#| eval: false`; its phases still come from its context, so they read
-as an upper bound. A `\donttest{}` block is not guarded: a plain
-`R CMD check` skips it, but `--as-cran` runs it. `indirect` is `TRUE`
-where the call was made through the function’s name rather than the
-function.
+Each pattern finding is attributed to the code context it executes in,
+so a [`system()`](https://rdrr.io/r/base/system.html) call inside
+`.onLoad` is distinguished from one inside an ordinary function
+(`in_function`) or at top level (`top_level`). Qualified (`pkg::fn()`)
+and unqualified (`fn()`) call forms are both detected. Pattern rules
+carry [MITRE ATT&CK](https://attack.mitre.org/) technique labels.
 
-A pattern rule declares no phases of its own. A pattern takes them from
-the file context it was found in and the code context it sits in,
-resolved as [Lifecycle Phases](#lifecycle-phases) describes.
-
-A call made through a function’s name rather than the function –
-`do.call("system", ...)`,
-[`match.fun()`](https://rdrr.io/r/base/match.fun.html), `getFunction()`
-– is reported under the rule that owns the name, with the `indirect`
-column set. Each rule declares the names it claims, and a name is only
-accepted if calling it bare would have matched that same rule, so an
-indirect finding can never be attributed to a rule that would not have
-reported the direct call.
-
-5 rules claim no names – `credentials`, `eval_parse`, `options_repos`,
-`persistence`, and `system_processx` – for two different reasons.
-`eval_parse`, `options_repos` and `system_processx` match on more than
-the callee: a nested call, a named argument, a package qualifier, none
-of which survives the trip through
-[`do.call()`](https://rdrr.io/r/base/do.call.html). `credentials` and
-`persistence` match string constants rather than calls, so there is no
-callee to claim in the first place. A name assembled at runtime is not
-resolved either, since pkgaudit evaluates nothing.
+All pattern findings are included in the `$patterns` data frame of a
+pkgaudit object. This data frame includes an `indirect` column,
+indicating when a function is called by its name (e.g.,
+[`do.call()`](https://rdrr.io/r/base/do.call.html)). It also includes a
+`guarded` column indicating code the lifecycle does not run – for
+example, a `\dontrun{}` block, or a vignette chunk suppressed by
+`eval=FALSE` or `#| eval: false`. Note: A `\donttest{}` block is not
+guarded: a plain `R CMD check` skips it, but `--as-cran` runs it.
 
 | Rule | Pattern | Description |
 |----|----|----|
@@ -83,21 +64,15 @@ resolved either, since pkgaudit evaluates nothing.
 ## Matches
 
 Matches are regular-expression matches in the shell scripts and
-Make-like files among the [file contexts](#file-contexts) below – those
-whose Type is `shell` or `make`. A file context typed `R` is parsed and
-scanned for patterns instead, and no other file in the package is
-scanned for matches at all. Match rules carry [MITRE
-ATT&CK](https://attack.mitre.org/) technique labels.
+Make-like files among the [file contexts](#file-contexts) below. Regular
+expressions are matched with `gregexpr(perl = TRUE)` and are
+case-sensitive.
 
-Like a pattern rule, a match rule declares no phases of its own. Where a
-file matches more than one file-context rule, it takes the phases of
-every rule that matched it.
-
-Matching text is less precise than matching a parse tree. A match has no
-syntax behind it, so a match inside a comment, a quoted string, or a
-branch that never runs is reported the same as one in a live command. A
-match is a candidate for review rather than confirmed behaviour, and
-warrants reading the file itself more than a pattern finding does.
+Note: Matching text is less precise than matching a parse tree. A match
+has no syntax behind it, so a match inside a comment, a quoted string,
+or a branch that never runs is reported the same as one in a live
+command. A match is a candidate for review rather than confirmed
+behavior.
 
 | Rule | Description |
 |----|----|
@@ -113,22 +88,9 @@ warrants reading the file itself more than a pattern finding does.
 | [transfer](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/matches/match_transfer.yaml) | A file-transfer command moves a file between the build machine and a remote host. Unlike an HTTP fetch it often carries credentials of its own, and it runs in whichever direction the script asks for, so it is a way to send data out as well as to bring code in. |
 | [wget](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/matches/match_wget.yaml) | wget fetches a remote resource or sends data to a remote host. In a shell script or Make-like file it runs when the package is built, checked, or installed, and may be used to fetch a remote payload or to exfiltrate credentials or other data. |
 
-The regular expressions themselves are matched with `perl = TRUE` and
-are case-sensitive:
+## Phases and Contexts
 
-    chmod        (?<=^|[^[:alnum:]_-])(chmod(?=[^[:alnum:]_./-]|$)[^|;&\n]{0,40}?([+][rwXst]*[xs]|[246][0-7]{3}|777)|umask(?=[^[:alnum:]_./-]|$)[[:space:]]+(-S[[:space:]]+)?(0+(?![0-7])|a=rwx|u=rwx,g=rwx,o=rwx))
-    credentials  (\.ssh/|\.aws/|\.netrc|\.pgpass|\.docker/config\.json|\.config/gcloud|\.kube/config|id_rsa|id_dsa|id_ecdsa|id_ed25519|\.gnupg/|credentials\.json)|[A-Z][A-Z0-9_]*(TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|PRIVATE_KEY)
-    curl         (?<=^|[^[:alnum:]_-])curl(?=(\.exe)?([^[:alnum:]_./-]|$))
-    decoding     (?<=^|[^[:alnum:]_-])(base64[^|;&\n]{0,40}(--decode|-[dD])|openssl[[:space:]]+enc[^|;&\n]{0,60}-d|xxd[^|;&\n]{0,20}-r|uudecode)
-    install      (?<=^|[^[:alnum:]_-])(pip[23]?|npm|yarn|apt-get|apt|yum|dnf|apk|brew|conda|gem|cargo|go)[[:space:]]+(install|add|get)(?=[^[:alnum:]_./-]|$)
-    interpreter  (?<=^|[^[:alnum:]_-])(python[23]?|perl|ruby|node|osascript|powershell|pwsh)(?=[^[:alnum:]_./-]|$)
-    persistence  (\.bashrc|\.bash_profile|\.bash_login|\.bash_logout|\.profile|\.zshrc|\.zprofile|\.zshenv|\.cshrc|\.Rprofile|\.Renviron|crontab|LaunchAgents|LaunchDaemons|/etc/cron|/etc/systemd|\.config/systemd|/etc/rc\.local)
-    rscript      (?<=^|[^[:alnum:]_-])Rscript(?=(\.exe)?([^[:alnum:]_./-]|$))
-    socket       (?<=^|[^[:alnum:]_-])(nc|ncat|netcat|socat|telnet)(?=[[:space:]])|/dev/(tcp|udp)/
-    transfer     (?<=^|[^[:alnum:]_-])(scp|sftp|ftp|rsync|svn)(?=[^[:alnum:]_./-]|$)|(?<=^|[^[:alnum:]_-])git[[:space:]]+clone(?=[^[:alnum:]_./-]|$)
-    wget         (?<=^|[^[:alnum:]_-])wget(?=(\.exe)?([^[:alnum:]_./-]|$))
-
-## Lifecycle Phases
+### Lifecycle Phases
 
 A phase is a property of two things: where a file sits in the package,
 and where the code sits within that file. Each finding carries one
@@ -153,13 +115,10 @@ and otherwise the code inherits the phases of the file context around
 it. So the same [`system()`](https://rdrr.io/r/base/system.html) call
 reads `at_check` under `tests/` and `at_build` under `data/`.
 
-Code inside a function definition inherits too, unless its file’s rule
-sets `assume_called: FALSE`, in which case it is reported as running at
-no phase. Only the rules for `R/` set it. Both readings are measured – a
-function called from top-level code runs whenever that code does, and
-one nothing calls runs nowhere – so a rule is choosing which measurement
-to report, and cannot state a third. Neither is a claim about any
-particular package’s call graph, which pkgaudit does not trace.
+A pattern inside a regular function definition will not execute unless
+the function is called. Most file context rules assume the function is
+called, so the pattern inherits phases; the rules for `R/` set
+`assume_called: FALSE`, and those findings report no phases.
 
 Every phase value below was established by running instrumented packages
 through `R CMD build`, `R CMD check` and `R CMD INSTALL` and recording
@@ -167,7 +126,7 @@ which sites fired, rather than read from documentation. A rule can
 belong to several phases, and a Phases column reads `none` for code that
 runs at no phase at all.
 
-## File Contexts
+### File Contexts
 
 File contexts are files that R executes at build-, check-, or
 install-time.
@@ -201,69 +160,63 @@ presence replaces R’s default handling of compiled artifacts, a
 structural change that follows from the file existing rather than from
 anything written in it.
 
-| Rule | File Context | Type | Report | Phases | Description |
-|----|----|----|----|----|----|
-| [R_scripts](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_R_scripts.yaml) | `R/*.[RrSsq]` | `R` | no | `at_build`, `at_check`, `at_install_src` | R source files in R are evaluated when the package is installed from source, when the lazy-load database is built. They are scanned for code contexts and patterns; the files themselves are not a finding, which is why this rule does not report. |
-| [R_scripts_unix](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_R_scripts_unix.yaml) | `R/unix/*.[RrSsq]` | `R` | no | `at_build`, `at_check`, `at_install_src` | R source files in R/unix are evaluated when the package is installed from source, when the lazy-load database is built. They are scanned for code contexts and patterns; the files themselves are not a finding, which is why this rule does not report. |
-| [R_scripts_windows](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_R_scripts_windows.yaml) | `R/windows/*.[RrSsq]` | `R` | no | `at_build`, `at_check`, `at_install_src` | R source files in R/windows are evaluated when the package is installed from source, when the lazy-load database is built. They are scanned for code contexts and patterns; the files themselves are not a finding, which is why this rule does not report. |
-| [cleanup](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_cleanup.yaml) | `cleanup` | `shell` | yes | `at_build` | cleanup is a shell script run on Unix-like systems at the end of R CMD build, and during installation from source only under R CMD INSTALL –clean or –preclean. It can execute arbitrary shell commands. |
-| [cleanup_ucrt](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_cleanup_ucrt.yaml) | `cleanup.ucrt` | `shell` | yes | `at_build` | cleanup.ucrt is a shell script run on the Windows UCRT toolchain at the end of R CMD build, and during installation from source only under R CMD INSTALL –clean or –preclean; it takes precedence over cleanup.win when present. It can execute arbitrary shell commands. |
-| [cleanup_win](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_cleanup_win.yaml) | `cleanup.win` | `shell` | yes | `at_build` | cleanup.win is a shell script run on Windows at the end of R CMD build, and during installation from source only under R CMD INSTALL –clean or –preclean. It can execute arbitrary shell commands. |
-| [configure](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure.yaml) | `configure` | `shell` | yes | `at_build`, `at_check`, `at_install_src` | configure is a shell script used for system-dependent configuration when a package is installed from source, including the installs performed by R CMD check and by R CMD build when a package has vignettes. It can execute arbitrary shell commands. |
-| [configure_ac](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure_ac.yaml) | `configure.ac` | `shell` | yes | `at_autoconf` | configure.ac is an Autoconf input file that does not itself execute; it is processed by Autoconf to generate the configure script, which executes shell commands when a package is installed from source. |
-| [configure_in](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure_in.yaml) | `configure.in` | `shell` | yes | `at_autoconf` | configure.in is a legacy-named Autoconf input file that does not itself execute; it is processed by Autoconf to generate the configure script, which executes shell commands when a package is installed from source. |
-| [configure_ucrt](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure_ucrt.yaml) | `configure.ucrt` | `shell` | yes | `at_build`, `at_check`, `at_install_src` | configure.ucrt is a shell script for system-dependent configuration on the Windows UCRT toolchain, executed when a package is installed from source, including the installs performed by R CMD check and by R CMD build when a package has vignettes; it takes precedence over configure.win when present. It can execute arbitrary shell commands. |
-| [configure_win](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure_win.yaml) | `configure.win` | `shell` | yes | `at_build`, `at_check`, `at_install_src` | configure.win is a shell script for system-dependent configuration on Windows, executed when a package is installed from source, including the installs performed by R CMD check and by R CMD build when a package has vignettes. It can execute arbitrary shell commands. |
-| [data_scripts](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_data_scripts.yaml) | `data/*.[RrSsq]` | `R` | no | `at_build`, `at_install_src` | A .R file under data/ is R code that runs when the package’s data is prepared. R CMD build evaluates it to produce the .rda it ships, and installation from a source directory evaluates it too, so it executes arbitrary R before the package is ever loaded. It does not survive into a source tarball: build replaces it with its own output. |
-| [data_serialized](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_data_serialized.yaml) | `data/*.(rda\|RData\|rdata\|rds)` | `other` | no | `at_check`, `at_install_src`, `at_load` | A serialized R object under data/. With LazyData it is deserialized at installation and restored when the namespace loads; R CMD check deserializes it either way. Deserializing an .rda or .rds can execute arbitrary code, and pkgaudit cannot inspect one, so it is recorded rather than passed over as inert data. |
-| [demo_scripts](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_demo_scripts.yaml) | `demo/*.[RrSsq]` | `R` | no | none | A demo runs when a user calls demo(), and R CMD check runs it under –run-demo. It ships in the installed package and runs with the user’s privileges when invoked. |
-| [description](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_description.yaml) | `DESCRIPTION` | `other` | no | none | DESCRIPTION is not inert. Its <Authors@R> field is R code. R CMD build, check and INSTALL refuse to evaluate anything outside person, as.person, c, list, paste and paste0, so they are not the exposure. Developer tooling pointed at an unpacked source tree is: desc evaluates the field with no allowlist, so reading the authors – or printing a desc object – runs whatever it holds. That is not a lifecycle phase, so this rule declares none. pkgaudit does not read the file, so the row records that it can execute and was not examined. |
-| [exec_other](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_exec_other.yaml) | `exec/*.(py\|pl\|rb\|bat\|ps1\|tcl\|lua)` | `other` | no | none | A script under exec/ in a language pkgaudit does not read ships in the installed package and is marked executable. A lifecycle command does not necessarily run it, but it executes with the user’s privileges when invoked. Only certain file extensions are covered by this rule. |
-| [exec_scripts_R](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_exec_scripts_R.yaml) | `exec/*.[RrSsq]` | `R` | no | none | R scripts under exec/ ship in the installed package and are marked executable. A lifecycle command does not necessarily run them, but they execute with the user’s privileges when invoked. |
-| [exec_scripts_shell](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_exec_scripts_shell.yaml) | `exec/*.(sh\|bash\|ksh\|zsh\|csh)` | `shell` | no | none | Shell scripts under exec/ ship in the installed package and are marked executable. A lifecycle command does not necessarily run them, but they execute arbitrary shell with the user’s privileges when invoked. Only sh-family extensions are covered by this rule. |
-| [inst_citation](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_citation.yaml) | `inst/CITATION` | `R` | no | `at_check` | inst/CITATION is R code that utils::readCitationFile() evaluates. R CMD check reads it, and so does any user who calls citation() on the installed package. |
-| [inst_tests](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_tests.yaml) | `inst/tests/*.[RrSsq]` | `R` | no | `at_check` | Older versions of testthat kept tests under inst/tests/, which R CMD check runs through a runner in tests/. Unlike tests/, inst/ is copied into the installed package, so this code also ships to the user. |
-| [inst_tinytest](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_tinytest.yaml) | `inst/tinytest/*.[RrSsq]` | `R` | no | `at_check` | tinytest keeps its tests under inst/tinytest/, which R CMD check runs through a runner in tests/. Unlike tests/, inst/ is copied into the installed package, so this code also ships to the user and can be run again after installation. |
-| [inst_unittests](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_unittests.yaml) | `inst/unitTests/*.[RrSsq]` | `R` | no | `at_check` | RUnit keeps its tests under inst/unitTests/, which R CMD check runs through a runner in tests/. Unlike tests/, inst/ is copied into the installed package, so this code also ships to the user. |
-| [inst_web](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_web.yaml) | `inst/*.(js\|mjs\|ts)` | `other` | no | none | JavaScript shipped under inst/ runs in a browser when a user renders the widget or app it belongs to, not at any package lifecycle phase. It is still code the package ships and pkgaudit does not read, so it is recorded and can be exported. |
-| [man_pages](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_man_pages.yaml) | `man/*.[Rr]d` | `Rd` | no | `at_build`, `at_check`, `at_install_src` | Help files in man carry R code in two places: , which R CMD check runs, and , which is evaluated when the help page is rendered during R CMD build and installation from source. They are scanned for patterns; the files themselves are not a finding, which is why this rule does not report. |
-| [man_pages_unix](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_man_pages_unix.yaml) | `man/unix/*.[Rr]d` | `Rd` | no | `at_build`, `at_check`, `at_install_src` | Help files in man/unix carry R code in two places: , which R CMD check runs, and , which is evaluated when the help page is rendered during R CMD build and installation from source. They are scanned for patterns; the files themselves are not a finding, which is why this rule does not report. |
-| [man_pages_windows](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_man_pages_windows.yaml) | `man/windows/*.[Rr]d` | `Rd` | no | `at_build`, `at_check`, `at_install_src` | Help files in man/windows carry R code in two places: , which R CMD check runs, and , which is evaluated when the help page is rendered during R CMD build and installation from source. They are scanned for patterns; the files themselves are not a finding, which is why this rule does not report. |
-| [r_sysdata](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_r_sysdata.yaml) | `R/sysdata.rda` | `other` | no | `at_check`, `at_install_src`, `at_load` | R/sysdata.rda holds a package’s internal objects and is restored into the namespace when the package loads. Deserializing it can execute arbitrary code, and pkgaudit cannot inspect it. |
-| [rprofile](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_rprofile.yaml) | `.Rprofile` | `R` | no | `at_build`, `at_install_src` | R evaluates a .Rprofile found in the working directory when it starts, so a .Rprofile at the package root runs before any package is loaded, earlier than any other R in the package. It does not survive into a source tarball: R CMD build excludes it, so a check of a built package never sees it. |
-| [src_compiled](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_compiled.yaml) | `src/*.(c\|cc\|cpp\|cxx\|C\|h\|hpp\|hxx\|ipp\|f\|f90\|f95\|f03\|f77\|for\|m\|mm\|rs\|java)` | `other` | no | `at_check`, `at_install_src`, `at_load` | Compiled source is built into a package’s shared object by R CMD INSTALL and loaded with the namespace. pkgaudit does not read it; the row exists so the file is accounted for, and export_unscanned() can hand it to a tool that does. The extensions are listed rather than left to the directory, so that compiled source shipped anywhere else – a header library under inst/include/, say – is accounted for too. |
-| [src_install_libs_R](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_install_libs_R.yaml) | `src/install.libs.R` | `R` | yes | `at_build`, `at_check`, `at_install_src` | src/install.libs.R is an R script used in some packages to install executable programs and other binaries during installation from source, including the installs performed by R CMD check and by R CMD build when a package has vignettes. It can run arbitrary R code. |
-| [src_makefile](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makefile.yaml) | `src/Makefile` | `make` | yes | `at_build`, `at_check`, `at_install_src` | src/Makefile is a makefile used to compile code in src/ when a package is installed from source, replacing R’s default make rules; the installs performed by R CMD check and by R CMD build also use it, and R CMD build runs its clean target. It is read by make and its recipes execute arbitrary shell commands. |
-| [src_makefile_ucrt](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makefile_ucrt.yaml) | `src/Makefile.ucrt` | `make` | yes | `at_build`, `at_check`, `at_install_src` | src/Makefile.ucrt is a makefile used to compile code in src/ on the Windows UCRT toolchain when a package is installed from source, replacing R’s default make rules; it takes precedence over Makefile.win when present, the installs performed by R CMD check and by R CMD build also use it, and R CMD build runs its clean target. It is read by make and its recipes execute arbitrary shell commands. |
-| [src_makefile_win](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makefile_win.yaml) | `src/Makefile.win` | `make` | yes | `at_build`, `at_check`, `at_install_src` | src/Makefile.win is a makefile used to compile code in src/ on Windows when a package is installed from source, replacing R’s default make rules; the installs performed by R CMD check and by R CMD build also use it, and R CMD build runs its clean target. It is read by make and its recipes execute arbitrary shell commands. |
-| [src_makevars](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars.yaml) | `src/Makevars` | `make` | yes | `at_build`, `at_check`, `at_install_src` | src/Makevars sets make variables used to compile code in src/ when a package is installed from source, including the installs performed by R CMD check and by R CMD build; R CMD build also reads it when cleaning src/. It is read by make and can execute shell via make constructs such as \$(shell …). |
-| [src_makevars_in](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars_in.yaml) | `src/Makevars.in` | `make` | yes | `at_build`, `at_check`, `at_install_src` | src/Makevars.in is a template that does not itself execute; it is processed by the configure script to generate src/Makevars, whose contents are then read by make to compile code in src/ when a package is installed from source, including the installs performed by R CMD check and by R CMD build. |
-| [src_makevars_ucrt](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars_ucrt.yaml) | `src/Makevars.ucrt` | `make` | yes | `at_build`, `at_check`, `at_install_src` | src/Makevars.ucrt sets make variables used to compile code in src/ on the Windows UCRT toolchain when a package is installed from source, including the installs performed by R CMD check and by R CMD build; it takes precedence over Makevars.win, and R CMD build also reads it when cleaning src/. It is read by make and can execute shell via make constructs such as \$(shell …). |
-| [src_makevars_win](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars_win.yaml) | `src/Makevars.win` | `make` | yes | `at_build`, `at_check`, `at_install_src` | src/Makevars.win sets make variables used to compile code in src/ on Windows when a package is installed from source, including the installs performed by R CMD check and by R CMD build; R CMD build also reads it when cleaning src/. It is read by make and can execute shell via make constructs such as \$(shell …). |
-| [src_other](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_other.yaml) | `src/*.` | `other` | no | `at_check`, `at_install_src`, `at_load` | A file under src/. Everything there is part of what gets built, so this rule claims every extension – alongside any other rule that matches – and a file no language rule recognises is accounted for rather than passed over. |
-| [tests_scripts](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_tests_scripts.yaml) | `tests/*.[RrSsq]` | `R` | no | `at_check` | R CMD check runs every .R file directly under tests/. This is the entry point of whatever testing framework the package uses, and it executes arbitrary R during checking. |
-| [tests_testthat](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_tests_testthat.yaml) | `tests/testthat/*.[RrSsq]` | `R` | no | `at_check` | testthat sources the files directly under tests/testthat/ when R CMD check runs the package’s tests. Subdirectories are not sourced – tests/testthat/ fixtures/ holds inert data – so only the top level is scanned. |
-| [tools_scripts](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_tools_scripts.yaml) | `tools/*.[RrSsq]` | `R` | no | none | tools/ holds helper scripts that nothing runs on its own. It is reached only if configure or a Makevars invokes it, in which case that invocation is reported where it appears and carries that file’s phases. The code is scanned here so a reviewer can read what would run. |
-| [vignettes_qmd](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_vignettes_qmd.yaml) | `vignettes/*.qmd` | `qmd` | no | `at_build`, `at_check` | A Quarto vignette carries executable chunks, in the same fenced syntax as R Markdown. Vignette code runs when the vignette is rendered: during R CMD build, and again under R CMD check, which rebuilds it. It executes arbitrary R with the package loaded, before anyone reads the rendered document. |
-| [vignettes_rmd](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_vignettes_rmd.yaml) | `vignettes/*.[Rr]md` | `Rmd` | no | `at_build`, `at_check` | An R Markdown vignette carries executable chunks. Vignette code runs when the vignette is rendered: during R CMD build, and again under R CMD check, which rebuilds it. It executes arbitrary R with the package loaded, before anyone reads the rendered document. |
-| [vignettes_rnw](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_vignettes_rnw.yaml) | `vignettes/*.[Rr]nw` | `Rnw` | no | `at_build`, `at_check` | A Sweave or knitr vignette carries executable chunks between \<\<\>\>= and @, and inline macros. Vignette code runs when the vignette is rendered: during R CMD build, and again under R CMD check, which rebuilds it. It executes arbitrary R with the package loaded, before anyone reads the rendered document. |
-| [vignettes_rsp](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_vignettes_rsp.yaml) | `vignettes/*.rsp` | `rsp` | no | `at_build`, `at_check` | An R.rsp vignette is a template: everything is output except the R between \<% and %\>. R.rsp builds it during R CMD build, and again under R CMD check, so the code executes with the package loaded before anyone reads the rendered document. |
+| Rule | Type | Report | Phases | Description |
+|----|----|----|----|----|
+| [R_scripts](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_R_scripts.yaml) | `R` | no | `at_build`, `at_check`, `at_install_src` | R source files in R are evaluated when the package is installed from source, when the lazy-load database is built. They are scanned for code contexts and patterns; the files themselves are not a finding, which is why this rule does not report. |
+| [R_scripts_unix](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_R_scripts_unix.yaml) | `R` | no | `at_build`, `at_check`, `at_install_src` | R source files in R/unix are evaluated when the package is installed from source, when the lazy-load database is built. They are scanned for code contexts and patterns; the files themselves are not a finding, which is why this rule does not report. |
+| [R_scripts_windows](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_R_scripts_windows.yaml) | `R` | no | `at_build`, `at_check`, `at_install_src` | R source files in R/windows are evaluated when the package is installed from source, when the lazy-load database is built. They are scanned for code contexts and patterns; the files themselves are not a finding, which is why this rule does not report. |
+| [cleanup](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_cleanup.yaml) | `shell` | yes | `at_build` | cleanup is a shell script run on Unix-like systems at the end of R CMD build, and during installation from source only under R CMD INSTALL –clean or –preclean. It can execute arbitrary shell commands. |
+| [cleanup_ucrt](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_cleanup_ucrt.yaml) | `shell` | yes | `at_build` | cleanup.ucrt is a shell script run on the Windows UCRT toolchain at the end of R CMD build, and during installation from source only under R CMD INSTALL –clean or –preclean; it takes precedence over cleanup.win when present. It can execute arbitrary shell commands. |
+| [cleanup_win](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_cleanup_win.yaml) | `shell` | yes | `at_build` | cleanup.win is a shell script run on Windows at the end of R CMD build, and during installation from source only under R CMD INSTALL –clean or –preclean. It can execute arbitrary shell commands. |
+| [configure](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure.yaml) | `shell` | yes | `at_build`, `at_check`, `at_install_src` | configure is a shell script used for system-dependent configuration when a package is installed from source, including the installs performed by R CMD check and by R CMD build when a package has vignettes. It can execute arbitrary shell commands. |
+| [configure_ac](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure_ac.yaml) | `shell` | yes | `at_autoconf` | configure.ac is an Autoconf input file that does not itself execute; it is processed by Autoconf to generate the configure script, which executes shell commands when a package is installed from source. |
+| [configure_in](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure_in.yaml) | `shell` | yes | `at_autoconf` | configure.in is a legacy-named Autoconf input file that does not itself execute; it is processed by Autoconf to generate the configure script, which executes shell commands when a package is installed from source. |
+| [configure_ucrt](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure_ucrt.yaml) | `shell` | yes | `at_build`, `at_check`, `at_install_src` | configure.ucrt is a shell script for system-dependent configuration on the Windows UCRT toolchain, executed when a package is installed from source, including the installs performed by R CMD check and by R CMD build when a package has vignettes; it takes precedence over configure.win when present. It can execute arbitrary shell commands. |
+| [configure_win](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure_win.yaml) | `shell` | yes | `at_build`, `at_check`, `at_install_src` | configure.win is a shell script for system-dependent configuration on Windows, executed when a package is installed from source, including the installs performed by R CMD check and by R CMD build when a package has vignettes. It can execute arbitrary shell commands. |
+| [data_scripts](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_data_scripts.yaml) | `R` | no | `at_build`, `at_install_src` | A .R file under data/ is R code that runs when the package’s data is prepared. R CMD build evaluates it to produce the .rda it ships, and installation from a source directory evaluates it too, so it executes arbitrary R before the package is ever loaded. It does not survive into a source tarball: build replaces it with its own output. |
+| [data_serialized](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_data_serialized.yaml) | `other` | no | `at_check`, `at_install_src`, `at_load` | A serialized R object under data/. With LazyData it is deserialized at installation and restored when the namespace loads; R CMD check deserializes it either way. Deserializing an .rda or .rds can execute arbitrary code, and pkgaudit cannot inspect one, so it is recorded rather than passed over as inert data. |
+| [demo_scripts](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_demo_scripts.yaml) | `R` | no | none | A demo runs when a user calls demo(), and R CMD check runs it under –run-demo. It ships in the installed package and runs with the user’s privileges when invoked. |
+| [description](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_description.yaml) | `other` | no | none | DESCRIPTION is not inert. Its <Authors@R> field is R code. R CMD build, check and INSTALL refuse to evaluate anything outside person, as.person, c, list, paste and paste0, so they are not the exposure. Developer tooling pointed at an unpacked source tree is: desc evaluates the field with no allowlist, so reading the authors – or printing a desc object – runs whatever it holds. That is not a lifecycle phase, so this rule declares none. pkgaudit does not read the file, so the row records that it can execute and was not examined. |
+| [exec_other](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_exec_other.yaml) | `other` | no | none | A script under exec/ in a language pkgaudit does not read ships in the installed package and is marked executable. A lifecycle command does not necessarily run it, but it executes with the user’s privileges when invoked. Only certain file extensions are covered by this rule. |
+| [exec_scripts_R](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_exec_scripts_R.yaml) | `R` | no | none | R scripts under exec/ ship in the installed package and are marked executable. A lifecycle command does not necessarily run them, but they execute with the user’s privileges when invoked. |
+| [exec_scripts_shell](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_exec_scripts_shell.yaml) | `shell` | no | none | Shell scripts under exec/ ship in the installed package and are marked executable. A lifecycle command does not necessarily run them, but they execute arbitrary shell with the user’s privileges when invoked. Only sh-family extensions are covered by this rule. |
+| [inst_citation](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_citation.yaml) | `R` | no | `at_check` | inst/CITATION is R code that utils::readCitationFile() evaluates. R CMD check reads it, and so does any user who calls citation() on the installed package. |
+| [inst_tests](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_tests.yaml) | `R` | no | `at_check` | Older versions of testthat kept tests under inst/tests/, which R CMD check runs through a runner in tests/. Unlike tests/, inst/ is copied into the installed package, so this code also ships to the user. |
+| [inst_tinytest](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_tinytest.yaml) | `R` | no | `at_check` | tinytest keeps its tests under inst/tinytest/, which R CMD check runs through a runner in tests/. Unlike tests/, inst/ is copied into the installed package, so this code also ships to the user and can be run again after installation. |
+| [inst_unittests](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_unittests.yaml) | `R` | no | `at_check` | RUnit keeps its tests under inst/unitTests/, which R CMD check runs through a runner in tests/. Unlike tests/, inst/ is copied into the installed package, so this code also ships to the user. |
+| [inst_web](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_web.yaml) | `other` | no | none | JavaScript shipped under inst/ runs in a browser when a user renders the widget or app it belongs to, not at any package lifecycle phase. It is still code the package ships and pkgaudit does not read, so it is recorded and can be exported. |
+| [man_pages](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_man_pages.yaml) | `Rd` | no | `at_build`, `at_check`, `at_install_src` | Help files in man carry R code in two places: , which R CMD check runs, and , which is evaluated when the help page is rendered during R CMD build and installation from source. They are scanned for patterns; the files themselves are not a finding, which is why this rule does not report. |
+| [man_pages_unix](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_man_pages_unix.yaml) | `Rd` | no | `at_build`, `at_check`, `at_install_src` | Help files in man/unix carry R code in two places: , which R CMD check runs, and , which is evaluated when the help page is rendered during R CMD build and installation from source. They are scanned for patterns; the files themselves are not a finding, which is why this rule does not report. |
+| [man_pages_windows](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_man_pages_windows.yaml) | `Rd` | no | `at_build`, `at_check`, `at_install_src` | Help files in man/windows carry R code in two places: , which R CMD check runs, and , which is evaluated when the help page is rendered during R CMD build and installation from source. They are scanned for patterns; the files themselves are not a finding, which is why this rule does not report. |
+| [r_sysdata](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_r_sysdata.yaml) | `other` | no | `at_check`, `at_install_src`, `at_load` | R/sysdata.rda holds a package’s internal objects and is restored into the namespace when the package loads. Deserializing it can execute arbitrary code, and pkgaudit cannot inspect it. |
+| [rprofile](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_rprofile.yaml) | `R` | no | `at_build`, `at_install_src` | R evaluates a .Rprofile found in the working directory when it starts, so a .Rprofile at the package root runs before any package is loaded, earlier than any other R in the package. It does not survive into a source tarball: R CMD build excludes it, so a check of a built package never sees it. |
+| [src_compiled](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_compiled.yaml) | `other` | no | `at_check`, `at_install_src`, `at_load` | Compiled source is built into a package’s shared object by R CMD INSTALL and loaded with the namespace. pkgaudit does not read it; the row exists so the file is accounted for, and export_unscanned() can hand it to a tool that does. The extensions are listed rather than left to the directory, so that compiled source shipped anywhere else – a header library under inst/include/, say – is accounted for too. |
+| [src_install_libs_R](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_install_libs_R.yaml) | `R` | yes | `at_build`, `at_check`, `at_install_src` | src/install.libs.R is an R script used in some packages to install executable programs and other binaries during installation from source, including the installs performed by R CMD check and by R CMD build when a package has vignettes. It can run arbitrary R code. |
+| [src_makefile](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makefile.yaml) | `make` | yes | `at_build`, `at_check`, `at_install_src` | src/Makefile is a makefile used to compile code in src/ when a package is installed from source, replacing R’s default make rules; the installs performed by R CMD check and by R CMD build also use it, and R CMD build runs its clean target. It is read by make and its recipes execute arbitrary shell commands. |
+| [src_makefile_ucrt](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makefile_ucrt.yaml) | `make` | yes | `at_build`, `at_check`, `at_install_src` | src/Makefile.ucrt is a makefile used to compile code in src/ on the Windows UCRT toolchain when a package is installed from source, replacing R’s default make rules; it takes precedence over Makefile.win when present, the installs performed by R CMD check and by R CMD build also use it, and R CMD build runs its clean target. It is read by make and its recipes execute arbitrary shell commands. |
+| [src_makefile_win](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makefile_win.yaml) | `make` | yes | `at_build`, `at_check`, `at_install_src` | src/Makefile.win is a makefile used to compile code in src/ on Windows when a package is installed from source, replacing R’s default make rules; the installs performed by R CMD check and by R CMD build also use it, and R CMD build runs its clean target. It is read by make and its recipes execute arbitrary shell commands. |
+| [src_makevars](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars.yaml) | `make` | yes | `at_build`, `at_check`, `at_install_src` | src/Makevars sets make variables used to compile code in src/ when a package is installed from source, including the installs performed by R CMD check and by R CMD build; R CMD build also reads it when cleaning src/. It is read by make and can execute shell via make constructs such as \$(shell …). |
+| [src_makevars_in](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars_in.yaml) | `make` | yes | `at_build`, `at_check`, `at_install_src` | src/Makevars.in is a template that does not itself execute; it is processed by the configure script to generate src/Makevars, whose contents are then read by make to compile code in src/ when a package is installed from source, including the installs performed by R CMD check and by R CMD build. |
+| [src_makevars_ucrt](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars_ucrt.yaml) | `make` | yes | `at_build`, `at_check`, `at_install_src` | src/Makevars.ucrt sets make variables used to compile code in src/ on the Windows UCRT toolchain when a package is installed from source, including the installs performed by R CMD check and by R CMD build; it takes precedence over Makevars.win, and R CMD build also reads it when cleaning src/. It is read by make and can execute shell via make constructs such as \$(shell …). |
+| [src_makevars_win](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars_win.yaml) | `make` | yes | `at_build`, `at_check`, `at_install_src` | src/Makevars.win sets make variables used to compile code in src/ on Windows when a package is installed from source, including the installs performed by R CMD check and by R CMD build; R CMD build also reads it when cleaning src/. It is read by make and can execute shell via make constructs such as \$(shell …). |
+| [src_other](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_other.yaml) | `other` | no | `at_check`, `at_install_src`, `at_load` | A file under src/. Everything there is part of what gets built, so this rule claims every extension – alongside any other rule that matches – and a file no language rule recognises is accounted for rather than passed over. |
+| [tests_scripts](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_tests_scripts.yaml) | `R` | no | `at_check` | R CMD check runs every .R file directly under tests/. This is the entry point of whatever testing framework the package uses, and it executes arbitrary R during checking. |
+| [tests_testthat](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_tests_testthat.yaml) | `R` | no | `at_check` | testthat sources the files directly under tests/testthat/ when R CMD check runs the package’s tests. Subdirectories are not sourced – tests/testthat/ fixtures/ holds inert data – so only the top level is scanned. |
+| [tools_scripts](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_tools_scripts.yaml) | `R` | no | none | tools/ holds helper scripts that nothing runs on its own. It is reached only if configure or a Makevars invokes it, in which case that invocation is reported where it appears and carries that file’s phases. The code is scanned here so a reviewer can read what would run. |
+| [vignettes_qmd](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_vignettes_qmd.yaml) | `qmd` | no | `at_build`, `at_check` | A Quarto vignette carries executable chunks, in the same fenced syntax as R Markdown. Vignette code runs when the vignette is rendered: during R CMD build, and again under R CMD check, which rebuilds it. It executes arbitrary R with the package loaded, before anyone reads the rendered document. |
+| [vignettes_rmd](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_vignettes_rmd.yaml) | `Rmd` | no | `at_build`, `at_check` | An R Markdown vignette carries executable chunks. Vignette code runs when the vignette is rendered: during R CMD build, and again under R CMD check, which rebuilds it. It executes arbitrary R with the package loaded, before anyone reads the rendered document. |
+| [vignettes_rnw](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_vignettes_rnw.yaml) | `Rnw` | no | `at_build`, `at_check` | A Sweave or knitr vignette carries executable chunks between \<\<\>\>= and @, and inline macros. Vignette code runs when the vignette is rendered: during R CMD build, and again under R CMD check, which rebuilds it. It executes arbitrary R with the package loaded, before anyone reads the rendered document. |
+| [vignettes_rsp](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_vignettes_rsp.yaml) | `rsp` | no | `at_build`, `at_check` | An R.rsp vignette is a template: everything is output except the R between \<% and %\>. R.rsp builds it during R CMD build, and again under R CMD check, so the code executes with the package loaded before anyone reads the rendered document. |
 
-## Code Contexts
+### Code Contexts
 
 A code context says where code sits *within* its file. Every pattern
-carries one, and it is half of what decides the finding’s phases.
+carries one, and it is half of what decides the finding’s phases. These
+may be rules or, if no rules apply, they may be computed.
 
-Two kinds are rules. A **lifecycle hook** is found by matching the parse
-tree, and applies only where a package’s R code becomes its namespace:
-`R/`, `R/unix/`, `R/windows/`. A `.onLoad` defined anywhere else ships
-as an ordinary object and never fires – measured, not assumed. A **part
-of a help file** is found by matching a label the extractor stamped,
-because the distinction is invisible to the parse tree: once an `.Rd`
-has yielded R code, nothing in that code says whether it came from
-`\examples` or from a `\Sexpr`, or which stage.
-
-Both carry phases of their own, so a finding in one takes them directly.
+Rules: A **lifecycle hook** like `.onLoad()` is found by matching the
+parse tree. A **part of a help file** like `\examples` or `\Sexpr` is
+found by matching a label the extractor stamped.
 
 | Rule | Code Context | Matched by | Phases | Description |
 |----|----|----|----|----|
@@ -278,12 +231,9 @@ Both carry phases of their own, so a finding in one takes them directly.
 | [onUnload_base](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onunload.yaml) | `.onUnload()` | parse tree | `at_check`, `at_unload` | .onUnload() executes arbitrary code when a package namespace is unloaded, e.g., by calling unloadNamespace() or detach(unload=TRUE). R CMD check unloads the namespace while checking that it can be unloaded cleanly, so .onUnload() runs during checking without any call from a user. |
 | [on_load_rlang](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/code_contexts/code_onload_rlang.yaml) | [`rlang::on_load()`](https://rlang.r-lib.org/reference/on_load.html) | parse tree | `at_build`, `at_check`, `at_install_src`, `at_load` | rlang::on_load() registers arbitrary code to execute when a package namespace is loaded, e.g., by calling library(), require(), or loadNamespace(), or by accessing the namespace with ::. R CMD INSTALL and R CMD check load the package, as does R CMD build when the package has vignettes, so the registered code runs during those phases without any call from a user. on_load() requires .onLoad() to contain rlang::run_on_load(). |
 
-The remaining two are computed from the parse tree and are the only
-contexts with no phases of their own. They inherit from the file context
-around them, which is why there is no `data` or `tests` code context: a
-[`system()`](https://rdrr.io/r/base/system.html) call at the top level
-of a data script and one in a test file sit in the same place in their
-files, and what differs is when the file runs.
+Computed: If no code-context rule matches a pattern’s site, its context
+is computed from the parse tree: `in_function` inside a function
+definition, and `top_level` otherwise.
 
 | Context | Phases | Description |
 |----|----|----|

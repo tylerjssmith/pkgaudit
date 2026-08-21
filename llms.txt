@@ -1,10 +1,11 @@
 # pkgaudit
 
 pkgaudit is a static analysis security testing (SAST) tool for R
-packages. It reports which parts of a package can execute, when they
-execute, and what they do, so that an untrusted package can be reviewed
-before it is installed and loaded. pkgaudit never executes the code it
-scans.
+packages. It flags security-relevant files and code in R source packages
+for human review without executing anything it scans. pkgaudit also
+models package lifecycle execution semantics – it reports not just what
+a package does, but when it runs, so code that executes on install or
+load is distinguishable from code that runs only when called.
 
 A general-purpose scanner can read R – Semgrep supports it
 experimentally – but it reads files, not packages. Nothing tells it to
@@ -12,13 +13,10 @@ look for R inside a help file’s `\examples{}` block or an `\Sexpr{}`
 macro, or inside a Sweave or R.rsp vignette; and nothing tells it that
 `.onLoad()` runs on [`library()`](https://rdrr.io/r/base/library.html),
 that `\Sexpr{}` evaluates while a help page is built, or that
-`configure` runs under `R CMD check`. pkgaudit does both: it extracts R
-from wherever a package carries it, and reports the lifecycle phases in
-which each finding runs.
-
-A finding is not an accusation. `configure` scripts and calls to system
-tools, for example, are often legitimate. pkgaudit helps to identify
-what deserves reviewer attention, not what is malicious.
+`configure` runs under `R CMD check`. pkgaudit does this: it extracts R
+from wherever a package carries it, parses the code for
+security-relevant patterns, and reports the lifecycle phases in which
+each finding runs.
 
 For why this matters, see [R Package
 Security](https://tylerjssmith.github.io/pkgaudit/articles/security.md).
@@ -53,7 +51,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-19 22:34 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-21 21:00 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck

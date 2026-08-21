@@ -89,9 +89,9 @@ result <- audit_package(pkg)
 print(result)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/Rtmp3yV4h6/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/Rtmp83nJj5/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-21 21:03 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -108,9 +108,9 @@ the code runs in, with the MITRE ATT&CK techniques the rule carries.
 summary(result)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/Rtmp3yV4h6/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/Rtmp83nJj5/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-21 21:03 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -245,7 +245,7 @@ summary(result, phase = "at_load", path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-21 21:03 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> Phases:    at_load
 #> 
 #> --- R Patterns --------------------------------------------------------------
@@ -429,7 +429,7 @@ print(audit_tarball(tarball), path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-19 23:04 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-21 21:03 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
