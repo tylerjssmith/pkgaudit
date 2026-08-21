@@ -34,16 +34,10 @@ column. Rule ids are namespaced by the kind of rule – `pattern/curl`,
 `match/curl`, `file/configure` – because a rule name is unique only
 within its kind.
 
-`level` is `warning` for a pattern or match whose code executes during
-at least one lifecycle phase, and `note` for everything else. That is a
-mapping of pkgaudit's phase model onto SARIF's severity field, not a
-severity judgement: pkgaudit does not rank findings, and the line it can
-draw honestly is between code that runs on its own and code that runs
-only when called.
-
-A file context is always a `note`: it says a file exists and will
-execute rather than making a claim about its code. Read it as pkgaudit
-pointing at something it could only grep, not as a minor finding.
+`level` is `note` for every result: pkgaudit does not rank findings, so
+nothing is mapped onto SARIF's severity field. When a finding's code
+executes is carried in `properties.phases`, and a `note` is never a
+claim that a finding is minor.
 
 `partialFingerprints` identifies a finding by its rule, its file, the
 code context it sits in, and the text of the line – not by line number,

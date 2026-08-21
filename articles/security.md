@@ -40,8 +40,8 @@ containing this code is loaded, before any package function is called.
 errors, so the user sees nothing unusual even if
 [`readLines()`](https://rdrr.io/r/base/readLines.html) fails because the
 file does not exist or the user lacks permission to read it. pkgaudit
-flags this `httr::POST()` call as a pattern executing whenever a package
-is loaded.
+flags this [`httr::POST()`](https://httr.r-lib.org/reference/POST.html)
+call as a pattern executing whenever a package is loaded.
 
 Similar attacks have been documented in ecosystems adjacent to R. In
 2022, the Python package ctx on PyPI was

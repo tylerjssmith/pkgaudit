@@ -89,9 +89,9 @@ result <- audit_package(pkg)
 print(result)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/Rtmp83nJj5/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/Rtmp3N5gRI/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-21 21:03 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-21 22:12 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -108,9 +108,9 @@ the code runs in, with the MITRE ATT&CK techniques the rule carries.
 summary(result)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/Rtmp83nJj5/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/Rtmp3N5gRI/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-21 21:03 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-21 22:12 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -245,7 +245,7 @@ summary(result, phase = "at_load", path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-21 21:03 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-21 22:12 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> Phases:    at_load
 #> 
 #> --- R Patterns --------------------------------------------------------------
@@ -311,10 +311,11 @@ This executes before any R code is loaded, and what it executes is not
 in the package: it is whatever the remote host serves at the moment of
 installation. Nothing in the source says what will run.
 
-**`httr::POST()` in `man/fetch_data.Rd` runs when the help page is
-built, and is invisible.** The call sits in a `\Sexpr[results=hide]{}`
-macro in the `\description{}` block. `\Sexpr{}` is evaluated whenever
-the page is rendered, during `R CMD build` and installation from source;
+**[`httr::POST()`](https://httr.r-lib.org/reference/POST.html) in
+`man/fetch_data.Rd` runs when the help page is built, and is
+invisible.** The call sits in a `\Sexpr[results=hide]{}` macro in the
+`\description{}` block. `\Sexpr{}` is evaluated whenever the page is
+rendered, during `R CMD build` and installation from source;
 `results=hide` suppresses its output. A reader of `?fetch_data` sees a
 one-line description and an example, and no sign that rendering the page
 sent [`Sys.info()`](https://rdrr.io/r/base/Sys.info.html) to a remote
@@ -384,16 +385,15 @@ substr(sarif, 1, 200)
 Written to a file and opened in an editor with a SARIF viewer, each
 finding appears on the line it was found. Rule identifiers are
 namespaced by the kind of rule – `pattern/curl`, `match/curl` – because
-a rule name is unique only within its kind. `level` is `warning` for a
-pattern or match whose code executes during at least one lifecycle phase
-and `note` for everything else. That is a mapping of pkgaudit’s phase
-model onto SARIF’s severity field, not a severity ranking, which
-pkgaudit does not make.
+a rule name is unique only within its kind. `level` is `note` for every
+result: pkgaudit does not rank findings, so nothing is mapped onto
+SARIF’s severity field, and when a finding’s code executes is carried in
+the result’s `properties.phases`.
 
 [`export_unscanned()`](https://tylerjssmith.github.io/pkgaudit/reference/export_unscanned.md)
 writes the code pkgaudit cannot read into a directory a scanner such as
 Semgrep can be pointed at. A whole file is copied verbatim; a vignette
-chunk in a language with no analyser is written into a file of its own,
+chunk in a language with no analyzer is written into a file of its own,
 blank-padded so that its code sits at the same line numbers it occupies
 in the source. A finding another tool reports at line 40 of
 `intro.python.py` is therefore at line 40 of `intro.Rmd`.
@@ -429,7 +429,7 @@ print(audit_tarball(tarball), path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-21 21:03 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-21 22:12 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -440,7 +440,7 @@ print(audit_tarball(tarball), path = FALSE)
 The result is a `pkgaudit` object like any other, so everything above
 applies to it unchanged.
 
-## Rule Database Integrity
+## Rule database integrity
 
 The rules live in a versioned SQLite database shipped with the package.
 [`load_rules()`](https://tylerjssmith.github.io/pkgaudit/reference/load_rules.md)
@@ -473,7 +473,7 @@ digest::digest(
   algo = "sha256",
   file = TRUE
 )
-#> [1] "e751d759c0399048fef6108795174f386b1592c3bf79dd7746a6280aef3b3124"
+#> [1] "5fc1ec8e93232517679fb03df0f08020d844912e701615de7827666be2f6a7cd"
 ```
 
 The full rule set is documented in [Rule

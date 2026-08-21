@@ -33,7 +33,7 @@ documents, less the phase columns.
 
 A method must build its return value with
 [`new_findings()`](https://tylerjssmith.github.io/pkgaudit/reference/new_findings.md),
-which holds every analyser to the same frame shape.
+which holds every analyzer to the same frame shape.
 [`UseMethod()`](https://rdrr.io/r/base/UseMethod.html) ends the generic,
 so this cannot be enforced after dispatch.
 
@@ -52,7 +52,7 @@ and
 
 ``` r
 # Adding a language outside pkgaudit: a method for segments the extractor
-# labelled "python", reporting each line that calls eval().
+# labeled "python", reporting each line that calls eval().
 analyze_segment.python <- function(segment, rules) {
   at <- grep("\\beval\\(", segment$lines)
   if (length(at) == 0L) return(new_findings())

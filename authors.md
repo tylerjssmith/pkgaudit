@@ -3,6 +3,7 @@
 ## Authors
 
 - **Tyler Smith**. Author, maintainer.
+  [](https://orcid.org/0000-0003-4692-2206)
 
 ## Citation
 

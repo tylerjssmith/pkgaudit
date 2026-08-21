@@ -13,73 +13,48 @@ pkgaudit’s own security model and its vulnerability reporting policy are
 in
 [SECURITY.md](https://github.com/tylerjssmith/pkgaudit/blob/main/.github/SECURITY.md).
 
-## A scan in four movements
+## pkgaudit steps
 
 [`audit_package()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md)
-reads top to bottom as a sequence of named concerns. It names no file
-format and no language: those are decided by dispatch.
+orchestrates a series of function calls, which may be grouped as
+follows:
 
 1.  **Discover.**
     [`find_file_contexts()`](https://tylerjssmith.github.io/pkgaudit/reference/find_file_contexts.md)
     runs one [`list.files()`](https://rdrr.io/r/base/list.files.html)
-    per file-context rule, using the rule’s `path`, `filename` and
-    `recursive` fields. Every rule tells the scan which files to read;
-    only a rule with `report = TRUE` contributes a row to
-    `file_contexts`.
+    per file-context rule, using a file context rule’s `path`,
+    `filename` and `recursive` fields. If `report = TRUE` in a rule, the
+    file context is reported in the pkgaudit object’s `$file_contexts`
+    data frame.
 2.  **Extract.**
     [`extract_segments()`](https://tylerjssmith.github.io/pkgaudit/reference/extract_segments.md)
     reads each file into *segments*: contiguous runs of code in one
     language, blank-padded to the length of the source so that line *n*
-    of a segment is line *n* of the file. That padding is why a
-    finding’s line and column point into the original file with no
-    offset to apply.
-3.  **Analyse.**
+    of a segment is line *n* of the file.
+3.  **Analyze.**
     [`analyze_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/analyze_segment.md)
-    finds code contexts, patterns and matches in each segment.
-4.  **Resolve.** Lifecycle phases are attached once, at the end.
-
-The findings frames are built **without** phase columns throughout and
-joined once in step 4. Nothing before it knows about phases.
-
-A phase is a property of two things – where the file sits in the
-package, and where the code sits within that file – so step 4 resolves a
-pattern by walking a short chain: a code context carrying phases of its
-own wins; otherwise the code takes the phases of whatever encloses it.
-Code inside a function definition takes them too, unless the file’s rule
-sets `assume_called: FALSE`, in which case it carries none. Only the
-rules for `R/` do.
-
-That the frames reach step 4 knowing where they came from is why
-`patterns` carries two extra columns while a scan is running,
-`file_rule` and `rd_context`.
-[`audit_package()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md)
-drops them before building the result, so the object a caller receives
-has the columns
-[`?audit_package`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md)
-documents and no others.
+    finds code contexts, patterns, and matches in each segment.
+4.  **Resolve.** A set of functions attaches and resolves the phases in
+    which a pattern or match may run.
 
 ## Two axes of dispatch
 
-Steps 2 and 3 are both S3 generics, and they dispatch on different
-things.
+Steps 2 and 3 are both S3 generics.
 
 - [`extract_segments()`](https://tylerjssmith.github.io/pkgaudit/reference/extract_segments.md)
-  dispatches on the file-context rule’s **`type`** – how the file is
-  read. Methods live one per file in `R/extract_*.R`.
+  dispatches on the file-context rule’s **`type`**, such as an R source
+  file, an Rd file containing examples, or an Rmd vignette containing
+  code chunks. These methods live in `R/extract_*.R`.
 - [`analyze_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/analyze_segment.md)
-  dispatches on the segment’s **`language`** – how the code is analysed.
-  Methods live in `R/analyze_*.R`.
+  dispatches on the segment’s **`language`**, such as R or shell. These
+  methods live in `R/analyze_*.R`.
 
-They cannot be one axis, because one file can yield code in more than
-one language: an `.Rmd` yields an R segment for each `{r}` chunk and a
-shell segment for each `{bash}` chunk. An `.Rd` yields several segments
-that are all R.
-
-A type read exactly like another inherits from it rather than repeating
-a method: `make` inherits `shell`, and `qmd` inherits `Rmd`.
+A type or language read exactly like another inherits from it rather
+than repeating a method. For example, `make` inherits `shell`, and `qmd`
+inherits `Rmd`.
 
 Both defaults fail closed. A type with no reader yields no segments; a
-language with no analyser yields no findings and no error, and records a
+language with no analyzer yields no findings and no error, and records a
 coverage row instead, so an unhandled chunk engine is accounted for
 rather than silently dropped.
 
@@ -98,11 +73,12 @@ from another package rather than only by editing this one – though the
 rule that points the scan at the new files still has to reach the rules
 database, which means the issue thread `CONTRIBUTING.md` describes.
 
-## The call graph
+## Call list
 
-The graph below is derived from pkgaudit’s own source, by parsing it
-with the same parser the scan uses. It is not maintained by hand and
-cannot fall behind the code.
+The graph below is derived from pkgaudit’s own source. It is not
+maintained by hand and cannot fall behind the code. A name appears once,
+at the first place it is reached; a function called from several places
+is not repeated. The tree is cut at four levels deep.
 
     audit_package()
     ├─ .check_path()
@@ -224,10 +200,6 @@ cannot fall behind the code.
        ├─ .validate_result_df()
        └─ .validate_metadata()
 
-A name appears once, at the first place it is reached; a function called
-from several places is not repeated. The tree is cut at four levels
-deep.
-
 ## Invariants
 
 Each of these is a property a contributor could otherwise break, and
@@ -329,8 +301,7 @@ failing example can be fixed by editing prose.
   [`export_unscanned()`](https://tylerjssmith.github.io/pkgaudit/reference/export_unscanned.md)
   hands those to a tool that does.
 - It does not rank findings or return a verdict. There is no severity
-  model, and the `level` in SARIF output is a mapping of the phase
-  model, not a judgement.
+  model, and every result in SARIF output carries the same `level`.
 - It does not reach the network, and it writes only where a caller sends
   it.
 - It does not trace call graphs. Whether a particular package calls a

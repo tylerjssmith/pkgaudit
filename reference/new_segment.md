@@ -25,7 +25,7 @@ new_segment(
 
 - language:
 
-  The language of the code, which selects the analyser.
+  The language of the code, which selects the analyzer.
 
 - lines:
 

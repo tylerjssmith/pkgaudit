@@ -2,8 +2,8 @@
 
 pkgaudit v0.4.0 separates *what* code does from *when* it executes.
 **Patterns** and **matches** answer the first, and come first below;
-**file contexts** and **code contexts** answer the second. Each rule is
-defined in a YAML file under
+**phases** resolved from **file contexts** and **code contexts** answer
+the second. Each rule is defined in a YAML file under
 [inst/rules/](https://github.com/tylerjssmith/pkgaudit/tree/main/inst/rules)
 and compiled into the SQLite database at `inst/db/rules.db`. The Rule
 columns below link to the defining YAML files.
@@ -66,7 +66,8 @@ guarded: a plain `R CMD check` skips it, but `--as-cran` runs it.
 Matches are regular-expression matches in the shell scripts and
 Make-like files among the [file contexts](#file-contexts) below. Regular
 expressions are matched with `gregexpr(perl = TRUE)` and are
-case-sensitive.
+case-sensitive. Match rules carry [MITRE
+ATT&CK](https://attack.mitre.org/) technique labels.
 
 Note: Matching text is less precise than matching a parse tree. A match
 has no syntax behind it, so a match inside a comment, a quoted string,
@@ -199,7 +200,7 @@ anything written in it.
 | [src_makevars_in](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars_in.yaml) | `make` | yes | `at_build`, `at_check`, `at_install_src` | src/Makevars.in is a template that does not itself execute; it is processed by the configure script to generate src/Makevars, whose contents are then read by make to compile code in src/ when a package is installed from source, including the installs performed by R CMD check and by R CMD build. |
 | [src_makevars_ucrt](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars_ucrt.yaml) | `make` | yes | `at_build`, `at_check`, `at_install_src` | src/Makevars.ucrt sets make variables used to compile code in src/ on the Windows UCRT toolchain when a package is installed from source, including the installs performed by R CMD check and by R CMD build; it takes precedence over Makevars.win, and R CMD build also reads it when cleaning src/. It is read by make and can execute shell via make constructs such as \$(shell …). |
 | [src_makevars_win](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars_win.yaml) | `make` | yes | `at_build`, `at_check`, `at_install_src` | src/Makevars.win sets make variables used to compile code in src/ on Windows when a package is installed from source, including the installs performed by R CMD check and by R CMD build; R CMD build also reads it when cleaning src/. It is read by make and can execute shell via make constructs such as \$(shell …). |
-| [src_other](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_other.yaml) | `other` | no | `at_check`, `at_install_src`, `at_load` | A file under src/. Everything there is part of what gets built, so this rule claims every extension – alongside any other rule that matches – and a file no language rule recognises is accounted for rather than passed over. |
+| [src_other](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_other.yaml) | `other` | no | `at_check`, `at_install_src`, `at_load` | A file under src/. Everything there is part of what gets built, so this rule claims every extension – alongside any other rule that matches – and a file no language rule recognizes is accounted for rather than passed over. |
 | [tests_scripts](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_tests_scripts.yaml) | `R` | no | `at_check` | R CMD check runs every .R file directly under tests/. This is the entry point of whatever testing framework the package uses, and it executes arbitrary R during checking. |
 | [tests_testthat](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_tests_testthat.yaml) | `R` | no | `at_check` | testthat sources the files directly under tests/testthat/ when R CMD check runs the package’s tests. Subdirectories are not sourced – tests/testthat/ fixtures/ holds inert data – so only the top level is scanned. |
 | [tools_scripts](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_tools_scripts.yaml) | `R` | no | none | tools/ holds helper scripts that nothing runs on its own. It is reached only if configure or a Makevars invokes it, in which case that invocation is reported where it appears and carries that file’s phases. The code is scanned here so a reviewer can read what would run. |

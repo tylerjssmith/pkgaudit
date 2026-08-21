@@ -66,7 +66,7 @@ described under Lifecycle phases and joins to the others on
 
   `file_context`, `language`, `status`, `reason`, `first_line`,
   `last_line`, `lines`, `bytes`, `rule`. One row per file the package
-  carries that is, or could be, code, plus one per span of an unanalysed
+  carries that is, or could be, code, plus one per span of an unanalyzed
   language inside a literate file – a `python` chunk in a vignette is
   its own row.
 
@@ -105,7 +105,7 @@ can hand to a tool that does), `unexamined` (never read), or `error`
 read the first and could not read the second.
 
 `reason` is `NA` where nothing stood in the way, and otherwise one of:
-`no_analyser` (pkgaudit does not read that language), `no_extractor` (a
+`no_analyzer` (pkgaudit does not read that language), `no_extractor` (a
 rule claimed the file but nothing reads that kind of file, as for
 `DESCRIPTION`), `no_rule` (no rule looks where it sits), `serialized`,
 `binary`, `symlink`, `too_large` (over the 10 MB scanning limit),
@@ -220,9 +220,9 @@ result$patterns
 print(result)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/RtmpYegKwm/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/RtmpttDUVh/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-21 21:03 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-21 22:12 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4

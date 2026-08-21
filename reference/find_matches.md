@@ -53,7 +53,7 @@ than once yields one row per match. A failing expression is recorded in
 Matching text is less precise than matching a parse tree: a match has no
 syntax behind it, so one inside a comment, a quoted string, or a branch
 that never runs is reported the same as a live command. Findings are
-candidates for review, not confirmed behaviour.
+candidates for review, not confirmed behavior.
 
 Reading the file, and the limits protecting against hostile input, are
 [`read_code()`](https://tylerjssmith.github.io/pkgaudit/reference/read_code.md)'s

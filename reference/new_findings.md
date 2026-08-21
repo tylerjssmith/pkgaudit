@@ -41,7 +41,7 @@ whose methods return this.
 ## Examples
 
 ``` r
-# An analyser that found nothing still returns all four frames.
+# An analyzer that found nothing still returns all four frames.
 str(new_findings(), max.level = 1)
 #> List of 4
 #>  $ patterns:'data.frame':    0 obs. of  12 variables:

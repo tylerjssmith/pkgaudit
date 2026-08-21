@@ -40,7 +40,7 @@ A named list:
 
   Named list of three length-one strings – `build`, `install` and
   `render` – holding each `\Sexpr{}` macro's code by the stage it runs
-  at. An unlabelled macro counts as `install`.
+  at. An unlabeled macro counts as `install`.
 
 - error:
 

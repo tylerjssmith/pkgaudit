@@ -91,7 +91,8 @@ them. `.onLoad()` in `R/zzz.R` calls
 [`system()`](https://rdrr.io/r/base/system.html), so it runs on
 [`library()`](https://rdrr.io/r/base/library.html) – and at build,
 check, and source installation, each of which loads the package. An
-`\Sexpr{}` macro in `man/fetch_data.Rd` calls `httr::POST()` when the
+`\Sexpr{}` macro in `man/fetch_data.Rd` calls
+[`httr::POST()`](https://httr.r-lib.org/reference/POST.html) when the
 help page is rendered, at those same three phases, and the `\examples{}`
 block in the same file calls
 [`download.file()`](https://rdrr.io/r/utils/download.file.html), which
