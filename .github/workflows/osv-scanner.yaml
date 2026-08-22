@@ -24,7 +24,7 @@ jobs:
     name: Resolve dependencies
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
         with:
           use-public-rspm: true
@@ -41,7 +41,7 @@ jobs:
           cache: false
       - name: Write lock file from the resolved dependencies
         run: Rscript tools/osv_lockfile.R
-      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: osv-lockfile
           # OSV-Scanner picks its parser by file name, so this has to stay
@@ -59,7 +59,7 @@ jobs:
       security-events: write
       # Only need to read contents
       contents: read
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@6e4298ebc4db23e847df9b2e2de2939d6f066c67 # v2.5.1
     with:
       # Downloaded into the workspace root, alongside the checkout.
       download-artifact: osv-lockfile
