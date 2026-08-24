@@ -195,10 +195,9 @@ Three calls in the read path look like execution and are not.
 without evaluating;
 [`tools::loadPkgRdMacros()`](https://rdrr.io/r/tools/loadRdMacros.html)
 reads macro definitions as text; and `parse(text = )` produces an
-unevaluated expression. A macro provider is looked up by macro name
-against a fixed list and never taken from the audited package’s
-`RdMacros` field, since the untrusted package determines the field
-value.
+unevaluated expression. Macros come from the package’s own `man/macros/`
+and from any provider named in its `RdMacros` field; both are read as
+text, not evaluated.
 
 ### File size limits are applied before extraction
 

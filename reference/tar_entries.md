@@ -23,21 +23,20 @@ tar_entries(
 - max_entries:
 
   Maximum number of entries to read before failing closed. Default
-  100,000 (about 7x the largest CRAN package).
+  100,000.
 
 - max_bytes:
 
-  Maximum uncompressed bytes to read before failing closed. Default 2 GB
-  (about 15x the largest CRAN package). Raise for ecosystems with larger
-  artifacts, e.g. Bioconductor annotation and experiment-data packages.
+  Maximum uncompressed bytes to read before failing closed. Default 2
+  GB. Raise for ecosystems with larger artifacts, e.g. Bioconductor
+  annotation and experiment-data packages.
 
 - max_ratio:
 
   Maximum uncompressed:compressed ratio before failing closed, or `Inf`
   to disable. Targets decompression bombs, which are characterised by
-  extreme ratios rather than absolute size. Default 256: about 3x the
-  largest ratio (85) observed across CRAN, and well under the ~1032:1
-  ceiling of a single gzip layer.
+  extreme ratios rather than absolute size. Default 256, well under the
+  ~1032:1 ceiling of a single gzip layer.
 
 - chunk:
 

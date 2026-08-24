@@ -79,8 +79,8 @@ columns below link to the defining YAML.</p>
 </h2>
 <p>Patterns are security-relevant function calls, such as
 <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code>. Qualified (<code>pkg::fn()</code>) and
-unqualified (<code>fn()</code>) call forms are both detected. Pattern
-rules also flag calls made through a function’s name –
+unqualified (<code>fn()</code>) call forms are both detected. A rule
+that declares its function names also flags calls made through a name –
 <code>do.call("system", ...)</code>, <code>match.fun("system")</code>,
 and <code>getFunction("system")</code>. Pattern rules carry <a href="https://attack.mitre.org/" class="external-link">MITRE ATT&amp;CK</a> technique
 labels.</p>
@@ -189,10 +189,10 @@ object, which executes outside the visible R source.</td>
 <code><a href="https://rdrr.io/r/base/eval.html" class="external-link">eval()</a></code>/<code><a href="https://rdrr.io/r/base/eval.html" class="external-link">evalq()</a></code> over <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">parse()</a></code>,
 <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">str2lang()</a></code> or <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">str2expression()</a></code>, when the text
 came from a fetch, a decode, a deserialization, a subprocess or a file
-read – every function the rules for those already cover, plus
+read – most functions the rules for those already cover, plus
 <code><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines()</a></code>, <code><a href="https://rdrr.io/r/base/scan.html" class="external-link">scan()</a></code>, <code><a href="https://rdrr.io/r/base/readBin.html" class="external-link">readBin()</a></code>
-and <code><a href="https://rdrr.io/r/base/rawConversion.html" class="external-link">rawToChar()</a></code>
-</td>
+and <code><a href="https://rdrr.io/r/base/rawConversion.html" class="external-link">rawToChar()</a></code>; callr’s and processx’s generically named
+entry points are not matched</td>
 <td>Text that came from somewhere pkgaudit cannot read, parsed and then
 evaluated. Any one of these calls is ordinary on its own; together in
 one expression they are a payload being assembled and run. The inner set

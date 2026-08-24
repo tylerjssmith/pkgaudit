@@ -70,22 +70,20 @@ the check <code><a href="audit_tarball.html">audit_tarball()</a></code> runs bef
 
 <dt id="arg-max-entries">max_entries<a class="anchor" aria-label="anchor" href="#arg-max-entries"></a></dt>
 <dd><p>Maximum number of entries to read before failing closed.
-Default 100,000 (about 7x the largest CRAN package).</p></dd>
+Default 100,000.</p></dd>
 
 
 <dt id="arg-max-bytes">max_bytes<a class="anchor" aria-label="anchor" href="#arg-max-bytes"></a></dt>
 <dd><p>Maximum uncompressed bytes to read before failing closed.
-Default 2 GB (about 15x the largest CRAN package). Raise for ecosystems
-with larger artifacts, e.g. Bioconductor annotation and experiment-data
-packages.</p></dd>
+Default 2 GB. Raise for ecosystems with larger artifacts, e.g. Bioconductor
+annotation and experiment-data packages.</p></dd>
 
 
 <dt id="arg-max-ratio">max_ratio<a class="anchor" aria-label="anchor" href="#arg-max-ratio"></a></dt>
 <dd><p>Maximum uncompressed:compressed ratio before failing closed,
 or <code>Inf</code> to disable. Targets decompression bombs, which are characterised
-by extreme ratios rather than absolute size. Default 256: about 3x the
-largest ratio (85) observed across CRAN, and well under the ~1032:1 ceiling
-of a single gzip layer.</p></dd>
+by extreme ratios rather than absolute size. Default 256, well under the
+~1032:1 ceiling of a single gzip layer.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -100,10 +98,9 @@ long-name, PAX), path traversal, absolute and drive-qualified paths, paths
 containing backslashes or control characters, empty paths, unparseable size
 fields, and archives that do not extract to exactly one top-level directory.
 It also enforces the entry-count, uncompressed-size, and expansion-ratio caps
-applied while reading (<code>max_entries</code>, <code>max_bytes</code>, <code>max_ratio</code>). No CRAN
-source tarball trips any of these. Reads gzip and uncompressed tar only,
-judged by the file's magic bytes rather than its name: a bzip2, xz, zstd or
-compress stream is refused whatever it is called.</p>
+applied while reading (<code>max_entries</code>, <code>max_bytes</code>, <code>max_ratio</code>). Reads gzip
+and uncompressed tar only, judged by the file's magic bytes rather than its
+name: a bzip2, xz, zstd or compress stream is refused whatever it is called.</p>
 <p>A refusal is signaled as a <code>pkgaudit_invalid_tarball</code> condition (a subclass
 of <code>error</code>), so it stops by default but can be caught by class.</p>
     </div>

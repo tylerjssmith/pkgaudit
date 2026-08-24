@@ -26,21 +26,20 @@ validate_tar(
 - max_entries:
 
   Maximum number of entries to read before failing closed. Default
-  100,000 (about 7x the largest CRAN package).
+  100,000.
 
 - max_bytes:
 
-  Maximum uncompressed bytes to read before failing closed. Default 2 GB
-  (about 15x the largest CRAN package). Raise for ecosystems with larger
-  artifacts, e.g. Bioconductor annotation and experiment-data packages.
+  Maximum uncompressed bytes to read before failing closed. Default 2
+  GB. Raise for ecosystems with larger artifacts, e.g. Bioconductor
+  annotation and experiment-data packages.
 
 - max_ratio:
 
   Maximum uncompressed:compressed ratio before failing closed, or `Inf`
   to disable. Targets decompression bombs, which are characterised by
-  extreme ratios rather than absolute size. Default 256: about 3x the
-  largest ratio (85) observed across CRAN, and well under the ~1032:1
-  ceiling of a single gzip layer.
+  extreme ratios rather than absolute size. Default 256, well under the
+  ~1032:1 ceiling of a single gzip layer.
 
 ## Value
 
@@ -55,10 +54,9 @@ paths containing backslashes or control characters, empty paths,
 unparseable size fields, and archives that do not extract to exactly one
 top-level directory. It also enforces the entry-count,
 uncompressed-size, and expansion-ratio caps applied while reading
-(`max_entries`, `max_bytes`, `max_ratio`). No CRAN source tarball trips
-any of these. Reads gzip and uncompressed tar only, judged by the file's
-magic bytes rather than its name: a bzip2, xz, zstd or compress stream
-is refused whatever it is called.
+(`max_entries`, `max_bytes`, `max_ratio`). Reads gzip and uncompressed
+tar only, judged by the file's magic bytes rather than its name: a
+bzip2, xz, zstd or compress stream is refused whatever it is called.
 
 A refusal is signaled as a `pkgaudit_invalid_tarball` condition (a
 subclass of `error`), so it stops by default but can be caught by class.

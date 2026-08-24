@@ -41,21 +41,20 @@ audit_tarball(
 - max_entries:
 
   Maximum number of entries to read before failing closed. Default
-  100,000 (about 7x the largest CRAN package).
+  100,000.
 
 - max_bytes:
 
-  Maximum uncompressed bytes to read before failing closed. Default 2 GB
-  (about 15x the largest CRAN package). Raise for ecosystems with larger
-  artifacts, e.g. Bioconductor annotation and experiment-data packages.
+  Maximum uncompressed bytes to read before failing closed. Default 2
+  GB. Raise for ecosystems with larger artifacts, e.g. Bioconductor
+  annotation and experiment-data packages.
 
 - max_ratio:
 
   Maximum uncompressed:compressed ratio before failing closed, or `Inf`
   to disable. Targets decompression bombs, which are characterised by
-  extreme ratios rather than absolute size. Default 256: about 3x the
-  largest ratio (85) observed across CRAN, and well under the ~1032:1
-  ceiling of a single gzip layer.
+  extreme ratios rather than absolute size. Default 256, well under the
+  ~1032:1 ceiling of a single gzip layer.
 
 ## Value
 
@@ -102,7 +101,7 @@ print(result)
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> Path:      ~/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-24 18:36 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-24 21:09 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
