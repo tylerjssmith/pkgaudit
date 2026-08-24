@@ -41,7 +41,7 @@
     <div class="section level2">
       <h2 id="scanning-a-package">Scanning a package<a class="anchor" aria-label="anchor" href="#scanning-a-package"></a></h2>
 
-      <div class="section-desc"><p>The entry points. Both return a pkgaudit object: what was found, and what the scan made of every file it could identify as code.</p></div>
+
 
       <dl></dl></div><div class="section level2">
 
@@ -87,7 +87,7 @@
       </dl></div><div class="section level2">
       <h2 id="carrying-a-result-to-another-tool">Carrying a result to another tool<a class="anchor" aria-label="anchor" href="#carrying-a-result-to-another-tool"></a></h2>
 
-      <div class="section-desc"><p>R is parsed and shell is matched as text; everything else is handed on.</p></div>
+
 
       <dl></dl></div><div class="section level2">
 
@@ -108,46 +108,9 @@
         </dt>
         <dd>Export the code pkgaudit could not read</dd>
       </dl></div><div class="section level2">
-      <h2 id="extending-pkgaudit">Extending pkgaudit<a class="anchor" aria-label="anchor" href="#extending-pkgaudit"></a></h2>
-
-      <div class="section-desc"><p>The two axes of dispatch, so a file format or a language can be added from another package.</p></div>
-
-      <dl></dl></div><div class="section level2">
-
-
-
-
-      <dl><dt>
-
-          <code><a href="extract_segments.html">extract_segments()</a></code>
-
-        </dt>
-        <dd>Read one source file into the code segments it contains</dd>
-
-        <dt>
-
-          <code><a href="analyze_segment.html">analyze_segment()</a></code>
-
-        </dt>
-        <dd>Find code contexts, patterns and matches in one segment</dd>
-
-        <dt>
-
-          <code><a href="new_segment.html">new_segment()</a></code>
-
-        </dt>
-        <dd>Build one code segment</dd>
-
-        <dt>
-
-          <code><a href="new_findings.html">new_findings()</a></code>
-
-        </dt>
-        <dd>Build the return value of an <code><a href="../reference/analyze_segment.html">analyze_segment()</a></code> method</dd>
-      </dl></div><div class="section level2">
       <h2 id="rules">Rules<a class="anchor" aria-label="anchor" href="#rules"></a></h2>
 
-      <div class="section-desc"><p>The rules are data, not code, and ship in a hash-verified database.</p></div>
+
 
       <dl></dl></div><div class="section level2">
 
@@ -190,6 +153,43 @@
 
         </dt>
         <dd>Validate a source package tarball before extraction</dd>
+      </dl></div><div class="section level2">
+      <h2 id="extending-pkgaudit">Extending pkgaudit<a class="anchor" aria-label="anchor" href="#extending-pkgaudit"></a></h2>
+
+      <div class="section-desc"><p>See <a href="../CONTRIBUTING.html">CONTRIBUTING.md</a>.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="extract_segments.html">extract_segments()</a></code>
+
+        </dt>
+        <dd>Read one source file into the code segments it contains</dd>
+
+        <dt>
+
+          <code><a href="analyze_segment.html">analyze_segment()</a></code>
+
+        </dt>
+        <dd>Find code contexts, patterns and matches in one segment</dd>
+
+        <dt>
+
+          <code><a href="new_segment.html">new_segment()</a></code>
+
+        </dt>
+        <dd>Build one code segment</dd>
+
+        <dt>
+
+          <code><a href="new_findings.html">new_findings()</a></code>
+
+        </dt>
+        <dd>Build the return value of an <code><a href="../reference/analyze_segment.html">analyze_segment()</a></code> method</dd>
       </dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

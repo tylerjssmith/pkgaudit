@@ -2,7 +2,8 @@
 
 Thank you for your interest in pkgaudit. The most valuable contribution
 to this package is a rule: a new file context, code context, or pattern
-worth flagging, or a revision to one that already exists.
+worth flagging, or a revision to one that already exists. Methods for
+additional file types and languages will be considered too.
 
 Two things are out of scope here:
 
@@ -22,24 +23,19 @@ the test suite and package check.
 This is deliberately not a pull-request workflow, which is unusual and
 worth explaining. A rule is a detection claim about untrusted code, and
 a merged rule becomes part of what every user’s scan reports. Two things
-follow. A rule has to be justified by measurement against CRAN before it
-is worth shipping — the precision and prevalence gate below is the
-substance of the review, and it is work that happens in discussion
-rather than in a diff. And the rules database is a build artifact with a
-published hash: a contributor cannot regenerate it in a branch without
-that hash becoming a second thing to review. Keeping the database and
-its hash in one pair of hands is what lets the README’s published hash
-mean something.
+follow. First, a rule has to be justified by measurement against CRAN
+before it is worth shipping – the precision and prevalence gate below is
+the substance of the review, and it is work that happens in discussion
+rather than in a diff. Second, the rules database is a build artifact
+with a published hash: a contributor cannot regenerate it in a branch
+without that hash becoming a second thing to review. Keeping the
+database and its hash in one pair of hands is what lets the README’s
+published hash mean something.
 
 The cost is that contributing is less convenient than opening a PR. If
-you would rather work in a branch, say so in the issue — the YAML is the
+you would rather work in a branch, say so in the issue – the YAML is the
 contribution either way, and the discussion is what the process is
 actually for.
-
-Code contributions — a bug fix or an improvement to the scanner itself,
-rather than a rule — are welcome as ordinary pull requests. The
-[Testing](#testing) checklist below is what a code change is reviewed
-against.
 
 ## Proposing a new or revised rule
 
@@ -49,7 +45,7 @@ Open a [GitHub issue](https://github.com/tylerjssmith/pkgaudit/issues)
 proposing the change and explaining the security rationale:
 
 - What the file, hook, or function call does.
-- What an attacker gains by using it, and when it runs — for example, at
+- What an attacker gains by using it, and when it runs – for example, at
   build, check, or install time, when a namespace is loaded, or only
   when a user calls something.
 - For a revision, what the current rule misses or over-matches.
@@ -83,16 +79,16 @@ rule’s tests.
 A drafted rule is evaluated against a large sample of CRAN source
 packages, ideally all of them, on two measures:
 
-- **Precision** — of the findings the rule produces, what proportion
+- **Precision** – of the findings the rule produces, what proportion
   really are the context or pattern it targets? A rule that fires on
   things it did not mean to catch teaches reviewers to ignore it.
-- **Prevalence** — what proportion of CRAN packages have the context or
+- **Prevalence** – what proportion of CRAN packages have the context or
   pattern at all? A rule matching a large share of CRAN is not so much
   wrong as useless: it tells a reviewer nothing about the package in
   front of them.
 
-pkgaudit aims for **precision above 0.95** and **prevalence below
-0.05**, so that a finding is worth a reviewer’s attention. A rule that
+pkgaudit aims for **precision above 0.90** and **prevalence below
+0.10**, so that a finding is worth a reviewer’s attention. A rule that
 misses these targets is not automatically rejected, but it needs a
 reason.
 
@@ -101,7 +97,7 @@ contains the functions used for these runs: `download_cran()` to fetch
 source tarballs and `survey_cran()` to audit them in bulk. The
 maintainer will use them to evaluate proposed rules. If you run them
 yourself, please read
-[dev/README.md](https://tylerjssmith.github.io/dev/README.md) first — it
+[dev/README.md](https://tylerjssmith.github.io/dev/README.md) first – it
 asks you to rate-limit downloads out of respect for CRAN mirror
 bandwidth.
 
@@ -132,8 +128,8 @@ an `\Sexpr{}` stage), a pattern (a security-relevant construct in R,
 matched against the parse tree), or a match (a regular expression
 matched against the text of a shell script or Make-like file).
 
-**Names.** The YAML file name is prefixed with the rule’s category —
-`file_`, `code_`, `pattern_`, or `match_` — but the `name` field inside
+**Names.** The YAML file name is prefixed with the rule’s category –
+`file_`, `code_`, `pattern_`, or `match_` – but the `name` field inside
 it is not: the category is already known from where the rule lives, and
 the name is what a finding reports. A code context is named for the hook
 it matches and the package that defines it, joined by an underscore,
@@ -146,7 +142,7 @@ behind it.
 rule-set and package versions. A new rule is always `"0.1.0"`. Revising
 a rule that has shipped in a tagged release bumps its version; revising
 one that has not yet shipped leaves it alone. The rule-set and package
-versions are the maintainer’s to manage — a contribution never touches
+versions are the maintainer’s to manage – a contribution never touches
 them.
 
 **Fields.** Every rule has `name`, `version`, `message`,
@@ -163,9 +159,9 @@ them.
   extractor stamps on part of a help file;
 - a **pattern** rule adds `language`, `xpath`, `attck` (MITRE ATT&CK
   technique IDs), and `functions` (the names it matches as a bare call,
-  which is how an indirect call is attributed back to it — written out
+  which is how an indirect call is attributed back to it – written out
   empty when the rule matches on more than the callee);
-- a **match** rule adds `language` and `regex`.
+- a **match** rule adds `language`, `regex`, and `attck`.
 
 `code_context` names the code-context rules that can apply inside the
 files a file-context rule claims: `~` where none can, `computed` where
@@ -190,16 +186,17 @@ within that file, and a match’s from its file context alone.
 Claim a phase only where the behavior has been observed. The existing
 assignments were established by running `R CMD build`, `R CMD check`,
 and `R CMD INSTALL` against instrumented packages rather than read from
-documentation, and several are narrower than the documentation implies.
+documentation. See
+[dev/execution_surface/](https://tylerjssmith.github.io/dev/execution_surface/).
 Say in the issue thread how you determined yours.
 
 The two computed contexts, `top_level` and `in_function`, are not rules
 and are authored nowhere: they carry no phases of their own, inheriting
 instead from the file context they sit in.
 
-`message` is shown to the user with every finding. It should be 1-2
-short sentences. Write it so that someone who has never read the rule
-understands what was found and why it matters.
+**Message.** `message` is shown to the user with every finding. It
+should be 1-2 short sentences. Write it so that someone who has never
+read the rule understands what was found and why it matters.
 
 **Examples.** `positive_examples` are code or paths the rule must flag;
 `negative_examples` are ones it must not. Both are required, and both
@@ -215,6 +212,36 @@ calls preceded by `$` so that a list element or an object’s method of
 the same name is not flagged. Qualified (`pkg::fn()`) and unqualified
 (`fn()`) call forms should both match.
 
+## Adding methods
+
+[`extract_segments()`](https://tylerjssmith.github.io/pkgaudit/reference/extract_segments.md)
+dispatches on the file-context rule’s **`type`**, such as an R source
+file, an Rd file containing examples, or an Rmd vignette containing code
+chunks. These methods live in `R/extract_*.R`.
+[`analyze_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/analyze_segment.md)
+dispatches on the segment’s **`language`**, such as R or shell. These
+methods live in `R/analyze_*.R`.
+
+Adding a file type is one new `R/extract_*.R` plus a rule. Adding a
+language is one new `R/analyze_*.R` plus rules for that language.
+Neither requires modifying
+[`audit_package()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md),
+and neither depends on the other.
+
+The
+[`extract_segments()`](https://tylerjssmith.github.io/pkgaudit/reference/extract_segments.md)
+and
+[`analyze_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/analyze_segment.md)
+generics are exported, along with
+[`new_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/new_segment.md)
+and
+[`new_findings()`](https://tylerjssmith.github.io/pkgaudit/reference/new_findings.md),
+which build what the extraction and analysis methods return.
+
+A method is an ordinary pull request, reviewed against the
+[Testing](#testing) checklist below; the rule pointing the scan at the
+new files still goes through an issue.
+
 ## Testing
 
 Coverage is not a percentage to chase. It is a checklist a change either
@@ -227,24 +254,23 @@ than by script, because what they assert spans the whole package:
 `test-fixtures.R` and `test-no_execution.R`.
 
 **2. Every documented function has a happy path.** One test that calls
-it the way the documentation says to and asserts the result — not merely
+it the way the documentation says to and asserts the result – not merely
 that it did not error.
 
 **3. Every anticipated failure is anticipated by a test.** Where the
 source has a [`stop()`](https://rdrr.io/r/base/stop.html), a
 [`warning()`](https://rdrr.io/r/base/warning.html), or a
 [`tryCatch()`](https://rdrr.io/r/base/conditions.html)/[`withCallingHandlers()`](https://rdrr.io/r/base/conditions.html)
-handler, at least one test reaches it. A handler is a claim that some
-input will occur; the test is what makes the claim checkable. A
-defensive branch that cannot be reached through the public interface is
-marked `# nocov` with the reason, so that an uncovered line always means
-a gap rather than a judgment call.
+handler, at least one test reaches it. A defensive branch that cannot be
+reached through the public interface is marked `# nocov` with the
+reason, so that an uncovered line always means a gap rather than a
+judgment call.
 
 **4. A contained failure is asserted twice: the record and the
 survival.** pkgaudit turns a failure into a row in `errors`, or a
 `reason` in `coverage`, rather than aborting the scan. A test for such a
-path asserts both that the row appears with the right fields *and* that
-the scan went on to finish.
+path asserts both that the row appears with the right fields and that
+the scan did not stop on the error.
 
 **5. Every empty case is tested.** A function returning a data frame is
 tested on input that yields no rows, asserting the column names. Empty
@@ -254,20 +280,20 @@ changes when it is empty breaks every downstream join.
 **6. Every rule is tested against its own examples.** Positives must
 match, negatives must not. This is enforced generically in
 `test-fixtures.R` over the whole shipped database, so a new rule needs
-no new test — but it does need examples that pin the boundary.
+no new test, but it does need positive and negative examples as
+described above.
 
 **7. Security invariants are asserted end to end, not by inspection.**
-That pkgaudit never executes what it scans is not a property any single
-function can be read for, so `test-no_execution.R` builds a package
-whose every execution site would write a marker file, scans and exports
-it, and requires that no marker exists afterwards. A new read or write
-path belongs in that test.
+pkgaudit must never execute code contained in the packages it scans.
+`test-no_execution.R` builds a package whose every execution site would
+write a marker file, scans and exports it, and requires that no marker
+exists afterwards. A new read or write path belongs in that test.
 
 **8. Anything reading untrusted bytes or writing to disk is tested
 adversarially.** A malformed archive, a symlink pointing out of the
 package, a `..` path component, a file over the size limit, an
-unreadable file, a non-empty target directory: each refused, each
-recorded, none acted on.
+unreadable file, a non-empty target directory: each is refused and
+recorded.
 
 **9. Every bug found against a real package becomes a test.** A fixture
 reproducing it, added in the same change as the fix, and named for the
@@ -278,6 +304,6 @@ behavior rather than for the report.
 Contributors of accepted rules are credited in `DESCRIPTION` as
 contributors (`ctb`), whether they proposed the rule, drafted the YAML,
 or both. This requires a name you are willing to have published, so it
-is opt-in — say in the issue thread how you would like to be credited,
+is opt-in – say in the issue thread how you would like to be credited,
 or if you would prefer not to be. If you would rather not appear in
 `DESCRIPTION`, a credit in `NEWS.md` is an alternative.

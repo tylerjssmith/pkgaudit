@@ -69,13 +69,7 @@
     
     
 <p>This vignette is for someone reading pkgaudit’s source before
-trusting it. It describes how a scan works, states the invariants the
-design rests on, and says where in the source each one is enforced, so
-that the claims can be checked rather than taken on trust.</p>
-<p>For what pkgaudit reports, see <a href="pkgaudit.html">Getting
-Started</a>; for the rule set, see <a href="rules.html">Rule
-Coverage</a>. pkgaudit’s own security model and its vulnerability
-reporting policy are in <a href="https://github.com/tylerjssmith/pkgaudit/blob/main/.github/SECURITY.md" class="external-link">SECURITY.md</a>.</p>
+trusting it. For how to use pkgaudit and what it reports, see <a href="pkgaudit.html">Getting Started</a>; for the rule set, see <a href="rules.html">Rule Coverage</a>.</p>
 <div class="section level2">
 <h2 id="pkgaudit-steps">pkgaudit steps<a class="anchor" aria-label="anchor" href="#pkgaudit-steps"></a>
 </h2>
@@ -90,22 +84,23 @@ context rule’s <code>path</code>, <code>filename</code> and
 the file context is reported in the pkgaudit object’s
 <code>$file_contexts</code> data frame.</li>
 <li>
-<strong>Extract.</strong> <code><a href="../reference/extract_segments.html">extract_segments()</a></code> reads each
-file into <em>segments</em>: contiguous runs of code in one language,
-blank-padded to the length of the source so that line <em>n</em> of a
-segment is line <em>n</em> of the file.</li>
+<strong>Extract.</strong> <code><a href="../reference/extract_segments.html">extract_segments()</a></code> dispatches
+to S3 methods that read each file into <em>segments</em>: contiguous
+runs of code in one language, blank-padded so that line <em>n</em> of a
+segment is line <em>n</em> of the source file.</li>
 <li>
-<strong>Analyze.</strong> <code><a href="../reference/analyze_segment.html">analyze_segment()</a></code> finds code
-contexts, patterns, and matches in each segment.</li>
+<strong>Analyze.</strong> <code><a href="../reference/analyze_segment.html">analyze_segment()</a></code> dispatches
+to S3 methods that call functions to find code contexts, patterns, or
+matches in each segment.</li>
 <li>
 <strong>Resolve.</strong> A set of functions attaches and resolves
 the phases in which a pattern or match may run.</li>
 </ol>
 </div>
 <div class="section level2">
-<h2 id="two-axes-of-dispatch">Two axes of dispatch<a class="anchor" aria-label="anchor" href="#two-axes-of-dispatch"></a>
+<h2 id="extraction-and-analysis">Extraction and analysis<a class="anchor" aria-label="anchor" href="#extraction-and-analysis"></a>
 </h2>
-<p>Steps 2 and 3 are both S3 generics.</p>
+<p>Steps 2 and 3 dispatch to S3 methods.</p>
 <ul>
 <li>
 <code><a href="../reference/extract_segments.html">extract_segments()</a></code> dispatches on the file-context
@@ -117,31 +112,21 @@ These methods live in <code>R/extract_*.R</code>.</li>
 <strong><code>language</code></strong>, such as R or shell. These
 methods live in <code>R/analyze_*.R</code>.</li>
 </ul>
-<p>A type or language read exactly like another inherits from it rather
-than repeating a method. For example, <code>make</code> inherits
+<p>A type or language read like another inherits from it rather than
+repeating a method. For example, <code>make</code> inherits
 <code>shell</code>, and <code>qmd</code> inherits <code>Rmd</code>.</p>
-<p>Both defaults fail closed. A type with no reader yields no segments;
-a language with no analyzer yields no findings and no error, and records
-a coverage row instead, so an unhandled chunk engine is accounted for
-rather than silently dropped.</p>
-<p>Adding a file format is one new <code>R/extract_*.R</code> plus a
-rule. Adding a language is one new <code>R/analyze_*.R</code> plus rules
-carrying that language. Neither touches <code><a href="../reference/audit_package.html">audit_package()</a></code>,
-and neither touches the other.</p>
-<p>Both generics are exported, along with <code><a href="../reference/new_segment.html">new_segment()</a></code> and
-<code><a href="../reference/new_findings.html">new_findings()</a></code>, which build what a method returns. A method
-can therefore be registered from another package rather than only by
-editing this one – though the rule that points the scan at the new files
-still has to reach the rules database, which means the issue thread
-<code>CONTRIBUTING.md</code> describes.</p>
+<p>The default methods fail closed. A type with no extractor yields no
+segments; a language with no analyzer yields no findings and no error,
+recording a coverage row instead.</p>
 </div>
 <div class="section level2">
 <h2 id="call-list">Call list<a class="anchor" aria-label="anchor" href="#call-list"></a>
 </h2>
-<p>The graph below is derived from pkgaudit’s own source. It is not
-maintained by hand and cannot fall behind the code. A name appears once,
-at the first place it is reached; a function called from several places
-is not repeated. The tree is cut at four levels deep.</p>
+<p>The <code><a href="../reference/audit_package.html">audit_package()</a></code> call list below is derived from
+pkgaudit’s source code. It is not maintained by hand and cannot fall
+behind the code. A name appears once, at the first place it is reached;
+a function called from several places is not repeated. The tree is cut
+at four levels deep.</p>
 <pre><code>audit_package()
 ├─ .check_path()
 │  └─ .stop_arg()
@@ -265,51 +250,41 @@ is not repeated. The tree is cut at four levels deep.</p>
 <div class="section level2">
 <h2 id="invariants">Invariants<a class="anchor" aria-label="anchor" href="#invariants"></a>
 </h2>
-<p>Each of these is a property a contributor could otherwise break, and
-each is asserted by a test rather than left to review.</p>
 <div class="section level3">
-<h3 id="nothing-that-is-scanned-is-ever-executed">Nothing that is scanned is ever executed<a class="anchor" aria-label="anchor" href="#nothing-that-is-scanned-is-ever-executed"></a>
+<h3 id="scanned-files-are-never-executed">Scanned files are never executed<a class="anchor" aria-label="anchor" href="#scanned-files-are-never-executed"></a>
 </h3>
-<p>This is not a property any single function can be inspected for. R’s
-own help machinery will evaluate <code>\Sexpr</code> if asked, and
-<code>tools::prepare_Rd()</code>, <code>Rd2HTML()</code> and their kin
-do exactly that. It is therefore asserted end to end:
-<code>tests/testthat/test-no_execution.R</code> builds a package whose
+<p>Since pkgaudit is intended for reviewing untrusted packages, it must
+never execute code contained in those packages.
+<code>tests/testthat/test-no_execution.R</code> builds a package where
 every execution site writes a marker file, scans it, exports it, and
-requires that no marker exists afterwards.</p>
+requires that none of the markers exist afterwards.</p>
 <p>Three calls in the read path look like execution and are not.
 <code><a href="https://rdrr.io/r/tools/parse_Rd.html" class="external-link">tools::parse_Rd()</a></code> parses without evaluating;
 <code><a href="https://rdrr.io/r/tools/loadRdMacros.html" class="external-link">tools::loadPkgRdMacros()</a></code> reads macro definitions as text;
 and <code>parse(text = )</code> produces an unevaluated expression. A
 macro provider is looked up by macro name against a fixed list and never
-taken from the audited package’s <code>RdMacros</code> field, which the
-package under audit chooses.</p>
+taken from the audited package’s <code>RdMacros</code> field, since the
+untrusted package determines the field value.</p>
 </div>
 <div class="section level3">
-<h3 id="the-size-limit-runs-before-dispatch">The size limit runs before dispatch<a class="anchor" aria-label="anchor" href="#the-size-limit-runs-before-dispatch"></a>
+<h3 id="file-size-limits-are-applied-before-extraction">File size limits are applied before extraction<a class="anchor" aria-label="anchor" href="#file-size-limits-are-applied-before-extraction"></a>
 </h3>
-<p><code><a href="../reference/extract_segments.html">extract_segments()</a></code> applies the scanning limit before
-<code><a href="https://rdrr.io/r/base/UseMethod.html" class="external-link">UseMethod()</a></code>, so no reader can be written that skips it. A
-per-method guard is exactly what once let help files bypass the limit
-for a whole release.</p>
+<p>A file over 10 MB is not read. <code><a href="../reference/extract_segments.html">extract_segments()</a></code>
+applies this restriction before <code><a href="https://rdrr.io/r/base/UseMethod.html" class="external-link">UseMethod()</a></code> so that no
+method can skip it. <code>tests/testthat/test-segments.R</code> verifies
+that an oversized file is not scanned and that the refusal is recorded
+in <code>errors</code>.</p>
 </div>
 <div class="section level3">
-<h3 id="failures-are-contained-and-counted">Failures are contained, and counted<a class="anchor" aria-label="anchor" href="#failures-are-contained-and-counted"></a>
+<h3 id="failures-are-contained-and-counted">Failures are contained and counted<a class="anchor" aria-label="anchor" href="#failures-are-contained-and-counted"></a>
 </h3>
 <p>Listing files, reading a file, parsing code, and evaluating an XPath
-or a regular expression are each wrapped: a failure becomes a row in
-<code>errors</code> rather than aborting the scan. The
-<code>Errors</code> section of <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> follows the table
-with one note per step, stating what coverage that step’s failures
-cost.</p>
-<p>A file pkgaudit tried to read and could not is <code>error</code> in
-the coverage frame, which is a different claim from
-<code>unexamined</code>, where it never tried. Only a failure at a
-<em>reading</em> step counts: a rule that fails on a file says nothing
-about the file.</p>
+or a regular expression are each wrapped in <code><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch()</a></code>: a
+failure becomes a row in <code>errors</code> rather than aborting the
+scan.</p>
 </div>
 <div class="section level3">
-<h3 id="the-rules-are-data-and-integrity-checked">The rules are data, and integrity-checked<a class="anchor" aria-label="anchor" href="#the-rules-are-data-and-integrity-checked"></a>
+<h3 id="rules-are-integrity-checked">Rules are integrity-checked<a class="anchor" aria-label="anchor" href="#rules-are-integrity-checked"></a>
 </h3>
 <p>Rules live in a SQLite database built from YAML by
 <code>inst/scripts/build_db.R</code>. <code><a href="../reference/load_rules.html">load_rules()</a></code> verifies
@@ -317,11 +292,8 @@ the database against its SHA-256 sidecar on every call. The check is
 time-of-check to time-of-use; see “Security considerations” in
 <code><a href="../reference/load_rules.html">?load_rules</a></code>.</p>
 <p><code><a href="../reference/load_rules.html">load_rules()</a></code> also refuses a database with a gap in its
-phase model: a rule without phases, a file-context rule naming a code
-context that does not exist, or one that leaves
-<code>assume_called</code> undecided where code contexts can arise – or
-decides it where they cannot. A rule can never ship whose findings would
-silently carry no phases.</p>
+phase model, so a rule whose findings would carry no phases can never
+ship.</p>
 </div>
 <div class="section level3">
 <h3 id="every-rule-is-verified-against-its-own-examples">Every rule is verified against its own examples<a class="anchor" aria-label="anchor" href="#every-rule-is-verified-against-its-own-examples"></a>
@@ -329,58 +301,8 @@ silently carry no phases.</p>
 <p>Each rule carries positive and negative examples in its YAML.
 <code>build_db.R</code> writes them out as fixtures, and
 <code>tests/testthat/test-fixtures.R</code> requires every positive to
-match its rule and every negative not to. A rule is trusted because its
-documentation is executable, not because it is documented.</p>
-<p>For a code-context rule matched on a segment label rather than on the
-parse tree, the examples are help files and the test is a round trip:
-the extractor must stamp the label the rule claims, on a page carrying
-that kind of code and on no other. That is the only thing tying such a
-rule to the extractor, since its label is checked against a fixed
-vocabulary when the database is built but nothing there confirms the
-extractor produces it.</p>
-<p>The same file checks two further contracts that would otherwise
-drift. A pattern rule’s <code>functions</code> field – the names it
-claims for <code>do.call("name", ...)</code> – is accepted only if
-calling that name bare would have matched the rule’s own XPath, so an
-indirect finding can never be attributed to a rule that would not have
-reported the direct call. And <code>eval_parse</code>’s source list is
-required to cover every function the capability rules it composes
-declare.</p>
-<p>Documentation is held to the same standard. The rule set’s vignette
-is generated from the shipped database rather than written alongside it,
-and every rule in that database must be described there, so a rule that
-ships without a description fails the vignette build. Neither that nor a
-failing example can be fixed by editing prose.</p>
+match its rule and every negative to not match.</p>
 </div>
-</div>
-<div class="section level2">
-<h2 id="what-pkgaudit-does-not-do">What pkgaudit does not do<a class="anchor" aria-label="anchor" href="#what-pkgaudit-does-not-do"></a>
-</h2>
-<ul>
-<li>It does not execute, install, build, or load the package under
-audit.</li>
-<li>It does not resolve values. A path assembled at runtime, a name
-built by <code><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0()</a></code>, or a chunk option computed at render
-time is not followed.</li>
-<li>It does not read compiled code, or any language other than R and
-shell. <code><a href="../reference/export_unscanned.html">export_unscanned()</a></code> hands those to a tool that
-does.</li>
-<li>It does not rank findings or return a verdict. There is no severity
-model, and every result in SARIF output carries the same
-<code>level</code>.</li>
-<li>It does not reach the network, and it writes only where a caller
-sends it.</li>
-<li>It does not trace call graphs. Whether a particular package calls a
-particular function is not something pkgaudit determines, which is why
-the phases of code inside a function definition are a stated reading
-rather than a finding.</li>
-<li>It does not identify a file by its contents, only by its name. An
-extensionless script – <code>tools/build</code> opening
-<code>#!/bin/sh</code> – earns no coverage row: 434 such files across
-134 of CRAN’s 24,216 packages. Admitting a file on a leading
-<code>#!</code> would close this and is a candidate for a later
-release.</li>
-</ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
