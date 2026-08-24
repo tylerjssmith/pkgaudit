@@ -2,7 +2,7 @@
 % Please edit documentation in R/find_matches.R
 \name{find_matches}
 \alias{find_matches}
-\title{Find security-relevant matches in a shell script or Make-like file}
+\title{Find security-relevant matches in shell code}
 \usage{
 find_matches(lines, match_rules, file_context)
 }
@@ -28,8 +28,9 @@ them from the file context the file belongs to.}
 }
 }
 \description{
-Finds matches -- regular-expression matches in a file R executes through
-a shell or through make (e.g., \code{configure}, \code{src/Makevars}).
+Finds matches -- regular-expression matches in code R hands to a shell or to
+make, whether it is a file (e.g., \code{configure}, \code{src/Makevars}) or a shell
+chunk in a vignette.
 }
 \details{
 Each rule's regular expression is evaluated against every line with

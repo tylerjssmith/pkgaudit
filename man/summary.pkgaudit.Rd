@@ -47,13 +47,10 @@ they are. \code{type} is what a file was read as, or its extension.}
 \code{print.summary.pkgaudit()} returns \code{x} invisibly.
 }
 \description{
-\code{summary.pkgaudit()} rolls a scan up into the frequency of each R pattern and
-each shell or make match by the lifecycle phase it executes in, with their
-MITRE ATT&CK techniques; how much of the package was read; and the errors, if
-any. It also collects the distinct file contexts found, which the report does
-not show.
-\code{print.summary.pkgaudit()} writes that summary as a sectioned report and
-returns the object invisibly.
+Takes a \code{pkgaudit} object produced by \code{\link[=audit_package]{audit_package()}} or \code{\link[=audit_tarball]{audit_tarball()}}
+and returns summaries of it: how often each rule fired and in which lifecycle
+phase, how much of the package was read, and the errors, if any.
+\code{print.summary.pkgaudit()} writes them as a sectioned report.
 }
 \details{
 The report opens with the same metadata block as \code{\link[=print.pkgaudit]{print.pkgaudit()}}, then
@@ -64,12 +61,12 @@ summary is returned for programmatic use but is not part of the report.
 Both findings tables are grouped by phase and rule alone. Where a finding
 sits is on the object's own frames; the report answers what runs, and when.
 An occurrence executes in every phase its context does, so it contributes one
-row per phase and \code{n} sums to more than the number of occurrences. Those
+row per phase and \code{n} can sum to more than the number of occurrences. Those
 executing in no phase are gathered under \code{none}.
 
-\code{Coverage} is counts with reasons and deliberately no percentage: coverage
-never reaches 100\%, so a ratio would only flatter. Which files went
-unexamined is in the object's \code{coverage} frame.
+\code{Coverage} is counts by status and location, and deliberately no percentage:
+coverage never reaches 100\%. Which files went unexamined is in the object's
+\code{coverage} frame.
 }
 \section{Filtering by phase}{
 

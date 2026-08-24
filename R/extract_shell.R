@@ -6,7 +6,7 @@
 # shell segments, so one method serves both.
 #
 # The shell segments this produces are analyzed in analyze_shell.R, as are the
-# {bash} and {sh} chunks a vignette yields.
+# shell chunks a vignette yields.
 
 #' @export
 extract_segments.shell <- function(source) {

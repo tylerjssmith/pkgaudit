@@ -39,8 +39,7 @@ run makes several findings read as one. The \code{coverage} frame becomes the
 \code{artifacts} array, so a consumer can see which files were never read, and
 \code{errors} become execution notifications on the invocation.
 
-Requires jsonlite, a suggested dependency, since only this function needs a
-JSON writer.
+Requires jsonlite, a suggested dependency.
 }
 \examples{
 \dontshow{if (requireNamespace("jsonlite", quietly = TRUE)) withAutoprint(\{ # examplesIf}

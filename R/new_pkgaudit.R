@@ -6,8 +6,7 @@
 #' Construct a pkgaudit object
 #'
 #' Assembles the five result data frames and a metadata list into a validated
-#' `pkgaudit` S3 object. [audit_package()] calls this at the end of a scan. It
-#' is also used to construct objects directly (e.g., in tests).
+#' `pkgaudit` S3 object. [audit_package()] calls this at the end of a scan.
 #'
 #' @param file_contexts,patterns,matches,coverage,errors Data frames with the
 #'   columns documented in [audit_package()].

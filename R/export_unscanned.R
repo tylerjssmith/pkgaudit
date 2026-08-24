@@ -1,11 +1,12 @@
 # This script writes the code pkgaudit cannot read into a tree another scanner
-# can. It is the only place pkgaudit writes anything, and every guard here
-# exists because the content and the file names come from an untrusted package.
+# can. It is the only place pkgaudit writes where a caller sends it, and every
+# guard here exists because the content and the file names come from an
+# untrusted package.
 
 # The file extension to give each exported language. A language with no entry
-# keeps its own name, which is right for c, cpp, js, java and rust.
+# keeps its own name, which is right for c, cpp, js, java and lua.
 .export_extensions <- c(python = "py", perl = "pl", ruby = "rb",
-                        fortran = "f90", objc = "m")
+                        fortran = "f90", objc = "m", rust = "rs")
 
 # How large a file may be before it is left behind. Above the scanning limit,
 # since a file too big for pkgaudit to read is exactly the one worth handing to
@@ -16,8 +17,9 @@
 #' Export the code pkgaudit could not read
 #'
 #' Writes the parts of a package that pkgaudit does not analyze -- C, C++,
-#' Fortran, Rust, Python, JavaScript, and the vignette chunks written in them --
-#' into a directory another static analyzer can be pointed at.
+#' Fortran, Rust, Python and JavaScript among them, and the vignette chunks
+#' written in those languages -- into a directory another static analyzer can be
+#' pointed at.
 #'
 #' @param object A `pkgaudit` object.
 #' @param dir Directory to write into. Required, and created if absent. Naming
@@ -50,12 +52,12 @@
 #' account of what it could not read is the single source of truth.
 #'
 #' @section Security considerations:
-#' This is the only function in pkgaudit that writes, and both the content and
-#' the file names come from an untrusted package. Therefore:
+#' This is the only function that writes where a caller sends it, and both the
+#' content and the file names come from an untrusted package. Therefore:
 #' \itemize{
 #'   \item every target path is resolved and must lie under `dir`;
 #'   \item a path component that is `.`, `..`, or that contains a separator or a
-#'     NUL byte is refused;
+#'     control character is refused;
 #'   \item symlinks are never followed, and content is read and rewritten rather
 #'     than copied, so a link pointing out of the package cannot pull a file in;
 #'   \item nothing is written executable, and nothing is removed.

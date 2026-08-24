@@ -86,10 +86,11 @@
 
 # Attach phase columns to the matches frame.
 #
-# A match is found in a shell script or Make-like file, which has no code
-# context, so its phases are those of the file context it sits in. Since one
-# path can match more than one file-context rule, the phases are the union
-# across every rule that matched it.
+# A match is found in shell code, which has no code context, so its phases are
+# those of the file context it sits in -- the shell script or Make-like file
+# itself, or the vignette a shell chunk sits in. Since one path can match more
+# than one file-context rule, the phases are the union across every rule that
+# matched it.
 .resolve_match_phases <- function(matches, file_contexts) {
   out <- .empty_phase_cols(nrow(matches))
   if (nrow(matches) == 0L || nrow(file_contexts) == 0L) {

@@ -17,8 +17,7 @@
                   matches = "match")
 
 
-# Whether the renderer is installed. A function of its own so the guard below
-# can be exercised on a machine where jsonlite is present.
+# Whether the renderer is installed.
 .have_jsonlite <- function() requireNamespace("jsonlite", quietly = TRUE)
 
 
@@ -53,8 +52,7 @@
 #' `artifacts` array, so a consumer can see which files were never read, and
 #' `errors` become execution notifications on the invocation.
 #'
-#' Requires jsonlite, a suggested dependency, since only this function needs a
-#' JSON writer.
+#' Requires jsonlite, a suggested dependency.
 #'
 #' @examplesIf requireNamespace("jsonlite", quietly = TRUE)
 #' # untrustedpkg is a small package shipped with pkgaudit to be scanned.

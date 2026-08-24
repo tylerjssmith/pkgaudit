@@ -1,6 +1,6 @@
 # This script defines the format(), print(), and summary() methods for the
-# pkgaudit S3 object, the print() method for the summary object those return,
-# and the display helpers shared across them.
+# pkgaudit S3 object, the print() method for the summary object, and the display
+# helpers shared across them.
 
 # --- format() and print() Methods ---------------------------------------------
 
@@ -68,13 +68,10 @@ print.pkgaudit <- function(x, path = TRUE, ...) {
 
 #' Summarize a pkgaudit result
 #'
-#' `summary.pkgaudit()` rolls a scan up into the frequency of each R pattern and
-#' each shell or make match by the lifecycle phase it executes in, with their
-#' MITRE ATT&CK techniques; how much of the package was read; and the errors, if
-#' any. It also collects the distinct file contexts found, which the report does
-#' not show.
-#' `print.summary.pkgaudit()` writes that summary as a sectioned report and
-#' returns the object invisibly.
+#' Takes a `pkgaudit` object produced by [audit_package()] or [audit_tarball()]
+#' and returns summaries of it: how often each rule fired and in which lifecycle
+#' phase, how much of the package was read, and the errors, if any.
+#' `print.summary.pkgaudit()` writes them as a sectioned report.
 #'
 #' @param object A `pkgaudit` object.
 #' @param x A `summary.pkgaudit` object.
@@ -116,12 +113,12 @@ print.pkgaudit <- function(x, path = TRUE, ...) {
 #' Both findings tables are grouped by phase and rule alone. Where a finding
 #' sits is on the object's own frames; the report answers what runs, and when.
 #' An occurrence executes in every phase its context does, so it contributes one
-#' row per phase and `n` sums to more than the number of occurrences. Those
+#' row per phase and `n` can sum to more than the number of occurrences. Those
 #' executing in no phase are gathered under `none`.
 #'
-#' `Coverage` is counts with reasons and deliberately no percentage: coverage
-#' never reaches 100%, so a ratio would only flatter. Which files went
-#' unexamined is in the object's `coverage` frame.
+#' `Coverage` is counts by status and location, and deliberately no percentage:
+#' coverage never reaches 100%. Which files went unexamined is in the object's
+#' `coverage` frame.
 #'
 #' @section Filtering by phase:
 #' `phase` restricts the report to the phases named, and is the only way to
@@ -288,10 +285,10 @@ print.summary.pkgaudit <- function(x, path = x$path, ...) {
 # carry those labels, patterns and matches.
 #
 # An occurrence executes in every phase its context does, so it is counted once
-# per phase and `n` sums to more than the number of occurrences. An occurrence
-# that executes in no phase -- code reached only when something calls it -- is
-# gathered under "none". The ATT&CK labels come from the rule, so they are
-# constant across a rule's rows and any one of them describes them all.
+# per phase and `n` can sum to more than the number of occurrences. An
+# occurrence that executes in no phase -- code reached only when something calls
+# it -- is gathered under "none". The ATT&CK labels come from the rule, so they
+# are constant across a rule's rows and any one of them describes them all.
 #
 # Rows are ordered by phase in lifecycle order with "none" last, then by rule
 # name. Rule names mix cases, so they are sorted in the C locale: a report of
@@ -332,7 +329,7 @@ print.summary.pkgaudit <- function(x, path = x$path, ...) {
 
 # Rename the errors data frame for display. All four columns are kept: the
 # notes under the table are built from the rule and the message, and a caller
-# reading s$errors wants them. The report shows only step and script.
+# reading s$errors wants them. The report shows only step and file context.
 .summarize_errors <- function(errors) {
   data.frame(
     step         = errors$step,

@@ -33,8 +33,8 @@
 }
 
 
-# Render the Coverage section: counts with reasons, and no percentage. See
-# ?summary.pkgaudit for why.
+# Render the Coverage section: counts by status and location, and no
+# percentage. See ?summary.pkgaudit for why.
 .coverage_section <- function(coverage) {
   if (nrow(coverage) == 0L) return("No files were found.")
   .format_table(coverage)

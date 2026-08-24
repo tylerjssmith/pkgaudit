@@ -18,7 +18,7 @@ metadata and finding counts.
 }
 \seealso{
 \code{\link[=audit_package]{audit_package()}} and \code{\link[=audit_tarball]{audit_tarball()}} for the scan entry points;
-\code{\link[=print.pkgaudit]{print.pkgaudit()}} for the rendered summary.
+\code{\link[=print.pkgaudit]{print.pkgaudit()}} for the rendered finding counts.
 }
 \author{
 \strong{Maintainer}: Tyler Smith \email{tylerjssmith@gmail.com} (\href{https://orcid.org/0000-0003-4692-2206}{ORCID})

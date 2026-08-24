@@ -7,7 +7,7 @@
 #' metadata and finding counts.
 #'
 #' @seealso [audit_package()] and [audit_tarball()] for the scan entry points;
-#'   [print.pkgaudit()] for the rendered summary.
+#'   [print.pkgaudit()] for the rendered finding counts.
 #'
 #' @keywords internal
 "_PACKAGE"

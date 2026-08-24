@@ -22,8 +22,8 @@ directory scan, which is hashed with \code{\link[=hash_manifest]{hash_manifest()
 \value{
 A \code{\link[=new_pkgaudit]{new_pkgaudit()}} object: a named list with class \code{pkgaudit} holding
 five data frames and a \code{metadata} list. Every findings frame carries the
-nine phase columns described under Lifecycle phases and joins to the others
-on \code{file_context}. Paths are relative to the package root.
+nine phase columns described in Details and joins to the others on
+\code{file_context}. Paths are relative to the package root.
 \describe{
 \item{file_contexts}{\code{rule}, \code{file_context}, \code{message}.}
 \item{patterns}{\code{rule}, \code{file_context}, \code{line_number}, \code{column_number},
@@ -33,14 +33,15 @@ on \code{file_context}. Paths are relative to the package root.
 it came from.}
 \item{matches}{\code{rule}, \code{file_context}, \code{line_number}, \code{column_number},
 \code{preview}, \code{message}, \code{attck}: regular-expression matches in the shell
-and Make-like file contexts. Text matching has no parse tree behind it,
-so the three columns \code{patterns} derives from one -- \code{code_context},
-\code{guarded} and \code{indirect} -- are absent rather than empty.}
+and Make-like file contexts.}
 \item{coverage}{\code{file_context}, \code{language}, \code{status}, \code{reason},
 \code{first_line}, \code{last_line}, \code{lines}, \code{bytes}, \code{rule}. One row per file
 the package carries that is, or could be, code, plus one per span of
 an unanalyzed language inside a literate file -- a \code{python} chunk in a
-vignette is its own row.}
+vignette is its own row. \code{status} is \code{parsed}, \code{matched}, \code{exportable},
+\code{unexamined} or \code{error}; \code{reason} says what stood in the way, and is
+\code{NA}, \code{no_analyzer}, \code{no_extractor}, \code{no_rule}, \code{serialized}, \code{binary},
+\code{symlink}, \code{too_large}, \code{unreadable} or \code{unparseable}.}
 \item{errors}{\code{step}, \code{file_context}, \code{rule}, \code{message}. Recoverable
 failures, collected rather than aborting the scan.}
 \item{metadata}{\code{pkg_name}, \code{pkg_version}, \code{pkg_path}, \code{pkg_is_tarball},
@@ -54,81 +55,18 @@ Finds security-relevant file and code contexts, code patterns, and shell and
 make matches for review before an R source package is trusted.
 }
 \details{
-A file-context rule decides which files are read and how. Only some rules
-report the files they match as findings in their own right; the rest exist to
-point the scan at code. A file in a language pkgaudit cannot read is left
-unscanned rather than scanned badly, so a file's absence from \code{patterns} and
-\code{matches} is not evidence that it is clean -- \code{coverage} is where that
-question is answered.
-}
-\section{Coverage}{
-
-\code{coverage} accounts for the code a package carries, so a clean scan can be
-checked rather than trusted. \code{status} is one of \code{parsed} (read as R),
-\code{matched} (scanned as text), \code{exportable} (a language pkgaudit does not read,
-which \code{\link[=export_unscanned]{export_unscanned()}} can hand to a tool that does), \code{unexamined} (never
-read), or \code{error} (read attempted and refused); \code{reason} says what stood in
-the way. \code{unexamined} and \code{error} are different claims: pkgaudit never tried
-to read the first and could not read the second.
-
-\code{reason} is \code{NA} where nothing stood in the way, and otherwise one of:
-\code{no_analyzer} (pkgaudit does not read that language), \code{no_extractor} (a rule
-claimed the file but nothing reads that kind of file, as for \code{DESCRIPTION}),
-\code{no_rule} (no rule looks where it sits), \code{serialized}, \code{binary}, \code{symlink},
-\code{too_large} (over the 10 MB scanning limit), \code{unreadable}, or \code{unparseable}.
-
-A file earns a row when a rule claimed it, or when its name says what kind of
-file it is, wherever it sits. Files are identified by name and never by
-content, so a script with no extension -- \code{tools/build} opening \verb{#!/bin/sh}
--- is missed. Coverage never reaches 100\% and is not meant
-to; what it offers is legibility rather than completeness. Deserializing an
-\code{.rda} can execute arbitrary code, so serialized objects are reported as
-executable surface rather than as data. Version-control and IDE state is
-excluded, and \code{.Rbuildignore} is not consulted, since the package under audit
-writes it.
-}
-
-\section{Lifecycle phases}{
-
 Every findings frame carries one logical column per phase -- \code{at_autoconf},
 \code{at_build}, \code{at_check}, \code{at_install_src}, \code{at_install_bin}, \code{at_load},
-\code{at_attach}, \code{at_unload} and \code{at_detach} -- \code{TRUE} when that finding's code
-runs then. A finding can belong to several, so the columns do not partition
-the rows.
+\code{at_attach}, \code{at_unload} and \code{at_detach}. Value is \code{TRUE} when that finding's
+code runs then. A finding can belong to several phases.
 
-A file context, and a match found in one, take the phases of the rule that
-matched. A pattern takes them from where its file sits and where the code
-sits within it: a lifecycle hook or a part of a help file carries phases of
-its own, and otherwise the code inherits the phases around it, so the same
-call reports \code{at_check} under \verb{tests/} and \code{at_build} under \verb{data/}. Code
-inside a function definition inherits too, except where a rule sets
-\code{assume_called = FALSE}, as the rules for \verb{R/} do. See \code{vignette("rules")}.
+A file in a language pkgaudit cannot read is left unscanned rather than
+scanned badly, so a file's absence from \code{patterns} and \code{matches} is not
+evidence that it is clean; see \code{coverage} and \code{errors}.
+
+\code{preview} is a display-only excerpt of the line, whitespace collapsed and a
+long line windowed on the match, so \code{column_number} does not index into it.
 }
-
-\section{Reading a finding}{
-
-\code{preview} is a display-only excerpt of the line, whitespace collapsed, so the
-frames can be skimmed without opening files. A long line is windowed on the
-match, so \code{column_number} does not index into it.
-
-\code{guarded} is \code{TRUE} for code that ships but the lifecycle does not run -- a
-\verb{\dontrun{}} block, or a vignette chunk suppressed by either \code{eval=FALSE} in
-its header or \verb{#| eval: false} beneath it. Its phases still come from its
-context and remain an upper bound. A document-wide \code{execute: eval: false} in
-Quarto front matter is not read, so a chunk it suppresses still reports.
-\code{indirect} is \code{TRUE} where
-the call was made through the function's name, as in \code{do.call("system", ...)},
-and is reported under the rule that owns the name; see \code{\link[=find_indirect]{find_indirect()}}.
-
-Patterns are matched against R's parse tree, matches against text. Text
-matching has no syntax behind it, so a match inside a comment or a quoted
-string cannot be told from one in a live command; see \code{\link[=find_matches]{find_matches()}}.
-
-A file over 10 MB is not read at all: a hostile package must not be able to
-spend the scanner's memory. It still earns a \code{coverage} row, with \code{reason}
-\code{too_large}, so the skip is reported rather than silent.
-}
-
 \examples{
 # untrustedpkg is a small package shipped with pkgaudit to be scanned.
 tarball <- system.file(
@@ -144,4 +82,8 @@ result$file_contexts
 result$patterns
 print(result)
 
+}
+\seealso{
+\code{vignette("pkgaudit")} for a worked scan, and \code{vignette("rules")}
+for the rules, phases and contexts behind a finding.
 }

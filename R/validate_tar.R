@@ -2,12 +2,7 @@
 # tarballs.
 
 # The caps and refusals below come from a survey of every CRAN source package as
-# of 7 July 2026 (n = 24,216); see dev/cran_survey/. Not one archive
-# carried a link entry, a non-standard typeflag, a traversal, absolute,
-# backslash, control-character or empty path, an unparseable size, or more than
-# one top-level directory, so refusing all of them rejects no legitimate
-# package. The maxima observed were 13,624 entries, ~140 MB uncompressed and an
-# ~85:1 expansion ratio. Bioconductor was not surveyed and may differ.
+# of 23 August 2026 (n = 24,741); see dev/cran_survey/.
 
 #' Validate a source package tarball before extraction
 #'

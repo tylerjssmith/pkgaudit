@@ -60,10 +60,8 @@
 #'
 #' The `examples` string is not guaranteed to parse. R never syntax-checks
 #' `\dontrun{}`, so including that code exposes blocks that are not valid R.
-#' Across 3081 CRAN help files, 5 (0.16%) produced an unparseable `examples`
-#' string, every one for that reason; no `sexpr` string failed. The string is
-#' assembled whole, so one broken `\dontrun{}` costs the valid example code in
-#' the same file.
+#' The string is assembled whole, so one broken `\dontrun{}` costs the valid
+#' example code in the same file.
 #'
 #' @keywords internal
 read_Rd_code <- function(path, macros = NULL) {

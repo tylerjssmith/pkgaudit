@@ -19,7 +19,6 @@ A \code{pkgaudit} object: a named list of \code{file_contexts}, \code{patterns},
 }
 \description{
 Assembles the five result data frames and a metadata list into a validated
-\code{pkgaudit} S3 object. \code{\link[=audit_package]{audit_package()}} calls this at the end of a scan. It
-is also used to construct objects directly (e.g., in tests).
+\code{pkgaudit} S3 object. \code{\link[=audit_package]{audit_package()}} calls this at the end of a scan.
 }
 \keyword{internal}

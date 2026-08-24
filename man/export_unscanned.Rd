@@ -39,8 +39,9 @@ Invisibly, a manifest data frame with one row per exportable span:
 }
 \description{
 Writes the parts of a package that pkgaudit does not analyze -- C, C++,
-Fortran, Rust, Python, JavaScript, and the vignette chunks written in them --
-into a directory another static analyzer can be pointed at.
+Fortran, Rust, Python and JavaScript among them, and the vignette chunks
+written in those languages -- into a directory another static analyzer can be
+pointed at.
 }
 \details{
 A whole file is copied verbatim. A span -- a vignette chunk in a language
@@ -55,12 +56,12 @@ account of what it could not read is the single source of truth.
 }
 \section{Security considerations}{
 
-This is the only function in pkgaudit that writes, and both the content and
-the file names come from an untrusted package. Therefore:
+This is the only function that writes where a caller sends it, and both the
+content and the file names come from an untrusted package. Therefore:
 \itemize{
 \item every target path is resolved and must lie under \code{dir};
 \item a path component that is \code{.}, \code{..}, or that contains a separator or a
-NUL byte is refused;
+control character is refused;
 \item symlinks are never followed, and content is read and rewritten rather
 than copied, so a link pointing out of the package cannot pull a file in;
 \item nothing is written executable, and nothing is removed.

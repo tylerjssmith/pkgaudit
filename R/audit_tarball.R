@@ -20,15 +20,11 @@
 #' @details
 #' Extracts a source package tarball to a temporary directory, applies
 #' [audit_package()], removes the temporary directory, and returns the result.
-#' This is the typical pre-install workflow: audit a downloaded tarball and
-#' review the findings before calling [utils::install.packages()].
 #'
 #' Before extracting anything, the tarball is validated with [validate_tar()],
-#' which fails closed on link entries, path traversal, absolute paths,
-#' decompression bombs, and archives without exactly one top-level directory.
-#' After extraction, the extracted directory is re-checked and rejected if it
-#' contains any symlink, as defense in depth against a validate_tar()/untar()
-#' disagreement.
+#' which fails closed. After extraction, the extracted directory is re-checked
+#' and rejected if it contains any symlink, as defense in depth against a
+#' validate_tar()/untar() disagreement.
 #'
 #' After extraction, the tarball filename must be consistent with the top-level
 #' directory it produced (e.g. `foo_0.1.0.tar.gz` must extract to `foo/`);
@@ -127,7 +123,7 @@ audit_tarball <- function(
   rc <- utils::untar(path, exdir = extract_dir, tar = "internal")
   # nocov start
   # The internal extractor signals failure by raising, so this cannot be
-  # reached while `tar` is fixed above. It is kept for the day it is not.
+  # reached while `tar` is fixed above.
   if (!identical(rc, 0L)) {
     stop("untar() returned non-zero exit code: ", rc, call. = FALSE)
   }

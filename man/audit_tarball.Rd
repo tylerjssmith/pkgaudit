@@ -51,15 +51,11 @@ make matches for review before an R source package tarball is trusted.
 \details{
 Extracts a source package tarball to a temporary directory, applies
 \code{\link[=audit_package]{audit_package()}}, removes the temporary directory, and returns the result.
-This is the typical pre-install workflow: audit a downloaded tarball and
-review the findings before calling \code{\link[utils:install.packages]{utils::install.packages()}}.
 
 Before extracting anything, the tarball is validated with \code{\link[=validate_tar]{validate_tar()}},
-which fails closed on link entries, path traversal, absolute paths,
-decompression bombs, and archives without exactly one top-level directory.
-After extraction, the extracted directory is re-checked and rejected if it
-contains any symlink, as defense in depth against a validate_tar()/untar()
-disagreement.
+which fails closed. After extraction, the extracted directory is re-checked
+and rejected if it contains any symlink, as defense in depth against a
+validate_tar()/untar() disagreement.
 
 After extraction, the tarball filename must be consistent with the top-level
 directory it produced (e.g. \code{foo_0.1.0.tar.gz} must extract to \verb{foo/});

@@ -73,10 +73,8 @@ would lose real code, and the warning is reported in \code{error}.
 
 The \code{examples} string is not guaranteed to parse. R never syntax-checks
 \verb{\dontrun{}}, so including that code exposes blocks that are not valid R.
-Across 3081 CRAN help files, 5 (0.16\%) produced an unparseable \code{examples}
-string, every one for that reason; no \code{sexpr} string failed. The string is
-assembled whole, so one broken \verb{\dontrun{}} costs the valid example code in
-the same file.
+The string is assembled whole, so one broken \verb{\dontrun{}} costs the valid
+example code in the same file.
 }
 
 \keyword{internal}

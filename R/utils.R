@@ -3,11 +3,6 @@
 # Empty result-frame constructors. Every finder returns a data frame with a
 # stable schema even when it finds nothing, so downstream rbind() calls always
 # align and callers never have to special-case zero rows.
-#
-# The finders do not know a rule's lifecycle phases -- those live in the rules
-# database and are attached once, in audit_package(). Each constructor therefore
-# takes with_phases: TRUE gives the object's public schema, FALSE the narrower
-# frame a finder builds before the phase columns are joined on.
 
 # A data frame of the nine phase columns, all FALSE, with n rows.
 .empty_phase_cols <- function(n = 0L) {
@@ -90,9 +85,9 @@
 }
 
 
-# Matches carry no code_context: a shell script or Make-like file has no R
-# parse tree to sit in, so a match's phases come from the file context it
-# was found in rather than from an enclosing code context.
+# Matches carry no code_context: shell code has no R parse tree to sit in, so a
+# match's phases come from the file context it was found in rather than from an
+# enclosing code context.
 .empty_matches <- function(with_phases = TRUE) {
   df <- data.frame(
     rule          = character(0L),
