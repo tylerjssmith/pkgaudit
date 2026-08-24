@@ -1,8 +1,8 @@
 # command:  Rscript -e 'data(probe_data, package="foo")'
-# started:  2026-08-21 15:06:52
+# started:  2026-08-21 15:13:08
 # workdir:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/build
 # library:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/lib
 # log:      /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/logs/data.log
 # pdflatex: /Users/smitht61/Library/TinyTeX/bin/universal-darwin/pdflatex
 # exit:     0
-# finished: 2026-08-21 15:06:52
+# finished: 2026-08-21 15:13:08

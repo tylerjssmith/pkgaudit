@@ -1,56 +1,56 @@
 # command:  R CMD build --no-build-vignettes foo/
-# started:  2026-08-21 15:05:58
+# started:  2026-08-21 15:11:51
 # workdir:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/build
 # library:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/lib
 # log:      /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/logs/build_novignette.log
 # pdflatex: /Users/smitht61/Library/TinyTeX/bin/universal-darwin/pdflatex
-15:05:58	makevars	59224
-15:05:59	cleanup	59228
-15:05:59.114	rprofile	59234
-15:05:59.115	rprofile_fn_called	59234
-15:05:59	configure	59976
-15:05:59	makevars	59979
-15:05:59	makevars	59989
-15:05:59.944	install_libs	59234
-15:05:59.944	install_libs_fn_called	59234
-15:05:59.948	data_R	59234
-15:05:59.948	data_fn_called	59234
-15:05:59.949	data_R	59234
-15:05:59.949	data_fn_called	59234
-15:05:59.990	rprofile	59998
-15:05:59.991	rprofile_fn_called	59998
-15:06:00.050	top_level	59998
-15:06:00.050	r_fn_called	59998
-15:06:00.050	r_unix	59998
-15:06:00.051	r_unix_fn_called	59998
-2026-08-21 15:06:00	rd_sexpr_build	59234
-2026-08-21 15:06:00	rd_sexpr_build_fn_called	59234
-2026-08-21 15:06:00	rd_sexpr_install	59234
-2026-08-21 15:06:00	rd_sexpr_install_fn_called	59234
-2026-08-21 15:06:00	rd_sexpr_nostage	59234
-2026-08-21 15:06:00	rd_unix_sexpr_nostage	59234
-15:06:00.135	rprofile	60006
-15:06:00.136	rprofile_fn_called	60006
-15:06:00.247	rprofile	60014
-15:06:00.248	rprofile_fn_called	60014
-15:06:00.306	onLoad	60014
-15:06:00.307	onAttach	60014
-15:06:00.448	rprofile	60047
-15:06:00.448	rprofile_fn_called	60047
-15:06:00.507	onLoad	60047
-15:06:00.507	onAttach	60047
-2026-08-21 15:06:00	rd_sexpr_build	59213
-2026-08-21 15:06:00	rd_sexpr_build_fn_called	59213
-2026-08-21 15:06:00	rd_sexpr_install	59213
-2026-08-21 15:06:00	rd_sexpr_install_fn_called	59213
-2026-08-21 15:06:00	rd_sexpr_nostage	59213
-2026-08-21 15:06:00	rd_sexpr_render	59213
-2026-08-21 15:06:00	rd_sexpr_render_fn_called	59213
-2026-08-21 15:06:00	rd_unix_sexpr_nostage	59213
-2026-08-21 15:06:00	rd_windows_sexpr_nostage	59213
-15:06:00	makevars	60057
-15:06:00	cleanup	60061
-15:06:00.671	data_R	59213
-15:06:00.672	data_fn_called	59213
+15:11:52	makevars	67680
+15:11:52	cleanup	67684
+15:11:52.355	rprofile	67690
+15:11:52.356	rprofile_fn_called	67690
+15:11:53	configure	68433
+15:11:53	makevars	68436
+15:11:53	makevars	68446
+15:11:53.199	install_libs	67690
+15:11:53.199	install_libs_fn_called	67690
+15:11:53.203	data_R	67690
+15:11:53.203	data_fn_called	67690
+15:11:53.204	data_R	67690
+15:11:53.204	data_fn_called	67690
+15:11:53.246	rprofile	68455
+15:11:53.247	rprofile_fn_called	68455
+15:11:53.306	top_level	68455
+15:11:53.306	r_fn_called	68455
+15:11:53.306	r_unix	68455
+15:11:53.306	r_unix_fn_called	68455
+2026-08-21 15:11:53	rd_sexpr_build	67690
+2026-08-21 15:11:53	rd_sexpr_build_fn_called	67690
+2026-08-21 15:11:53	rd_sexpr_install	67690
+2026-08-21 15:11:53	rd_sexpr_install_fn_called	67690
+2026-08-21 15:11:53	rd_sexpr_nostage	67690
+2026-08-21 15:11:53	rd_unix_sexpr_nostage	67690
+15:11:53.391	rprofile	68463
+15:11:53.392	rprofile_fn_called	68463
+15:11:53.501	rprofile	68471
+15:11:53.502	rprofile_fn_called	68471
+15:11:53.559	onLoad	68471
+15:11:53.560	onAttach	68471
+15:11:53.700	rprofile	68504
+15:11:53.701	rprofile_fn_called	68504
+15:11:53.759	onLoad	68504
+15:11:53.759	onAttach	68504
+2026-08-21 15:11:53	rd_sexpr_build	67669
+2026-08-21 15:11:53	rd_sexpr_build_fn_called	67669
+2026-08-21 15:11:53	rd_sexpr_install	67669
+2026-08-21 15:11:53	rd_sexpr_install_fn_called	67669
+2026-08-21 15:11:53	rd_sexpr_nostage	67669
+2026-08-21 15:11:53	rd_sexpr_render	67669
+2026-08-21 15:11:53	rd_sexpr_render_fn_called	67669
+2026-08-21 15:11:53	rd_unix_sexpr_nostage	67669
+2026-08-21 15:11:53	rd_windows_sexpr_nostage	67669
+15:11:53	makevars	68514
+15:11:53	cleanup	68518
+15:11:53.920	data_R	67669
+15:11:53.920	data_fn_called	67669
 # exit:     0
-# finished: 2026-08-21 15:06:00
+# finished: 2026-08-21 15:11:54

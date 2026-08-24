@@ -44,7 +44,7 @@ head(available_saved)
 ```
 
 The following code downloads the available packages as source tarballs. It
-confirms that the MD5 hash claimed by the mirror matches the MD5 hash of the
+checks whether the MD5 hash claimed by the mirror matches the MD5 hash of the
 downloaded file, and adds the more secure (collision-resistant) SHA-256 hash.
 
 The snapshot is large (~18 GB) and was saved outside of the package directory at
@@ -52,11 +52,11 @@ the path stored in `SNAPSHOT_DIR`.
 
 ```{r download, eval = FALSE, message = FALSE}
 downloaded = download_cran(
-  pkgs       = available[sample(1:nrow(available), 20), ], 
+  pkgs       = available, 
   dir        = SNAPSHOT_DIR, 
   check_md5  = TRUE, 
   add_sha256 = TRUE,
-  pause = 0
+  pause      = 0.2
 )
 write_csv(downloaded, "results/downloaded_packages.csv")
 ```
@@ -69,11 +69,27 @@ downloaded_saved = read_csv("results/downloaded_packages.csv",
 head(downloaded_saved[, c("package","version","md5_matches","sha256_local")])
 ```
 
+We assert that every available package was downloaded, that no extra package was
+downloaded, and that the MD5 hashes claimed by the mirror match the hashes of
+the downloaded files.
+
+```{r verify_downloads}
+# downloaded packages match available packages
+expected = paste0(available$Package, "_", available$Version, ".tar.gz")
+actual   = list.files(SNAPSHOT_DIR, pattern = "\\.tar\\.gz")
+
+length(setdiff(expected, actual)) == 0
+length(setdiff(actual, expected)) == 0
+
+# MD5 checksums consistent
+sum(downloaded_saved$md5_matches) == nrow(downloaded_saved)
+```
+
 ## Survey CRAN
 
 The following code runs `pkgaudit::audit_tarball` on every downloaded package,
 combines the `pkgaudit` data frames across packages, and adds `package` and
-`version` columns to distinguish the results.
+`version` columns to the data frames to distinguish the results.
 
 ```{r cran, eval = FALSE}
 findings = survey_cran(SNAPSHOT_DIR, rules = pkgaudit::load_rules())

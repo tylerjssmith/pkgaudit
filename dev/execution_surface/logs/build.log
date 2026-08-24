@@ -1,58 +1,58 @@
 # command:  R CMD build foo/
-# started:  2026-08-21 15:05:55
+# started:  2026-08-21 15:11:49
 # workdir:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/build
 # library:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/lib
 # log:      /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/logs/build.log
 # pdflatex: /Users/smitht61/Library/TinyTeX/bin/universal-darwin/pdflatex
-15:05:55	makevars	58036
-15:05:56	cleanup	58040
-15:05:56.278	rprofile	58046
-15:05:56.279	rprofile_fn_called	58046
-15:05:56	configure	58788
-15:05:56	makevars	58791
-15:05:57	makevars	58801
-15:05:57.131	install_libs	58046
-15:05:57.131	install_libs_fn_called	58046
-15:05:57.135	data_R	58046
-15:05:57.136	data_fn_called	58046
-15:05:57.136	data_R	58046
-15:05:57.136	data_fn_called	58046
-15:05:57.179	rprofile	58810
-15:05:57.179	rprofile_fn_called	58810
-15:05:57.241	top_level	58810
-15:05:57.242	r_fn_called	58810
-15:05:57.242	r_unix	58810
-15:05:57.242	r_unix_fn_called	58810
-2026-08-21 15:05:57	rd_sexpr_build	58046
-2026-08-21 15:05:57	rd_sexpr_build_fn_called	58046
-2026-08-21 15:05:57	rd_sexpr_install	58046
-2026-08-21 15:05:57	rd_sexpr_install_fn_called	58046
-2026-08-21 15:05:57	rd_sexpr_nostage	58046
-2026-08-21 15:05:57	rd_unix_sexpr_nostage	58046
-15:05:57.329	rprofile	58818
-15:05:57.330	rprofile_fn_called	58818
-15:05:57.440	rprofile	58826
-15:05:57.441	rprofile_fn_called	58826
-15:05:57.499	onLoad	58826
-15:05:57.500	onAttach	58826
-15:05:57.643	rprofile	58859
-15:05:57.644	rprofile_fn_called	58859
-15:05:57.703	onLoad	58859
-15:05:57.704	onAttach	58859
-2026-08-21 15:05:57	rd_sexpr_build	58025
-2026-08-21 15:05:57	rd_sexpr_build_fn_called	58025
-2026-08-21 15:05:57	rd_sexpr_install	58025
-2026-08-21 15:05:57	rd_sexpr_install_fn_called	58025
-2026-08-21 15:05:57	rd_sexpr_nostage	58025
-2026-08-21 15:05:57	rd_sexpr_render	58025
-2026-08-21 15:05:57	rd_sexpr_render_fn_called	58025
-2026-08-21 15:05:57	rd_unix_sexpr_nostage	58025
-2026-08-21 15:05:57	rd_windows_sexpr_nostage	58025
-15:05:57.868	vignette	58868
-15:05:57.871	vignette_fn_called	58868
-15:05:58	makevars	59166
-15:05:58	cleanup	59170
-15:05:58.630	data_R	58025
-15:05:58.631	data_fn_called	58025
+15:11:49	makevars	66492
+15:11:49	cleanup	66496
+15:11:49.549	rprofile	66502
+15:11:49.550	rprofile_fn_called	66502
+15:11:50	configure	67244
+15:11:50	makevars	67247
+15:11:50	makevars	67257
+15:11:50.400	install_libs	66502
+15:11:50.400	install_libs_fn_called	66502
+15:11:50.404	data_R	66502
+15:11:50.404	data_fn_called	66502
+15:11:50.404	data_R	66502
+15:11:50.405	data_fn_called	66502
+15:11:50.446	rprofile	67266
+15:11:50.447	rprofile_fn_called	67266
+15:11:50.506	top_level	67266
+15:11:50.506	r_fn_called	67266
+15:11:50.507	r_unix	67266
+15:11:50.507	r_unix_fn_called	67266
+2026-08-21 15:11:50	rd_sexpr_build	66502
+2026-08-21 15:11:50	rd_sexpr_build_fn_called	66502
+2026-08-21 15:11:50	rd_sexpr_install	66502
+2026-08-21 15:11:50	rd_sexpr_install_fn_called	66502
+2026-08-21 15:11:50	rd_sexpr_nostage	66502
+2026-08-21 15:11:50	rd_unix_sexpr_nostage	66502
+15:11:50.592	rprofile	67274
+15:11:50.593	rprofile_fn_called	67274
+15:11:50.702	rprofile	67282
+15:11:50.703	rprofile_fn_called	67282
+15:11:50.760	onLoad	67282
+15:11:50.761	onAttach	67282
+15:11:50.903	rprofile	67315
+15:11:50.903	rprofile_fn_called	67315
+15:11:50.961	onLoad	67315
+15:11:50.962	onAttach	67315
+2026-08-21 15:11:50	rd_sexpr_build	66481
+2026-08-21 15:11:50	rd_sexpr_build_fn_called	66481
+2026-08-21 15:11:50	rd_sexpr_install	66481
+2026-08-21 15:11:50	rd_sexpr_install_fn_called	66481
+2026-08-21 15:11:50	rd_sexpr_nostage	66481
+2026-08-21 15:11:50	rd_sexpr_render	66481
+2026-08-21 15:11:50	rd_sexpr_render_fn_called	66481
+2026-08-21 15:11:50	rd_unix_sexpr_nostage	66481
+2026-08-21 15:11:50	rd_windows_sexpr_nostage	66481
+15:11:51.124	vignette	67324
+15:11:51.127	vignette_fn_called	67324
+15:11:51	makevars	67622
+15:11:51	cleanup	67626
+15:11:51.874	data_R	66481
+15:11:51.874	data_fn_called	66481
 # exit:     0
-# finished: 2026-08-21 15:05:58
+# finished: 2026-08-21 15:11:51

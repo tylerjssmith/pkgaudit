@@ -1,39 +1,39 @@
 # command:  R CMD INSTALL --build foo/
-# started:  2026-08-21 15:06:50
+# started:  2026-08-21 15:13:06
 # workdir:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/build
 # library:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/lib
 # log:      /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/logs/binary_make.log
 # pdflatex: /Users/smitht61/Library/TinyTeX/bin/universal-darwin/pdflatex
-15:06:50	configure	65849
-15:06:50	makevars	65852
-15:06:50	makevars	65862
-15:06:50.688	install_libs	65105
-15:06:50.688	install_libs_fn_called	65105
-15:06:50.693	data_R	65105
-15:06:50.693	data_fn_called	65105
-15:06:50.693	data_R	65105
-15:06:50.693	data_fn_called	65105
-15:06:50.735	rprofile	65866
-15:06:50.736	rprofile_fn_called	65866
-15:06:50.796	top_level	65866
-15:06:50.796	r_fn_called	65866
-15:06:50.796	r_unix	65866
-15:06:50.797	r_unix_fn_called	65866
-2026-08-21 15:06:50	rd_sexpr_build	65105
-2026-08-21 15:06:50	rd_sexpr_build_fn_called	65105
-2026-08-21 15:06:50	rd_sexpr_install	65105
-2026-08-21 15:06:50	rd_sexpr_install_fn_called	65105
-2026-08-21 15:06:50	rd_sexpr_nostage	65105
-2026-08-21 15:06:50	rd_unix_sexpr_nostage	65105
-15:06:50.883	rprofile	65874
-15:06:50.884	rprofile_fn_called	65874
-15:06:50.998	rprofile	65882
-15:06:50.999	rprofile_fn_called	65882
-15:06:51.058	onLoad	65882
-15:06:51.058	onAttach	65882
-15:06:51.200	rprofile	65915
-15:06:51.201	rprofile_fn_called	65915
-15:06:51.260	onLoad	65915
-15:06:51.261	onAttach	65915
+15:13:06	configure	74312
+15:13:06	makevars	74315
+15:13:06	makevars	74325
+15:13:06.802	install_libs	73569
+15:13:06.803	install_libs_fn_called	73569
+15:13:06.807	data_R	73569
+15:13:06.808	data_fn_called	73569
+15:13:06.808	data_R	73569
+15:13:06.808	data_fn_called	73569
+15:13:06.850	rprofile	74329
+15:13:06.851	rprofile_fn_called	74329
+15:13:06.910	top_level	74329
+15:13:06.910	r_fn_called	74329
+15:13:06.911	r_unix	74329
+15:13:06.911	r_unix_fn_called	74329
+2026-08-21 15:13:06	rd_sexpr_build	73569
+2026-08-21 15:13:06	rd_sexpr_build_fn_called	73569
+2026-08-21 15:13:06	rd_sexpr_install	73569
+2026-08-21 15:13:06	rd_sexpr_install_fn_called	73569
+2026-08-21 15:13:06	rd_sexpr_nostage	73569
+2026-08-21 15:13:06	rd_unix_sexpr_nostage	73569
+15:13:06.996	rprofile	74337
+15:13:06.996	rprofile_fn_called	74337
+15:13:07.107	rprofile	74345
+15:13:07.108	rprofile_fn_called	74345
+15:13:07.165	onLoad	74345
+15:13:07.166	onAttach	74345
+15:13:07.312	rprofile	74378
+15:13:07.313	rprofile_fn_called	74378
+15:13:07.371	onLoad	74378
+15:13:07.372	onAttach	74378
 # exit:     0
-# finished: 2026-08-21 15:06:51
+# finished: 2026-08-21 15:13:07

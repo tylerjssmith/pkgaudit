@@ -1,123 +1,123 @@
 # command:  R CMD check --no-manual --as-cran foo_0.1.0.tar.gz
-# started:  2026-08-21 15:06:14
+# started:  2026-08-21 15:12:31
 # workdir:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/build
 # library:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/lib
 # log:      /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/logs/check_ascran.log
 # pdflatex: /Users/smitht61/Library/TinyTeX/bin/universal-darwin/pdflatex
-15:06:14.587	citation	63366
-15:06:14.588	citation_fn_called	63366
-15:06:14.606	citation	63366
-15:06:14.606	citation_fn_called	63366
-15:06:14.608	citation	63366
-15:06:14.608	citation_fn_called	63366
-15:06:14.610	citation	63366
-15:06:14.610	citation_fn_called	63366
-15:06:39.795	citation	63366
-15:06:39.796	citation_fn_called	63366
-15:06:41	configure	64182
-15:06:41	makevars	64185
-15:06:41	makevars	64195
-15:06:41	makevars	64204
-15:06:41.586	install_libs	63392
-15:06:41.586	install_libs_fn_called	63392
-15:06:41.705	top_level	64220
-15:06:41.706	r_fn_called	64220
-15:06:41.706	r_unix	64220
-15:06:41.706	r_unix_fn_called	64220
-2026-08-21 15:06:41	rd_sexpr_install	63392
-2026-08-21 15:06:41	rd_sexpr_install_fn_called	63392
-2026-08-21 15:06:41	rd_sexpr_nostage	63392
-2026-08-21 15:06:41	rd_unix_sexpr_nostage	63392
-15:06:41.959	onLoad	64236
-15:06:41.960	onAttach	64236
-15:06:42.182	onLoad	64269
-15:06:42.183	onAttach	64269
-15:06:43.433	citation	64306
-15:06:43.434	citation_fn_called	64306
-15:06:43.614	onLoad	64320
-15:06:43.615	onAttach	64320
-15:06:43.649	onLoad	64328
-15:06:43.651	onAttach	64328
-15:06:43.683	onLoad	64331
-15:06:43.684	onAttach	64331
-15:06:43.685	onDetach	64331
-15:06:43.720	onLoad	64334
-15:06:43.816	onLoad	64337
-15:06:43.817	onUnload	64337
-15:06:43.918	onLoad	64345
-15:06:43.919	onAttach	64345
-15:06:44.018	onLoad	64353
-15:06:44.116	onLoad	64361
-15:06:44.118	onAttach	64361
-15:06:44.690	onLoad	64377
-15:06:44.779	onLoad	64385
-15:06:44.889	onLoad	64393
-15:06:44.966	onLoad	64401
-15:06:45.318	onLoad	64431
-15:06:45.495	onLoad	64439
-15:06:45.924	onLoad	64471
-15:06:46.045	onLoad	64479
-2026-08-21 15:06:46	rd_sexpr_build	64490
-2026-08-21 15:06:46	rd_sexpr_build_fn_called	64490
-2026-08-21 15:06:46	rd_sexpr_install	64490
-2026-08-21 15:06:46	rd_sexpr_install_fn_called	64490
-2026-08-21 15:06:46	rd_sexpr_nostage	64490
-2026-08-21 15:06:46	rd_sexpr_render	64490
-2026-08-21 15:06:46	rd_sexpr_render_fn_called	64490
-2026-08-21 15:06:46	rd_unix_sexpr_nostage	64490
-2026-08-21 15:06:46	rd_windows_sexpr_nostage	64490
-2026-08-21 15:06:46	rd_sexpr_render	64509
-2026-08-21 15:06:46	rd_sexpr_render_fn_called	64509
-15:06:46.594	onLoad	64525
-15:06:46.596	onAttach	64525
-15:06:46.670	onLoad	64533
-15:06:46.671	onAttach	64533
-15:06:46.749	onLoad	64541
-15:06:46.750	onAttach	64541
-15:06:46.820	onLoad	64549
-15:06:46.824	onAttach	64549
-15:06:46.967	onLoad	64565
-2026-08-21 15:06:47	rd_sexpr_render	64581
-2026-08-21 15:06:47	rd_sexpr_render_fn_called	64581
-15:06:47	makevars	64608
-2026-08-21 15:06:47	rd_sexpr_render	64661
-2026-08-21 15:06:47	rd_sexpr_render_fn_called	64661
-15:06:48.078	onLoad	64669
-15:06:48.079	onAttach	64669
-2026-08-21 15:06:48	rd_examples	64669
-2026-08-21 15:06:48	rd_examples_fn_called	64669
-2026-08-21 15:06:48	rd_unix_examples	64669
-2026-08-21 15:06:48	rd_unwrapped	64669
-2026-08-21 15:06:48	rd_dontshow	64669
-2026-08-21 15:06:48	rd_testonly	64669
-2026-08-21 15:06:48	rd_sexpr_render	64677
-2026-08-21 15:06:48	rd_sexpr_render_fn_called	64677
-15:06:48.373	onLoad	64685
-15:06:48.375	onAttach	64685
-2026-08-21 15:06:48	rd_examples	64685
-2026-08-21 15:06:48	rd_examples_fn_called	64685
-2026-08-21 15:06:48	rd_unix_examples	64685
-2026-08-21 15:06:48	rd_unwrapped	64685
-2026-08-21 15:06:48	rd_dontshow	64685
-2026-08-21 15:06:48	rd_donttest	64685
-2026-08-21 15:06:48	rd_testonly	64685
-15:06:48.747	tests_R	64718
-15:06:48.755	tests_fn_called	64718
-15:06:48.870	runit_test	64734
-15:06:48.871	runit_fn_called	64734
-15:06:48.871	runit_fn_framework_called	64734
-15:06:49.056	onLoad	64750
-15:06:49.057	onAttach	64750
-15:06:49.076	testthat_helper	64750
-15:06:49.076	testthat_helper_fn_called	64750
-15:06:49.084	testthat_test	64750
-15:06:49.084	testthat_fn_called	64750
-15:06:49.085	testthat_in_test_that	64750
-15:06:49.229	onLoad	64766
-15:06:49.230	onAttach	64766
-15:06:49.249	tinytest_test	64766
-15:06:49.249	tinytest_fn_called	64766
-15:06:49.498	vignette	64792
-15:06:49.501	vignette_fn_called	64792
+15:12:32.008	citation	71833
+15:12:32.008	citation_fn_called	71833
+15:12:32.027	citation	71833
+15:12:32.027	citation_fn_called	71833
+15:12:32.029	citation	71833
+15:12:32.029	citation_fn_called	71833
+15:12:32.031	citation	71833
+15:12:32.031	citation_fn_called	71833
+15:12:56.397	citation	71833
+15:12:56.398	citation_fn_called	71833
+15:12:57	configure	72647
+15:12:57	makevars	72650
+15:12:57	makevars	72660
+15:12:57	makevars	72669
+15:12:57.974	install_libs	71857
+15:12:57.974	install_libs_fn_called	71857
+15:12:58.093	top_level	72685
+15:12:58.094	r_fn_called	72685
+15:12:58.094	r_unix	72685
+15:12:58.094	r_unix_fn_called	72685
+2026-08-21 15:12:58	rd_sexpr_install	71857
+2026-08-21 15:12:58	rd_sexpr_install_fn_called	71857
+2026-08-21 15:12:58	rd_sexpr_nostage	71857
+2026-08-21 15:12:58	rd_unix_sexpr_nostage	71857
+15:12:58.349	onLoad	72701
+15:12:58.350	onAttach	72701
+15:12:58.557	onLoad	72734
+15:12:58.558	onAttach	72734
+15:12:59.629	citation	72771
+15:12:59.630	citation_fn_called	72771
+15:12:59.797	onLoad	72785
+15:12:59.799	onAttach	72785
+15:12:59.832	onLoad	72793
+15:12:59.833	onAttach	72793
+15:12:59.864	onLoad	72796
+15:12:59.866	onAttach	72796
+15:12:59.866	onDetach	72796
+15:12:59.901	onLoad	72799
+15:12:59.997	onLoad	72802
+15:12:59.998	onUnload	72802
+15:13:00.098	onLoad	72810
+15:13:00.099	onAttach	72810
+15:13:00.195	onLoad	72818
+15:13:00.293	onLoad	72826
+15:13:00.294	onAttach	72826
+15:13:00.866	onLoad	72842
+15:13:00.954	onLoad	72850
+15:13:01.062	onLoad	72858
+15:13:01.139	onLoad	72866
+15:13:01.483	onLoad	72896
+15:13:01.646	onLoad	72904
+15:13:02.073	onLoad	72936
+15:13:02.193	onLoad	72944
+2026-08-21 15:13:02	rd_sexpr_build	72955
+2026-08-21 15:13:02	rd_sexpr_build_fn_called	72955
+2026-08-21 15:13:02	rd_sexpr_install	72955
+2026-08-21 15:13:02	rd_sexpr_install_fn_called	72955
+2026-08-21 15:13:02	rd_sexpr_nostage	72955
+2026-08-21 15:13:02	rd_sexpr_render	72955
+2026-08-21 15:13:02	rd_sexpr_render_fn_called	72955
+2026-08-21 15:13:02	rd_unix_sexpr_nostage	72955
+2026-08-21 15:13:02	rd_windows_sexpr_nostage	72955
+2026-08-21 15:13:02	rd_sexpr_render	72974
+2026-08-21 15:13:02	rd_sexpr_render_fn_called	72974
+15:13:02.740	onLoad	72990
+15:13:02.741	onAttach	72990
+15:13:02.816	onLoad	72998
+15:13:02.817	onAttach	72998
+15:13:02.896	onLoad	73006
+15:13:02.897	onAttach	73006
+15:13:02.968	onLoad	73014
+15:13:02.972	onAttach	73014
+15:13:03.116	onLoad	73030
+2026-08-21 15:13:03	rd_sexpr_render	73046
+2026-08-21 15:13:03	rd_sexpr_render_fn_called	73046
+15:13:03	makevars	73073
+2026-08-21 15:13:04	rd_sexpr_render	73125
+2026-08-21 15:13:04	rd_sexpr_render_fn_called	73125
+15:13:04.221	onLoad	73133
+15:13:04.222	onAttach	73133
+2026-08-21 15:13:04	rd_examples	73133
+2026-08-21 15:13:04	rd_examples_fn_called	73133
+2026-08-21 15:13:04	rd_unix_examples	73133
+2026-08-21 15:13:04	rd_unwrapped	73133
+2026-08-21 15:13:04	rd_dontshow	73133
+2026-08-21 15:13:04	rd_testonly	73133
+2026-08-21 15:13:04	rd_sexpr_render	73141
+2026-08-21 15:13:04	rd_sexpr_render_fn_called	73141
+15:13:04.513	onLoad	73149
+15:13:04.514	onAttach	73149
+2026-08-21 15:13:04	rd_examples	73149
+2026-08-21 15:13:04	rd_examples_fn_called	73149
+2026-08-21 15:13:04	rd_unix_examples	73149
+2026-08-21 15:13:04	rd_unwrapped	73149
+2026-08-21 15:13:04	rd_dontshow	73149
+2026-08-21 15:13:04	rd_donttest	73149
+2026-08-21 15:13:04	rd_testonly	73149
+15:13:04.884	tests_R	73182
+15:13:04.893	tests_fn_called	73182
+15:13:05.005	runit_test	73198
+15:13:05.005	runit_fn_called	73198
+15:13:05.006	runit_fn_framework_called	73198
+15:13:05.190	onLoad	73214
+15:13:05.191	onAttach	73214
+15:13:05.210	testthat_helper	73214
+15:13:05.210	testthat_helper_fn_called	73214
+15:13:05.218	testthat_test	73214
+15:13:05.218	testthat_fn_called	73214
+15:13:05.219	testthat_in_test_that	73214
+15:13:05.364	onLoad	73230
+15:13:05.365	onAttach	73230
+15:13:05.384	tinytest_test	73230
+15:13:05.384	tinytest_fn_called	73230
+15:13:05.629	vignette	73256
+15:13:05.632	vignette_fn_called	73256
 # exit:     0
-# finished: 2026-08-21 15:06:49
+# finished: 2026-08-21 15:13:06

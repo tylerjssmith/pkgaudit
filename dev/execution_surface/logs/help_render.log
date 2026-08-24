@@ -1,10 +1,10 @@
 # command:  Rscript -e 'print(help(probe_sexpr, package = "foo"))'
-# started:  2026-08-21 15:06:52
+# started:  2026-08-21 15:13:08
 # workdir:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/build
 # library:  /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/lib
 # log:      /Users/smitht61/Security/packages/pkgaudit/dev/execution_surface/logs/help_render.log
 # pdflatex: /Users/smitht61/Library/TinyTeX/bin/universal-darwin/pdflatex
-2026-08-21 15:06:52	rd_sexpr_render	66317
-2026-08-21 15:06:52	rd_sexpr_render_fn_called	66317
+2026-08-21 15:13:08	rd_sexpr_render	74787
+2026-08-21 15:13:08	rd_sexpr_render_fn_called	74787
 # exit:     0
-# finished: 2026-08-21 15:06:52
+# finished: 2026-08-21 15:13:08
