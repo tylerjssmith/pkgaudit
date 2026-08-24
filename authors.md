@@ -8,7 +8,7 @@
 ## Citation
 
 Source:
-[`inst/CITATION`](https://github.com/tylerjssmith/pkgaudit/blob/main/inst/CITATION)
+[`inst/CITATION`](https://github.com/tylerjssmith/pkgaudit/blob/release_0.4.0/inst/CITATION)
 
 Smith T (2026). *pkgaudit: Static Analysis Security Testing (SAST) for R
 Packages*. R package version 0.4.0,
