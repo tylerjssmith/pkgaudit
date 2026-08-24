@@ -1,39 +1,30 @@
 # pkgaudit Rule Coverage
 
-pkgaudit v0.4.0 separates *what* code does from *when* it executes.
-**Patterns** and **matches** answer the first, and come first below;
-**phases** resolved from **file contexts** and **code contexts** answer
-the second. Each rule is defined in a YAML file under
+In pkgaudit v0.4.0, pattern and match rules describe what code does;
+phases resolved from file-context and code-context rules describe when
+it runs. All rules are defined in YAML files under
 [inst/rules/](https://github.com/tylerjssmith/pkgaudit/tree/main/inst/rules)
-and compiled into the SQLite database at `inst/db/rules.db`. The Rule
-columns below link to the defining YAML files.
-
-This vignette is generated from that database, at rules v0.4.0. Every
-rule in it must be described here, so a rule that ships without a
-description fails the build rather than appearing unexplained.
+and compiled into the SQLite database at `inst/db/rules.db`. This
+vignette is generated from that database, at rules v0.4.0; the Rule
+columns below link to the defining YAML.
 
 ## Patterns
 
 Patterns are security-relevant function calls, such as
-[`system()`](https://rdrr.io/r/base/system.html). Pattern rules also
-flag calls made through a function’s name – `do.call("system", ...)`,
-`match.fun("system")`, and `getFunction("system")`.
+[`system()`](https://rdrr.io/r/base/system.html). Qualified
+(`pkg::fn()`) and unqualified (`fn()`) call forms are both detected.
+Pattern rules also flag calls made through a function’s name –
+`do.call("system", ...)`, `match.fun("system")`, and
+`getFunction("system")`. Pattern rules carry [MITRE
+ATT&CK](https://attack.mitre.org/) technique labels.
 
-Each pattern finding is attributed to the code context it executes in,
-so a [`system()`](https://rdrr.io/r/base/system.html) call inside
-`.onLoad` is distinguished from one inside an ordinary function
-(`in_function`) or at top level (`top_level`). Qualified (`pkg::fn()`)
-and unqualified (`fn()`) call forms are both detected. Pattern rules
-carry [MITRE ATT&CK](https://attack.mitre.org/) technique labels.
-
-All pattern findings are included in the `$patterns` data frame of a
-pkgaudit object. This data frame includes an `indirect` column,
-indicating when a function is called by its name (e.g.,
-[`do.call()`](https://rdrr.io/r/base/do.call.html)). It also includes a
-`guarded` column indicating code the lifecycle does not run – for
-example, a `\dontrun{}` block, or a vignette chunk suppressed by
-`eval=FALSE` or `#| eval: false`. Note: A `\donttest{}` block is not
-guarded: a plain `R CMD check` skips it, but `--as-cran` runs it.
+Pattern findings are returned in the `$patterns` data frame of a
+pkgaudit object. Its `indirect` column marks a call made through a
+function’s name; its `guarded` column marks code that ships but the
+lifecycle does not run – a `\dontrun{}` block, or a vignette chunk
+suppressed by `eval=FALSE` or `#| eval: false`. Note: A `\donttest{}`
+block is not guarded: a plain `R CMD check` skips it, but `--as-cran`
+runs it.
 
 | Rule | Pattern | Description |
 |----|----|----|
@@ -63,8 +54,9 @@ guarded: a plain `R CMD check` skips it, but `--as-cran` runs it.
 
 ## Matches
 
-Matches are regular-expression matches in the shell scripts and
-Make-like files among the [file contexts](#file-contexts) below. Regular
+Matches are regular-expression matches in shell code: the shell scripts
+and Make-like files among the [file contexts](#file-contexts) below, and
+the `bash`, `sh`, and `zsh` chunks a vignette yields. Regular
 expressions are matched with `gregexpr(perl = TRUE)` and are
 case-sensitive. Match rules carry [MITRE
 ATT&CK](https://attack.mitre.org/) technique labels.
@@ -72,8 +64,7 @@ ATT&CK](https://attack.mitre.org/) technique labels.
 Note: Matching text is less precise than matching a parse tree. A match
 has no syntax behind it, so a match inside a comment, a quoted string,
 or a branch that never runs is reported the same as one in a live
-command. A match is a candidate for review rather than confirmed
-behavior.
+command.
 
 | Rule | Description |
 |----|----|
@@ -93,10 +84,9 @@ behavior.
 
 ### Lifecycle Phases
 
-A phase is a property of two things: where a file sits in the package,
-and where the code sits within that file. Each finding carries one
-logical column per phase, so findings can be filtered by when they
-execute, e.g. `subset(result$patterns, at_install_src)`.
+Phases describe when code executes. Each pattern and match finding
+carries one logical column per phase, so findings can be filtered by
+when they execute, e.g., `subset(result$patterns, at_install_src)`.
 
 | Phase            | Code runs when                                         |
 |------------------|--------------------------------------------------------|
@@ -110,16 +100,15 @@ execute, e.g. `subset(result$patterns, at_install_src)`.
 | `at_unload`      | the namespace is unloaded                              |
 | `at_detach`      | the package is detached from the search path           |
 
-A match takes the phases of the file context it was found in. A pattern
-resolves them in order: a code context carrying phases of its own wins,
-and otherwise the code inherits the phases of the file context around
-it. So the same [`system()`](https://rdrr.io/r/base/system.html) call
-reads `at_check` under `tests/` and `at_build` under `data/`.
-
-A pattern inside a regular function definition will not execute unless
-the function is called. Most file context rules assume the function is
-called, so the pattern inherits phases; the rules for `R/` set
-`assume_called: FALSE`, and those findings report no phases.
+Pattern phases are resolved from code and file contexts, in that order.
+A pattern in a code context defined by a rule, such as `.onLoad`, takes
+that context’s phases. A pattern in top-level code takes its file
+context’s phases. A pattern in a regular function definition depends on
+the `assume_called` field of the file-context rule: if `TRUE`, it takes
+the phases of whatever encloses it; if `FALSE`, as under `R/`, it
+receives no phase. A helper defined under `R/` may still be called from
+a lifecycle hook, so human review of hooks should verify whether that
+occurs. Matches take their file context’s phases.
 
 Every phase value below was established by running instrumented packages
 through `R CMD build`, `R CMD check` and `R CMD INSTALL` and recording
@@ -129,37 +118,10 @@ runs at no phase at all.
 
 ### File Contexts
 
-File contexts are files that R executes at build-, check-, or
-install-time.
-
-The Type column determines how a matched file is read. Files typed `R`
-are parsed and scanned for patterns; `Rd` files have their `\examples{}`
-and `\Sexpr{}` code extracted and scanned for patterns; `shell` and
-`make` files are matched against the rules listed under
-[Matches](#matches).
-
-The Report column separates being scanned from being reported. Every
-rule tells the scan which files to read; only a reporting rule
-contributes a row to the `file_contexts` findings frame.
-
-`report` is `TRUE` for a file that meets two conditions: it executes
-automatically during at least one lifecycle phase, and its contents are
-matched as text rather than parsed. Together those mean pkgaudit cannot
-tell a reviewer what the file does, only that it runs – so the file
-itself is the finding, and someone has to read it. In practice that is
-the shell scripts and Make-like files: `configure`, `cleanup`,
-`src/Makevars` and their variants.
-
-Everything else is scanned just as thoroughly. A pattern in a vignette
-or a test file is reported with its context and phases whether or not
-the file itself is. What `report` withholds is the row asserting the
-file exists – which, for a file whose contents are parsed, the findings
-already tell you.
-
-`src/install.libs.R` is the one exception: it is R, and parsed, but its
-presence replaces R’s default handling of compiled artifacts, a
-structural change that follows from the file existing rather than from
-anything written in it.
+File contexts are files that may contain code. All are scanned, and some
+are reported as findings in their own right: in general, those that
+execute at build, check, or install time, including shell and Make-like
+scripts and `src/install.libs.R`.
 
 | Rule | Type | Report | Phases | Description |
 |----|----|----|----|----|
@@ -211,13 +173,12 @@ anything written in it.
 
 ### Code Contexts
 
-A code context says where code sits *within* its file. Every pattern
-carries one, and it is half of what decides the finding’s phases. These
-may be rules or, if no rules apply, they may be computed.
+A code context says where code sits within its file. It is either
+defined by a rule or computed.
 
-Rules: A **lifecycle hook** like `.onLoad()` is found by matching the
-parse tree. A **part of a help file** like `\examples` or `\Sexpr` is
-found by matching a label the extractor stamped.
+Rules: a **lifecycle hook** like `.onLoad()` is found by matching the
+parse tree; a **part of a help file** like `\examples` or `\Sexpr`, by
+matching a label the extractor stamped.
 
 | Rule | Code Context | Matched by | Phases | Description |
 |----|----|----|----|----|

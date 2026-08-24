@@ -54,28 +54,52 @@
 </div>
 <div class="section level2">
 <h2 id="security-model">Security model<a class="anchor" aria-label="anchor" href="#security-model"></a></h2>
-<p>pkgaudit analyses packages without executing them. The scan itself only reads. Two functions write, and both write only where the caller sends them:</p>
-<ul><li>
-<code><a href="reference/audit_tarball.html">audit_tarball()</a></code> extracts the tarball to a temporary directory (<code>temp_dir</code>, default <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code>) and removes it when finished.</li>
-<li>
-<code><a href="reference/export_unscanned.html">export_unscanned()</a></code> writes the code pkgaudit cannot read – C, C++, Fortran, Rust, Python, JavaScript, and vignette chunks in those languages – into a directory the caller names, for a scanner that reads them. It has no default directory: naming one is how the caller consents.</li>
-</ul><p>Both the content and the file names written by <code><a href="reference/export_unscanned.html">export_unscanned()</a></code> come from the package under audit, so every target path is resolved and required to lie under the named directory; a path component that is <code>.</code>, <code>..</code>, or that contains a separator or a control character is refused; symlinks are never followed, and content is read and rewritten rather than copied, so a link pointing out of the package cannot pull a file in; nothing is written executable; and nothing is deleted or replaced unless <code>overwrite = TRUE</code>. A refused file is recorded in the returned manifest rather than dropped.</p>
-<p>Untrusted tarballs are validated fail-closed <em>before</em> extraction: non-gzip compression (bzip2, xz, zstd, compress — judged by magic bytes, not filename), link entries, GNU long-name and PAX typeflags, path traversal, absolute and drive-qualified paths, paths containing backslashes or control characters, empty paths, decompression bombs (entry-count, size, and expansion-ratio caps), unparseable size fields, and archives without exactly one top-level directory are refused rather than partially extracted. After extraction the directory is re-checked for symlinks as defense in depth.</p>
+<p>The package under audit is untrusted input. pkgaudit’s job is to read it without being subverted by it, and to say plainly what it did and did not read.</p>
+<div class="section level3">
+<h3 id="the-package-under-audit-is-never-executed">The package under audit is never executed<a class="anchor" aria-label="anchor" href="#the-package-under-audit-is-never-executed"></a></h3>
+<p>pkgaudit does not install, build, load, or source the package it analyses. R code is parsed, never evaluated; other files are read as text. A malicious package is therefore malformed input to a reader, not code running in the session doing the scan.</p>
 </div>
-<div class="section level2">
-<h2 id="operating-on-sensitive-data">Operating on sensitive data<a class="anchor" aria-label="anchor" href="#operating-on-sensitive-data"></a></h2>
-<p><code><a href="reference/audit_tarball.html">audit_tarball()</a></code> writes the extracted package contents to <code>temp_dir</code> in cleartext, and <code><a href="reference/export_unscanned.html">export_unscanned()</a></code> writes package contents to the directory it is given. If the package under audit may contain sensitive material, or you operate under data-at-rest controls:</p>
-<ul><li>set <code>temp_dir</code> to an encrypted volume or a tmpfs (RAM-backed) mount;</li>
-<li>note that cleanup uses <code><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink()</a></code>, which is not a secure wipe, and that a killed process (e.g. SIGKILL) can leave the extraction directory behind.</li>
-</ul><p>Directory scans (<code><a href="reference/audit_package.html">audit_package()</a></code>), rule loading (<code><a href="reference/load_rules.html">load_rules()</a></code>) and SARIF output (<code><a href="reference/emit_sarif.html">emit_sarif()</a></code>, which returns a string) do not write to disk.</p>
+<div class="section level3">
+<h3 id="pkgaudit-does-not-reach-the-network">pkgaudit does not reach the network<a class="anchor" aria-label="anchor" href="#pkgaudit-does-not-reach-the-network"></a></h3>
+<p>Nothing is fetched, resolved, or reported anywhere. A scan of a package on disk is complete offline, and no information about the package under audit leaves the machine.</p>
 </div>
-<div class="section level2">
-<h2 id="known-limitations">Known limitations<a class="anchor" aria-label="anchor" href="#known-limitations"></a></h2>
-<ul><li>Findings are observations for human review, not a pass/fail verdict; rule coverage is not exhaustive.</li>
-<li>Coverage is not complete and is not meant to be. The <code>coverage</code> frame reports what each file was read as – parsed, matched as text, exportable to another tool, unexamined, or attempted and failed – so that a clean result can be checked rather than trusted. It accounts for a file when a rule claimed it or when its name says what kind of file it is; a file whose name says nothing is not represented.</li>
-<li>The rules database is integrity-checked against its SHA-256 sidecar, but the check is time-of-check to time-of-use — see “Security considerations” in <code><a href="reference/load_rules.html">?load_rules</a></code>. Load rules only from a path trusted writers control.</li>
-<li>A directory hash (<code><a href="reference/hash_manifest.html">hash_manifest()</a></code>) is a weaker provenance claim than a tarball hash: its scope depends on the exclusion patterns, and symlinks and empty directories are not represented. Prefer auditing the tarball when provenance matters.</li>
-</ul></div>
+<div class="section level3">
+<h3 id="only-two-functions-write-to-disk">Only two functions write to disk<a class="anchor" aria-label="anchor" href="#only-two-functions-write-to-disk"></a></h3>
+<p><code><a href="reference/audit_tarball.html">audit_tarball()</a></code> extracts the tarball to a temporary directory (<code>temp_dir</code>, default <code><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir()</a></code>) and removes it when finished. <code><a href="reference/export_unscanned.html">export_unscanned()</a></code> writes the code pkgaudit cannot read into a directory the caller names; it has no default directory, so naming one is how the caller consents. Directory scans (<code><a href="reference/audit_package.html">audit_package()</a></code>), rule loading (<code><a href="reference/load_rules.html">load_rules()</a></code>) and SARIF output (<code><a href="reference/emit_sarif.html">emit_sarif()</a></code>, which returns a string) do not write at all.</p>
+</div>
+<div class="section level3">
+<h3 id="tarballs-are-validated-before-extraction-not-during">Tarballs are validated before extraction, not during<a class="anchor" aria-label="anchor" href="#tarballs-are-validated-before-extraction-not-during"></a></h3>
+<p>Validation is fail-closed: an archive that fails any check is refused whole rather than partially extracted. Refused are non-gzip compression (bzip2, xz, zstd, compress — judged by magic bytes, not filename), link entries, GNU long-name and PAX typeflags, path traversal, absolute and drive-qualified paths, paths containing backslashes or control characters, empty paths, decompression bombs (entry-count, size, and expansion-ratio caps), unparseable size fields, and archives without exactly one top-level directory. After extraction the directory is re-checked for symlinks as defense in depth.</p>
+</div>
+<div class="section level3">
+<h3 id="exported-files-cannot-escape-the-directory-the-caller-names">Exported files cannot escape the directory the caller names<a class="anchor" aria-label="anchor" href="#exported-files-cannot-escape-the-directory-the-caller-names"></a></h3>
+<p>Both the content and the file names written by <code><a href="reference/export_unscanned.html">export_unscanned()</a></code> come from the package under audit, so every target path is resolved and required to lie under the named directory, and a path component that is <code>.</code>, <code>..</code>, or that contains a separator or a control character is refused. Symlinks are never followed, and content is read and rewritten rather than copied, so a link pointing out of the package cannot pull a file in. Nothing is written executable, and nothing is deleted or replaced unless <code>overwrite = TRUE</code>. A refused file is recorded in the returned manifest rather than dropped.</p>
+</div>
+<div class="section level3">
+<h3 id="the-rules-database-is-trusted-input-and-the-trust-is-yours-to-place">The rules database is trusted input, and the trust is yours to place<a class="anchor" aria-label="anchor" href="#the-rules-database-is-trusted-input-and-the-trust-is-yours-to-place"></a></h3>
+<p>The database is integrity-checked against its SHA-256 sidecar, but the check is time-of-check to time-of-use — see “Security considerations” in <code><a href="reference/load_rules.html">?load_rules</a></code>. Load rules only from a path whose writers you trust.</p>
+</div>
+<div class="section level3">
+<h3 id="extraction-writes-package-contents-in-cleartext">Extraction writes package contents in cleartext<a class="anchor" aria-label="anchor" href="#extraction-writes-package-contents-in-cleartext"></a></h3>
+<p><code><a href="reference/audit_tarball.html">audit_tarball()</a></code> writes the extracted package to <code>temp_dir</code>, and <code><a href="reference/export_unscanned.html">export_unscanned()</a></code> writes package contents to the directory it is given. If the package under audit may contain sensitive material, or you operate under data-at-rest controls, set <code>temp_dir</code> to an encrypted volume or a tmpfs (RAM-backed) mount. Cleanup uses <code><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink()</a></code>, which is not a secure wipe, and a killed process (e.g. SIGKILL) can leave the extraction directory behind.</p>
+</div>
+<div class="section level3">
+<h3 id="a-finding-is-an-observation-not-a-verdict">A finding is an observation, not a verdict<a class="anchor" aria-label="anchor" href="#a-finding-is-an-observation-not-a-verdict"></a></h3>
+<p>Findings are for human review. There is no severity model and no pass/fail result: every result in SARIF output carries the same <code>level</code>, and rule coverage is not exhaustive. A package with no findings has not been cleared.</p>
+</div>
+<div class="section level3">
+<h3 id="the-reading-is-static-values-are-not-resolved-and-calls-are-not-traced">The reading is static: values are not resolved and calls are not traced<a class="anchor" aria-label="anchor" href="#the-reading-is-static-values-are-not-resolved-and-calls-are-not-traced"></a></h3>
+<p>A path assembled at runtime, a name built by <code><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0()</a></code>, or a chunk option computed at render time is not followed. pkgaudit also does not build call graphs, so whether a package actually calls a particular function is not something it determines — which is why the phases of code inside a function definition are reported as a stated reading rather than a finding.</p>
+</div>
+<div class="section level3">
+<h3 id="coverage-is-bounded-and-the-bound-is-reported">Coverage is bounded, and the bound is reported<a class="anchor" aria-label="anchor" href="#coverage-is-bounded-and-the-bound-is-reported"></a></h3>
+<p>pkgaudit reads R and shell. It does not read compiled code or other languages; <code><a href="reference/export_unscanned.html">export_unscanned()</a></code> hands those to a tool that does. Files are identified by name, not by contents, so an extensionless script — <code>tools/build</code> opening <code>#!/bin/sh</code> — earns no coverage row. The <code>coverage</code> frame reports what each file was read as (parsed, matched as text, exportable to another tool, unexamined, or attempted and failed) so that a clean result can be checked rather than trusted.</p>
+</div>
+<div class="section level3">
+<h3 id="a-directory-hash-is-a-weaker-provenance-claim-than-a-tarball-hash">A directory hash is a weaker provenance claim than a tarball hash<a class="anchor" aria-label="anchor" href="#a-directory-hash-is-a-weaker-provenance-claim-than-a-tarball-hash"></a></h3>
+<p>The scope of <code><a href="reference/hash_manifest.html">hash_manifest()</a></code> depends on the exclusion patterns, and symlinks and empty directories are not represented. Prefer auditing the tarball when provenance matters.</p>
+</div>
+</div>
 </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
