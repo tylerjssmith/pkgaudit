@@ -22,9 +22,9 @@ look for R inside a help file’s `\examples{}` block or an `\Sexpr{}`
 macro, or inside a Sweave or R.rsp vignette; and nothing tells it that
 `.onLoad()` runs on `library()`, that `\Sexpr{}` evaluates while a help
 page is built, or that `configure` runs under `R CMD check`. pkgaudit
-does this: it extracts R from wherever a package carries it, parses the
-code for security-relevant patterns, and reports the lifecycle phases in
-which each finding runs.
+extracts R from wherever a package carries it, parses the code for
+security-relevant patterns, and reports the lifecycle phases in which
+each finding runs.
 
 For why this matters, see [R Package Security](articles/security.html).
 For the rule set, see [Rule Coverage](articles/rules.html).
@@ -55,7 +55,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-24 16:29 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-24 17:44 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -90,29 +90,38 @@ summary(result, path = FALSE)
 #> No exceptions were raised.
 ```
 
-Four of `untrustedpkg`’s five findings run without anyone asking for
-them. `.onLoad()` in `R/zzz.R` calls `system()`, so it runs on
-`library()` – and at build, check, and source installation, each of
-which loads the package. An `\Sexpr{}` macro in `man/fetch_data.Rd`
-calls `httr::POST()` when the help page is rendered, at those same three
-phases, and the `\examples{}` block in the same file calls
-`download.file()`, which `R CMD check` runs. The `configure` script may
-invoke `curl` at build, check, and source installation. The fifth
-finding is the contrast that makes the rest legible: `download.file()`
-in `R/fetch.R` sits in an ordinary function body, so it runs at no phase
-at all, reported under `none`, because it executes only if someone calls
-it.
+Four of `untrustedpkg`’s five findings run automatically:
 
-Two functions carry a scan into other tools. `emit_sarif()` renders the
-result as SARIF 2.1.0, which editors and code-scanning platforms read
-directly. `export_unscanned()` writes the code pkgaudit cannot read into
-a directory for a scanner that can. See [Getting Started with
+- `.onLoad()` in `R/zzz.R` calls `system()`, which runs when users call
+  `library()`, and at build, check, and source installation, each of
+  which loads the package.
+
+- An `\Sexpr{}` macro in `man/fetch_data.Rd` calls `httr::POST()` when
+  the help page is rendered at build, check, and source installation.
+
+- The `\examples{}` block in the same help file calls `download.file()`
+  at check.
+
+- The `configure` script may invoke `curl` at build, check, and source
+  installation.
+
+By contrast, `download.file()` in `R/fetch.R` sits in a regular function
+body, so it is not known to run automatically and is reported under
+`none`.
+
+Phases overlap – building a package with vignettes also installs and
+loads it – so one occurrence is counted under every phase it runs in.
+
+pkgaudit provides functions to integrate its scan with other tools.
+`emit_sarif()` renders its results as SARIF 2.1.0, which editors and
+code-scanning platforms read directly. `export_unscanned()` writes out
+package code in languages pkgaudit cannot read, into a directory for a
+scanner that can. See [Getting Started with
 pkgaudit](articles/pkgaudit.html) for details.
 
 ## Security
 
-pkgaudit’s own security model, and how to report a vulnerability in it,
-are in
+pkgaudit’s own security model, and how to report a vulnerability, are in
 [SECURITY.md](https://github.com/tylerjssmith/pkgaudit/blob/main/.github/SECURITY.md).
 To propose or revise a rule, see
 [CONTRIBUTING.md](https://github.com/tylerjssmith/pkgaudit/blob/main/.github/CONTRIBUTING.md).

@@ -54,14 +54,16 @@ each one:
 
 - **parsed**: R is parsed for security-relevant patterns like `system()` and
   `httr::POST()` calls. This includes `.R` scripts in `R/`, `data/`, `demo/`,
-  `exec/`, `tests/`, and `tools/`; examples and `\Sexpr{}` macros in `.Rd`
-  files; R chunks in R Markdown, Quarto, Sweave, and R.rsp vignettes; and
-  `inst/CITATION`, `.Rprofile`, and `src/install.libs.R`.
+  `exec/`, `tests/`, `tools/`, `inst/tests/`, `inst/tinytest/`, and
+  `inst/unitTests/`; examples and `\Sexpr{}` macros in `.Rd` files; R chunks in
+  R Markdown, Quarto, Sweave, and R.rsp vignettes; and `inst/CITATION`,
+  `.Rprofile`, and `src/install.libs.R`.
 - **matched**: Shell scripts and Make-like files, if present, are matched
   against regular expressions for security-relevant commands like `curl`. This
   includes `configure`, `cleanup`, `src/Makevars`, and more. Matching is
   textual, so a `curl` in a comment reads the same as one in command position.
-- **exportable**: C, C++, Fortran, Rust, Python, and JavaScript source files,
+- **exportable**: C, C++, Objective-C, Fortran, Rust, Java, Python, Perl,
+  Ruby, Lua, and JavaScript source files (TypeScript is read as JavaScript),
   and vignette chunks written in those languages, are not read, but
   `export_unscanned()` can write them out for tools like Semgrep, blank-padded
   so that a finding's line number still points into the original file.
@@ -76,9 +78,9 @@ says what it did not cover.
 
 Every finding carries the R package lifecycle phases in which it runs --
 `at_autoconf`, `at_build`, `at_check`, `at_install_src`, `at_install_bin`,
-`at_load`, `at_attach`, `at_unload`, `at_detach`, or `none` -- so code that
-executes on `library()` is distinguishable from code that runs only when someone
-calls it.
+`at_load`, `at_attach`, `at_unload`, and `at_detach` -- so code that executes on
+`library()` is distinguishable from code that runs only when someone calls it. A
+finding that runs at no phase is reported under `none`.
 
 A finding is not an accusation. `configure` scripts and calls to system tools,
 for example, are often legitimate. pkgaudit helps to identify what deserves
@@ -114,26 +116,35 @@ result <- audit_tarball(tarball)
 summary(result, path = FALSE)
 ```
 
-Four of `untrustedpkg`'s five findings run without anyone asking for them.
-`.onLoad()` in `R/zzz.R` calls `system()`, so it runs on `library()` -- and at
-build, check, and source installation, each of which loads the package. An
-`\Sexpr{}` macro in `man/fetch_data.Rd` calls `httr::POST()` when the help page
-is rendered, at those same three phases, and the `\examples{}` block in the same
-file calls `download.file()`, which `R CMD check` runs. The `configure` script
-may invoke `curl` at build, check, and source installation. The fifth finding is
-the contrast that makes the rest legible: `download.file()` in `R/fetch.R` sits
-in an ordinary function body, so it runs at no phase at all, reported under
-`none`, because it executes only if someone calls it.
+Four of `untrustedpkg`'s five findings run automatically:
+
+* `.onLoad()` in `R/zzz.R` calls `system()`, which runs when users call
+`library()`, and at build, check, and source installation, each of which loads
+the package.
+
+* An `\Sexpr{}` macro in `man/fetch_data.Rd` calls `httr::POST()` when the help
+page is rendered at build, check, and source installation.
+
+* The `\examples{}` block in the same help file calls `download.file()` at
+check.
+
+* The `configure` script may invoke `curl` at build, check, and source
+installation.
+
+By contrast, `download.file()` in `R/fetch.R` sits in a regular function body,
+so it is not known to run automatically and is reported under `none`.
 
 Phases overlap -- building a package with vignettes also installs and loads it
 -- so one occurrence is counted under every phase it runs in. `path = FALSE`
 omits the local filesystem path from output that will be shared.
 
-Two functions carry a scan into other tools. `emit_sarif()` renders the result
-as SARIF 2.1.0, which editors and code-scanning platforms read directly.
-`export_unscanned()` writes the code pkgaudit cannot read into a directory for
-a scanner that can. Both are covered in
-[Getting Started with pkgaudit](https://tylerjssmith.github.io/pkgaudit/articles/pkgaudit.html).
+pkgaudit provides functions to integrate its scan with other tools.
+`emit_sarif()` renders its results as SARIF 2.1.0, which editors and
+code-scanning platforms read directly. `export_unscanned()` writes out package
+code in languages pkgaudit cannot read, into a directory for a scanner that
+can. See
+[Getting Started with pkgaudit](https://tylerjssmith.github.io/pkgaudit/articles/pkgaudit.html)
+for details.
 
 ## Rule Database Integrity
 
@@ -154,7 +165,7 @@ Expected SHA-256: `r db_hash_md`
 
 ## Security
 
-pkgaudit's own security model, and how to report a vulnerability in it, are in
+pkgaudit's own security model, and how to report a vulnerability, are in
 [SECURITY.md](.github/SECURITY.md). To propose or revise a rule, see
 [CONTRIBUTING.md](.github/CONTRIBUTING.md).
 
