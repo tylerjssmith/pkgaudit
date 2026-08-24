@@ -85,9 +85,9 @@ The sidecar ships beside the database, so anyone who can rewrite one can
 rewrite the other. It is an integrity check, not an authenticity check:
 it catches a corrupted download or a database swapped for another, and
 it cannot catch a deliberate edit of an installed copy. The out-of-band
-anchor is the hash published in the README, which is compared against
-the shipped database on every commit; checking an installed copy against
-that is what detects a tampered install, and
+anchor is the hash published in the README, which CI compares against
+the shipped database on every push and pull request; checking an
+installed copy against that detects a tampered install, and
 [`rules_version()`](https://tylerjssmith.github.io/pkgaudit/reference/rules_version.md)
 reports what a scan actually used.
 

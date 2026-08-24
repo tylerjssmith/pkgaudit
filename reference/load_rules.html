@@ -121,9 +121,10 @@ tampered or corrupted rules file is rejected rather than silently trusted.</p>
 rewrite the other. It is an integrity check, not an authenticity check: it
 catches a corrupted download or a database swapped for another, and it cannot
 catch a deliberate edit of an installed copy. The out-of-band anchor is the
-hash published in the README, which is compared against the shipped database
-on every commit; checking an installed copy against that is what detects a
-tampered install, and <code><a href="rules_version.html">rules_version()</a></code> reports what a scan actually used.</p>
+hash published in the README, which CI compares against the shipped database
+on every push and pull request; checking an installed copy against that
+detects a tampered install, and <code><a href="rules_version.html">rules_version()</a></code> reports what a scan
+actually used.</p>
 <p>Verification is time-of-check to time-of-use: the database is hashed and then
 re-opened by path to query it, so a file swapped in between is not detected.
 That does not weaken the bundled default, since an attacker able to win the

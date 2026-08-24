@@ -48,8 +48,7 @@ The `coverage` frame becomes the `artifacts` array, so a consumer can
 see which files were never read, and `errors` become execution
 notifications on the invocation.
 
-Requires jsonlite, a suggested dependency, since only this function
-needs a JSON writer.
+Requires jsonlite, a suggested dependency.
 
 ## Examples
 

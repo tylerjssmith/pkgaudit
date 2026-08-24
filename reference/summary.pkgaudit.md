@@ -1,12 +1,12 @@
 # Summarize a pkgaudit result
 
-`summary.pkgaudit()` rolls a scan up into the frequency of each R
-pattern and each shell or make match by the lifecycle phase it executes
-in, with their MITRE ATT&CK techniques; how much of the package was
-read; and the errors, if any. It also collects the distinct file
-contexts found, which the report does not show.
-`print.summary.pkgaudit()` writes that summary as a sectioned report and
-returns the object invisibly.
+Takes a `pkgaudit` object produced by
+[`audit_package()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md)
+or
+[`audit_tarball()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_tarball.md)
+and returns summaries of it: how often each rule fired and in which
+lifecycle phase, how much of the package was read, and the errors, if
+any. `print.summary.pkgaudit()` writes them as a sectioned report.
 
 ## Usage
 
@@ -95,12 +95,13 @@ of the report.
 Both findings tables are grouped by phase and rule alone. Where a
 finding sits is on the object's own frames; the report answers what
 runs, and when. An occurrence executes in every phase its context does,
-so it contributes one row per phase and `n` sums to more than the number
-of occurrences. Those executing in no phase are gathered under `none`.
+so it contributes one row per phase and `n` can sum to more than the
+number of occurrences. Those executing in no phase are gathered under
+`none`.
 
-`Coverage` is counts with reasons and deliberately no percentage:
-coverage never reaches 100%, so a ratio would only flatter. Which files
-went unexamined is in the object's `coverage` frame.
+`Coverage` is counts by status and location, and deliberately no
+percentage: coverage never reaches 100%. Which files went unexamined is
+in the object's `coverage` frame.
 
 ## Filtering by phase
 
@@ -129,7 +130,7 @@ summary(result)
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> Path:      ~/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-24 13:55 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-24 16:24 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -166,7 +167,7 @@ summary(result, path = FALSE)       # omit the local Path: line for sharing
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-24 13:55 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-24 16:24 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -204,7 +205,7 @@ summary(result, phase = "at_load")  # only what runs when the package loads
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> Path:      ~/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-24 13:55 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-24 16:24 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> Phases:    at_load
 #> 
 #> --- R Patterns --------------------------------------------------------------
@@ -224,7 +225,7 @@ summary(result, phase = "none")     # ships, but runs at no phase
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> Path:      ~/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-24 13:55 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-24 16:24 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> Phases:    none
 #> 
 #> --- R Patterns --------------------------------------------------------------

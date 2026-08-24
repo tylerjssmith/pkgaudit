@@ -31,7 +31,7 @@ A list with two elements:
 
 ## Security considerations
 
-A file being audited is untrusted input, so two limits are enforced. A
+A file being audited is untrusted input, so two protections apply. A
 file larger than 10 MB is not read at all: reading an arbitrarily large
 file into memory would let a malformed or hostile package exhaust the
 auditing machine. Lines that are not valid UTF-8 are replaced with an

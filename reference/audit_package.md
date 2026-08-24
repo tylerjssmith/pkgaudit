@@ -39,8 +39,8 @@ A
 [`new_pkgaudit()`](https://tylerjssmith.github.io/pkgaudit/reference/new_pkgaudit.md)
 object: a named list with class `pkgaudit` holding five data frames and
 a `metadata` list. Every findings frame carries the nine phase columns
-described under Lifecycle phases and joins to the others on
-`file_context`. Paths are relative to the package root.
+described in Details and joins to the others on `file_context`. Paths
+are relative to the package root.
 
 - file_contexts:
 
@@ -58,9 +58,7 @@ described under Lifecycle phases and joins to the others on
 
   `rule`, `file_context`, `line_number`, `column_number`, `preview`,
   `message`, `attck`: regular-expression matches in the shell and
-  Make-like file contexts. Text matching has no parse tree behind it, so
-  the three columns `patterns` derives from one – `code_context`,
-  `guarded` and `indirect` – are absent rather than empty.
+  Make-like file contexts.
 
 - coverage:
 
@@ -68,7 +66,10 @@ described under Lifecycle phases and joins to the others on
   `last_line`, `lines`, `bytes`, `rule`. One row per file the package
   carries that is, or could be, code, plus one per span of an unanalyzed
   language inside a literate file – a `python` chunk in a vignette is
-  its own row.
+  its own row. `status` is `parsed`, `matched`, `exportable`,
+  `unexamined` or `error`; `reason` says what stood in the way, and is
+  `NA`, `no_analyzer`, `no_extractor`, `no_rule`, `serialized`,
+  `binary`, `symlink`, `too_large`, `unreadable` or `unparseable`.
 
 - errors:
 
@@ -85,84 +86,26 @@ described under Lifecycle phases and joins to the others on
 
 ## Details
 
-A file-context rule decides which files are read and how. Only some
-rules report the files they match as findings in their own right; the
-rest exist to point the scan at code. A file in a language pkgaudit
-cannot read is left unscanned rather than scanned badly, so a file's
-absence from `patterns` and `matches` is not evidence that it is clean –
-`coverage` is where that question is answered.
-
-## Coverage
-
-`coverage` accounts for the code a package carries, so a clean scan can
-be checked rather than trusted. `status` is one of `parsed` (read as R),
-`matched` (scanned as text), `exportable` (a language pkgaudit does not
-read, which
-[`export_unscanned()`](https://tylerjssmith.github.io/pkgaudit/reference/export_unscanned.md)
-can hand to a tool that does), `unexamined` (never read), or `error`
-(read attempted and refused); `reason` says what stood in the way.
-`unexamined` and `error` are different claims: pkgaudit never tried to
-read the first and could not read the second.
-
-`reason` is `NA` where nothing stood in the way, and otherwise one of:
-`no_analyzer` (pkgaudit does not read that language), `no_extractor` (a
-rule claimed the file but nothing reads that kind of file, as for
-`DESCRIPTION`), `no_rule` (no rule looks where it sits), `serialized`,
-`binary`, `symlink`, `too_large` (over the 10 MB scanning limit),
-`unreadable`, or `unparseable`.
-
-A file earns a row when a rule claimed it, or when its name says what
-kind of file it is, wherever it sits. Files are identified by name and
-never by content, so a script with no extension – `tools/build` opening
-`#!/bin/sh` – is missed. Coverage never reaches 100% and is not meant
-to; what it offers is legibility rather than completeness. Deserializing
-an `.rda` can execute arbitrary code, so serialized objects are reported
-as executable surface rather than as data. Version-control and IDE state
-is excluded, and `.Rbuildignore` is not consulted, since the package
-under audit writes it.
-
-## Lifecycle phases
-
 Every findings frame carries one logical column per phase –
 `at_autoconf`, `at_build`, `at_check`, `at_install_src`,
-`at_install_bin`, `at_load`, `at_attach`, `at_unload` and `at_detach` –
-`TRUE` when that finding's code runs then. A finding can belong to
-several, so the columns do not partition the rows.
+`at_install_bin`, `at_load`, `at_attach`, `at_unload` and `at_detach`.
+Value is `TRUE` when that finding's code runs then. A finding can belong
+to several phases.
 
-A file context, and a match found in one, take the phases of the rule
-that matched. A pattern takes them from where its file sits and where
-the code sits within it: a lifecycle hook or a part of a help file
-carries phases of its own, and otherwise the code inherits the phases
-around it, so the same call reports `at_check` under `tests/` and
-`at_build` under `data/`. Code inside a function definition inherits
-too, except where a rule sets `assume_called = FALSE`, as the rules for
-`R/` do. See
-[`vignette("rules")`](https://tylerjssmith.github.io/pkgaudit/articles/rules.md).
+A file in a language pkgaudit cannot read is left unscanned rather than
+scanned badly, so a file's absence from `patterns` and `matches` is not
+evidence that it is clean; see `coverage` and `errors`.
 
-## Reading a finding
+`preview` is a display-only excerpt of the line, whitespace collapsed
+and a long line windowed on the match, so `column_number` does not index
+into it.
 
-`preview` is a display-only excerpt of the line, whitespace collapsed,
-so the frames can be skimmed without opening files. A long line is
-windowed on the match, so `column_number` does not index into it.
+## See also
 
-`guarded` is `TRUE` for code that ships but the lifecycle does not run –
-a `\dontrun{}` block, or a vignette chunk suppressed by either
-`eval=FALSE` in its header or `#| eval: false` beneath it. Its phases
-still come from its context and remain an upper bound. A document-wide
-`execute: eval: false` in Quarto front matter is not read, so a chunk it
-suppresses still reports. `indirect` is `TRUE` where the call was made
-through the function's name, as in `do.call("system", ...)`, and is
-reported under the rule that owns the name; see
-[`find_indirect()`](https://tylerjssmith.github.io/pkgaudit/reference/find_indirect.md).
-
-Patterns are matched against R's parse tree, matches against text. Text
-matching has no syntax behind it, so a match inside a comment or a
-quoted string cannot be told from one in a live command; see
-[`find_matches()`](https://tylerjssmith.github.io/pkgaudit/reference/find_matches.md).
-
-A file over 10 MB is not read at all: a hostile package must not be able
-to spend the scanner's memory. It still earns a `coverage` row, with
-`reason` `too_large`, so the skip is reported rather than silent.
+[`vignette("pkgaudit")`](https://tylerjssmith.github.io/pkgaudit/articles/pkgaudit.md)
+for a worked scan, and
+[`vignette("rules")`](https://tylerjssmith.github.io/pkgaudit/articles/rules.md)
+for the rules, phases and contexts behind a finding.
 
 ## Examples
 
@@ -220,9 +163,9 @@ result$patterns
 print(result)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/RtmpcAQCOf/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/Rtmps215d8/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-24 13:55 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-24 16:24 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4

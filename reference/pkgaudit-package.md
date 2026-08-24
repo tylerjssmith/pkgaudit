@@ -33,7 +33,7 @@ and
 [`audit_tarball()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_tarball.md)
 for the scan entry points;
 [`print.pkgaudit()`](https://tylerjssmith.github.io/pkgaudit/reference/format.pkgaudit.md)
-for the rendered summary.
+for the rendered finding counts.
 
 ## Author
 

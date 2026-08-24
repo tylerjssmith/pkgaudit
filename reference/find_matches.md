@@ -1,7 +1,8 @@
-# Find security-relevant matches in a shell script or Make-like file
+# Find security-relevant matches in shell code
 
-Finds matches – regular-expression matches in a file R executes through
-a shell or through make (e.g., `configure`, `src/Makevars`).
+Finds matches – regular-expression matches in code R hands to a shell or
+to make, whether it is a file (e.g., `configure`, `src/Makevars`) or a
+shell chunk in a vignette.
 
 ## Usage
 

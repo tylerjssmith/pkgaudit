@@ -68,18 +68,13 @@ a named list with class `pkgaudit` containing five data frames and a
 
 Extracts a source package tarball to a temporary directory, applies
 [`audit_package()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md),
-removes the temporary directory, and returns the result. This is the
-typical pre-install workflow: audit a downloaded tarball and review the
-findings before calling
-[`utils::install.packages()`](https://rdrr.io/r/utils/install.packages.html).
+removes the temporary directory, and returns the result.
 
 Before extracting anything, the tarball is validated with
 [`validate_tar()`](https://tylerjssmith.github.io/pkgaudit/reference/validate_tar.md),
-which fails closed on link entries, path traversal, absolute paths,
-decompression bombs, and archives without exactly one top-level
-directory. After extraction, the extracted directory is re-checked and
-rejected if it contains any symlink, as defense in depth against a
-validate_tar()/untar() disagreement.
+which fails closed. After extraction, the extracted directory is
+re-checked and rejected if it contains any symlink, as defense in depth
+against a validate_tar()/untar() disagreement.
 
 After extraction, the tarball filename must be consistent with the
 top-level directory it produced (e.g. `foo_0.1.0.tar.gz` must extract to
@@ -107,7 +102,7 @@ print(result)
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> Path:      ~/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-24 13:55 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-24 16:24 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4

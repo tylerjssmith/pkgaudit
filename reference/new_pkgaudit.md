@@ -3,8 +3,7 @@
 Assembles the five result data frames and a metadata list into a
 validated `pkgaudit` S3 object.
 [`audit_package()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md)
-calls this at the end of a scan. It is also used to construct objects
-directly (e.g., in tests).
+calls this at the end of a scan.
 
 ## Usage
 

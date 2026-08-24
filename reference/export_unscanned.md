@@ -1,8 +1,9 @@
 # Export the code pkgaudit could not read
 
 Writes the parts of a package that pkgaudit does not analyze – C, C++,
-Fortran, Rust, Python, JavaScript, and the vignette chunks written in
-them – into a directory another static analyzer can be pointed at.
+Fortran, Rust, Python and JavaScript among them, and the vignette chunks
+written in those languages – into a directory another static analyzer
+can be pointed at.
 
 ## Usage
 
@@ -69,13 +70,14 @@ account of what it could not read is the single source of truth.
 
 ## Security considerations
 
-This is the only function in pkgaudit that writes, and both the content
-and the file names come from an untrusted package. Therefore:
+This is the only function that writes where a caller sends it, and both
+the content and the file names come from an untrusted package.
+Therefore:
 
 - every target path is resolved and must lie under `dir`;
 
 - a path component that is `.`, `..`, or that contains a separator or a
-  NUL byte is refused;
+  control character is refused;
 
 - symlinks are never followed, and content is read and rewritten rather
   than copied, so a link pointing out of the package cannot pull a file

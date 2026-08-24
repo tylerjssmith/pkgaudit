@@ -128,10 +128,8 @@ truncated tree. Whatever was recovered is still returned, since dropping it
 would lose real code, and the warning is reported in <code>error</code>.</p>
 <p>The <code>examples</code> string is not guaranteed to parse. R never syntax-checks
 <code>\dontrun{}</code>, so including that code exposes blocks that are not valid R.
-Across 3081 CRAN help files, 5 (0.16%) produced an unparseable <code>examples</code>
-string, every one for that reason; no <code>sexpr</code> string failed. The string is
-assembled whole, so one broken <code>\dontrun{}</code> costs the valid example code in
-the same file.</p>
+The string is assembled whole, so one broken <code>\dontrun{}</code> costs the valid
+example code in the same file.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
