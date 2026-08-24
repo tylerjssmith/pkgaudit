@@ -1,2 +1,6 @@
 build/
 lib/
+
+# Compiled artifacts; rebuilt by R CMD INSTALL from src/probe.c.
+*.o
+*.so

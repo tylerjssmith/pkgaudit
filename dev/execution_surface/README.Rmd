@@ -51,7 +51,8 @@ the record of the library the shipped logs were measured against.
 
 ```{r files, echo = FALSE}
 f <- list.files("foo", recursive = TRUE, all.files = TRUE, no.. = TRUE)
-cat(paste0("foo/", sort(f[basename(f) != ".DS_Store"])), sep = "\n")
+f <- f[basename(f) != ".DS_Store" & !grepl("\\.(o|so|dll|dylib)$", f)]
+cat(paste0("foo/", sort(f)), sep = "\n")
 ```
 
 Files are named `probe.*`, or `probe_*.*` where more than one sits in the same

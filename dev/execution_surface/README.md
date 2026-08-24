@@ -68,11 +68,9 @@ library the shipped logs were measured against.
     foo/R/probe.R
     foo/R/unix/probe.R
     foo/R/windows/probe.R
-    foo/src/foo.so
     foo/src/install.libs.R
     foo/src/Makevars
     foo/src/probe.c
-    foo/src/probe.o
     foo/tests/probe.R
     foo/tests/runit.R
     foo/tests/testthat.R
