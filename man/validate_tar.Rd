@@ -15,18 +15,16 @@ validate_tar(
 \item{tarfile}{Path to a \code{.tar} or \code{.tar.gz} archive.}
 
 \item{max_entries}{Maximum number of entries to read before failing closed.
-Default 100,000 (about 7x the largest CRAN package).}
+Default 100,000.}
 
 \item{max_bytes}{Maximum uncompressed bytes to read before failing closed.
-Default 2 GB (about 15x the largest CRAN package). Raise for ecosystems
-with larger artifacts, e.g. Bioconductor annotation and experiment-data
-packages.}
+Default 2 GB. Raise for ecosystems with larger artifacts, e.g. Bioconductor
+annotation and experiment-data packages.}
 
 \item{max_ratio}{Maximum uncompressed:compressed ratio before failing closed,
 or \code{Inf} to disable. Targets decompression bombs, which are characterised
-by extreme ratios rather than absolute size. Default 256: about 3x the
-largest ratio (85) observed across CRAN, and well under the ~1032:1 ceiling
-of a single gzip layer.}
+by extreme ratios rather than absolute size. Default 256, well under the
+~1032:1 ceiling of a single gzip layer.}
 }
 \value{
 Invisibly, a data frame of the archive's entries with columns
@@ -43,10 +41,9 @@ long-name, PAX), path traversal, absolute and drive-qualified paths, paths
 containing backslashes or control characters, empty paths, unparseable size
 fields, and archives that do not extract to exactly one top-level directory.
 It also enforces the entry-count, uncompressed-size, and expansion-ratio caps
-applied while reading (\code{max_entries}, \code{max_bytes}, \code{max_ratio}). No CRAN
-source tarball trips any of these. Reads gzip and uncompressed tar only,
-judged by the file's magic bytes rather than its name: a bzip2, xz, zstd or
-compress stream is refused whatever it is called.
+applied while reading (\code{max_entries}, \code{max_bytes}, \code{max_ratio}). Reads gzip
+and uncompressed tar only, judged by the file's magic bytes rather than its
+name: a bzip2, xz, zstd or compress stream is refused whatever it is called.
 
 A refusal is signaled as a \code{pkgaudit_invalid_tarball} condition (a subclass
 of \code{error}), so it stops by default but can be caught by class.

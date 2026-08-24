@@ -1,9 +1,6 @@
 # Tar header inspection and fail-closed validation for untrusted source package
 # tarballs.
 
-# The caps and refusals below come from a survey of every CRAN source package as
-# of 23 August 2026 (n = 24,741); see dev/cran_survey/.
-
 #' Validate a source package tarball before extraction
 #'
 #' Fail closed: refuse the whole archive rather than extracting a filtered
@@ -15,10 +12,9 @@
 #' containing backslashes or control characters, empty paths, unparseable size
 #' fields, and archives that do not extract to exactly one top-level directory.
 #' It also enforces the entry-count, uncompressed-size, and expansion-ratio caps
-#' applied while reading (`max_entries`, `max_bytes`, `max_ratio`). No CRAN
-#' source tarball trips any of these. Reads gzip and uncompressed tar only,
-#' judged by the file's magic bytes rather than its name: a bzip2, xz, zstd or
-#' compress stream is refused whatever it is called.
+#' applied while reading (`max_entries`, `max_bytes`, `max_ratio`). Reads gzip
+#' and uncompressed tar only, judged by the file's magic bytes rather than its
+#' name: a bzip2, xz, zstd or compress stream is refused whatever it is called.
 #'
 #' A refusal is signaled as a `pkgaudit_invalid_tarball` condition (a subclass
 #' of `error`), so it stops by default but can be caught by class.
@@ -92,16 +88,14 @@ validate_tar <- function(tarfile,
 #'
 #' @param tarfile Path to a `.tar` or `.tar.gz` archive.
 #' @param max_entries Maximum number of entries to read before failing closed.
-#'   Default 100,000 (about 7x the largest CRAN package).
+#'   Default 100,000.
 #' @param max_bytes Maximum uncompressed bytes to read before failing closed.
-#'   Default 2 GB (about 15x the largest CRAN package). Raise for ecosystems
-#'   with larger artifacts, e.g. Bioconductor annotation and experiment-data
-#'   packages.
+#'   Default 2 GB. Raise for ecosystems with larger artifacts, e.g. Bioconductor
+#'   annotation and experiment-data packages.
 #' @param max_ratio Maximum uncompressed:compressed ratio before failing closed,
 #'   or `Inf` to disable. Targets decompression bombs, which are characterised
-#'   by extreme ratios rather than absolute size. Default 256: about 3x the
-#'   largest ratio (85) observed across CRAN, and well under the ~1032:1 ceiling
-#'   of a single gzip layer.
+#'   by extreme ratios rather than absolute size. Default 256, well under the
+#'   ~1032:1 ceiling of a single gzip layer.
 #' @param chunk Bytes read per call when skipping entry data. Bounds peak
 #'   allocation so a huge declared size cannot force one huge read.
 #'
@@ -191,8 +185,7 @@ tar_entries <- function(tarfile,
     # GNU long-name ('L'/'K') and PAX ('x'/'g') entries carry the real path in
     # the FOLLOWING entry's data block, so a parser that ignores them can be
     # made to misattribute names -- a benign-looking header overridden by a
-    # long-name record. In the survey mentioned at the top of this script, no
-    # CRAN package used them, so they are refused rather than parsed.
+    # long-name record. They are refused rather than parsed.
     # validate_tar() enforces this; the "other" type is retained here so callers
     # can see what was found.
 

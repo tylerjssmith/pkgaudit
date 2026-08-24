@@ -133,8 +133,9 @@ pattern_labels <- c(
   eval_parse = paste(
     "`eval()`/`evalq()` over `parse()`, `str2lang()` or `str2expression()`,",
     "when the text came from a fetch, a decode, a deserialization, a",
-    "subprocess or a file read -- every function the rules for those already",
-    "cover, plus `readLines()`, `scan()`, `readBin()` and `rawToChar()`"
+    "subprocess or a file read -- most functions the rules for those already",
+    "cover, plus `readLines()`, `scan()`, `readBin()` and `rawToChar()`;",
+    "callr's and processx's generically named entry points are not matched"
   ),
   fs   = "`file_chmod()`, `file_chown()`",
   httr = paste(
@@ -247,8 +248,8 @@ below link to the defining YAML.
 ## Patterns
 
 Patterns are security-relevant function calls, such as `system()`. Qualified
-(`pkg::fn()`) and unqualified (`fn()`) call forms are both detected. Pattern
-rules also flag calls made through a function's name --
+(`pkg::fn()`) and unqualified (`fn()`) call forms are both detected. A rule that
+declares its function names also flags calls made through a name --
 `do.call("system", ...)`, `match.fun("system")`, and `getFunction("system")`.
 Pattern rules carry [MITRE ATT&CK](https://attack.mitre.org/) technique labels.
 
