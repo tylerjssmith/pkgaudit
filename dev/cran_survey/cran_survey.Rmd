@@ -9,6 +9,8 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment  = "#>"
 )
+
+options(print_max = 20)
 ```
 
 ```{r load, message = FALSE}
@@ -75,7 +77,7 @@ the downloaded files.
 
 ```{r verify_downloads}
 # downloaded packages match available packages
-expected = paste0(available$Package, "_", available$Version, ".tar.gz")
+expected = paste0(available_saved$Package, "_", available_saved$Version, ".tar.gz")
 actual   = list.files(SNAPSHOT_DIR, pattern = "\\.tar\\.gz")
 
 length(setdiff(expected, actual)) == 0
@@ -98,7 +100,9 @@ write_rds(findings, "results/findings.rds", compress = "gz")
 
 The following code loads the survey results, extracts the data frames, defines
 the total number of tarballs surveyed as the denominator, and defines two
-functions used to summarize the results.
+functions used to summarize the results. The first function summarizes findings
+as proportions of findings; the second function summarizes findings as
+proportions of packages.
 
 ```{r setup_results}
 # Load Saved Results
@@ -128,6 +132,7 @@ get_proportion_pkgs <- function(data, x) {
     summarise(n = n_distinct(package)) %>%
     mutate(p = n / N * 100) %>%
     rename(!!sym(paste0("n/", N)) := p) %>%
+    as.data.frame() %>%
     arrange(desc(n))
 }
 ```
@@ -162,11 +167,19 @@ patterns %>%
 ## Tarballs
 
 The following code runs `survey_structure()` and `survey_expansion()` on every
-downloaded package.
+downloaded package, providing empirical support for the defaults implemented in
+`validate_tarball()`.
 
 ```{r tarball, eval = FALSE}
 structure <- survey_dir(SNAPSHOT_DIR, survey_structure)
+write_rds(structure, "results/tarball_structure.rds")
 expansion <- survey_dir(SNAPSHOT_DIR, survey_expansion)
+write_rds(expansion, "results/tarball_expansion.rds")
+```
+
+```{r tarball_saved}
+saved_structure <- read_rds("results/tarball_structure.rds")
+saved_expansion <- read_rds("results/tarball_expansion.rds")
 ```
 
 The defaults `max_entries = 100000L` and `max_bytes = 2 * 1024^3` (2 GB) provide
@@ -174,10 +187,10 @@ considerable room above the empirical maxima.
 
 ```{r}
 # max_entries
-quantile(structure$n_entries,  c(.5, .9, .99, .999, 1))
+quantile(saved_structure$n_entries,  c(.5, .9, .99, .999, 1))
 
 # max_bytes
-quantile(structure$bytes_read, c(.5, .9, .99, .999, 1))
+quantile(saved_structure$bytes_read, c(.5, .9, .99, .999, 1))
 ```
 
 The default `max_ratio = 256` likewise provides considerable room above the
@@ -185,8 +198,8 @@ empirical maximum.
 
 ```{r}
 # exclude capped and errored rows, if present, as ratios are lower bounds
-ok <- subset(expansion, !cap_hit & is.na(error))
-round(nrow(ok) / nrow(expansion) * 100, 4)
+ok <- subset(saved_expansion, !cap_hit & is.na(error))
+round(nrow(ok) / nrow(saved_expansion) * 100, 4)
 
 # max_ratio
 quantile(ok$ratio, c(.5, .9, .99, .999, 1))
@@ -196,21 +209,22 @@ We can confirm the absence of various threat indicators in CRAN packages such
 that the presence of any one justifies failing closed.
 
 ```{r}
-sum(structure$n_symlink > 0)
-sum(structure$n_hardlink > 0)
-sum(structure$n_other_type > 0)
-sum(structure$n_traversal > 0)
-sum(structure$n_absolute > 0)
-table(structure$n_toplevel)
-sum(structure$n_backslash > 0)
-sum(structure$n_control > 0)
-sum(structure$n_empty > 0)
-sum(structure$n_bad_size > 0)
+sum(saved_structure$n_symlink > 0)
+sum(saved_structure$n_hardlink > 0)
+sum(saved_structure$n_other_type > 0)
+sum(saved_structure$n_traversal > 0)
+sum(saved_structure$n_absolute > 0)
+table(saved_structure$n_toplevel)
+sum(saved_structure$n_backslash > 0)
+sum(saved_structure$n_control > 0)
+sum(saved_structure$n_empty > 0)
+sum(saved_structure$n_bad_size > 0)
 ```
+The scans did not raise errors.
 
 ```{r}
-subset(structure, truncated | !is.na(error))
-subset(expansion, cap_hit | !is.na(error))
+subset(saved_structure, truncated | !is.na(error))
+subset(saved_expansion, cap_hit | !is.na(error))
 ```
 
 

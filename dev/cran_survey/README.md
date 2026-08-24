@@ -1,4 +1,4 @@
-# dev/
+# dev/cran_survey
 
 This directory contains scripts used to snapshot and survey CRAN packages in
 support of pkgaudit development. Rules are evaluated at CRAN-scale before a new
