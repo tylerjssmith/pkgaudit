@@ -12,17 +12,15 @@ Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repost
 pkgaudit scans R packages for security-relevant files and code without
 executing anything it scans. It reports what code does and when it runs,
 so code that runs on install or load is distinguishable from code that
-runs only when called. pkgaudit helps users review packages before
-trusting them.
+runs only when called.
 
 A general-purpose scanner like Semgrep can read R – but it reads
 scripts, not packages. It does not look for R inside an `\examples{}`
-block, an `\Sexpr{}` macro, or a vignette. It does not know that R in
-`.onLoad()` runs when a user calls `library()` or that Bash in a
-`configure` script runs under `R CMD check`. pkgaudit reads packages –
-it extracts code wherever it exists, scans it for functions and commands
-that need human review, and reports the lifecycle phases in which each
-finding runs.
+block, an `\Sexpr{}` macro, or a vignette. It does not know that
+`.onLoad()` runs when a user calls `library()` or that a `configure`
+script runs on `R CMD check`. pkgaudit extracts code wherever it exists,
+scans it for functions and commands that need human review, and reports
+the lifecycle phases in which each finding runs.
 
 For why this matters, see [R Package Security](articles/security.html).
 For the rule set, see [Rule Coverage](articles/rules.html).
@@ -53,7 +51,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-26 19:24 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-26 22:18 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
