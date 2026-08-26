@@ -1,7 +1,6 @@
 url: https://tylerjssmith.github.io/pkgaudit/
 template:
   bootstrap: 5
-  bootswatch: flatly
 
 reference:
 - title: "Scanning a package"
