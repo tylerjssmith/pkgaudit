@@ -51,7 +51,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-26 22:31 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-26 22:18 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -93,8 +93,9 @@ multiple phases:
 
 1.  An `\Sexpr{}` macro in `man/fetch_data.Rd` calls `httr::POST()` when
     the help page is rendered at build, check, and source installation.
-    Reviewers should consider whether a help file should make an HTTP
-    POST request and what it can send to an external host.
+    An HTTP POST request in a help file is unusual. Reviewers should
+    consider why it exists and what data it may send to an external
+    host.
 
 2.  `.onLoad()` in `R/zzz.R` calls `system()` and runs when users call
     `library()`. It also runs at build, check, and source installation,
@@ -116,9 +117,10 @@ multiple phases:
     and when the function is called, and what would be downloaded.
 
 5.  The `configure` script may invoke `curl` at build, check, and source
-    installation. Some R packages use `curl` to fetch dependencies that
-    cannot be vendored with the package. Reviewers should verify what is
-    fetched and what could happen if that changes.
+    installation. Some R packages use `curl` to fetch external
+    dependencies that cannot be vendored with the package. Reviewers
+    should verify what is fetched and what could happen if what is
+    fetched changes.
 
 pkgaudit also provides functions to integrate its scan with other tools.
 `emit_sarif()` renders its results as SARIF 2.1.0, which editors and
