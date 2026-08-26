@@ -6,21 +6,21 @@ Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repost
 [![coverage](https://raw.githubusercontent.com/tylerjssmith/pkgaudit/badges/coverage.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/test-coverage.yaml)
 [![osv-scanner](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml)
 
-pkgaudit is a static analysis security testing (SAST) tool for R
-packages. It flags security-relevant files and code in R source packages
-for human review without executing anything it scans. pkgaudit reports
-not just what code does, but when it runs, so code that executes on
-install or load is distinguishable from code that runs only when called.
+pkgaudit scans R packages for security-relevant files and code without
+executing anything it scans. It reports what code does and when it runs,
+so code that runs on install or load is distinguishable from code that
+runs only when called. pkgaudit helps users review packages before
+trusting them.
 
-A general-purpose scanner like Semgrep can read R – but it reads files,
-not packages. It does not look for R inside a help file’s `\examples{}`
-block or an `\Sexpr{}` macro, or inside a vignette. It does not know
-that `.onLoad()` runs on
-[`library()`](https://rdrr.io/r/base/library.html), that `\Sexpr{}`
-evaluates while a help page is built, or that `configure` runs under
-`R CMD check`. pkgaudit extracts R from wherever a package carries it,
-parses it for security-relevant patterns, and reports the lifecycle
-phases in which each finding runs.
+A general-purpose scanner like Semgrep can read R – but it reads
+scripts, not packages. It does not look for R inside an `\examples{}`
+block, an `\Sexpr{}` macro, or a vignette. It does not know that R in
+`.onLoad()` runs when a user calls
+[`library()`](https://rdrr.io/r/base/library.html) or that Bash in a
+`configure` script runs under `R CMD check`. pkgaudit reads packages –
+it extracts code wherever it exists, scans it for functions and commands
+that need human review, and reports the lifecycle phases in which each
+finding runs.
 
 For why this matters, see [R Package
 Security](https://tylerjssmith.github.io/pkgaudit/articles/security.md).
@@ -38,9 +38,7 @@ remotes::install_github("tylerjssmith/pkgaudit")
 
 A source package tarball can be scanned before it is installed. The
 example below scans `untrustedpkg`, a small package shipped with
-pkgaudit for demonstration. Phases overlap – building a package with
-vignettes also installs and loads it – and one occurrence is counted
-under every phase it runs in.
+pkgaudit for demonstration.
 
 ``` r
 
@@ -57,7 +55,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-26 12:41 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-26 19:24 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -92,45 +90,47 @@ summary(result, path = FALSE)
 #> No exceptions were raised.
 ```
 
-The summary shows five findings, some counted under multiple phases,
-four of which run automatically:
+Phases overlap – building a package with vignettes, for example, also
+installs and loads it – and one occurrence is counted under every phase
+it runs in. The summary above reflects five findings, some counted under
+multiple phases:
 
-- `.onLoad()` in `R/zzz.R` calls
-  [`system()`](https://rdrr.io/r/base/system.html), which runs when
-  users call [`library()`](https://rdrr.io/r/base/library.html), and at
-  build, check, and source installation, each of which loads the
-  package. While [`system()`](https://rdrr.io/r/base/system.html) calls
-  are common in R packages, they are less common in lifecycle hooks like
-  `.onLoad()`, and reviewers should inspect what commands the package
-  would run automatically on their systems.
+1.  An `\Sexpr{}` macro in `man/fetch_data.Rd` calls
+    [`httr::POST()`](https://httr.r-lib.org/reference/POST.html) when
+    the help page is rendered at build, check, and source installation.
+    An HTTP POST request in a help file is unusual. Reviewers should
+    consider why it exists and what data it may send to an external
+    host.
 
-- An `\Sexpr{}` macro in `man/fetch_data.Rd` calls
-  [`httr::POST()`](https://httr.r-lib.org/reference/POST.html) when the
-  help page is rendered at build, check, and source installation. An
-  HTTP POST request in a help file is unusual, and reviewers should
-  consider why it exists and what data it may send to an external host.
+2.  `.onLoad()` in `R/zzz.R` calls
+    [`system()`](https://rdrr.io/r/base/system.html) and runs when users
+    call [`library()`](https://rdrr.io/r/base/library.html). It also
+    runs at build, check, and source installation, each of which loads
+    the package. While [`system()`](https://rdrr.io/r/base/system.html)
+    calls are common in R packages, they are less common in lifecycle
+    hooks like `.onLoad()`, and reviewers should inspect what commands
+    would be run automatically on their systems.
 
-- The `\examples{}` block in the same help file calls
-  [`download.file()`](https://rdrr.io/r/utils/download.file.html) at
-  check. A reviewer should verify what is downloaded. Since what is
-  downloaded may change over time, a reviewer should also consider how
-  the download is used – for example, could another function execute
-  code if the file ever contained it?
+3.  The `\examples{}` block in the same help file calls
+    [`download.file()`](https://rdrr.io/r/utils/download.file.html) at
+    check. Reviewers should verify what is downloaded. Since this
+    depends on an external host, and what is downloaded may change over
+    time, reviewers should also consider how the download is used – for
+    example, could another function execute code if the file ever
+    contained it?
 
-- The `configure` script may invoke `curl` at build, check, and source
-  installation. Some R packages use `curl` to fetch external
-  dependencies that cannot be vendored with the package (see [CRAN
-  Repository
-  Policy](https://cran.r-project.org/web/packages/policies.html)), but
-  like with
-  [`download.file()`](https://rdrr.io/r/utils/download.file.html), what
-  is fetched may change over time.
+4.  A regular function in `R/fetch.R` calls
+    [`download.file()`](https://rdrr.io/r/utils/download.file.html), but
+    a regular function is not known to run automatically, so this
+    pattern is reported under `none`. A reviewer may still want to
+    inspect if and when the function is called, and what would be
+    downloaded.
 
-- A regular function in `R/fetch.R` would call
-  [`download.file()`](https://rdrr.io/r/utils/download.file.html), but a
-  regular function is not known to run automatically, and this pattern
-  is reported under `none`. A reviewer may still want to inspect if and
-  when the function is called, and what would be downloaded.
+5.  The `configure` script may invoke `curl` at build, check, and source
+    installation. Some R packages use `curl` to fetch external
+    dependencies that cannot be vendored with the package. Reviewers
+    should verify what is fetched and what could happen if what is
+    fetched changes.
 
 pkgaudit also provides functions to integrate its scan with other tools.
 [`emit_sarif()`](https://tylerjssmith.github.io/pkgaudit/reference/emit_sarif.md)
