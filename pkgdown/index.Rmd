@@ -64,9 +64,9 @@ and loads it -- and one occurrence is counted under every phase it runs in. The
 summary above reflects five findings, some counted under multiple phases:
 
 1. An `\Sexpr{}` macro in `man/fetch_data.Rd` calls `httr::POST()` when the help
-page is rendered at build, check, and source installation. An HTTP POST request
-in a help file is unusual. Reviewers should consider why it exists and what data
-it may send to an external host.
+page is rendered at build, check, and source installation. Reviewers should
+consider whether a help file should make an HTTP POST request and what it can
+send to an external host.
 
 2. `.onLoad()` in `R/zzz.R` calls `system()` and runs when users call
 `library()`. It also runs at build, check, and source installation, each of
@@ -86,9 +86,9 @@ function is not known to run automatically, so this pattern is reported under
 and what would be downloaded.
 
 5. The `configure` script may invoke `curl` at build, check, and source
-installation. Some R packages use `curl` to fetch external dependencies that
-cannot be vendored with the package. Reviewers should verify what is fetched and
-what could happen if what is fetched changes.
+installation. Some R packages use `curl` to fetch dependencies that cannot be
+vendored with the package. Reviewers should verify what is fetched and what
+could happen if that changes.
 
 pkgaudit also provides functions to integrate its scan with other tools.
 `emit_sarif()` renders its results as SARIF 2.1.0, which editors and
