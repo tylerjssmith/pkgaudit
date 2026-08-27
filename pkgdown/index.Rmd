@@ -61,40 +61,13 @@ summary(result, path = FALSE)
 
 Phases overlap -- building a package with vignettes, for example, also installs
 and loads it -- and one occurrence is counted under every phase it runs in. The
-summary above reflects five findings, some counted under multiple phases:
+summary above reflects five findings, some counted under multiple phases.
 
-1. An `\Sexpr{}` macro in `man/fetch_data.Rd` calls `httr::POST()` when the help
-page is rendered at build, check, and source installation. Reviewers should
-consider whether a help page should make an HTTP POST request and what it may
-send to an external host.
+pkgaudit can integrate its scan with other tools. `emit_sarif()` renders its
+results as SARIF 2.1.0, which editors and code-scanning platforms read directly. `export_unscanned()` exports code written in languages pkgaudit cannot read to a
+directory for a scanner that can. 
 
-2. `.onLoad()` in `R/zzz.R` calls `system()` and runs when users call
-`library()`. It also runs at build, check, and source installation, each of
-which loads the package. While `system()` calls are common in R packages, they
-are less common in lifecycle hooks like `.onLoad()`, and reviewers should
-inspect what commands would be run automatically on their systems.
-
-3. The `\examples{}` block in the same help file calls `download.file()` at
-check. Reviewers should verify what is downloaded. Since this depends on an
-external host, and what is downloaded may change over time, reviewers should
-also consider how the download is used -- for example, could another function
-execute code if the file ever contained it?
-
-4. A regular function in `R/fetch.R` calls `download.file()`, but a regular
-function is not known to run automatically, so this pattern is reported under
-`none`. A reviewer may still want to inspect if and when the function is called,
-and what would be downloaded.
-
-5. The `configure` script may invoke `curl` at build, check, and source
-installation. Some R packages use `curl` to fetch dependencies that
-cannot be vendored with the package. Reviewers should verify what is fetched and
-what could happen if that changes.
-
-pkgaudit also provides functions to integrate its scan with other tools.
-`emit_sarif()` renders its results as SARIF 2.1.0, which editors and
-code-scanning platforms read directly. `export_unscanned()` writes out package
-code in languages pkgaudit cannot read, into a directory for a scanner that
-can. See [Getting Started with pkgaudit](articles/pkgaudit.html) for details.
+See [Getting Started with pkgaudit](articles/pkgaudit.html) for details.
 
 ## Security
 
