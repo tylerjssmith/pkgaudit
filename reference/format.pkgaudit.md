@@ -56,7 +56,7 @@ print(result)
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> Path:      ~/work/_temp/Library/pkgaudit/extdata/untrustedpkg/untrustedpkg_0.1.0.tar.gz
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-28 02:27 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-28 02:38 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -66,7 +66,7 @@ print(result, path = FALSE)   # omit the local Path: line for sharing
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-28 02:27 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-28 02:38 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4

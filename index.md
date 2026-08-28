@@ -39,7 +39,7 @@ example below scans `untrustedpkg`, a small package shipped with
 pkgaudit for demonstration. We see that, when `untrustedpkg` is
 installed from source, its R code will make an HTTP request (`httr`) and
 invoke a shell command (`system`). Meanwhile, a shell script may invoke
-the `curl` command.
+`curl`.
 
 ``` r
 
@@ -56,7 +56,7 @@ summary(result, phase = "at_install_src", path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-28 02:25 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-28 02:34 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> Phases:    at_install_src
 #> 
 #> --- R Patterns --------------------------------------------------------------

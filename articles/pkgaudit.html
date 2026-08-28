@@ -110,7 +110,7 @@ by category.</p>
 <span><span class="co">#&gt; --- pkgaudit ----------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source directory)</span></span>
 <span><span class="co">#&gt; SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-28 02:27 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-28 02:38 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; File contexts:  1</span></span>
 <span><span class="co">#&gt; Patterns:       4</span></span>
@@ -124,7 +124,7 @@ rule.</p>
 <span><span class="co">#&gt; --- pkgaudit Summary --------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source directory)</span></span>
 <span><span class="co">#&gt; SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-28 02:27 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-28 02:38 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- R Patterns --------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; phase            rule            n   attck</span></span>
@@ -168,7 +168,7 @@ installation from source, for example, pass an argument to
 <span><span class="co">#&gt; --- pkgaudit Summary --------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source directory)</span></span>
 <span><span class="co">#&gt; SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-28 02:27 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-28 02:38 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
 <span><span class="co">#&gt; Phases:    at_install_src</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- R Patterns --------------------------------------------------------------</span></span>
@@ -303,7 +303,7 @@ not encounter errors when scanning <code>untrustedpkg</code>.</p>
 <span><span class="co">#&gt; [1] "0.1.0"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $pkg_path</span></span>
-<span><span class="co">#&gt; [1] "/tmp/RtmpjwbjfR/untrustedpkg-example/untrustedpkg"</span></span>
+<span><span class="co">#&gt; [1] "/tmp/Rtmp6PeZ0f/untrustedpkg-example/untrustedpkg"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $pkg_is_tarball</span></span>
 <span><span class="co">#&gt; [1] FALSE</span></span>
@@ -321,7 +321,7 @@ not encounter errors when scanning <code>untrustedpkg</code>.</p>
 <span><span class="co">#&gt; [1] "5fc1ec8e93232517679fb03df0f08020d844912e701615de7827666be2f6a7cd"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $scanned</span></span>
-<span><span class="co">#&gt; [1] "2026-08-28T02:27:31Z"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "2026-08-28T02:38:54Z"</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="subsetting-by-phase">Subsetting by phase<a class="anchor" aria-label="anchor" href="#subsetting-by-phase"></a>
@@ -390,11 +390,11 @@ be run automatically on their systems.</li>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/system.html" class="external-link">system</a></span><span class="op">(</span><span class="st">"uname -a"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre>
 <ol start="4" style="list-style-type: decimal">
-<li>The <code>configure</code> script may invoke <code>curl</code> at
-build, check, and source installation. Some R packages use
-<code>curl</code> to fetch dependencies that cannot be vendored with the
-package. Reviewers should verify what is fetched and what could happen
-if that changes.</li>
+<li>A regular function in <code>R/fetch.R</code> calls
+<code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file()</a></code>, but a regular function is not known to run
+automatically, so this pattern is reported under <code>none</code>. A
+reviewer may still want to inspect if and when the function is called,
+and what would be downloaded.</li>
 </ol>
 <pre><code><span><span class="va">fetch_data</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">url</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file</a></span><span class="op">(</span><span class="va">url</span>, <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
@@ -404,11 +404,11 @@ if that changes.</li>
 <h3 id="matches-1">Matches<a class="anchor" aria-label="anchor" href="#matches-1"></a>
 </h3>
 <ol style="list-style-type: decimal">
-<li>A regular function in <code>R/fetch.R</code> calls
-<code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file()</a></code>, but a regular function is not known to run
-automatically, so this pattern is reported under <code>none</code>. A
-reviewer may still want to inspect if and when the function is called,
-and what would be downloaded.</li>
+<li>The <code>configure</code> script may invoke <code>curl</code> at
+build, check, and source installation. Some R packages use
+<code>curl</code> to fetch dependencies that cannot be vendored with the
+package. Reviewers should verify what is fetched and what could happen
+if that changes.</li>
 </ol>
 <pre><code>#!/bin/sh
 echo configuring
@@ -462,7 +462,7 @@ rather than partially extracted.</p>
 <span><span class="co">#&gt; --- pkgaudit ----------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source tarball)</span></span>
 <span><span class="co">#&gt; SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-28 02:27 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-28 02:38 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; File contexts:  1</span></span>
 <span><span class="co">#&gt; Patterns:       4</span></span>
