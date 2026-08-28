@@ -58,7 +58,7 @@ A source package tarball can be scanned before it is installed. The example
 below scans `untrustedpkg`, a small package shipped with pkgaudit for
 demonstration. We see that, when `untrustedpkg` is installed from source, its R
 code will make an HTTP request (`httr`) and invoke a shell command (`system`).
-Meanwhile, a shell script or Make-like file make invoke the `curl` command.
+Meanwhile, a shell script may invoke `curl`.
 
 ```{r usage}
 library(pkgaudit)
