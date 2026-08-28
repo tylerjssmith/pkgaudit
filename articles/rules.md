@@ -79,7 +79,7 @@ command.
 Phases describe when code executes. For pattern findings, they are
 resolved from file and code contexts. For match findings, they are
 resolved from file contexts alone. See
-[Internals](https://tylerjssmith.github.io/pkgaudit/articles/internals.md).
+[Internals](https://tylerjssmith.github.io/pkgaudit/articles/internals.html#resolve).
 
 | Phase            | Code executes when                           |
 |------------------|----------------------------------------------|
@@ -154,11 +154,10 @@ Code contexts indicate where code sits within its file context. It is
 either defined by a rule or computed. For rule-based code contexts, a
 lifecycle hook like `.onLoad()` is found by matching the XML parse tree,
 while part of a help file like `\examples` or `\Sexpr` is found by
-matching a label from the extraction method. See
-[Internals](https://tylerjssmith.github.io/pkgaudit/articles/internals.md).
-If no code-context rule matches, code context is computed from the parse
-tree: `in_function` when code sits inside a regular function definition,
-and `top_level` otherwise.
+matching a label from the extraction method. If no code-context rule
+matches, code context is computed from the parse tree: `in_function`
+when code sits inside a regular function definition, and `top_level`
+otherwise.
 
 #### Rule-based
 

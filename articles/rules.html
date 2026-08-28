@@ -489,7 +489,7 @@ exfiltrate credentials or other data.</td>
 </h3>
 <p>Phases describe when code executes. For pattern findings, they are
 resolved from file and code contexts. For match findings, they are
-resolved from file contexts alone. See <a href="internals.html">Internals</a>.</p>
+resolved from file contexts alone. See <a href="internals.html#resolve">Internals</a>.</p>
 <table class="table">
 <thead><tr class="header">
 <th>Phase</th>
@@ -1064,10 +1064,9 @@ either defined by a rule or computed. For rule-based code contexts, a
 lifecycle hook like <code>.onLoad()</code> is found by matching the XML
 parse tree, while part of a help file like <code>\examples</code> or
 <code>\Sexpr</code> is found by matching a label from the extraction
-method. See <a href="internals.html">Internals</a>. If no code-context
-rule matches, code context is computed from the parse tree:
-<code>in_function</code> when code sits inside a regular function
-definition, and <code>top_level</code> otherwise.</p>
+method. If no code-context rule matches, code context is computed from
+the parse tree: <code>in_function</code> when code sits inside a regular
+function definition, and <code>top_level</code> otherwise.</p>
 <div class="section level4">
 <h4 id="rule-based">Rule-based<a class="anchor" aria-label="anchor" href="#rule-based"></a>
 </h4>

@@ -1,7 +1,7 @@
 # pkgaudit Internals
 
-This vignette is for someone reading pkgaudit’s source before trusting
-it. For how to use pkgaudit and what it reports, see [Getting
+This vignette is for someone reading pkgaudit’s source code. For how to
+use pkgaudit and what it reports, see [Getting
 Started](https://tylerjssmith.github.io/pkgaudit/articles/pkgaudit.md);
 for the rule set, see [Rule
 Coverage](https://tylerjssmith.github.io/pkgaudit/articles/rules.md).
@@ -9,56 +9,123 @@ Coverage](https://tylerjssmith.github.io/pkgaudit/articles/rules.md).
 ## pkgaudit steps
 
 [`audit_package()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md)
-orchestrates a series of function calls, which may be grouped as
-follows:
+orchestrates a series of function calls, which may be loosely grouped as
+four steps:
 
-1.  **Discover.**
-    [`find_file_contexts()`](https://tylerjssmith.github.io/pkgaudit/reference/find_file_contexts.md)
-    runs one [`list.files()`](https://rdrr.io/r/base/list.files.html)
-    per file-context rule, using a file context rule’s `path`,
-    `filename` and `recursive` fields. If `report = TRUE` in a rule, the
-    file context is reported in the pkgaudit object’s `$file_contexts`
-    data frame.
-2.  **Extract.**
-    [`extract_segments()`](https://tylerjssmith.github.io/pkgaudit/reference/extract_segments.md)
-    dispatches to S3 methods that read each file into *segments*:
-    contiguous runs of code in one language, blank-padded so that line
-    *n* of a segment is line *n* of the source file.
-3.  **Analyze.**
-    [`analyze_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/analyze_segment.md)
-    dispatches to S3 methods that call functions to find code contexts,
-    patterns, or matches in each segment.
-4.  **Resolve.** A set of functions attaches and resolves the phases in
-    which a pattern or match may run.
+1.  Discover
+2.  Extract
+3.  Analyze
+4.  Resolve
 
-## Extraction and analysis
+### Discover
 
-Steps 2 and 3 dispatch to S3 methods.
+[`find_file_contexts()`](https://tylerjssmith.github.io/pkgaudit/reference/find_file_contexts.md)
+runs one [`list.files()`](https://rdrr.io/r/base/list.files.html) per
+file-context rule, using a file context rule’s `path`, `filename` and
+`recursive` fields. If `report = TRUE` in a rule, the file context is
+reported in the pkgaudit object’s `$file_contexts` data frame.
 
-- [`extract_segments()`](https://tylerjssmith.github.io/pkgaudit/reference/extract_segments.md)
-  dispatches on the file-context rule’s **`type`**, such as an R source
-  file, an Rd file containing examples, or an Rmd vignette containing
-  code chunks. These methods live in `R/extract_*.R`.
-- [`analyze_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/analyze_segment.md)
-  dispatches on the segment’s **`language`**, such as R or shell. These
-  methods live in `R/analyze_*.R`.
+### Extract
 
-A type or language read like another inherits from it rather than
-repeating a method. For example, `make` inherits `shell`, and `qmd`
-inherits `Rmd`.
+For each file context, whether reported or not,
+[`extract_segments()`](https://tylerjssmith.github.io/pkgaudit/reference/extract_segments.md)
+dispatches to S3 methods that read each file into *segments*: contiguous
+runs of code in one language, blank-padded so that line *n* of a segment
+is line *n* of the source file. Dispatch is based on the file-context
+rule’s `type`. The methods live in `R/extract_*.R`.
 
-The default methods fail closed. A type with no extractor yields no
-segments; a language with no analyzer yields no findings and no error,
-recording a coverage row instead.
+| Extractors      |
+|-----------------|
+| extract_R.R     |
+| extract_Rd.R    |
+| extract_rmd.R   |
+| extract_rnw.R   |
+| extract_rsp.R   |
+| extract_shell.R |
+
+A type read like another inherits from it rather than repeating a
+method. For example, `make` inherits `shell` and `qmd` inherits `Rmd`.
+[`extract_segments()`](https://tylerjssmith.github.io/pkgaudit/reference/extract_segments.md)
+has a default method that fails closed: a type with no extractor yields
+no segments.
+
+### Analyze
+
+For each segment extracted,
+[`analyze_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/analyze_segment.md)
+dispatches to S3 methods that call functions to find code contexts,
+patterns, or matches in each segment. Dispatch is based on the segment’s
+`language`, such as R or shell. The methods live in `R/analyze_*.R`.
+
+| Analyzers       |
+|-----------------|
+| analyze_R.R     |
+| analyze_shell.R |
+
+`analyze_segment.R` (in `R/analyze_R.R`) calls functions including
+[`parse_code()`](https://tylerjssmith.github.io/pkgaudit/reference/parse_code.md),
+which uses [`parse()`](https://rdrr.io/r/base/parse.html) and
+[`xmlparsedata::xml_parse_data()`](https://rdrr.io/pkg/xmlparsedata/man/xml_parse_data.html)
+to derive an XML parse tree for R code; and
+[`find_patterns()`](https://tylerjssmith.github.io/pkgaudit/reference/find_patterns.md)
+and
+[`find_indirect()`](https://tylerjssmith.github.io/pkgaudit/reference/find_indirect.md),
+which use the parse tree and
+[`xml2::xml_find_all()`](http://xml2.r-lib.org/reference/xml_find_all.md)
+to find patterns and indirect calls using function names (e.g.,
+`do.call("system", ...)`).
+[`determine_code_contexts()`](https://tylerjssmith.github.io/pkgaudit/reference/determine_code_contexts.md)
+determines the code context of patterns and indirect calls.
+
+`analyze_segment.shell` (in `R/analyze_shell.R`) calls functions
+including
+[`find_matches()`](https://tylerjssmith.github.io/pkgaudit/reference/find_matches.md),
+which uses `gregexpr(perl = TRUE)` to find text matching regular
+expressions in shell and Make-like files, and `bash`, `sh`, and `zsh`
+vignette chunks.
+
+[`analyze_segment()`](https://tylerjssmith.github.io/pkgaudit/reference/analyze_segment.md)
+has a default method that fails closed: a language with no analyzer
+yields no findings and no error, recording a coverage row instead.
+
+### Resolve
+
+A set of internal functions uses file or code contexts to resolve the
+phases in which a pattern or match may run. The supported phases are:
+
+| Phase            | Code executes when                           |
+|------------------|----------------------------------------------|
+| `at_autoconf`    | Autoconf is run to generate `configure`      |
+| `at_build`       | `R CMD build`                                |
+| `at_check`       | `R CMD check`                                |
+| `at_install_src` | `R CMD INSTALL` from source                  |
+| `at_install_bin` | a prebuilt binary package is installed       |
+| `at_load`        | the namespace is loaded                      |
+| `at_attach`      | the package is attached to the search path   |
+| `at_unload`      | the namespace is unloaded                    |
+| `at_detach`      | the package is detached from the search path |
+
+Pattern phases are resolved from code and file contexts, in that order.
+A pattern in a code context defined by a rule, such as `.onLoad`, takes
+that context’s phases. A pattern in top-level code takes its file
+context’s phases. A pattern in a regular function definition depends on
+the `assume_called` field of the file-context rule: if `TRUE`, it takes
+the phases of whatever encloses it; if `FALSE`, as under `R/`, it
+receives no phase. (A helper defined under `R/` may still be called from
+a lifecycle hook, and human reviewers should verify whether that
+occurs.) Match phases are resolved from file contexts. A rule can belong
+to several phases.
+
+Phases were established by running instrumented packages and recording
+which sites fired, rather than read from documentation.
 
 ## Call list
 
 The
 [`audit_package()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_package.md)
-call list below is derived from pkgaudit’s source code. It is not
-maintained by hand and cannot fall behind the code. A name appears once,
-at the first place it is reached; a function called from several places
-is not repeated. The tree is cut at four levels deep.
+call list below is derived from pkgaudit’s source code. A name appears
+once, at the first place it is reached; a function called from several
+places is not repeated. The tree is cut at four levels deep.
 
     audit_package()
     ├─ .check_path()
