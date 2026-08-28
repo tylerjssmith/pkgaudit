@@ -8,8 +8,8 @@ Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repost
 
 pkgaudit scans R packages for security-relevant files and code without
 executing anything it scans. It reports what code does and when it runs,
-so code that runs on install or load is distinguishable from code that
-runs only when called.
+so code that runs automatically on install or load is distinguishable
+from code that runs only when called.
 
 A general-purpose scanner like Semgrep can read R – but it reads
 scripts, not packages. It does not look for R inside an `\examples{}`
@@ -36,7 +36,10 @@ remotes::install_github("tylerjssmith/pkgaudit")
 
 A source package tarball can be scanned before it is installed. The
 example below scans `untrustedpkg`, a small package shipped with
-pkgaudit for demonstration.
+pkgaudit for demonstration. We see that, when `untrustedpkg` is
+installed from source, its R code will make an HTTP request (`httr`) and
+invoke a shell command (`system`). Meanwhile, a shell script or
+Make-like file make invoke the `curl` command.
 
 ``` r
 
@@ -49,49 +52,35 @@ tarball <- system.file(
 
 result <- audit_tarball(tarball)
 
-summary(result, path = FALSE)
+summary(result, phase = "at_install_src", path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-27 01:16 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-28 02:20 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Phases:    at_install_src
 #> 
 #> --- R Patterns --------------------------------------------------------------
-#> phase            rule            n   attck
-#> at_build         httr            1   T1041
-#> at_build         system          1   T1059.003 T1059.004
-#> at_check         download_file   1   T1105
-#> at_check         httr            1   T1041
-#> at_check         system          1   T1059.003 T1059.004
-#> at_install_src   httr            1   T1041
-#> at_install_src   system          1   T1059.003 T1059.004
-#> at_load          system          1   T1059.003 T1059.004
-#> none             download_file   1   T1105
-#> 
-#> none: reported at no phase because nothing in the package was seen to call
-#> it. Code under R/ is read this way by rule; a caller elsewhere, or a user,
-#> can still reach it. See vignette("rules").
+#> phase            rule     n   attck
+#> at_install_src   httr     1   T1041
+#> at_install_src   system   1   T1059.003 T1059.004
 #> 
 #> --- Shell / Make Matches ----------------------------------------------------
-#> phase            rule            n   attck
-#> at_build         curl            1   T1041 T1105
-#> at_check         curl            1   T1041 T1105
-#> at_install_src   curl            1   T1041 T1105
+#> phase            rule     n   attck
+#> at_install_src   curl     1   T1041 T1105
 #> 
 #> --- Coverage ----------------------------------------------------------------
-#> status       top_level   type          files   lines
-#> parsed       R/          R                 2       6
-#> parsed       man/        Rd                1      12
-#> matched      .           shell             1       3
-#> unexamined   .           DESCRIPTION       1
+#> status    top_level   type    files   lines
+#> parsed    R/          R           2       6
+#> parsed    man/        Rd          1      12
+#> matched   .           shell       1       3
 #> 
 #> --- Errors ------------------------------------------------------------------
 #> No exceptions were raised.
 ```
 
-Phases overlap – building a package with vignettes, for example, also
-installs and loads it – and one occurrence is counted under every phase
-it runs in. The summary above reflects five findings, some counted under
-multiple phases.
+The supported phases are: `at_autoconf`, `at_build`, `at_check`,
+`at_install_src`, `at_install_bin`, `at_load`, `at_attach`, `at_unload`,
+and `at_detach`. A finding with no phase is reported as `none`.
 
 pkgaudit can integrate its scan with other tools.
 [`emit_sarif()`](https://tylerjssmith.github.io/pkgaudit/reference/emit_sarif.md)
