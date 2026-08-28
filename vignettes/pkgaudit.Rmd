@@ -215,8 +215,8 @@ installation. Some R packages use `curl` to fetch dependencies that
 cannot be vendored with the package. Reviewers should verify what is fetched and
 what could happen if that changes.
 
-```{r example-configure, echo = FALSE, comment = ""}
-cat(readLines(file.path(pkg, "configure")), sep = "\n")
+```{r example-fetch, echo = FALSE, comment = ""}
+cat(readLines(file.path(pkg, "R", "fetch.R")), sep = "\n")
 ```
 
 ### Matches
@@ -226,8 +226,8 @@ function is not known to run automatically, so this pattern is reported under
 `none`. A reviewer may still want to inspect if and when the function is called,
 and what would be downloaded.
 
-```{r example-fetch, echo = FALSE, comment = ""}
-cat(readLines(file.path(pkg, "R", "fetch.R")), sep = "\n")
+```{r example-configure, echo = FALSE, comment = ""}
+cat(readLines(file.path(pkg, "configure")), sep = "\n")
 ```
 
 ## Exporting findings

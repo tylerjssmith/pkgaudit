@@ -22,7 +22,8 @@ knitr::opts_chunk$set(
 
 pkgaudit scans R packages for security-relevant files and code without executing
 anything it scans. It reports what code does and when it runs, so code that runs
-on install or load is distinguishable from code that runs only when called.
+automatically on install or load is distinguishable from code that runs only
+when called.
 
 A general-purpose scanner like Semgrep can read R -- but it reads scripts, not
 packages. It does not look for R inside an `\examples{}` block, an `\Sexpr{}`
@@ -44,7 +45,9 @@ remotes::install_github("tylerjssmith/pkgaudit")
 
 A source package tarball can be scanned before it is installed. The example
 below scans `untrustedpkg`, a small package shipped with pkgaudit for
-demonstration.
+demonstration. We see that, when `untrustedpkg` is installed from source, its R
+code will make an HTTP request (`httr`) and invoke a shell command (`system`).
+Meanwhile, a shell script or Make-like file make invoke the `curl` command.
 
 ```{r usage}
 library(pkgaudit)
@@ -56,15 +59,16 @@ tarball <- system.file(
 
 result <- audit_tarball(tarball)
 
-summary(result, path = FALSE)
+summary(result, phase = "at_install_src", path = FALSE)
 ```
 
-Phases overlap -- building a package with vignettes, for example, also installs
-and loads it -- and one occurrence is counted under every phase it runs in. The
-summary above reflects five findings, some counted under multiple phases.
+The supported phases are: `at_autoconf`, `at_build`, `at_check`,
+`at_install_src`, `at_install_bin`, `at_load`, `at_attach`, `at_unload`, and
+`at_detach`. A finding with no phase is reported as `none`.
 
 pkgaudit can integrate its scan with other tools. `emit_sarif()` renders its
-results as SARIF 2.1.0, which editors and code-scanning platforms read directly. `export_unscanned()` exports code written in languages pkgaudit cannot read to a
+results as SARIF 2.1.0, which editors and code-scanning platforms read directly.
+`export_unscanned()` exports code written in languages pkgaudit cannot read to a
 directory for a scanner that can. 
 
 See [Getting Started with pkgaudit](articles/pkgaudit.html) for details.
