@@ -62,8 +62,8 @@ result <- audit_package(pkg)
 print(result, path = FALSE)
 ```
 
-`summary()` reports the number of findings by rule by phase. It also
-provides MITRE ATT&CK techniques associated with each rule.
+`summary()` reports the number of findings by rule and by phase. It also
+provides the MITRE ATT&CK techniques associated with each rule.
 
 ```{r summary}
 summary(result, path = FALSE)
@@ -72,11 +72,11 @@ summary(result, path = FALSE)
 Phases overlap -- building a package with vignettes, for example, also installs
 and loads it -- and one occurrence is counted under every phase it runs in. The
 summary above reflects five findings, some counted under multiple phases. To see
-only what is known to run automatically at installation from source, for
-example, pass an argument to `phase`:
+only what is known to run automatically on `library()`, for example, pass an
+argument to `phase`:
 
 ```{r summary-phase}
-summary(result, phase = c("at_install_src"), path = FALSE)
+summary(result, phase = c("at_load", "at_attach"), path = FALSE)
 ```
 
 Both `print()` and `summary()` accept `path = FALSE`, which omits the local
@@ -85,8 +85,8 @@ a username or directory layout.
 
 ## Examining results
 
-A `pkgaudit` object is a named list of ordinary data frames, plus scan metadata,
-so findings can be filtered, joined and reported on directly.
+A `pkgaudit` object is a named list of ordinary data frames, plus a named list
+of scan metadata, so findings can be filtered, joined, and reported on directly.
 
 ```{r names}
 names(result)
@@ -113,15 +113,16 @@ result$patterns[, c("rule", "file_context", "line_number", "column_number")]
 
 Additionally, `code_context` indicates where code sits within a file. File and
 code context are used to determine the phases. `guarded` is `TRUE` when a call
-may be stopped from running in the expected phase, e.g., a `\dontrun{}` block or
-a vignette marked `eval=FALSE`. `indirect` is `TRUE` when a call is made through
-a function name, e.g., `do.call("system", ...)` instead of `system()`.
+may be stopped from running in the expected phase, e.g., code in `\dontrun{}` in
+an `\examples{}` block or a code chunk marked `eval=FALSE` in a vignette.
+`indirect` is `TRUE` when a call is made through a function name, e.g.,
+`do.call("system", ...)` instead of `system()`.
 
 ```{r patterns-columns2}
-result$patterns[, c("rule", "code_context", "guarded", "indirect")]
+result$patterns[, c("code_context", "guarded", "indirect")]
 ```
 
-`preview` provides a snippet of the code and its surroundings that may allow
+`preview` provides a snippet of the code and its surroundings, which may allow
 reviewers to determine the relevance of a finding without opening the file.
 
 ```{r patterns-columns3}
@@ -134,17 +135,22 @@ result$patterns[, c("preview")]
 files. Its columns mirror `$patterns`, but it does not have `code_context`,
 `guarded`, or `indirect`.
 
-```{r matches-columns}
-result$matches[, c("rule", "file_context", "line_number", "preview")]
+```{r matches-columns1}
+result$matches[, c("rule", "file_context", "line_number", "column_number")]
+```
+
+```{r matches-columns2}
+result$matches[, c("preview")]
 ```
 
 ### Coverage
 
 `$coverage` reports what pkgaudit made of each file it scanned: `parsed` for R,
-matched against its parse tree; `matched` for shell and Make-like files, matched
-as text; `exportable` for languages pkgaudit does not read, such as C and Python;
-`unexamined` for files it did not read, such as serialized `.rda` and `.rds`
-objects; and `error` where it tried to read a file and could not.
+which is matched against its XML parse tree; `matched` for shell and Make-like
+files, which are matched as text; `exportable` for languages pkgaudit does not
+read, such as C and Python; `unexamined` for files pkgaudit did not read, such
+as serialized `.rda` and `.rds` objects; and `error` for files pkgaudit tried to
+read and could not.
 
 ```{r coverage}
 result$coverage[, c("file_context", "language", "status", "reason", "lines")]
@@ -158,7 +164,7 @@ when scanning `untrustedpkg`.
 
 ### Metadata
 
-`$metadata` is a list of metadata.
+`$metadata` is a named list of metadata.
 
 ```{r metadata}
 result$metadata
@@ -181,7 +187,9 @@ result$patterns[result$patterns$at_load,
 ## Reviewing findings
 
 pkgaudit is a guide to human review, not a substitute for human judgment. Below
-we consider the four patterns and one match for `untrustedpkg`.
+we discuss how reviewers should evaluate the four patterns and one match for
+`untrustedpkg` and inspect the relevant files. In this case, it appears that
+`untrustedpkg` should *not* be used.
 
 ### Patterns
 
@@ -210,10 +218,10 @@ inspect what commands would be run automatically on their systems.
 cat(readLines(file.path(pkg, "R", "zzz.R")), sep = "\n")
 ```
 
-4. A regular function in `R/fetch.R` calls `download.file()`, but a regular
-function is not known to run automatically, so this pattern is reported under
-`none`. A reviewer may still want to inspect if and when the function is called,
-and what would be downloaded.
+4. A regular function in `R/fetch.R` calls `download.file()`, but code inside a
+regular function in `R/` is not known to run automatically, so this pattern is
+reported under `none`. A reviewer may still want to inspect if and when the
+function is called, and what would be downloaded.
 
 ```{r example-fetch, echo = FALSE, comment = ""}
 cat(readLines(file.path(pkg, "R", "fetch.R")), sep = "\n")
@@ -222,9 +230,9 @@ cat(readLines(file.path(pkg, "R", "fetch.R")), sep = "\n")
 ### Matches
 
 1. The `configure` script may invoke `curl` at build, check, and source
-installation. Some R packages use `curl` to fetch dependencies that
-cannot be vendored with the package. Reviewers should verify what is fetched and
-what could happen if that changes.
+installation. Some R packages use `curl` to fetch dependencies that cannot be
+vendored with the package. Reviewers should verify what is fetched and what
+could happen if that changes.
 
 ```{r example-configure, echo = FALSE, comment = ""}
 cat(readLines(file.path(pkg, "configure")), sep = "\n")
@@ -232,33 +240,35 @@ cat(readLines(file.path(pkg, "configure")), sep = "\n")
 
 ## Exporting findings
 
-`emit_sarif()` renders a result as SARIF 2.1.0, the format code-scanning tools
-publish results in. It returns the document as a string and writes nothing.
+pkgaudit can integrate its scan with other tools. `emit_sarif()` renders its
+results as SARIF 2.1.0, which editors and code-scanning platforms read directly.
+It returns the document as a string, which users may write to disk.
 
 ```{r sarif}
 sarif <- emit_sarif(result)
 substr(sarif, 1, 200)
 ```
 
-Written to a file and opened in an editor with a SARIF viewer, each finding
-appears on the line it was found. `level` is `note` for every result. When code
-executes is carried in `properties.phases`.
+Written to a file and opened in an editor with a SARIF viewer, such as VS Code
+with the
+[SARIF Viewer extension](https://marketplace.visualstudio.com/items?itemName=MS-SarifVSCode.sarif-viewer),
+each finding appears on the line it was found. `level` is `note` for every
+result. When code executes is carried in `properties.phases`.
 
-`export_unscanned()` writes the code pkgaudit cannot read into a directory so
-that a tool such as Semgrep can scan it. A whole file is copied verbatim; a
-vignette chunk is written into a file of its own, blank-padded so that its code
-sits at the same line numbers it occupies in the source. A finding another tool
-reports at line 40 of `intro.python.py` is therefore at line 40 of `intro.Rmd`.
-`untrustedpkg` contains only R and Bash, so `export_unscanned()` would create an
-empty directory.
+`export_unscanned()` exports code written in languages pkgaudit cannot read,
+like C and Python, to a directory for a scanner like Semgrep that can. A whole
+file is copied verbatim; a vignette chunk is written into a file of its own,
+blank-padded so that its code sits at the same line numbers it occupies in the
+source. A finding another tool reports at line 40 of `intro.python.py` would
+therefore be at line 40 of `intro.Rmd`. `untrustedpkg` contains only R and Bash,
+so here `export_unscanned()` would create an empty directory.
 
 ## Auditing a tarball
 
-A common workflow will be to scan a package that has not been installed.
-`audit_tarball()` takes a `.tar.gz` source package, validates it, extracts it to
-a temporary directory, scans it, and removes the directory. An untrusted archive
-is itself an attack surface, so validation fails closed: the whole archive is
-refused rather than partially extracted.
+`audit_tarball()` takes a `.tar.gz` source package, validates it using
+`validate_tar()`, extracts it to a temporary directory, scans it, and removes
+the directory. An untrusted archive is itself an attack surface, so validation
+fails closed: the whole archive is refused rather than partially extracted.
 
 ```{r tarball}
 print(audit_tarball(tarball), path = FALSE)

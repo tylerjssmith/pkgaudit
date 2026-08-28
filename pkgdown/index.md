@@ -18,7 +18,7 @@ A general-purpose scanner like Semgrep can read R – but it reads
 scripts, not packages. It does not look for R inside an `\examples{}`
 block, an `\Sexpr{}` macro, or a vignette. It does not know that
 `.onLoad()` runs when a user calls `library()` or that a `configure`
-script runs on `R CMD check`. pkgaudit extracts code wherever it exists,
+script runs on `R CMD check`. pkgaudit extracts code wherever it sits,
 scans it for functions and commands that need human review, and reports
 the lifecycle phases in which each finding runs.
 
@@ -38,7 +38,8 @@ example below scans `untrustedpkg`, a small package shipped with
 pkgaudit for demonstration. We see that, when `untrustedpkg` is
 installed from source, its R code will make an HTTP request (`httr`) and
 invoke a shell command (`system`). Meanwhile, a shell script may invoke
-`curl`.
+`curl`. A human reviewer should inspect each of these findings before
+installing the package.
 
 ``` r
 library(pkgaudit)
@@ -54,7 +55,7 @@ summary(result, phase = "at_install_src", path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-28 02:34 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-28 16:04 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> Phases:    at_install_src
 #> 
 #> --- R Patterns --------------------------------------------------------------
@@ -84,7 +85,8 @@ regular function in `R/`, is reported as `none`.
 pkgaudit can integrate its scan with other tools. `emit_sarif()` renders
 its results as SARIF 2.1.0, which editors and code-scanning platforms
 read directly. `export_unscanned()` exports code written in languages
-pkgaudit cannot read to a directory for a scanner that can.
+pkgaudit cannot read, like C and Python, to a directory for a scanner
+that can.
 
 See [Getting Started with pkgaudit](articles/pkgaudit.html) for details.
 

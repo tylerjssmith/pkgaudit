@@ -38,7 +38,7 @@ A general-purpose scanner like Semgrep can read R -- but it reads scripts, not
 packages. It does not look for R inside an `\examples{}` block, an `\Sexpr{}`
 macro, or a vignette. It does not know that `.onLoad()` runs when a user
 calls `library()` or that a `configure` script runs on `R CMD check`. pkgaudit
-extracts code wherever it exists, scans it for functions and commands that need
+extracts code wherever it sits, scans it for functions and commands that need
 human review, and reports the lifecycle phases in which each finding runs.
 
 For why this matters, see
@@ -58,7 +58,8 @@ A source package tarball can be scanned before it is installed. The example
 below scans `untrustedpkg`, a small package shipped with pkgaudit for
 demonstration. We see that, when `untrustedpkg` is installed from source, its R
 code will make an HTTP request (`httr`) and invoke a shell command (`system`).
-Meanwhile, a shell script may invoke `curl`.
+Meanwhile, a shell script may invoke `curl`. A human reviewer should inspect
+each of these findings before installing the package.
 
 ```{r usage}
 library(pkgaudit)
@@ -75,16 +76,17 @@ summary(result, phase = "at_install_src", path = FALSE)
 
 The supported phases are: `at_autoconf`, `at_build`, `at_check`,
 `at_install_src`, `at_install_bin`, `at_load`, `at_attach`, `at_unload`, and
-`at_detach`. A finding with no phase is reported as `none`.
+`at_detach`. A finding with no phase, such as a pattern inside a regular
+function in `R/`, is reported as `none`.
 
 pkgaudit can integrate its scan with other tools. `emit_sarif()` renders its
 results as SARIF 2.1.0, which editors and code-scanning platforms read directly.
-`export_unscanned()` exports code written in languages pkgaudit cannot read to a
-directory for a scanner that can. 
+`export_unscanned()` exports code written in languages pkgaudit cannot read,
+like C and Python, to a directory for a scanner that can.
 
-A finding is not an accusation. `configure` scripts and calls to system tools,
-for example, are often legitimate. pkgaudit helps to identify what deserves
-reviewer attention, not what is malicious.
+A finding is not an accusation. Nearly all of the patterns and matches flagged
+by pkgaudit have legitimate uses in R packages. pkgaudit helps to identify what
+deserves reviewer attention, not what is malicious.
 
 See
 [Getting Started with pkgaudit](https://tylerjssmith.github.io/pkgaudit/articles/pkgaudit.html)
