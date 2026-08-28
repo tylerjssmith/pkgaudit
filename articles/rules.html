@@ -77,22 +77,14 @@ columns below link to the defining YAML.</p>
 <div class="section level2">
 <h2 id="patterns">Patterns<a class="anchor" aria-label="anchor" href="#patterns"></a>
 </h2>
-<p>Patterns are security-relevant function calls, such as
-<code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code>. Qualified (<code>pkg::fn()</code>) and
+<p>Patterns are security-relevant function calls such as
+<code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code> and strings such as “<code>~/.ssh</code>”.
+Qualified (<code>pkg::fn()</code>, <code>pkg:::fn()</code>) and
 unqualified (<code>fn()</code>) call forms are both detected. A rule
 that declares its function names also flags calls made through a name –
 <code>do.call("system", ...)</code>, <code>match.fun("system")</code>,
 and <code>getFunction("system")</code>. Pattern rules carry <a href="https://attack.mitre.org/" class="external-link">MITRE ATT&amp;CK</a> technique
 labels.</p>
-<p>Pattern findings are returned in the <code>$patterns</code> data
-frame of a pkgaudit object. Its <code>indirect</code> column marks a
-call made through a function’s name; its <code>guarded</code> column
-marks code that ships but the lifecycle does not run – a
-<code>\dontrun{}</code> block, or a vignette chunk suppressed by
-<code>eval=FALSE</code> or <code>#| eval: false</code>. Note: A
-<code>\donttest{}</code> block is not guarded: a plain
-<code>R CMD check</code> skips it, but <code>--as-cran</code> runs
-it.</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -493,26 +485,21 @@ exfiltrate credentials or other data.</td>
 <h2 id="phases-and-contexts">Phases and Contexts<a class="anchor" aria-label="anchor" href="#phases-and-contexts"></a>
 </h2>
 <div class="section level3">
-<h3 id="lifecycle-phases">Lifecycle Phases<a class="anchor" aria-label="anchor" href="#lifecycle-phases"></a>
+<h3 id="phases">Phases<a class="anchor" aria-label="anchor" href="#phases"></a>
 </h3>
-<p>Phases describe when code executes. Each pattern and match finding
-carries one logical column per phase, so findings can be filtered by
-when they execute, e.g.,
-<code>subset(result$patterns, at_install_src)</code>.</p>
+<p>Phases describe when code executes. For pattern findings, they are
+resolved from file and code contexts. For match findings, they are
+resolved from file contexts alone. See <a href="internals.html">Internals</a>.</p>
 <table class="table">
-<colgroup>
-<col width="50%">
-<col width="50%">
-</colgroup>
 <thead><tr class="header">
 <th>Phase</th>
-<th>Code runs when</th>
+<th>Code executes when</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>at_autoconf</code></td>
-<td>Autoconf is run to generate <code>configure</code> from its
-input</td>
+<td>Autoconf is run to generate <code>configure</code>
+</td>
 </tr>
 <tr class="even">
 <td><code>at_build</code></td>
@@ -549,41 +536,23 @@ input</td>
 </tr>
 </tbody>
 </table>
-<p>Pattern phases are resolved from code and file contexts, in that
-order. A pattern in a code context defined by a rule, such as
-<code>.onLoad</code>, takes that context’s phases. A pattern in
-top-level code takes its file context’s phases. A pattern in a regular
-function definition depends on the <code>assume_called</code> field of
-the file-context rule: if <code>TRUE</code>, it takes the phases of
-whatever encloses it; if <code>FALSE</code>, as under <code>R/</code>,
-it receives no phase. A helper defined under <code>R/</code> may still
-be called from a lifecycle hook, so human review of hooks should verify
-whether that occurs. Matches take their file context’s phases.</p>
-<p>Every phase value below was established by running instrumented
-packages through <code>R CMD build</code>, <code>R CMD check</code> and
-<code>R CMD INSTALL</code> and recording which sites fired, rather than
-read from documentation. A rule can belong to several phases, and a
-Phases column reads <code>none</code> for code that runs at no phase at
-all.</p>
 </div>
 <div class="section level3">
 <h3 id="file-contexts">File Contexts<a class="anchor" aria-label="anchor" href="#file-contexts"></a>
 </h3>
 <p>File contexts are files that may contain code. All are scanned, and
-some are reported as findings in their own right: in general, those that
-execute at build, check, or install time, including shell and Make-like
-scripts and <code>src/install.libs.R</code>.</p>
+some security-relevant files are reported as findings in their own
+right. In general, shell scripts and Make-like files as well as
+<code>src/install.libs.R</code> are reported.</p>
 <table class="table">
 <colgroup>
-<col width="20%">
-<col width="20%">
-<col width="20%">
-<col width="20%">
-<col width="20%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
 </colgroup>
 <thead><tr class="header">
 <th>Rule</th>
-<th>Type</th>
 <th>Report</th>
 <th>Phases</th>
 <th>Description</th>
@@ -591,7 +560,6 @@ scripts and <code>src/install.libs.R</code>.</p>
 <tbody>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_R_scripts.yaml" class="external-link">R_scripts</a></td>
-<td><code>R</code></td>
 <td>no</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -604,7 +572,6 @@ why this rule does not report.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_R_scripts_unix.yaml" class="external-link">R_scripts_unix</a></td>
-<td><code>R</code></td>
 <td>no</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -617,7 +584,6 @@ which is why this rule does not report.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_R_scripts_windows.yaml" class="external-link">R_scripts_windows</a></td>
-<td><code>R</code></td>
 <td>no</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -630,7 +596,6 @@ finding, which is why this rule does not report.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_cleanup.yaml" class="external-link">cleanup</a></td>
-<td><code>shell</code></td>
 <td>yes</td>
 <td><code>at_build</code></td>
 <td>cleanup is a shell script run on Unix-like systems at the end of R
@@ -639,7 +604,6 @@ CMD build, and during installation from source only under R CMD INSTALL
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_cleanup_ucrt.yaml" class="external-link">cleanup_ucrt</a></td>
-<td><code>shell</code></td>
 <td>yes</td>
 <td><code>at_build</code></td>
 <td>cleanup.ucrt is a shell script run on the Windows UCRT toolchain at
@@ -649,7 +613,6 @@ when present. It can execute arbitrary shell commands.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_cleanup_win.yaml" class="external-link">cleanup_win</a></td>
-<td><code>shell</code></td>
 <td>yes</td>
 <td><code>at_build</code></td>
 <td>cleanup.win is a shell script run on Windows at the end of R CMD
@@ -658,7 +621,6 @@ build, and during installation from source only under R CMD INSTALL
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure.yaml" class="external-link">configure</a></td>
-<td><code>shell</code></td>
 <td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -671,7 +633,6 @@ vignettes. It can execute arbitrary shell commands.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure_ac.yaml" class="external-link">configure_ac</a></td>
-<td><code>shell</code></td>
 <td>yes</td>
 <td><code>at_autoconf</code></td>
 <td>configure.ac is an Autoconf input file that does not itself execute;
@@ -680,7 +641,6 @@ executes shell commands when a package is installed from source.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure_in.yaml" class="external-link">configure_in</a></td>
-<td><code>shell</code></td>
 <td>yes</td>
 <td><code>at_autoconf</code></td>
 <td>configure.in is a legacy-named Autoconf input file that does not
@@ -690,7 +650,6 @@ source.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure_ucrt.yaml" class="external-link">configure_ucrt</a></td>
-<td><code>shell</code></td>
 <td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -705,7 +664,6 @@ commands.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_configure_win.yaml" class="external-link">configure_win</a></td>
-<td><code>shell</code></td>
 <td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -718,7 +676,6 @@ has vignettes. It can execute arbitrary shell commands.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_data_scripts.yaml" class="external-link">data_scripts</a></td>
-<td><code>R</code></td>
 <td>no</td>
 <td>
 <code>at_build</code>, <code>at_install_src</code>
@@ -731,7 +688,6 @@ a source tarball: build replaces it with its own output.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_data_serialized.yaml" class="external-link">data_serialized</a></td>
-<td><code>other</code></td>
 <td>no</td>
 <td>
 <code>at_check</code>, <code>at_install_src</code>,
@@ -745,7 +701,6 @@ rather than passed over as inert data.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_demo_scripts.yaml" class="external-link">demo_scripts</a></td>
-<td><code>R</code></td>
 <td>no</td>
 <td>none</td>
 <td>A demo runs when a user calls demo(), and R CMD check runs it under
@@ -754,7 +709,6 @@ privileges when invoked.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_description.yaml" class="external-link">description</a></td>
-<td><code>other</code></td>
 <td>no</td>
 <td>none</td>
 <td>DESCRIPTION is not inert. Its <a href="mailto:Authors@R" class="email">Authors@R</a> field is R code. R CMD build, check and
@@ -768,7 +722,6 @@ execute and was not examined.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_exec_other.yaml" class="external-link">exec_other</a></td>
-<td><code>other</code></td>
 <td>no</td>
 <td>none</td>
 <td>A script under exec/ in a language pkgaudit does not read ships in
@@ -778,7 +731,6 @@ invoked. Only certain file extensions are covered by this rule.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_exec_scripts_R.yaml" class="external-link">exec_scripts_R</a></td>
-<td><code>R</code></td>
 <td>no</td>
 <td>none</td>
 <td>R scripts under exec/ ship in the installed package and are marked
@@ -787,7 +739,6 @@ execute with the user’s privileges when invoked.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_exec_scripts_shell.yaml" class="external-link">exec_scripts_shell</a></td>
-<td><code>shell</code></td>
 <td>no</td>
 <td>none</td>
 <td>Shell scripts under exec/ ship in the installed package and are
@@ -797,7 +748,6 @@ invoked. Only sh-family extensions are covered by this rule.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_citation.yaml" class="external-link">inst_citation</a></td>
-<td><code>R</code></td>
 <td>no</td>
 <td><code>at_check</code></td>
 <td>inst/CITATION is R code that utils::readCitationFile() evaluates. R
@@ -806,7 +756,6 @@ installed package.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_tests.yaml" class="external-link">inst_tests</a></td>
-<td><code>R</code></td>
 <td>no</td>
 <td><code>at_check</code></td>
 <td>Older versions of testthat kept tests under inst/tests/, which R CMD
@@ -815,7 +764,6 @@ into the installed package, so this code also ships to the user.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_tinytest.yaml" class="external-link">inst_tinytest</a></td>
-<td><code>R</code></td>
 <td>no</td>
 <td><code>at_check</code></td>
 <td>tinytest keeps its tests under inst/tinytest/, which R CMD check
@@ -825,7 +773,6 @@ again after installation.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_unittests.yaml" class="external-link">inst_unittests</a></td>
-<td><code>R</code></td>
 <td>no</td>
 <td><code>at_check</code></td>
 <td>RUnit keeps its tests under inst/unitTests/, which R CMD check runs
@@ -834,7 +781,6 @@ installed package, so this code also ships to the user.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_inst_web.yaml" class="external-link">inst_web</a></td>
-<td><code>other</code></td>
 <td>no</td>
 <td>none</td>
 <td>JavaScript shipped under inst/ runs in a browser when a user renders
@@ -844,7 +790,6 @@ recorded and can be exported.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_man_pages.yaml" class="external-link">man_pages</a></td>
-<td><code>Rd</code></td>
 <td>no</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -858,7 +803,6 @@ report.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_man_pages_unix.yaml" class="external-link">man_pages_unix</a></td>
-<td><code>Rd</code></td>
 <td>no</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -872,7 +816,6 @@ does not report.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_man_pages_windows.yaml" class="external-link">man_pages_windows</a></td>
-<td><code>Rd</code></td>
 <td>no</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -886,7 +829,6 @@ does not report.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_r_sysdata.yaml" class="external-link">r_sysdata</a></td>
-<td><code>other</code></td>
 <td>no</td>
 <td>
 <code>at_check</code>, <code>at_install_src</code>,
@@ -898,7 +840,6 @@ arbitrary code, and pkgaudit cannot inspect it.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_rprofile.yaml" class="external-link">rprofile</a></td>
-<td><code>R</code></td>
 <td>no</td>
 <td>
 <code>at_build</code>, <code>at_install_src</code>
@@ -911,7 +852,6 @@ package never sees it.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_compiled.yaml" class="external-link">src_compiled</a></td>
-<td><code>other</code></td>
 <td>no</td>
 <td>
 <code>at_check</code>, <code>at_install_src</code>,
@@ -926,7 +866,6 @@ library under inst/include/, say – is accounted for too.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_install_libs_R.yaml" class="external-link">src_install_libs_R</a></td>
-<td><code>R</code></td>
 <td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -939,7 +878,6 @@ a package has vignettes. It can run arbitrary R code.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makefile.yaml" class="external-link">src_makefile</a></td>
-<td><code>make</code></td>
 <td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -953,7 +891,6 @@ execute arbitrary shell commands.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makefile_ucrt.yaml" class="external-link">src_makefile_ucrt</a></td>
-<td><code>make</code></td>
 <td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -968,7 +905,6 @@ and its recipes execute arbitrary shell commands.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makefile_win.yaml" class="external-link">src_makefile_win</a></td>
-<td><code>make</code></td>
 <td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -982,7 +918,6 @@ and its recipes execute arbitrary shell commands.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars.yaml" class="external-link">src_makevars</a></td>
-<td><code>make</code></td>
 <td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -996,7 +931,6 @@ as $(shell …).</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars_in.yaml" class="external-link">src_makevars_in</a></td>
-<td><code>make</code></td>
 <td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -1010,7 +944,6 @@ and by R CMD build.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars_ucrt.yaml" class="external-link">src_makevars_ucrt</a></td>
-<td><code>make</code></td>
 <td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -1025,7 +958,6 @@ constructs such as $(shell …).</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_makevars_win.yaml" class="external-link">src_makevars_win</a></td>
-<td><code>make</code></td>
 <td>yes</td>
 <td>
 <code>at_build</code>, <code>at_check</code>,
@@ -1039,7 +971,6 @@ constructs such as $(shell …).</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_src_other.yaml" class="external-link">src_other</a></td>
-<td><code>other</code></td>
 <td>no</td>
 <td>
 <code>at_check</code>, <code>at_install_src</code>,
@@ -1052,7 +983,6 @@ passed over.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_tests_scripts.yaml" class="external-link">tests_scripts</a></td>
-<td><code>R</code></td>
 <td>no</td>
 <td><code>at_check</code></td>
 <td>R CMD check runs every .R file directly under tests/. This is the
@@ -1061,7 +991,6 @@ executes arbitrary R during checking.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_tests_testthat.yaml" class="external-link">tests_testthat</a></td>
-<td><code>R</code></td>
 <td>no</td>
 <td><code>at_check</code></td>
 <td>testthat sources the files directly under tests/testthat/ when R CMD
@@ -1071,7 +1000,6 @@ scanned.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_tools_scripts.yaml" class="external-link">tools_scripts</a></td>
-<td><code>R</code></td>
 <td>no</td>
 <td>none</td>
 <td>tools/ holds helper scripts that nothing runs on its own. It is
@@ -1081,7 +1009,6 @@ The code is scanned here so a reviewer can read what would run.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_vignettes_qmd.yaml" class="external-link">vignettes_qmd</a></td>
-<td><code>qmd</code></td>
 <td>no</td>
 <td>
 <code>at_build</code>, <code>at_check</code>
@@ -1094,7 +1021,6 @@ rendered document.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_vignettes_rmd.yaml" class="external-link">vignettes_rmd</a></td>
-<td><code>Rmd</code></td>
 <td>no</td>
 <td>
 <code>at_build</code>, <code>at_check</code>
@@ -1106,7 +1032,6 @@ loaded, before anyone reads the rendered document.</td>
 </tr>
 <tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_vignettes_rnw.yaml" class="external-link">vignettes_rnw</a></td>
-<td><code>Rnw</code></td>
 <td>no</td>
 <td>
 <code>at_build</code>, <code>at_check</code>
@@ -1119,7 +1044,6 @@ before anyone reads the rendered document.</td>
 </tr>
 <tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/file_contexts/file_vignettes_rsp.yaml" class="external-link">vignettes_rsp</a></td>
-<td><code>rsp</code></td>
 <td>no</td>
 <td>
 <code>at_build</code>, <code>at_check</code>
@@ -1135,12 +1059,18 @@ anyone reads the rendered document.</td>
 <div class="section level3">
 <h3 id="code-contexts">Code Contexts<a class="anchor" aria-label="anchor" href="#code-contexts"></a>
 </h3>
-<p>A code context says where code sits within its file. It is either
-defined by a rule or computed.</p>
-<p>Rules: a <strong>lifecycle hook</strong> like <code>.onLoad()</code>
-is found by matching the parse tree; a <strong>part of a help
-file</strong> like <code>\examples</code> or <code>\Sexpr</code>, by
-matching a label the extractor stamped.</p>
+<p>Code contexts indicate where code sits within its file context. It is
+either defined by a rule or computed. For rule-based code contexts, a
+lifecycle hook like <code>.onLoad()</code> is found by matching the XML
+parse tree, while part of a help file like <code>\examples</code> or
+<code>\Sexpr</code> is found by matching a label from the extraction
+method. See <a href="internals.html">Internals</a>. If no code-context
+rule matches, code context is computed from the parse tree:
+<code>in_function</code> when code sits inside a regular function
+definition, and <code>top_level</code> otherwise.</p>
+<div class="section level4">
+<h4 id="rule-based">Rule-based<a class="anchor" aria-label="anchor" href="#rule-based"></a>
+</h4>
 <table class="table">
 <colgroup>
 <col width="20%">
@@ -1292,9 +1222,10 @@ rlang::run_on_load().</td>
 </tr>
 </tbody>
 </table>
-<p>Computed: If no code-context rule matches a pattern’s site, its
-context is computed from the parse tree: <code>in_function</code> inside
-a function definition, and <code>top_level</code> otherwise.</p>
+</div>
+<div class="section level4">
+<h4 id="computed">Computed<a class="anchor" aria-label="anchor" href="#computed"></a>
+</h4>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -1309,20 +1240,21 @@ a function definition, and <code>top_level</code> otherwise.</p>
 <tbody>
 <tr class="odd">
 <td><code>top_level</code></td>
-<td>inherited</td>
+<td>inherited from file context</td>
 <td>Code outside any function definition. It carries the phases of the
 file context it sits in, so the same call reads at_check under tests/
 and at_build under data/.</td>
 </tr>
 <tr class="even">
 <td><code>in_function</code></td>
-<td>inherited</td>
+<td>inherited from file context</td>
 <td>Code inside a function definition. It inherits the phases of the
 code around it, except under R/, where the rules report it as running at
 no phase.</td>
 </tr>
 </tbody>
 </table>
+</div>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

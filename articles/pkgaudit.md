@@ -54,7 +54,7 @@ print(result, path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-28 16:38 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-28 18:30 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -72,7 +72,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-28 16:38 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-28 18:30 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -120,7 +120,7 @@ summary(result, phase = c("at_load", "at_attach"), path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-28 16:38 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-28 18:30 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> Phases:    at_load, at_attach
 #> 
 #> --- R Patterns --------------------------------------------------------------
@@ -236,7 +236,7 @@ result$matches[, c("preview")]
 
 ### Coverage
 
-`$coverage` reports what pkgaudit made of each file it scanned: `parsed`
+`$coverage` reports what pkgaudit made of each file it found: `parsed`
 for R, which is matched against its XML parse tree; `matched` for shell
 and Make-like files, which are matched as text; `exportable` for
 languages pkgaudit does not read, such as C and Python; `unexamined` for
@@ -274,7 +274,7 @@ result$metadata
 #> [1] "0.1.0"
 #> 
 #> $pkg_path
-#> [1] "/tmp/RtmpAxF1hc/untrustedpkg-example/untrustedpkg"
+#> [1] "/tmp/Rtmpn7IsC8/untrustedpkg-example/untrustedpkg"
 #> 
 #> $pkg_is_tarball
 #> [1] FALSE
@@ -292,7 +292,7 @@ result$metadata
 #> [1] "5fc1ec8e93232517679fb03df0f08020d844912e701615de7827666be2f6a7cd"
 #> 
 #> $scanned
-#> [1] "2026-08-28T16:38:46Z"
+#> [1] "2026-08-28T18:30:29Z"
 ```
 
 ### Subsetting by phase
@@ -430,14 +430,14 @@ is copied verbatim; a vignette chunk is written into a file of its own,
 blank-padded so that its code sits at the same line numbers it occupies
 in the source. A finding another tool reports at line 40 of
 `intro.python.py` would therefore be at line 40 of `intro.Rmd`.
-`untrustedpkg` contains only R and Bash, so here
+`untrustedpkg` contains only R and shell, so here
 [`export_unscanned()`](https://tylerjssmith.github.io/pkgaudit/reference/export_unscanned.md)
 would create an empty directory.
 
 ## Auditing a tarball
 
 [`audit_tarball()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_tarball.md)
-takes a `.tar.gz` source package, validates it using
+takes a `.tar.gz`, `.tgz`, or `.tar` source package, validates it using
 [`validate_tar()`](https://tylerjssmith.github.io/pkgaudit/reference/validate_tar.md),
 extracts it to a temporary directory, scans it, and removes the
 directory. An untrusted archive is itself an attack surface, so
@@ -450,7 +450,7 @@ print(audit_tarball(tarball), path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-28 16:38 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-28 18:30 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4

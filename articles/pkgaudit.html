@@ -110,7 +110,7 @@ by category.</p>
 <span><span class="co">#&gt; --- pkgaudit ----------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source directory)</span></span>
 <span><span class="co">#&gt; SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-28 16:38 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-28 18:30 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; File contexts:  1</span></span>
 <span><span class="co">#&gt; Patterns:       4</span></span>
@@ -124,7 +124,7 @@ each rule.</p>
 <span><span class="co">#&gt; --- pkgaudit Summary --------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source directory)</span></span>
 <span><span class="co">#&gt; SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-28 16:38 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-28 18:30 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- R Patterns --------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; phase            rule            n   attck</span></span>
@@ -168,7 +168,7 @@ multiple phases. To see only what is known to run automatically on
 <span><span class="co">#&gt; --- pkgaudit Summary --------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source directory)</span></span>
 <span><span class="co">#&gt; SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-28 16:38 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-28 18:30 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
 <span><span class="co">#&gt; Phases:    at_load, at_attach</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- R Patterns --------------------------------------------------------------</span></span>
@@ -267,13 +267,13 @@ but it does not have <code>code_context</code>, <code>guarded</code>, or
 <h3 id="coverage">Coverage<a class="anchor" aria-label="anchor" href="#coverage"></a>
 </h3>
 <p><code>$coverage</code> reports what pkgaudit made of each file it
-scanned: <code>parsed</code> for R, which is matched against its XML
-parse tree; <code>matched</code> for shell and Make-like files, which
-are matched as text; <code>exportable</code> for languages pkgaudit does
-not read, such as C and Python; <code>unexamined</code> for files
-pkgaudit did not read, such as serialized <code>.rda</code> and
-<code>.rds</code> objects; and <code>error</code> for files pkgaudit
-tried to read and could not.</p>
+found: <code>parsed</code> for R, which is matched against its XML parse
+tree; <code>matched</code> for shell and Make-like files, which are
+matched as text; <code>exportable</code> for languages pkgaudit does not
+read, such as C and Python; <code>unexamined</code> for files pkgaudit
+did not read, such as serialized <code>.rda</code> and <code>.rds</code>
+objects; and <code>error</code> for files pkgaudit tried to read and
+could not.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result</span><span class="op">$</span><span class="va">coverage</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"file_context"</span>, <span class="st">"language"</span>, <span class="st">"status"</span>, <span class="st">"reason"</span>, <span class="st">"lines"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;        file_context language     status       reason lines</span></span>
@@ -303,7 +303,7 @@ not encounter errors when scanning <code>untrustedpkg</code>.</p>
 <span><span class="co">#&gt; [1] "0.1.0"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $pkg_path</span></span>
-<span><span class="co">#&gt; [1] "/tmp/RtmpAxF1hc/untrustedpkg-example/untrustedpkg"</span></span>
+<span><span class="co">#&gt; [1] "/tmp/Rtmpn7IsC8/untrustedpkg-example/untrustedpkg"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $pkg_is_tarball</span></span>
 <span><span class="co">#&gt; [1] FALSE</span></span>
@@ -321,7 +321,7 @@ not encounter errors when scanning <code>untrustedpkg</code>.</p>
 <span><span class="co">#&gt; [1] "5fc1ec8e93232517679fb03df0f08020d844912e701615de7827666be2f6a7cd"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $scanned</span></span>
-<span><span class="co">#&gt; [1] "2026-08-28T16:38:46Z"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "2026-08-28T18:30:29Z"</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="subsetting-by-phase">Subsetting by phase<a class="anchor" aria-label="anchor" href="#subsetting-by-phase"></a>
@@ -449,23 +449,24 @@ is written into a file of its own, blank-padded so that its code sits at
 the same line numbers it occupies in the source. A finding another tool
 reports at line 40 of <code>intro.python.py</code> would therefore be at
 line 40 of <code>intro.Rmd</code>. <code>untrustedpkg</code> contains
-only R and Bash, so here <code><a href="../reference/export_unscanned.html">export_unscanned()</a></code> would create an
-empty directory.</p>
+only R and shell, so here <code><a href="../reference/export_unscanned.html">export_unscanned()</a></code> would create
+an empty directory.</p>
 </div>
 <div class="section level2">
 <h2 id="auditing-a-tarball">Auditing a tarball<a class="anchor" aria-label="anchor" href="#auditing-a-tarball"></a>
 </h2>
-<p><code><a href="../reference/audit_tarball.html">audit_tarball()</a></code> takes a <code>.tar.gz</code> source
-package, validates it using <code><a href="../reference/validate_tar.html">validate_tar()</a></code>, extracts it to
-a temporary directory, scans it, and removes the directory. An untrusted
-archive is itself an attack surface, so validation fails closed: the
-whole archive is refused rather than partially extracted.</p>
+<p><code><a href="../reference/audit_tarball.html">audit_tarball()</a></code> takes a <code>.tar.gz</code>,
+<code>.tgz</code>, or <code>.tar</code> source package, validates it
+using <code><a href="../reference/validate_tar.html">validate_tar()</a></code>, extracts it to a temporary directory,
+scans it, and removes the directory. An untrusted archive is itself an
+attack surface, so validation fails closed: the whole archive is refused
+rather than partially extracted.</p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="../reference/audit_tarball.html">audit_tarball</a></span><span class="op">(</span><span class="va">tarball</span><span class="op">)</span>, path <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="co">#&gt; --- pkgaudit ----------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source tarball)</span></span>
 <span><span class="co">#&gt; SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-28 16:38 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-28 18:30 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; File contexts:  1</span></span>
 <span><span class="co">#&gt; Patterns:       4</span></span>
