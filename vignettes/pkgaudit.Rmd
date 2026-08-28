@@ -145,7 +145,7 @@ result$matches[, c("preview")]
 
 ### Coverage
 
-`$coverage` reports what pkgaudit made of each file it scanned: `parsed` for R,
+`$coverage` reports what pkgaudit made of each file it found: `parsed` for R,
 which is matched against its XML parse tree; `matched` for shell and Make-like
 files, which are matched as text; `exportable` for languages pkgaudit does not
 read, such as C and Python; `unexamined` for files pkgaudit did not read, such
@@ -260,15 +260,16 @@ like C and Python, to a directory for a scanner like Semgrep that can. A whole
 file is copied verbatim; a vignette chunk is written into a file of its own,
 blank-padded so that its code sits at the same line numbers it occupies in the
 source. A finding another tool reports at line 40 of `intro.python.py` would
-therefore be at line 40 of `intro.Rmd`. `untrustedpkg` contains only R and Bash,
-so here `export_unscanned()` would create an empty directory.
+therefore be at line 40 of `intro.Rmd`. `untrustedpkg` contains only R and
+shell, so here `export_unscanned()` would create an empty directory.
 
 ## Auditing a tarball
 
-`audit_tarball()` takes a `.tar.gz` source package, validates it using
-`validate_tar()`, extracts it to a temporary directory, scans it, and removes
-the directory. An untrusted archive is itself an attack surface, so validation
-fails closed: the whole archive is refused rather than partially extracted.
+`audit_tarball()` takes a `.tar.gz`, `.tgz`, or `.tar` source package, validates
+it using `validate_tar()`, extracts it to a temporary directory, scans it, and
+removes the directory. An untrusted archive is itself an attack surface, so
+validation fails closed: the whole archive is refused rather than partially
+extracted.
 
 ```{r tarball}
 print(audit_tarball(tarball), path = FALSE)

@@ -71,7 +71,7 @@ function in `R/`, is reported as `none`.
 pkgaudit can integrate its scan with other tools. `emit_sarif()` renders its
 results as SARIF 2.1.0, which editors and code-scanning platforms read directly.
 `export_unscanned()` exports code written in languages pkgaudit cannot read,
-like C and Python, to a directory for a scanner that can. 
+like C and Python, to a directory for a scanner that can.
 
 See [Getting Started with pkgaudit](articles/pkgaudit.html) for details.
 

@@ -14,7 +14,7 @@ vignette: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
-  echo    = FALSE, 
+  echo    = FALSE,
   results = "asis"
 )
 library(pkgaudit)
@@ -247,18 +247,12 @@ below link to the defining YAML.
 
 ## Patterns
 
-Patterns are security-relevant function calls, such as `system()`. Qualified
-(`pkg::fn()`) and unqualified (`fn()`) call forms are both detected. A rule that
-declares its function names also flags calls made through a name --
-`do.call("system", ...)`, `match.fun("system")`, and `getFunction("system")`.
-Pattern rules carry [MITRE ATT&CK](https://attack.mitre.org/) technique labels.
-
-Pattern findings are returned in the `$patterns` data frame of a pkgaudit
-object. Its `indirect` column marks a call made through a function's name; its
-`guarded` column marks code that ships but the lifecycle does not run -- a
-`\dontrun{}` block, or a vignette chunk suppressed by `eval=FALSE` or
-`#| eval: false`. Note: A `\donttest{}` block is not guarded: a plain
-`R CMD check` skips it, but `--as-cran` runs it.
+Patterns are security-relevant function calls such as `system()` and strings
+such as "`~/.ssh`". Qualified (`pkg::fn()`, `pkg:::fn()`) and unqualified
+(`fn()`) call forms are both detected. A rule that declares its function names
+also flags calls made through a name -- `do.call("system", ...)`,
+`match.fun("system")`, and `getFunction("system")`. Pattern rules carry
+[MITRE ATT&CK](https://attack.mitre.org/) technique labels.
 
 ```{r patterns}
 pat <- rules$patterns
@@ -293,15 +287,15 @@ emit_table(
 
 ## Phases and Contexts
 
-### Lifecycle Phases
+### Phases
 
-Phases describe when code executes. Each pattern and match finding carries one
-logical column per phase, so findings can be filtered by when they execute,
-e.g., `subset(result$patterns, at_install_src)`.
+Phases describe when code executes. For pattern findings, they are resolved from
+file and code contexts. For match findings, they are resolved from file
+contexts alone. See [Internals](internals.html).
 
 ```{r phases-legend}
 phase_descriptions <- c(
-  at_autoconf    = "Autoconf is run to generate `configure` from its input",
+  at_autoconf    = "Autoconf is run to generate `configure`",
   at_build       = "`R CMD build`",
   at_check       = "`R CMD check`",
   at_install_src = "`R CMD INSTALL` from source",
@@ -314,39 +308,23 @@ phase_descriptions <- c(
 stopifnot(setequal(names(phase_descriptions), phase_names))
 
 emit_table(
-  c("Phase", "Code runs when"),
+  c("Phase", "Code executes when"),
   paste0("`", phase_names, "`"),
   phase_descriptions[phase_names]
 )
 ```
 
-Pattern phases are resolved from code and file contexts, in that order. A
-pattern in a code context defined by a rule, such as `.onLoad`, takes that
-context's phases. A pattern in top-level code takes its file context's phases.
-A pattern in a regular function definition depends on the `assume_called` field
-of the file-context rule: if `TRUE`, it takes the phases of whatever encloses
-it; if `FALSE`, as under `R/`, it receives no phase. A helper defined under `R/`
-may still be called from a lifecycle hook, so human review of hooks should
-verify whether that occurs. Matches take their file context's phases.
-
-Every phase value below was established by running instrumented packages through
-`R CMD build`, `R CMD check` and `R CMD INSTALL` and recording which sites
-fired, rather than read from documentation. A rule can belong to several phases,
-and a Phases column reads `none` for code that runs at no phase at all.
-
 ### File Contexts
 
-File contexts are files that may contain code. All are scanned, and some are
-reported as findings in their own right: in general, those that execute at
-build, check, or install time, including shell and Make-like scripts and
-`src/install.libs.R`.
+File contexts are files that may contain code. All are scanned, and some
+security-relevant files are reported as findings in their own right. In general,
+shell scripts and Make-like files as well as `src/install.libs.R` are reported.
 
 ```{r file-contexts}
 fc <- rules$file_contexts
 emit_table(
-  c("Rule", "Type", "Report", "Phases", "Description"),
+  c("Rule", "Report", "Phases", "Description"),
   rule_link(fc$name, "file_contexts"),
-  paste0("`", fc$type, "`"),
   ifelse(fc$report, "yes", "no"),
   vapply(fc$name, phase_cell, character(1L)),
   fc$message
@@ -355,14 +333,17 @@ emit_table(
 
 ### Code Contexts
 
-A code context says where code sits within its file. It is either defined by a
-rule or computed.
+Code contexts indicate where code sits within its file context. It is either
+defined by a rule or computed. For rule-based code contexts, a lifecycle hook
+like `.onLoad()` is found by matching the XML parse tree, while part of a help
+file like `\examples` or `\Sexpr` is found by matching a label from the
+extraction method. See [Internals](internals.html). If no code-context rule
+matches, code context is computed from the parse tree: `in_function` when code
+sits inside a regular function definition, and `top_level` otherwise.
 
-Rules: a **lifecycle hook** like `.onLoad()` is found by matching the parse
-tree; a **part of a help file** like `\examples` or `\Sexpr`, by matching a
-label the extractor stamped.
+#### Rule-based
 
-```{r code-contexts}
+```{r code-contexts-rules}
 cc <- rules$code_contexts
 emit_table(
   c("Rule", "Code Context", "Matched by", "Phases", "Description"),
@@ -374,15 +355,13 @@ emit_table(
 )
 ```
 
-Computed: If no code-context rule matches a pattern's site, its context is
-computed from the parse tree: `in_function` inside a function definition, and
-`top_level` otherwise.
+#### Computed
 
-```{r computed-contexts}
+```{r code-contexts-computed}
 emit_table(
   c("Context", "Phases", "Description"),
   paste0("`", computed_contexts$context, "`"),
-  rep("inherited", nrow(computed_contexts)),
+  rep("inherited from file context", nrow(computed_contexts)),
   computed_contexts$description
 )
 ```
