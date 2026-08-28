@@ -54,7 +54,7 @@ print(result, path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-28 02:22 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-28 02:27 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -72,7 +72,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-28 02:22 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-28 02:27 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -119,7 +119,7 @@ summary(result, phase = c("at_install_src"), path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-28 02:22 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-28 02:27 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> Phases:    at_install_src
 #> 
 #> --- R Patterns --------------------------------------------------------------
@@ -271,7 +271,7 @@ result$metadata
 #> [1] "0.1.0"
 #> 
 #> $pkg_path
-#> [1] "/tmp/RtmpaTjrj6/untrustedpkg-example/untrustedpkg"
+#> [1] "/tmp/RtmpjwbjfR/untrustedpkg-example/untrustedpkg"
 #> 
 #> $pkg_is_tarball
 #> [1] FALSE
@@ -289,7 +289,7 @@ result$metadata
 #> [1] "5fc1ec8e93232517679fb03df0f08020d844912e701615de7827666be2f6a7cd"
 #> 
 #> $scanned
-#> [1] "2026-08-28T02:22:31Z"
+#> [1] "2026-08-28T02:27:31Z"
 ```
 
 ### Subsetting by phase
@@ -439,7 +439,7 @@ print(audit_tarball(tarball), path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-28 02:22 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-28 02:27 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> 
 #> File contexts:  1
 #> Patterns:       4

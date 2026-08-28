@@ -71,7 +71,7 @@
 <div class="section level2">
 <h2 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
 </h2>
-<p>A source package tarball can be scanned before it is installed. The example below scans <code>untrustedpkg</code>, a small package shipped with pkgaudit for demonstration. We see that, when <code>untrustedpkg</code> is installed from source, its R code will make an HTTP request (<code>httr</code>) and invoke a shell command (<code>system</code>). Meanwhile, a shell script or Make-like file make invoke the <code>curl</code> command.</p>
+<p>A source package tarball can be scanned before it is installed. The example below scans <code>untrustedpkg</code>, a small package shipped with pkgaudit for demonstration. We see that, when <code>untrustedpkg</code> is installed from source, its R code will make an HTTP request (<code>httr</code>) and invoke a shell command (<code>system</code>). Meanwhile, a shell script may invoke the <code>curl</code> command.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/tylerjssmith/pkgaudit" class="external-link">pkgaudit</a></span><span class="op">)</span></span>
 <span></span>
@@ -86,7 +86,7 @@
 <span><span class="co">#&gt; --- pkgaudit Summary --------------------------------------------------------</span></span>
 <span><span class="co">#&gt; Package:   untrustedpkg v0.1.0 (source tarball)</span></span>
 <span><span class="co">#&gt; SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44</span></span>
-<span><span class="co">#&gt; Scanned:   2026-08-28 02:20 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
+<span><span class="co">#&gt; Scanned:   2026-08-28 02:25 UTC with pkgaudit v0.4.0, rules v0.4.0</span></span>
 <span><span class="co">#&gt; Phases:    at_install_src</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- R Patterns --------------------------------------------------------------</span></span>
@@ -106,7 +106,7 @@
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- Errors ------------------------------------------------------------------</span></span>
 <span><span class="co">#&gt; No exceptions were raised.</span></span></code></pre></div>
-<p>The supported phases are: <code>at_autoconf</code>, <code>at_build</code>, <code>at_check</code>, <code>at_install_src</code>, <code>at_install_bin</code>, <code>at_load</code>, <code>at_attach</code>, <code>at_unload</code>, and <code>at_detach</code>. A finding with no phase is reported as <code>none</code>.</p>
+<p>The supported phases are: <code>at_autoconf</code>, <code>at_build</code>, <code>at_check</code>, <code>at_install_src</code>, <code>at_install_bin</code>, <code>at_load</code>, <code>at_attach</code>, <code>at_unload</code>, and <code>at_detach</code>. A finding with no phase, such as a pattern inside a regular function in <code>R/</code>, is reported as <code>none</code>.</p>
 <p>pkgaudit can integrate its scan with other tools. <code><a href="reference/emit_sarif.html">emit_sarif()</a></code> renders its results as SARIF 2.1.0, which editors and code-scanning platforms read directly. <code><a href="reference/export_unscanned.html">export_unscanned()</a></code> exports code written in languages pkgaudit cannot read to a directory for a scanner that can.</p>
 <p>See <a href="articles/pkgaudit.html">Getting Started with pkgaudit</a> for details.</p>
 </div>

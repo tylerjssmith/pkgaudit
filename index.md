@@ -38,8 +38,8 @@ A source package tarball can be scanned before it is installed. The
 example below scans `untrustedpkg`, a small package shipped with
 pkgaudit for demonstration. We see that, when `untrustedpkg` is
 installed from source, its R code will make an HTTP request (`httr`) and
-invoke a shell command (`system`). Meanwhile, a shell script or
-Make-like file make invoke the `curl` command.
+invoke a shell command (`system`). Meanwhile, a shell script may invoke
+the `curl` command.
 
 ``` r
 
@@ -56,7 +56,7 @@ summary(result, phase = "at_install_src", path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-28 02:20 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-08-28 02:25 UTC with pkgaudit v0.4.0, rules v0.4.0
 #> Phases:    at_install_src
 #> 
 #> --- R Patterns --------------------------------------------------------------
@@ -80,7 +80,8 @@ summary(result, phase = "at_install_src", path = FALSE)
 
 The supported phases are: `at_autoconf`, `at_build`, `at_check`,
 `at_install_src`, `at_install_bin`, `at_load`, `at_attach`, `at_unload`,
-and `at_detach`. A finding with no phase is reported as `none`.
+and `at_detach`. A finding with no phase, such as a pattern inside a
+regular function in `R/`, is reported as `none`.
 
 pkgaudit can integrate its scan with other tools.
 [`emit_sarif()`](https://tylerjssmith.github.io/pkgaudit/reference/emit_sarif.md)
