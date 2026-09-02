@@ -112,10 +112,14 @@ code_labels <- c(
 
 pattern_labels <- c(
   chmod = "`Sys.chmod()`, `Sys.umask()`",
-  credentials = paste(
-    "a path or environment variable that only holds a secret: `~/.ssh/`,",
-    "`~/.aws/`, `.netrc`, `id_rsa`, `~/.gnupg/`, and `Sys.getenv()` of a name",
-    "containing `TOKEN`, `SECRET`, `PASSWORD` or `API_KEY`"
+  credentials_environment = paste(
+    "`Sys.getenv()` or `Sys.setenv()` of a name containing `TOKEN`, `SECRET`,",
+    "`PASSWORD`, `API_KEY`, `PRIVATE_KEY`, `ACCESS_KEY` or `CREDENTIAL`, and",
+    "`Sys.getenv()` with no arguments"
+  ),
+  credentials_files = paste(
+    "a path that only holds a secret: `~/.ssh/`, `~/.aws/`, `.netrc`,",
+    "`.pgpass`, `id_rsa`, `~/.gnupg/`, `~/.kube/config`, `~/.config/gcloud`"
   ),
   curl = paste(
     "`curl()`, `curl_fetch_memory()`, `curl_fetch_disk()`,",
@@ -155,6 +159,11 @@ pattern_labels <- c(
     "`renv::install()`, `devtools::install()`, `py_install()`,",
     "`virtualenv_install()`, `conda_install()`, `virtualenv_create()`,",
     "`conda_create()`"
+  ),
+  jsonlite = "`fromJSON()` of a literal URL with the `http` or `https` scheme",
+  lazyload = paste(
+    "`makeLazyLoadDB()`, `makeLazyLoading()`, `code2LazyLoadDB()`,",
+    "`data2LazyLoadDB()`, `sysdata2LazyLoadDB()`"
   ),
   namespace = paste(
     "`getFromNamespace()`, `getExportedValue()`, `getAnywhere()`,",

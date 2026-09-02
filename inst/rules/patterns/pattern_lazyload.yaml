@@ -1,0 +1,51 @@
+name: lazyload
+version: "0.1.0"
+language: R
+attck:
+  - T1554
+  - T1070
+message: >-
+  makeLazyLoadDB() writes an R lazy-load database -- the compiled .rdb/.rdx
+  files that hold a package's objects once it is installed -- to disk.
+  code2LazyLoadDB(), data2LazyLoadDB(), sysdata2LazyLoadDB() and
+  makeLazyLoading() are the front ends that reach it. If called at run time,
+  they can replace a benign function with a malicious one or do the reverse
+  after a malicious function runs so an auditor does not see it.
+functions:
+  - makeLazyLoadDB
+  - makeLazyLoading
+  - code2LazyLoadDB
+  - data2LazyLoadDB
+  - sysdata2LazyLoadDB
+xpath: >-
+  //SYMBOL_FUNCTION_CALL[
+    (text() = 'makeLazyLoadDB' or text() = 'makeLazyLoading'
+      or text() = 'code2LazyLoadDB' or text() = 'data2LazyLoadDB'
+      or text() = 'sysdata2LazyLoadDB')
+    and not(preceding-sibling::OP-DOLLAR)
+    and not(preceding-sibling::OP-AT)
+  ]
+positive_examples:
+  - |
+    tools:::makeLazyLoadDB(source_db, filebase = path)
+  - |
+    makeLazyLoadDB(db, base)
+  - |
+    tools::makeLazyLoadDB(db, base)
+  - |
+    tools:::code2LazyLoadDB("rpwnd", ".")
+  - |
+    sysdata2LazyLoadDB("R", ".")
+  - |
+    tools:::makeLazyLoading("rpwnd")
+negative_examples:
+  - |
+    foo$makeLazyLoadDB(db)
+  - |
+    foo@makeLazyLoadDB(db)
+  - |
+    makeLazyLoadDB <- 1
+  - |
+    x <- makeLazyLoadDB
+  - |
+    db <- tools:::fetchRdDB(base)

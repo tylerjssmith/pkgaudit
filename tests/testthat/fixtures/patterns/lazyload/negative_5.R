@@ -1,0 +1,1 @@
+db <- tools:::fetchRdDB(base)

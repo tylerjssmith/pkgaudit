@@ -1,11 +1,11 @@
-# .github/workflows/rules-db-hash.yaml
-# The README publishes the SHA-256 of inst/db/rules.db so a user can check an
-# installed copy against a value that did not travel with it. README.md is
-# generated from README.Rmd, which computes that hash at knit time, so the
-# published value goes stale whenever the database is rebuilt without re-knitting
-# -- and a stale value tells a user following the documented procedure that the
-# database has been tampered with. This fails the build instead.
-name: Rules DB Hash
+# .github/workflows/rules-db.yaml
+# The README publishes two things about inst/db/rules.db that do not travel with
+# it: the rule set's version and its SHA-256. Both are computed at knit time from
+# README.Rmd, so both go stale whenever the database is rebuilt without
+# re-rendering -- and a stale value tells a user following the documented
+# procedure that the database has been tampered with, or that they are running
+# rules other than the ones they are reading about. This fails the build instead.
+name: Rules DB
 
 on:
   push:
@@ -16,7 +16,8 @@ permissions:
   contents: read
 
 jobs:
-  rules-db-hash:
+  hash:
+    name: Published hash
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -71,3 +72,27 @@ jobs:
           fi
 
           echo "README, sidecar and database agree."
+
+  version:
+    name: Published version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
+        with:
+          needs: check
+
+      # The claim is about what a user's rules_version() will return, so the
+      # package is installed and the function is called, rather than the query
+      # behind it being restated here where it could drift from R/load_rules.R.
+      - name: Compare the published version against rules_version()
+        shell: bash
+        run: |
+          set -euo pipefail
+          R CMD INSTALL --preclean --no-multiarch .
+          Rscript tools/readme_version.R

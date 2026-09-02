@@ -1,0 +1,45 @@
+name: jsonlite
+version: "0.1.0"
+language: R
+attck:
+  - T1105
+message: >-
+  jsonlite::fromJSON() fetches the URL when its first argument is a string
+  beginning with the http or https scheme, opening an outbound connection
+  through libcurl (a bundled curl handle in older jsonlite, base::url() today).
+# Empty: do.call("fromJSON", ...) loses the URL argument this rule matches on.
+functions: []
+xpath: >-
+  //expr[
+    expr/SYMBOL_FUNCTION_CALL[
+      text() = 'fromJSON'
+      and not(preceding-sibling::OP-DOLLAR)
+      and not(preceding-sibling::OP-AT)
+    ]
+    and .//STR_CONST[
+      starts-with(substring(text(), 2), 'http://')
+      or starts-with(substring(text(), 2), 'https://')
+    ]
+  ]
+positive_examples:
+  - |
+    fromJSON("https://ipinfo.io/")
+  - |
+    jsonlite::fromJSON("http://example.com/data.json")
+  - |
+    ip <- jsonlite::fromJSON("https://ipinfo.io/")
+  - |
+    fromJSON(paste0("https://", host, "/beacon"))
+negative_examples:
+  - |
+    fromJSON(txt)
+  - |
+    dat <- fromJSON(local_file)
+  - |
+    fromJSON('{"url":"https://example.com"}')
+  - |
+    parse_json("https://example.com")
+  - |
+    read_json("https://example.com")
+  - |
+    foo$fromJSON("https://example.com")

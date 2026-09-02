@@ -1,0 +1,1 @@
+makeLazyLoadDB(db, base)

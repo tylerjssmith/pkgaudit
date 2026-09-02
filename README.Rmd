@@ -12,14 +12,17 @@ knitr::opts_chunk$set(
   comment  = "#>"
 )
 
-# Published SHA-256 of the shipped rules database.
+# Published version and SHA-256 of the shipped rules database.
+db_vers <- pkgaudit::rules_version()
+stopifnot(nzchar(db_vers))
 db_path <- file.path("inst", "db", "rules.db")
 stopifnot(file.exists(db_path))
 db_hash <- digest::digest(db_path, algo = "sha256", file = TRUE)
 
 # Wrap in backticks for inline use.
-backtick    <- intToUtf8(96L)
-db_hash_md  <- paste0(backtick, db_hash, backtick)
+backtick   <- intToUtf8(96L)
+db_vers_md <- paste0(backtick, db_vers, backtick)
+db_hash_md <- paste0(backtick, db_hash, backtick)
 ```
 
 # pkgaudit
@@ -95,9 +98,18 @@ for details.
 ## Rule Database Integrity
 
 pkgaudit detects security-relevant files and code using a SQLite database of
-rules shipped at `inst/db/rules.db`. `load_rules()` verifies the database
-against its bundled `.sha256` sidecar on every call and refuses to load a
-modified one. To check an installed copy against the value published here:
+rules shipped at `inst/db/rules.db`. `rules_version()` returns the current
+version of the database:
+
+``` r
+rules_version()
+```
+
+Current Version: `r db_vers_md`
+
+`load_rules()` verifies the database against its bundled `.sha256` sidecar on
+every call and refuses to load a modified database. To check an installed copy
+against the value published here:
 
 ``` r
 digest::digest(

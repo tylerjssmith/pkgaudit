@@ -1,3 +1,25 @@
+# pkgaudit (development version)
+
+* Rules database 0.5.0. The `credentials` rule is split into
+  `credentials_environment` and `credentials_files`, which flagged the same
+  finding under one name and one message although a secret read out of the
+  environment and a secret read off disk are different behaviors to review.
+  `credentials_environment` additionally flags `Sys.getenv()` called with no
+  arguments, which returns every environment variable at once.
+* A new `jsonlite` rule flags `fromJSON()` given a literal `http://` or
+  `https://` URL, which fetches it rather than parsing it -- an outbound
+  connection from a function whose name says nothing about the network.
+* A new `lazyload` rule flags `makeLazyLoadDB()` and the four front ends that
+  reach it. They write the `.rdb`/`.rdx` files holding an installed package's
+  objects, so a call at run time can replace a benign function with a malicious
+  one, or restore the benign one after the malicious one has run.
+* On a random sample of 1,000 CRAN source packages, `jsonlite` flagged 0.3% of
+  them (95% CI 0.1% to 0.9%), `credentials_files` 0.1% (95% CI 0 to 0.6%), and
+  `credentials_environment` 3.5% (95% CI 2.5% to 4.8%). `lazyload` flagged none,
+  which the sample bounds below 0.4% rather than establishing as zero.
+* CI verifies that the rules-database version published in the README is the one
+  `rules_version()` returns, alongside the SHA-256 check it already made.
+
 # pkgaudit 0.4.0
 
 * pkgaudit now accounts for every file it can identify as code, in a new

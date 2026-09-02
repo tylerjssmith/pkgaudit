@@ -185,19 +185,20 @@ test_that("every declared function name is one its own rule matches", {
   }
 })
 
-# The three rules that can claim no name each match on something do.call() does
-# not carry: a nested call, a named argument, a package qualifier. Empty is a
-# decision, so it is asserted rather than left to be noticed.
+# A rule that can claim no name matches on something do.call() does not carry:
+# a nested call, a named argument, a package qualifier, a string literal. Empty
+# is a decision, so it is asserted rather than left to be noticed.
 test_that("rules matching on more than the callee declare no functions", {
   # Each of these matches on something do.call() cannot carry, so there is no
   # name it could claim. Recorded with the reason, since an empty field is
   # otherwise indistinguishable from a forgotten one.
   structural <- c(
-    eval_parse      = "needs the parse and decode calls nested inside",
-    options_repos   = "needs the repos named argument",
-    system_processx = "needs the processx:: qualifier",
-    credentials     = "matches a string literal, not a call",
-    persistence     = "matches a string literal, not a call"
+    eval_parse        = "needs the parse and decode calls nested inside",
+    jsonlite          = "needs the URL string argument",
+    options_repos     = "needs the repos named argument",
+    system_processx   = "needs the processx:: qualifier",
+    credentials_files = "matches a string literal, not a call",
+    persistence       = "matches a string literal, not a call"
   )
   for (name in names(structural)) {
     rule <- rule_row(rules$patterns, name)

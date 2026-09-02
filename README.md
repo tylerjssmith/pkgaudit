@@ -57,7 +57,7 @@ summary(result, phase = "at_install_src", path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-28 16:23 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-09-02 22:34 UTC with pkgaudit v0.4.0, rules v0.5.0
 #> Phases:    at_install_src
 #> 
 #> --- R Patterns --------------------------------------------------------------
@@ -101,10 +101,18 @@ for details.
 ## Rule Database Integrity
 
 pkgaudit detects security-relevant files and code using a SQLite
-database of rules shipped at `inst/db/rules.db`. `load_rules()` verifies
-the database against its bundled `.sha256` sidecar on every call and
-refuses to load a modified one. To check an installed copy against the
-value published here:
+database of rules shipped at `inst/db/rules.db`. `rules_version()`
+returns the current version of the database:
+
+``` r
+rules_version()
+```
+
+Current Version: `0.5.0`
+
+`load_rules()` verifies the database against its bundled `.sha256`
+sidecar on every call and refuses to load a modified database. To check
+an installed copy against the value published here:
 
 ``` r
 digest::digest(
@@ -115,7 +123,7 @@ digest::digest(
 ```
 
 Expected SHA-256:
-`5fc1ec8e93232517679fb03df0f08020d844912e701615de7827666be2f6a7cd`
+`c00175fa304b75711f108a600912f8ce95dc3ea71b75a7dd7460ade5aa3a9933`
 
 ## Security
 

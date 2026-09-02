@@ -449,7 +449,8 @@ init_db <- function(
     c("0.1.0", "2026-06-26", "Initial release"),
     c("0.2.0", "2026-07-15", "Expanded pattern rule coverage"),
     c("0.3.0", "2026-08-02", "Phase metadata and corrected context messages"),
-    c("0.4.0", "2026-08-19", "Regex rules for shell scripts and Make-like files")
+    c("0.4.0", "2026-08-19", "Regex rules for shell scripts and Make-like files"),
+    c("0.5.0", "2026-09-02", "Split credentials by target; jsonlite and lazyload rules")
   )
 ) {
   db_dir <- dirname(db_path)
