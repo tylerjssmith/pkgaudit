@@ -40,6 +40,14 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="development version" id="pkgaudit-development-version">pkgaudit (development version)<a class="anchor" aria-label="anchor" href="#pkgaudit-development-version"></a></h2>
+<ul><li>Rules database 0.5.0. The <code>credentials</code> rule is split into <code>credentials_environment</code> and <code>credentials_files</code>, which flagged the same finding under one name and one message although a secret read out of the environment and a secret read off disk are different behaviors to review. <code>credentials_environment</code> additionally flags <code><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv()</a></code> called with no arguments, which returns every environment variable at once.</li>
+<li>A new <code>jsonlite</code> rule flags <code>fromJSON()</code> given a literal <code>http://</code> or <code>https://</code> URL, which fetches it rather than parsing it – an outbound connection from a function whose name says nothing about the network.</li>
+<li>A new <code>lazyload</code> rule flags <code>makeLazyLoadDB()</code> and the four front ends that reach it. They write the <code>.rdb</code>/<code>.rdx</code> files holding an installed package’s objects, so a call at run time can replace a benign function with a malicious one, or restore the benign one after the malicious one has run.</li>
+<li>On a random sample of 1,000 CRAN source packages, <code>jsonlite</code> flagged 0.3% of them (95% CI 0.1% to 0.9%), <code>credentials_files</code> 0.1% (95% CI 0 to 0.6%), and <code>credentials_environment</code> 3.5% (95% CI 2.5% to 4.8%). <code>lazyload</code> flagged none, which the sample bounds below 0.4% rather than establishing as zero.</li>
+<li>CI verifies that the rules-database version published in the README is the one <code><a href="../reference/rules_version.html">rules_version()</a></code> returns, alongside the SHA-256 check it already made.</li>
+</ul></div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.4.0" id="pkgaudit-040">pkgaudit 0.4.0<a class="anchor" aria-label="anchor" href="#pkgaudit-040"></a></h2>
 <ul><li>pkgaudit now accounts for every file it can identify as code, in a new <code>coverage</code> frame, and says what it made of each one: <code>parsed</code>, <code>matched</code>, <code>exportable</code>, <code>unexamined</code>, or <code>error</code>. A clean scan can be checked rather than trusted, because the scan states what it did not read.</li>
 <li>

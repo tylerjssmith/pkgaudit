@@ -72,7 +72,7 @@
 phases resolved from file-context and code-context rules describe when
 it runs. All rules are defined in YAML files under <a href="https://github.com/tylerjssmith/pkgaudit/tree/main/inst/rules" class="external-link">inst/rules/</a>
 and compiled into the SQLite database at <code>inst/db/rules.db</code>.
-This vignette is generated from that database, at rules v0.4.0; the Rule
+This vignette is generated from that database, at rules v0.5.0; the Rule
 columns below link to the defining YAML.</p>
 <div class="section level2">
 <h2 id="patterns">Patterns<a class="anchor" aria-label="anchor" href="#patterns"></a>
@@ -110,22 +110,29 @@ case, with the privileges of whoever owns it rather than whoever runs
 it. Every call is matched, whatever mode it sets.</td>
 </tr>
 <tr class="even">
-<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_credentials.yaml" class="external-link">credentials</a></td>
-<td>a path or environment variable that only holds a secret:
-<code>~/.ssh/</code>, <code>~/.aws/</code>, <code>.netrc</code>,
-<code>id_rsa</code>, <code>~/.gnupg/</code>, and
-<code><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv()</a></code> of a name containing <code>TOKEN</code>,
-<code>SECRET</code>, <code>PASSWORD</code> or <code>API_KEY</code>
-</td>
-<td>A path or environment variable that only exists to hold a secret.
-Nothing a package needs in order to install or load lives in these, and
-package code runs with the full privileges of whoever installed it. The
-literal has to look like a path or a short command rather than a
-sentence, since prose that merely mentions ~/.ssh is not a package
-reading it – but naming one is still not proof it is read, so read the
-line.</td>
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_credentials_environment.yaml" class="external-link">credentials_environment</a></td>
+<td>
+<code><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv()</a></code> or <code><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv()</a></code> of a name
+containing <code>TOKEN</code>, <code>SECRET</code>,
+<code>PASSWORD</code>, <code>API_KEY</code>, <code>PRIVATE_KEY</code>,
+<code>ACCESS_KEY</code> or <code>CREDENTIAL</code>, and
+<code><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv()</a></code> with no arguments</td>
+<td>Sys.getenv() or Sys.setenv() naming an environment variable whose
+name marks it as a secret – TOKEN, SECRET, PASSWORD, API_KEY and the
+like. Sys.getenv() with no arguments is also detected, since it returns
+every environment variable at once.</td>
 </tr>
 <tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_credentials_files.yaml" class="external-link">credentials_files</a></td>
+<td>a path that only holds a secret: <code>~/.ssh/</code>,
+<code>~/.aws/</code>, <code>.netrc</code>, <code>.pgpass</code>,
+<code>id_rsa</code>, <code>~/.gnupg/</code>,
+<code>~/.kube/config</code>, <code>~/.config/gcloud</code>
+</td>
+<td>A file path that exists only to hold a secret, such as an SSH or GPG
+private key or an .aws, .netrc, or cloud credential file.</td>
+</tr>
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_curl.yaml" class="external-link">curl</a></td>
 <td>
 <code>curl()</code>, <code>curl_fetch_memory()</code>,
@@ -138,7 +145,7 @@ line.</td>
 connection to a remote host. A request may be used to exfiltrate
 credentials or other data, or to fetch a remote payload.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_decoding.yaml" class="external-link">decoding</a></td>
 <td>
 <code>base64decode()</code>, <code>base64_dec()</code>,
@@ -148,7 +155,7 @@ credentials or other data, or to fetch a remote payload.</td>
 <td>These functions decode or decompress data. Payloads may be encoded
 (e.g., as base64) to evade static detection and decoded at runtime.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_deserialization.yaml" class="external-link">deserialization</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS()</a></code>, <code><a href="https://rdrr.io/r/base/load.html" class="external-link">load()</a></code>,
@@ -158,7 +165,7 @@ credentials or other data, or to fetch a remote payload.</td>
 or code, which can enable arbitrary code execution (CVE-2024-27322 for
 RDS).</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_download_file.yaml" class="external-link">download_file</a></td>
 <td>
 <code><a href="https://rdrr.io/r/utils/download.file.html" class="external-link">download.file()</a></code>, <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">url()</a></code>
@@ -167,7 +174,7 @@ RDS).</td>
 resource. This can stage a payload for execution via source() or
 system() in a two-stage attack.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_dynload.yaml" class="external-link">dynload</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/dynload.html" class="external-link">dyn.load()</a></code>, <code><a href="https://rdrr.io/r/base/library.dynam.html" class="external-link">library.dynam()</a></code>
@@ -175,7 +182,7 @@ system() in a two-stage attack.</td>
 <td>dyn.load() and library.dynam() load compiled code from a shared
 object, which executes outside the visible R source.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_eval_parse.yaml" class="external-link">eval_parse</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/eval.html" class="external-link">eval()</a></code>/<code><a href="https://rdrr.io/r/base/eval.html" class="external-link">evalq()</a></code> over <code><a href="https://rdrr.io/r/base/parse.html" class="external-link">parse()</a></code>,
@@ -192,7 +199,7 @@ is every function the rules for fetching, decoding, deserializing,
 running a subprocess and running Python already cover, plus the file
 reads no rule covers on its own.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_fs.yaml" class="external-link">fs</a></td>
 <td>
 <code>file_chmod()</code>, <code>file_chown()</code>
@@ -204,7 +211,7 @@ that can be run – in the setuid case, with the privileges of whoever
 owns it rather than whoever runs it. Every call is matched, whatever
 mode or owner it sets.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_httr.yaml" class="external-link">httr</a></td>
 <td>
 <code>GET()</code>, <code>POST()</code>, <code>PUT()</code>,
@@ -215,7 +222,7 @@ mode or owner it sets.</td>
 to exfiltrate credentials or other data, or to fetch a remote
 payload.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_httr2.yaml" class="external-link">httr2</a></td>
 <td>
 <code>req_perform()</code>, <code>req_perform_iterative()</code>,
@@ -228,7 +235,7 @@ payload.</td>
 <td>An httr2 HTTP call sends an outbound request. A request may be used
 to exfiltrate credentials or other data.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_install.yaml" class="external-link">install</a></td>
 <td>
 <code><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages()</a></code>, <code>install_github()</code>,
@@ -248,7 +255,32 @@ to exfiltrate credentials or other data.</td>
 remote source. A non-default source can introduce attacker-controlled
 code.</td>
 </tr>
+<tr class="even">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_jsonlite.yaml" class="external-link">jsonlite</a></td>
+<td>
+<code>fromJSON()</code> of a literal URL with the <code>http</code>
+or <code>https</code> scheme</td>
+<td>jsonlite::fromJSON() fetches the URL when its first argument is a
+string beginning with the http or https scheme, opening an outbound
+connection through libcurl (a bundled curl handle in older jsonlite,
+base::url() today).</td>
+</tr>
 <tr class="odd">
+<td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_lazyload.yaml" class="external-link">lazyload</a></td>
+<td>
+<code>makeLazyLoadDB()</code>, <code>makeLazyLoading()</code>,
+<code>code2LazyLoadDB()</code>, <code>data2LazyLoadDB()</code>,
+<code>sysdata2LazyLoadDB()</code>
+</td>
+<td>makeLazyLoadDB() writes an R lazy-load database – the compiled
+.rdb/.rdx files that hold a package’s objects once it is installed – to
+disk. code2LazyLoadDB(), data2LazyLoadDB(), sysdata2LazyLoadDB() and
+makeLazyLoading() are the front ends that reach it. If called at run
+time, they can replace a benign function with a malicious one or do the
+reverse after a malicious function runs so an auditor does not see
+it.</td>
+</tr>
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_namespace.yaml" class="external-link">namespace</a></td>
 <td>
 <code><a href="https://rdrr.io/r/utils/getFromNamespace.html" class="external-link">getFromNamespace()</a></code>, <code><a href="https://rdrr.io/r/base/ns-reflect.html" class="external-link">getExportedValue()</a></code>,
@@ -262,7 +294,7 @@ replace or unseal bindings in a namespace already loaded, so an ordinary
 call made later can run something else. The ::: operator is not matched
 here, since R CMD check already reports it.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_options_repos.yaml" class="external-link">options_repos</a></td>
 <td><code>options(repos = )</code></td>
 <td>options(repos = …) replaces the CRAN mirror for the R session.
@@ -270,7 +302,7 @@ Subsequent install.packages() calls will fetch packages from the
 configured repository. If set to an attacker-controlled server, this
 poisons the installation source.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_persistence.yaml" class="external-link">persistence</a></td>
 <td>a startup file or scheduler: <code>~/.bashrc</code>,
 <code>~/.zshrc</code>, <code>~/.profile</code>,
@@ -286,7 +318,7 @@ them at every session. The literal has to look like a path or a short
 command rather than a sentence, since prose that merely mentions
 ~/.bashrc is not a package writing to it.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_python.yaml" class="external-link">python</a></td>
 <td>
 <code>py_run_string()</code>, <code>py_run_file()</code>,
@@ -299,7 +331,7 @@ code passed as a string is not even a file the coverage frame can
 account for. import_builtins() is listed with them because it returns
 Python’s own eval, exec and <strong>import</strong>.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_rcurl.yaml" class="external-link">rcurl</a></td>
 <td>
 <code>getURL()</code>, <code>getURI()</code>,
@@ -310,7 +342,7 @@ Python’s own eval, exec and <strong>import</strong>.</td>
 be used to exfiltrate credentials or other data, or to fetch a remote
 payload.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_socket.yaml" class="external-link">socket</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/connections.html" class="external-link">socketConnection()</a></code>, <code><a href="https://rdrr.io/r/utils/make.socket.html" class="external-link">make.socket()</a></code>,
@@ -320,12 +352,12 @@ payload.</td>
 exfiltrate data or receive a remote payload outside the usual HTTP
 clients.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_source.yaml" class="external-link">source</a></td>
 <td><code><a href="https://rdrr.io/r/base/source.html" class="external-link">source()</a></code></td>
 <td>source() can fetch and execute local and remote R scripts.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_system.yaml" class="external-link">system</a></td>
 <td>
 <code><a href="https://rdrr.io/r/base/system.html" class="external-link">system()</a></code>, <code><a href="https://rdrr.io/r/base/system2.html" class="external-link">system2()</a></code>, <code>shell()</code>,
@@ -334,7 +366,7 @@ clients.</td>
 <td>system(), system2(), shell() (on Windows), and pipe() execute
 arbitrary shell commands.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_system_callr.yaml" class="external-link">system_callr</a></td>
 <td>
 <code><a href="https://callr.r-lib.org/reference/r.html" class="external-link">callr::r()</a></code>, <code>r_bg()</code>, <code>r_safe()</code>,
@@ -349,7 +381,7 @@ arbitrary shell commands.</td>
 command, which may be used to execute arbitrary R code or shell commands
 outside the visible R source.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_system_processx.yaml" class="external-link">system_processx</a></td>
 <td>
 <code><a href="http://processx.r-lib.org/reference/run.html" class="external-link">processx::run()</a></code>, <code><a href="http://processx.r-lib.org/reference/pipeline.html" class="external-link">processx::pipeline()</a></code>,
@@ -358,7 +390,7 @@ outside the visible R source.</td>
 <td>These processx functions run an external process, which may be used
 to execute arbitrary shell commands outside the visible R source.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="https://github.com/tylerjssmith/pkgaudit/blob/main/inst/rules/patterns/pattern_system_sys.yaml" class="external-link">system_sys</a></td>
 <td>
 <code>exec_wait()</code>, <code>exec_background()</code>,

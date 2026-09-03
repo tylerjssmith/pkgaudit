@@ -54,7 +54,7 @@ print(result, path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-28 21:26 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-09-03 23:08 UTC with pkgaudit v0.4.0, rules v0.5.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -72,7 +72,7 @@ summary(result, path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-28 21:26 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-09-03 23:08 UTC with pkgaudit v0.4.0, rules v0.5.0
 #> 
 #> --- R Patterns --------------------------------------------------------------
 #> phase            rule            n   attck
@@ -120,7 +120,7 @@ summary(result, phase = c("at_load", "at_attach"), path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-08-28 21:26 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-09-03 23:08 UTC with pkgaudit v0.4.0, rules v0.5.0
 #> Phases:    at_load, at_attach
 #> 
 #> --- R Patterns --------------------------------------------------------------
@@ -274,7 +274,7 @@ result$metadata
 #> [1] "0.1.0"
 #> 
 #> $pkg_path
-#> [1] "/tmp/Rtmpn0pjfI/untrustedpkg-example/untrustedpkg"
+#> [1] "/tmp/RtmpQA95ao/untrustedpkg-example/untrustedpkg"
 #> 
 #> $pkg_is_tarball
 #> [1] FALSE
@@ -286,13 +286,13 @@ result$metadata
 #> [1] "0.4.0"
 #> 
 #> $pkgaudit_rules_version
-#> [1] "0.4.0"
+#> [1] "0.5.0"
 #> 
 #> $pkgaudit_rules_sha256
-#> [1] "5fc1ec8e93232517679fb03df0f08020d844912e701615de7827666be2f6a7cd"
+#> [1] "c00175fa304b75711f108a600912f8ce95dc3ea71b75a7dd7460ade5aa3a9933"
 #> 
 #> $scanned
-#> [1] "2026-08-28T21:26:11Z"
+#> [1] "2026-09-03T23:08:37Z"
 ```
 
 ### Subsetting by phase
@@ -450,7 +450,7 @@ print(audit_tarball(tarball), path = FALSE)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-08-28 21:26 UTC with pkgaudit v0.4.0, rules v0.4.0
+#> Scanned:   2026-09-03 23:08 UTC with pkgaudit v0.4.0, rules v0.5.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
@@ -472,12 +472,12 @@ reports the version.
 ``` r
 
 rules_version()
-#> [1] "0.4.0"
+#> [1] "0.5.0"
 
 rules <- load_rules()
 vapply(rules, nrow, integer(1))
 #> file_contexts code_contexts      patterns       matches        phases 
-#>            45            10            23            11            55
+#>            45            10            26            11            55
 ```
 
 A modified database is one way to evade a scanner.
@@ -494,7 +494,7 @@ digest::digest(
   algo = "sha256",
   file = TRUE
 )
-#> [1] "5fc1ec8e93232517679fb03df0f08020d844912e701615de7827666be2f6a7cd"
+#> [1] "c00175fa304b75711f108a600912f8ce95dc3ea71b75a7dd7460ade5aa3a9933"
 ```
 
 The full rule set is documented in [Rule

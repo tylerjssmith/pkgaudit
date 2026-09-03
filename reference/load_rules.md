@@ -106,5 +106,5 @@ concurrently.
 rules <- load_rules()
 vapply(rules, nrow, integer(1))
 #> file_contexts code_contexts      patterns       matches        phases 
-#>            45            10            23            11            55 
+#>            45            10            26            11            55 
 ```
