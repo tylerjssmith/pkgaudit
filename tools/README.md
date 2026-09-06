@@ -1,5 +1,10 @@
 # tools/
 
+[`lintr.R`](lintr.R) is used by the GitHub Actions workflow `lintr.yaml`. It
+lints `R/` and fails the build on any lint. The linter set is confined to
+linters that read the parse tree without evaluating it, so linting a pull
+request does not run the code in it.
+
 [`osv_lockfile.R`](osv_lockfile.R) is used by the GitHub Actions workflow
 `osv-scanner.yaml`. It writes an `renv.lock` describing pkgaudit's resolved R
 dependencies, which OSV-Scanner reads to check them against the Open Source

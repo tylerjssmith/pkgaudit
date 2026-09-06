@@ -1,0 +1,35 @@
+# .github/workflows/lintr.yaml
+# This workflow runs lintr over R/. The linter set and the reasons it is limited
+# to linters that do not evaluate the code they read live in tools/lintr.R.
+
+# Note: this job installs lintr and nothing else. Linting R/ needs none of
+# pkgaudit's dependencies, and resolving them would install packages named by
+# the DESCRIPTION of the branch under test, which on a pull request is code
+# this repository has not reviewed.
+name: lintr
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint R/
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
+        with:
+          use-public-rspm: true
+
+      - name: Install lintr
+        shell: Rscript {0}
+        run: install.packages("lintr")
+
+      - name: Lint R/
+        run: Rscript tools/lintr.R
