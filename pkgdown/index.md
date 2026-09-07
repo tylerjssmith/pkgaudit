@@ -8,6 +8,8 @@ Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repost
 [![R-CMD-check](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/R-CMD-check.yaml)
 [![coverage](https://raw.githubusercontent.com/tylerjssmith/pkgaudit/badges/coverage.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/test-coverage.yaml)
 [![osv-scanner](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml/badge.svg)](https://github.com/tylerjssmith/pkgaudit/actions/workflows/osv-scanner.yaml)
+[![OpenSSF Best
+Practices](https://www.bestpractices.dev/projects/14453/badge)](https://www.bestpractices.dev/projects/14453)
 
 pkgaudit scans R packages for security-relevant files and code without
 executing anything it scans. It reports what code does and when it runs,
@@ -55,7 +57,7 @@ summary(result, phase = "at_install_src", path = FALSE)
 #> --- pkgaudit Summary --------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source tarball)
 #> SHA-256:   0c58ddcb365787ab7401c5eedaa4be7eb4ce6bea0a5ca290b6b7b1d8eb621d44
-#> Scanned:   2026-09-02 22:34 UTC with pkgaudit v0.4.0, rules v0.5.0
+#> Scanned:   2026-09-07 19:04 UTC with pkgaudit v0.4.0, rules v0.5.0
 #> Phases:    at_install_src
 #> 
 #> --- R Patterns --------------------------------------------------------------
@@ -82,9 +84,9 @@ The supported phases are: `at_autoconf`, `at_build`, `at_check`,
 and `at_detach`. A finding with no phase, such as a pattern inside a
 regular function in `R/`, is reported as `none`.
 
-pkgaudit can integrate its scan with other tools. `emit_sarif()` renders
-its results as SARIF 2.1.0, which editors and code-scanning platforms
-read directly. `export_unscanned()` exports code written in languages
+pkgaudit can integrate with other tools. `emit_sarif()` renders its
+results as SARIF 2.1.0, which editors and code-scanning platforms read
+directly. `export_unscanned()` exports code written in languages
 pkgaudit cannot read, like C and Python, to a directory for a scanner
 that can.
 
