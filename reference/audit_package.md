@@ -163,9 +163,9 @@ result$patterns
 print(result)
 #> --- pkgaudit ----------------------------------------------------------------
 #> Package:   untrustedpkg v0.1.0 (source directory)
-#> Path:      /tmp/RtmpLL9ge4/untrustedpkg-example/untrustedpkg
+#> Path:      /tmp/RtmpKK1Kbl/untrustedpkg-example/untrustedpkg
 #> SHA-256:   50be0a4fe9997cb47764c1eb2026be864242314a4af6dfd634e60a358dec8171
-#> Scanned:   2026-09-07 19:07 UTC with pkgaudit v0.4.0, rules v0.5.0
+#> Scanned:   2026-09-07 22:54 UTC with pkgaudit v0.4.0, rules v0.5.0
 #> 
 #> File contexts:  1
 #> Patterns:       4
