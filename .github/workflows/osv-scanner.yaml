@@ -7,7 +7,9 @@
 # than a snapshot pinned in this repository. The first job resolves them the
 # same way a user's install would and writes a lock file describing the result;
 # the second scans it. A scheduled run therefore reports both when an advisory
-# is published and when a dependency moves under it.
+# is published and when a dependency moves under it. Pull requests are scanned
+# the same way, so a change that introduces a vulnerable dependency is reported
+# before it is merged rather than on the following Monday.
 name: OSV-Scanner
 
 on:
@@ -15,6 +17,7 @@ on:
     - cron: "30 12 * * 1" # Every Monday at 12:30pm UTC
   push:
     branches: [main]
+  pull_request:
 
 permissions:
   contents: read
