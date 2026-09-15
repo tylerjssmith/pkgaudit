@@ -20,7 +20,7 @@
       runs[].results[].locations[].physicalLocation.region.startColumn
       runs[].results[].locations[].physicalLocation.region.startLine
       runs[].results[].message.text
-      runs[].results[].partialFingerprints.pkgauditFindingV1
+      runs[].results[].partialFingerprints.primaryLocationLineHash
       runs[].results[].properties.codeContext
       runs[].results[].properties.guarded
       runs[].results[].properties.indirect

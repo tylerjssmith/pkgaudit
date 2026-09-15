@@ -1,0 +1,83 @@
+# .github/workflows/pkgaudit.yaml
+# This workflow scans the checkout with pkgaudit, hands the code pkgaudit does
+# not read to Semgrep, and publishes both results to the Security tab.
+
+# Note: the two scans are complementary rather than redundant. pkgaudit reads
+# the R, shell and literate surfaces and reports when their code runs; Semgrep
+# reads what pkgaudit exports and nothing else. No file is scanned twice, and
+# no file is scanned by a tool that cannot parse it.
+name: pkgaudit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Scan
+    runs-on: ubuntu-latest
+    permissions:
+      # Only need to read contents
+      contents: read
+      # Required for writing security events to upload SARIF file to security tab
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2
+        with:
+          # jsonlite is a suggested dependency; emit_sarif() and the path
+          # rewrite both need it. local::. installs the package being scanned,
+          # which here is this repository.
+          extra-packages: |
+            any::jsonlite
+            local::.
+
+      # The checkout is scanned rather than a built tarball. A directory scan
+      # reports paths relative to the package root, which is the repository
+      # root, so a finding lands on the file a reviewer would open; and
+      # export_unscanned() can read from the tree without extracting anything.
+      - name: Scan with pkgaudit
+        id: pkgaudit
+        run: Rscript tools/pkgaudit_scan.R
+
+      - name: Upload pkgaudit SARIF
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          sarif_file: pkgaudit.sarif
+          category: pkgaudit
+
+      - name: Install Semgrep
+        if: steps.pkgaudit.outputs.exported == 'true'
+        run: pipx install semgrep
+
+      # Run from inside the export tree so Semgrep reports paths relative to
+      # it, which are the repository's own. dev/ is excluded: coverage ignores
+      # .Rbuildignore on purpose, so that a package cannot hide from a scan,
+      # and everything this repository exports is third-party code vendored
+      # under dev/execution_surface/lib/ for the phase experiments.
+      - name: Scan exported code with Semgrep
+        if: steps.pkgaudit.outputs.exported == 'true'
+        working-directory: semgrep-export
+        run: >
+          semgrep scan --config=p/default --metrics=off --exclude=dev
+          --sarif --output=../semgrep.sarif .
+
+      - name: Point Semgrep results back at their sources
+        if: steps.pkgaudit.outputs.exported == 'true'
+        run: Rscript tools/pkgaudit_remap.R
+
+      - name: Upload Semgrep SARIF
+        if: steps.pkgaudit.outputs.exported == 'true'
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep

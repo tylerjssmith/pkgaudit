@@ -68,6 +68,24 @@ test_that("every result is a note, whatever its phases", {
                     "note"))
 })
 
+test_that("every result carries a region, a file context at line 1", {
+  # A consumer treats region as required and drops a result without one, so a
+  # file-context finding -- which is about the whole file and has no line of
+  # its own -- is anchored at the line the file starts on rather than nowhere.
+  pkg <- sarif_pkg()
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+  results <- sarif_of(audit_package(pkg, rules))$runs[[1L]]$results
+
+  starts <- vapply(results, function(r)
+    r$locations[[1L]]$physicalLocation$region$startLine, integer(1L))
+  expect_true(all(starts >= 1L))
+
+  whole <- vapply(results, function(r) startsWith(r$ruleId, "file/"),
+                  logical(1L))
+  expect_true(any(whole))
+  expect_true(all(starts[whole] == 1L))
+})
+
 test_that("a fingerprint survives a line-number shift", {
   hook <- c(".onLoad <- function(l, p) system('id')")
   a <- make_pkg(files = list("R/zzz.R" = hook))
@@ -76,7 +94,8 @@ test_that("a fingerprint survives a line-number shift", {
 
   fp <- function(pkg) {
     r <- sarif_of(audit_package(pkg, rules))$runs[[1L]]$results
-    vapply(r, function(x) x$partialFingerprints$pkgauditFindingV1, character(1L))
+    vapply(r, function(x) x$partialFingerprints$primaryLocationLineHash,
+           character(1L))
   }
   # The line moved, so an alert keyed on position would be retired and reopened
   # by a change that touched nothing.
@@ -98,7 +117,8 @@ test_that("no two results in a run share a fingerprint", {
   on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
 
   results <- sarif_of(audit_package(pkg, rules))$runs[[1L]]$results
-  fp <- vapply(results, function(r) r$partialFingerprints$pkgauditFindingV1,
+  fp <- vapply(results,
+               function(r) r$partialFingerprints$primaryLocationLineHash,
                character(1L))
   expect_length(fp, 3L)
   expect_length(unique(fp), 3L)
@@ -111,7 +131,8 @@ test_that("a finding that moves to another file gets another fingerprint", {
 
   fp <- function(pkg) {
     r <- sarif_of(audit_package(pkg, rules))$runs[[1L]]$results
-    vapply(r, function(x) x$partialFingerprints$pkgauditFindingV1, character(1L))
+    vapply(r, function(x) x$partialFingerprints$primaryLocationLineHash,
+           character(1L))
   }
   expect_false(identical(fp(a), fp(b)))
 })

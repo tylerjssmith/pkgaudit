@@ -174,16 +174,19 @@ emit_sarif <- function(object, pretty = TRUE) {
   if (nrow(found) == 0L) return(list())
 
   unname(lapply(seq_len(nrow(found)), function(i) {
-    region <- list()
-    if (!is.na(found$line[[i]]))   region$startLine   <- found$line[[i]]
+    # Every result carries a region. A consumer treats it as required, and a
+    # finding with no line of its own is about the whole file, which starts at
+    # line 1; a region-less result is dropped rather than shown unanchored.
+    region <- list(startLine = if (is.na(found$line[[i]])) 1L
+                               else found$line[[i]])
     if (!is.na(found$column[[i]])) region$startColumn <- found$column[[i]]
 
     location <- list(physicalLocation = list(
       # Relative, forward-slashed, no base id: that is what a consumer resolves
       # against the repository root, and it keeps local paths out of the file.
-      artifactLocation = list(uri = found$file_context[[i]])
+      artifactLocation = list(uri = found$file_context[[i]]),
+      region = region
     ))
-    if (length(region) > 0L) location$physicalLocation$region <- region
 
     properties <- list(phases = as.list(
       strsplit(found$phases[[i]], " ")[[1L]]
@@ -200,7 +203,12 @@ emit_sarif <- function(object, pretty = TRUE) {
       level   = "note",
       message = list(text = found$message[[i]]),
       locations = list(location),
-      partialFingerprints = list(pkgauditFindingV1 = found$fingerprint[[i]]),
+      partialFingerprints = list(
+        # The name a consumer reads. Code scanning platforms look for this key
+        # and ignore any other, so a fingerprint under a name of pkgaudit's own
+        # would be discarded and recomputed from the line and its neighbours.
+        primaryLocationLineHash = found$fingerprint[[i]]
+      ),
       properties = properties
     )
   }))
