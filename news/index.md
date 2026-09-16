@@ -26,6 +26,18 @@
   the one
   [`rules_version()`](https://tylerjssmith.github.io/pkgaudit/reference/rules_version.md)
   returns, alongside the SHA-256 check it already made.
+- [`emit_sarif()`](https://tylerjssmith.github.io/pkgaudit/reference/emit_sarif.md)
+  now writes a region for every result. A finding about a whole file – a
+  file context, which has no line of its own – is anchored at line 1
+  rather than left unanchored, because a consumer treats the region as
+  required and drops a result without one.
+- The SARIF fingerprint is now written under `primaryLocationLineHash`,
+  the name code scanning platforms read. Under a name of pkgaudit’s own
+  it was discarded and recomputed, so a finding’s identity was the
+  consumer’s rather than the scan’s.
+- A new workflow scans this repository with pkgaudit on every push and
+  pull request, hands the code pkgaudit does not read to Semgrep, and
+  publishes both results to the Security tab.
 
 ## pkgaudit 0.4.0
 
