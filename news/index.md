@@ -26,6 +26,14 @@
   the one
   [`rules_version()`](https://tylerjssmith.github.io/pkgaudit/reference/rules_version.md)
   returns, alongside the SHA-256 check it already made.
+- A SARIF result’s message is now a one-line title – the rule, the code
+  context it sits in, and the phases it runs in, as in
+  `system in onLoad_base: at_build, at_check, at_install_src, at_load`.
+  It carried the rule’s own text, which is the same paragraph for every
+  finding the rule produces, so a consumer headed each finding with a
+  paragraph and then repeated it as the description. The text is now the
+  rule descriptor’s `fullDescription` and `help`, where a consumer reads
+  it once, and the phases reach a reviewer who sees only the heading.
 - [`emit_sarif()`](https://tylerjssmith.github.io/pkgaudit/reference/emit_sarif.md)
   now writes a region for every result. A finding about a whole file – a
   file context, which has no line of its own – is anchored at line 1

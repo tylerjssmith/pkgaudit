@@ -76,12 +76,17 @@ written; <code><a href="https://rdrr.io/r/base/writeLines.html" class="external-
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Every finding in <code>file_contexts</code>, <code>patterns</code> and <code>matches</code> becomes a result,
 located by the path and, where there is one, the line and column. Rule ids
-are namespaced by the kind of rule – <code>pattern/curl</code>, <code>match/curl</code>,
+are labeled by the kind of rule – <code>pattern/curl</code>, <code>match/curl</code>,
 <code>file/configure</code> – because a rule name is unique only within its kind.</p>
+<p>A result's message is a one-line title – the rule, the code context it sits
+in, and the phases it runs in – because a consumer displays it as the
+heading of a finding. A rule's own text is the same for every finding the
+rule produces, so it describes the rule rather than the finding and is
+written as the descriptor's <code>fullDescription</code> and <code>help</code>.</p>
 <p><code>level</code> is <code>note</code> for every result: pkgaudit does not rank findings, so
-nothing is mapped onto SARIF's severity field. When a finding's code
-executes is carried in <code>properties.phases</code>, and a <code>note</code> is never a claim
-that a finding is minor.</p>
+nothing is mapped onto SARIF's severity field. When a finding's code executes
+is carried in the title and in <code>properties.phases</code>, and a <code>note</code> is never a
+claim that a finding is minor.</p>
 <p><code>partialFingerprints</code> identifies a finding by its rule, its file, the code
 context it sits in, and the text of the line – not by line number, which
 shifts whenever anything above it is edited. Two occurrences a consumer could

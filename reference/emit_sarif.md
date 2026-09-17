@@ -30,14 +30,20 @@ where you want it.
 
 Every finding in `file_contexts`, `patterns` and `matches` becomes a
 result, located by the path and, where there is one, the line and
-column. Rule ids are namespaced by the kind of rule – `pattern/curl`,
+column. Rule ids are labeled by the kind of rule – `pattern/curl`,
 `match/curl`, `file/configure` – because a rule name is unique only
 within its kind.
 
+A result's message is a one-line title – the rule, the code context it
+sits in, and the phases it runs in – because a consumer displays it as
+the heading of a finding. A rule's own text is the same for every
+finding the rule produces, so it describes the rule rather than the
+finding and is written as the descriptor's `fullDescription` and `help`.
+
 `level` is `note` for every result: pkgaudit does not rank findings, so
 nothing is mapped onto SARIF's severity field. When a finding's code
-executes is carried in `properties.phases`, and a `note` is never a
-claim that a finding is minor.
+executes is carried in the title and in `properties.phases`, and a
+`note` is never a claim that a finding is minor.
 
 `partialFingerprints` identifies a finding by its rule, its file, the
 code context it sits in, and the text of the line – not by line number,
