@@ -68,6 +68,51 @@ test_that("every result is a note, whatever its phases", {
                     "note"))
 })
 
+test_that("a result's message is a title, not the rule's text", {
+  # A consumer heads a finding with its message, so a message carrying the rule's
+  # paragraph heads every finding of that rule with the same paragraph -- and,
+  # where the paragraph is also the rule's description, heads it with its own
+  # description. The title says what this finding is and when its code runs.
+  pkg <- sarif_pkg()
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+  run <- sarif_of(audit_package(pkg, rules))$runs[[1L]]
+
+  titles <- vapply(run$results, function(r) r$message$text, character(1L))
+  expect_true("system in onLoad_base: at_build, at_check, at_install_src, at_load"
+              %in% titles)
+  # A file context is about a whole file and sits in no code context.
+  expect_true("configure: at_build, at_check, at_install_src" %in% titles)
+  # A pattern nothing was seen to call runs at no phase, which the report and the
+  # `phase` filter both call "none".
+  expect_true("source in in_function: none" %in% titles)
+
+  # A title is cut at its first sentence where a consumer is short of space, so
+  # it holds no sentence to cut at.
+  expect_false(any(grepl(".", titles, fixed = TRUE)))
+})
+
+test_that("the rule's text is the descriptor's description and help", {
+  pkg <- sarif_pkg()
+  on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+  run <- sarif_of(audit_package(pkg, rules))$runs[[1L]]
+
+  rule <- Filter(function(d) d$id == "pattern/system", run$tool$driver$rules)[[1L]]
+  text <- rules$patterns$message[rules$patterns$name == "system"]
+  expect_equal(rule$fullDescription$text, text)
+  expect_true(startsWith(rule$help$text, text))
+  expect_true(startsWith(rule$help$markdown, text))
+  expect_match(rule$help$markdown, "articles/rules.html", fixed = TRUE)
+
+  # The short description names the rule rather than repeating the paragraph a
+  # consumer shows underneath it.
+  expect_equal(rule$shortDescription$text, "pattern rule: system")
+  expect_false(grepl(text, rule$shortDescription$text, fixed = TRUE))
+
+  # A title reading "none" is not a claim that the code cannot run, and no
+  # consumer displays the properties that would say so.
+  expect_match(rule$help$text, "nothing in the package was seen to call")
+})
+
 test_that("every result carries a region, a file context at line 1", {
   # A consumer treats region as required and drops a result without one, so a
   # file-context finding -- which is about the whole file and has no line of

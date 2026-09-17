@@ -28,6 +28,9 @@
       runs[].results[].ruleId
       runs[].tool.driver.informationUri
       runs[].tool.driver.name
+      runs[].tool.driver.rules[].fullDescription.text
+      runs[].tool.driver.rules[].help.markdown
+      runs[].tool.driver.rules[].help.text
       runs[].tool.driver.rules[].helpUri
       runs[].tool.driver.rules[].id
       runs[].tool.driver.rules[].name

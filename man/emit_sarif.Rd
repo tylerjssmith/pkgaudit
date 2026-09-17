@@ -23,13 +23,19 @@ loaded by any SARIF consumer.
 \details{
 Every finding in \code{file_contexts}, \code{patterns} and \code{matches} becomes a result,
 located by the path and, where there is one, the line and column. Rule ids
-are namespaced by the kind of rule -- \code{pattern/curl}, \code{match/curl},
+are labeled by the kind of rule -- \code{pattern/curl}, \code{match/curl},
 \code{file/configure} -- because a rule name is unique only within its kind.
 
+A result's message is a one-line title -- the rule, the code context it sits
+in, and the phases it runs in -- because a consumer displays it as the
+heading of a finding. A rule's own text is the same for every finding the
+rule produces, so it describes the rule rather than the finding and is
+written as the descriptor's \code{fullDescription} and \code{help}.
+
 \code{level} is \code{note} for every result: pkgaudit does not rank findings, so
-nothing is mapped onto SARIF's severity field. When a finding's code
-executes is carried in \code{properties.phases}, and a \code{note} is never a claim
-that a finding is minor.
+nothing is mapped onto SARIF's severity field. When a finding's code executes
+is carried in the title and in \code{properties.phases}, and a \code{note} is never a
+claim that a finding is minor.
 
 \code{partialFingerprints} identifies a finding by its rule, its file, the code
 context it sits in, and the text of the line -- not by line number, which

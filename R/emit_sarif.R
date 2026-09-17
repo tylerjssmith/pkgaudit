@@ -5,10 +5,15 @@
 .sarif_version <- "2.1.0"
 .sarif_info    <- "https://tylerjssmith.github.io/pkgaudit/"
 
-# Every rule links to the rules vignette rather than to its own YAML file. The
-# file name is conventional rather than guaranteed, and a link a reviewer cannot
-# follow is worse than a coarse one that always resolves.
+# Every rule links to the rules vignette rather than to its own YAML file.
 .sarif_help <- paste0(.sarif_info, "articles/rules.html")
+
+# A result's title names the phases its finding runs in, and `none` where it is
+# not known to run in one.
+.sarif_none_note <- paste(
+  "A title reading `none` means nothing in the package was seen to call the",
+  "code, not that the code cannot run."
+)
 
 # The findings frames that become results, and the prefix each rule's id takes.
 # Ids must be namespaced: `curl` names both a pattern rule and a match rule, and
@@ -36,13 +41,19 @@
 #' @details
 #' Every finding in `file_contexts`, `patterns` and `matches` becomes a result,
 #' located by the path and, where there is one, the line and column. Rule ids
-#' are namespaced by the kind of rule -- `pattern/curl`, `match/curl`,
+#' are labeled by the kind of rule -- `pattern/curl`, `match/curl`,
 #' `file/configure` -- because a rule name is unique only within its kind.
 #'
+#' A result's message is a one-line title -- the rule, the code context it sits
+#' in, and the phases it runs in -- because a consumer displays it as the
+#' heading of a finding. A rule's own text is the same for every finding the
+#' rule produces, so it describes the rule rather than the finding and is
+#' written as the descriptor's `fullDescription` and `help`.
+#'
 #' `level` is `note` for every result: pkgaudit does not rank findings, so
-#' nothing is mapped onto SARIF's severity field. When a finding's code
-#' executes is carried in `properties.phases`, and a `note` is never a claim
-#' that a finding is minor.
+#' nothing is mapped onto SARIF's severity field. When a finding's code executes
+#' is carried in the title and in `properties.phases`, and a `note` is never a
+#' claim that a finding is minor.
 #'
 #' `partialFingerprints` identifies a finding by its rule, its file, the code
 #' context it sits in, and the text of the line -- not by line number, which
@@ -109,6 +120,7 @@ emit_sarif <- function(object, pretty = TRUE) {
     if (is.null(df) || nrow(df) == 0L) return(NULL)
     data.frame(
       id           = paste0(.sarif_kinds[[frame]], "/", df$rule),
+      kind         = .sarif_kinds[[frame]],
       rule         = df$rule,
       file_context = df$file_context,
       line         = if (is.null(df$line_number)) NA_integer_ else df$line_number,
@@ -128,13 +140,14 @@ emit_sarif <- function(object, pretty = TRUE) {
   })
   out <- do.call(rbind, Filter(Negate(is.null), rows))
   if (is.null(out)) {
-    return(data.frame(id = character(0L), rule = character(0L),
+    return(data.frame(id = character(0L), kind = character(0L),
+                      rule = character(0L),
                       file_context = character(0L), line = integer(0L),
                       column = integer(0L), code_context = character(0L),
                       guarded = logical(0L), indirect = logical(0L),
                       preview = character(0L), message = character(0L),
                       attck = character(0L), phases = character(0L),
-                      fingerprint = character(0L),
+                      fingerprint = character(0L), title = character(0L),
                       stringsAsFactors = FALSE))
   }
   # Deterministic, so two runs over the same package produce the same document,
@@ -142,7 +155,32 @@ emit_sarif <- function(object, pretty = TRUE) {
   out <- out[order(out$id, out$file_context, out$line, out$column,
                    method = "radix"), , drop = FALSE]
   out$fingerprint <- .sarif_fingerprints(out)
+  out$title       <- .sarif_titles(out)
   out
+}
+
+
+# The one-line title of a finding: the rule, the code context it sits in, and the
+# phases it runs in.
+#
+# A rule's text is the same paragraph for every finding the rule produces, so it
+# describes the rule rather than the finding and belongs on the descriptor. What
+# is written here is what one finding of a rule does not share with another, and
+# it is the only place a reviewer reads the phases: a consumer displays a
+# result's message and ignores its properties.
+#
+# Phases are named as the columns name them, and `none` where a finding runs at
+# no phase, so a title reads as the report and the `phase` filter do. Nothing
+# here is a sentence and nothing carries a `.`: a consumer may cut a message at
+# its first sentence, which would truncate a title mid-call.
+.sarif_titles <- function(found) {
+  if (nrow(found) == 0L) return(character(0L))
+
+  where <- ifelse(is.na(found$code_context), "",
+                  paste0(" in ", found$code_context))
+  when  <- ifelse(nzchar(found$phases),
+                  gsub(" ", ", ", found$phases, fixed = TRUE), "none")
+  paste0(found$rule, where, ": ", when)
 }
 
 
@@ -158,12 +196,24 @@ emit_sarif <- function(object, pretty = TRUE) {
     # A file-context rule carries no ATT&CK technique, and nzchar(NA) is TRUE,
     # so the NA has to be dropped explicitly or it renders as a null tag.
     tags <- strsplit(.or_empty(found$attck[[i]]), "[[:space:]]+")[[1L]]
+    text <- found$message[[i]]
     list(
-      id               = found$id[[i]],
-      name             = found$rule[[i]],
-      shortDescription = list(text = found$message[[i]]),
-      helpUri          = .sarif_help,
-      properties       = list(tags = as.list(tags[nzchar(tags)]))
+      id   = found$id[[i]],
+      name = found$rule[[i]],
+      # The rule's text is the full description rather than the short one: a
+      # consumer shows both, and a short description taken from the text would
+      # repeat the paragraph it introduces.
+      shortDescription = list(
+        text = paste0(found$kind[[i]], " rule: ", found$rule[[i]])
+      ),
+      fullDescription  = list(text = text),
+      help = list(
+        text     = paste(text, .sarif_none_note, paste0("See ", .sarif_help)),
+        markdown = paste0(text, "\n\n", .sarif_none_note,
+                          "\n\n[pkgaudit rules](", .sarif_help, ")")
+      ),
+      helpUri    = .sarif_help,
+      properties = list(tags = as.list(tags[nzchar(tags)]))
     )
   }))
 }
@@ -201,7 +251,7 @@ emit_sarif <- function(object, pretty = TRUE) {
       ruleId  = found$id[[i]],
       # Always note: pkgaudit does not rank findings, so no severity is mapped.
       level   = "note",
-      message = list(text = found$message[[i]]),
+      message = list(text = found$title[[i]]),
       locations = list(location),
       partialFingerprints = list(
         # The name a consumer reads. Code scanning platforms look for this key
